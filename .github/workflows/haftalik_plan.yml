@@ -1,0 +1,15 @@
+name: Haftalık Plan Oluşturucu
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 18 * * 0'
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo'yu Kontrol Et
+        uses: actions/checkout@v4
+
+      - name: Test Çıktısı
+        run: echo "Otomasyon altyapısı mft-collab/muezzin için hazır!"
