@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '30 18 * * 0'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   automation:
     runs-on: ubuntu-latest
@@ -12,4 +15,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test Çıktısı
-        run: echo "Otomasyon altyapısı mft-collab/muezzin için hazır!"
+        run: echo "Otomasyon altyapısı hazır ve Node.js 24 uyumlu!"
