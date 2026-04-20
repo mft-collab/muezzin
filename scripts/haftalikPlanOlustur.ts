@@ -1,5 +1,5 @@
-import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit';
-import { tieBreakerSirala } from './lib/tieBreaker';
+import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
+import { tieBreakerSirala } from './lib/tieBreaker.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
 
 async function main() {
