@@ -1,7 +1,6 @@
 import fetch from 'node-fetch';
 import { GunlukVakit, AylikVakitler } from '../../src/types';
-
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from './firebaseAdminInit';
 
 export async function aylikVakitleriCek(yil: number, ay: number): Promise<AylikVakitler> {
   // Diyanet API
