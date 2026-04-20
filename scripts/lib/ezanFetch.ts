@@ -34,7 +34,7 @@ function parseDiyanetResponse(data: any[]): AylikVakitler {
     ceyhanId: "9148",
     gunler: {},
     kaynakApi: "diyanet",
-    guncellenmeTarihi: Timestamp.now()
+    guncellenmeTarihi: Timestamp.now() as any
   };
   data.forEach((gun: any) => {
     // MiladiTarihKisa formatı 20.04.2026 gibi gelebilir, YYYY-MM-DD'ye çevirelim
@@ -59,7 +59,7 @@ function parseAladhanResponse(data: any[]): AylikVakitler {
     ceyhanId: "9148",
     gunler: {},
     kaynakApi: "aladhan",
-    guncellenmeTarihi: Timestamp.now()
+    guncellenmeTarihi: Timestamp.now() as any
   };
   data.forEach((gun: any) => {
     const tarih = gun.date.gregorian.date;
