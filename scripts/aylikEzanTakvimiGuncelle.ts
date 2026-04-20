@@ -1,5 +1,5 @@
-import { db, Timestamp } from './lib/firebaseAdminInit';
-import { aylikVakitleriCek } from './lib/ezanFetch';
+import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { aylikVakitleriCek } from './lib/ezanFetch.ts';
 
 async function main() {
   const simdi = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
