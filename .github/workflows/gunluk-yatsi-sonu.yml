@@ -1,0 +1,25 @@
+name: Günlük Yatsı Sonu İşlemleri
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 18 * * *'
+
+jobs:
+  yatsi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Yatsı sonrası işlemleri çalıştır
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          # Firebase Admin SDK'nın JSON ile yapılandırılması için
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
+          npx tsx scripts/yatsiSonuIslemleri.ts
