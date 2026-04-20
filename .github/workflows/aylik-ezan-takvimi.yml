@@ -1,0 +1,24 @@
+name: Aylık Ezan Takvimi Güncelleme
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 28 * *'
+
+jobs:
+  takvim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Takvimi güncelle
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
+          npx tsx scripts/aylikEzanTakvimiGuncelle.ts
