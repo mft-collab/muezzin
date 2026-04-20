@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '22'
       - name: Paketleri kur
-        run: npm ci
+        run: npm install
       - name: Planı oluştur
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
