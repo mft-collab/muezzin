@@ -2,7 +2,7 @@ import { db, Timestamp } from './lib/firebaseAdminInit';
 import { aylikVakitleriCek } from './lib/ezanFetch';
 
 async function main() {
-  const simdi = new Date();
+  const simdi = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
   // Mevcut ayı da çekelim ki boş kalmasın
   const aylar = [
     { y: simdi.getFullYear(), m: simdi.getMonth() + 1 },
