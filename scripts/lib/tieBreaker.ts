@@ -1,4 +1,4 @@
-import { Muezzin } from '../../src/types';
+import { Muezzin } from '../../src/types.ts';
 
 export function tieBreakerSirala(
   muezzinleri: (Muezzin & { id: string })[], 
