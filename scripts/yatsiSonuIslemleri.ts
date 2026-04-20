@@ -1,4 +1,4 @@
-import { db, Timestamp } from './lib/firebaseAdminInit';
+import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 
 async function main() {
   console.log("Günlük yatsı sonrası işlemleri başladı...");
