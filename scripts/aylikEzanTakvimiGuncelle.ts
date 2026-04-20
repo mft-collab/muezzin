@@ -3,31 +3,43 @@ import { aylikVakitleriCek } from './lib/ezanFetch';
 
 async function main() {
   const simdi = new Date();
-  const gelecekAy = new Date(simdi.getFullYear(), simdi.getMonth() + 1, 1);
-  const yil = gelecekAy.getFullYear();
-  const ay = gelecekAy.getMonth() + 1;
-  const ayId = `${yil}-${String(ay).padStart(2, '0')}`;
+  // Mevcut ayı da çekelim ki boş kalmasın
+  const aylar = [
+    { y: simdi.getFullYear(), m: simdi.getMonth() + 1 },
+    { y: new Date(simdi.getFullYear(), simdi.getMonth() + 1, 1).getFullYear(), m: new Date(simdi.getFullYear(), simdi.getMonth() + 1, 1).getMonth() + 1 }
+  ];
 
-  try {
-    const vakitler = await aylikVakitleriCek(yil, ay);
-    await db.collection('vakitler').doc(ayId).set({
-      ceyhanId: '9148',
-      gunler: vakitler,
-      kaynakApi: 'diyanet',
-      guncellenmeTarihi: Timestamp.now()
-    });
-    console.log(`Takvim güncellendi: ${ayId}`);
-    process.exit(0);
-  } catch (err) {
-    console.error(err);
-    await db.collection('adminUyarilari').add({
-      tip: 'apiHatasi',
-      mesaj: 'Ezan takvim güncellenemedi!',
-      tarih: new Date().toISOString().split('T')[0],
-      cozuldu: false,
-      olusturmaTarihi: Timestamp.now()
-    });
-    process.exit(1);
+  for (const dateInfo of aylar) {
+    const yil = dateInfo.y;
+    const ay = dateInfo.m;
+    const ayId = `${yil}-${String(ay).padStart(2, '0')}`;
+
+    console.log(`İşleniyor: ${ayId}...`);
+
+    try {
+      const vakitData = await aylikVakitleriCek(yil, ay);
+      
+      // vakitData içinden sadece gunler kısmını almayalım, 
+      // çünkü aylikVakitleriCek komple AylikVakitler (Vakitler) objesi dönüyor.
+      // Doc.set() ile direkt tüm objeyi yazabiliriz.
+      await db.collection('vakitler').doc(ayId).set({
+        ...vakitData,
+        guncellenmeTarihi: Timestamp.now()
+      });
+      
+      console.log(`Başarılı: ${ayId}`);
+    } catch (err: any) {
+      console.error(`Hata (${ayId}):`, err.message);
+      await db.collection('adminUyarilari').add({
+        tip: 'apiHatasi',
+        mesaj: `Ezan takvimi güncellenemedi (${ayId}): ${err.message}`,
+        tarih: new Date().toISOString().split('T')[0],
+        cozuldu: false,
+        olusturmaTarihi: Timestamp.now()
+      });
+      // Bir ay hata verse de diğerini deneyelim ama sonunda hata kodu dönelim
+      process.exitCode = 1;
+    }
   }
 }
 
