@@ -1,20 +1,37 @@
-- name: Yatsı sonrası işlemleri çalıştır
+name: Günlük Yatsı Sonu İşlemleri
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 18 * * *'
+
+jobs:
+  yatsi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Paketleri kur
+        run: npm ci
+
+      - name: Yatsı sonrası işlemleri çalıştır
         env:
-          # Secret isminin GitHub'dakiyle birebir aynı olduğundan emin ol
-          SERVICE_ACCOUNT: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
-          # 1. Secret'ın doluluğunu kontrol et (İçeriği sızdırmaz, sadece karakter sayısını yazar)
-          if [ -z "$SERVICE_ACCOUNT" ]; then
-            echo "HATA: GOOGLE_APPLICATION_CREDENTIALS_JSON secret'ı boş!"
+          # Secret'ın dolu olup olmadığını kontrol et
+          if [ -z "$GOOGLE_APPLICATION_CREDENTIALS_JSON" ]; then
+            echo "HATA: GOOGLE_APPLICATION_CREDENTIALS_JSON secret'ı boş veya tanımlanmamış!"
             exit 1
           fi
-          echo "Secret doğrulandı, uzunluk: ${#SERVICE_ACCOUNT} karakter."
 
-          # 2. JSON'u güvenli bir şekilde dosyaya yaz (Heredoc yöntemi)
-          cat <<EOF > credentials.json
-          $SERVICE_ACCOUNT
-          EOF
+          # JSON dosyasını oluştur
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
           
-          # 3. Ortam değişkenini tanımla ve script'i çalıştır
+          # Dosyanın fiziksel varlığını doğrula
+          ls -l credentials.json
+          
           export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
           npx tsx scripts/yatsiSonuIslemleri.ts
