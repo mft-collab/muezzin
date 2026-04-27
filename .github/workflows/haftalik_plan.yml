@@ -14,5 +14,19 @@ jobs:
       - name: Repo'yu Kontrol Et
         uses: actions/checkout@v4
 
-      - name: Test Çıktısı
-        run: echo "Otomasyon altyapısı hazır ve Node.js 24 uyumlu!"
+      - name: Node.js Kurulumu
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Paketleri Kur
+        run: npm ci
+
+      - name: Haftalık Plan Scriptini Çalıştır
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          echo "Otomasyon altyapısı hazır, script başlatılıyor..."
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS="${GITHUB_WORKSPACE}/credentials.json"
+          npx tsx scripts/haftalikPlanOlustur.ts
