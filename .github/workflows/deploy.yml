@@ -27,3 +27,4 @@ jobs:
           args: deploy --only hosting
         env:
           GCP_SA_KEY: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          PROJECT_ID: muezzin
