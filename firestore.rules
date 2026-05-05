@@ -1,19 +1,141 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Basic rules for Muezzin app
-    // Allows admin to manage everything
-    // Line 7
-    // Line 8
-    // Line 9
-    // Line 10
-    // Line 11
-    // Line 12
-    // Line 13
-    // Line 14
-    // Line 15
+    // ---------------------------------------------------------
+    // GLOBALS & HELPERS
+    // ---------------------------------------------------------
+    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == 'upOT-kFmqHPdYUH70bGQS87WUd37aPeJ3AjlMCUoYnE' ||
+        request.auth.token.email == 'muftum@gmail.com' ||
+        (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Duyurular
+    // ---------------------------------------------------------
+    match /duyurular/{duyuruId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ENTITY: Muezzins
+    function isValidMuezzin(data) {
+      return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.role in ['admin', 'muezzin'] &&
+             data.email is string && data.email.size() <= 100 &&
+             data.aktif is bool;
+    }
+
+    match /muezzins/{uid} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || (isSignedIn() && request.auth.uid == uid)) && isValidMuezzin(incoming()) && (isAdmin() || incoming().role == 'muezzin');
+      allow delete: if isAdmin();
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+            request.auth.uid == uid && 
+            isValidMuezzin(incoming()) &&
+            incoming().email == existing().email && 
+            incoming().role == existing().role &&
+            incoming().aktif == existing().aktif &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'fcmToken'])
+        )
+      );
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Invites
+    // ---------------------------------------------------------
+    function isValidInvite(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role in ['admin', 'muezzin'];
+    }
+
+    match /invites/{emailId} {
+      allow list: if isAdmin();
+      allow get: if isVerified() && (isAdmin() || request.auth.token.email.lower() == emailId.lower());
+      allow create, update: if isAdmin() && isValidInvite(incoming());
+      allow delete: if isAdmin() || (isVerified() && request.auth.token.email.lower() == emailId.lower());
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Vakitler
+    // ---------------------------------------------------------
+    match /vakitler/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Hafta Planları
+    // ---------------------------------------------------------
+    match /haftaPlanlari/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Bildirimler
+    // ---------------------------------------------------------
+    match /bildirimler/{docId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && incoming().uid == request.auth.uid;
+      allow update: if isSignedIn() && existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Admin Uyarilari
+    // ---------------------------------------------------------
+    match /adminUyarilari/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Config
+    // ---------------------------------------------------------
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Izinler
+    // ---------------------------------------------------------
+    function isValidIzin(data) {
+      return data.keys().hasAll(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi']) &&
+             data.uid == request.auth.uid &&
+             data.tip in ['haftalik', 'yillik', 'mazeret'] &&
+             data.durum == 'onay_bekliyor' &&
+             data.baslangic is string && data.baslangic.size() == 10 &&
+             data.bitis is string && data.bitis.size() == 10 &&
+             data.sebep is string && data.sebep.size() <= 1000;
+    }
+
+    match /izinler/{docId} {
+      allow list: if isAdmin() || (isSignedIn() && resource.data.durum == 'onaylandi');
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow get: if isAdmin() || resource.data.durum == 'onaylandi' || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && isValidIzin(incoming()) && incoming().olusturmaTarihi == request.time;
+      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi'])) || 
+                    (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));
+      allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor');
+    }
+
+    // Default Deny - MUST BE LAST
     match /{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == 'upOT-kFmqHPdYUH70bGQS87WUd37aPeJ3AjlMCUoYnE';
+      allow read, write: if false;
     }
   }
 }
