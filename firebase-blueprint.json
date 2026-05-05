@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "muezzin": {
+      "title": "Muezzin",
+      "description": "System user (muezzin or admin)",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "aktif": { "type": "boolean" },
+        "aylikVakitSayisi": { "type": "number" },
+        "role": { "type": "string", "enum": ["admin", "muezzin"] },
+        "haftalikIzinGunu": { "type": "number", "description": "1: Pazartesi, ..., 7: Pazar, 0: Yok" },
+        "fcmToken": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "onayBekliyor": { "type": "boolean" },
+        "email": { "type": "string", "format": "email" },
+        "kayitTarihi": { "type": "string" }
+      },
+      "required": ["displayName", "aktif", "role", "email"]
+    },
+    "vakitler": {
+      "title": "Ezan Vakitleri",
+      "description": "Monthly prayer times record",
+      "type": "object",
+      "properties": {
+        "ay": { "type": "string" },
+        "yil": { "type": "number" },
+        "gunler": { "type": "array" }
+      }
+    },
+    "invite": {
+      "title": "Davetiye",
+      "description": "Pre-approved emails for registration",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "haftalikIzinGunu": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    },
+    "haftaPlani": {
+      "title": "Haftalık Plan",
+      "description": "Duty assignments for a specific week",
+      "type": "object",
+      "properties": {
+        "haftaId": { "type": "string" },
+        "gorevler": { "type": "object" },
+        "olusturan": { "type": "string" },
+        "olusturmaTarihi": { "type": "string" }
+      }
+    },
+    "bildirim": {
+      "title": "Bildirim",
+      "description": "User notifications",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "adminUyari": {
+      "title": "Admin Uyarısı",
+      "description": "System-wide alerts or logs for admins",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    },
+    "izin": {
+      "title": "İzin",
+      "description": "Muezzin leave requests (weekly, annual, or excuse)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "baslangic": { "type": "string", "format": "date" },
+        "bitis": { "type": "string", "format": "date" },
+        "tip": { "type": "string", "enum": ["haftalik", "yillik", "mazeret"] },
+        "sebep": { "type": "string" },
+        "durum": { "type": "string", "enum": ["onay_bekliyor", "onaylandi", "reddedildi"] },
+        "olusturmaTarihi": { "type": "object" }
+      },
+      "required": ["uid", "baslangic", "bitis", "tip", "durum"]
+    },
+    "duyuru": {
+      "title": "Duyuru",
+      "description": "Kurumsal ve idari duyurular",
+      "type": "object",
+      "properties": {
+        "baslik": { "type": "string" },
+        "icerik": { "type": "string" },
+        "tip": { "type": "string", "enum": ["onemli", "bilgi", "duyuru"] },
+        "yazar": { "type": "string" },
+        "tarih": { "type": "object" }
+      },
+      "required": ["baslik", "icerik", "tip"]
+    }
+  },
+  "firestore": {
+    "/duyurular/{docId}": {
+      "schema": "duyuru",
+      "description": "Merkezi duyurular"
+    },
+    "/muezzins/{uid}": {
+      "schema": "muezzin",
+      "description": "User profiles"
+    },
+    "/vakitler/{monthId}": {
+      "schema": "vakitler",
+      "description": "Prayer times by month (YYYYMM)"
+    },
+    "/invites/{email}": {
+      "schema": "invite",
+      "description": "Invitation list"
+    },
+    "/haftaPlanlari/{weekId}": {
+      "schema": "haftaPlani",
+      "description": "Weekly plans"
+    },
+    "/bildirimler/{docId}": {
+      "schema": "bildirim",
+      "description": "System notifications"
+    },
+    "/adminUyarilari/{docId}": {
+      "schema": "adminUyari",
+      "description": "Admin alerts"
+    },
+    "/izinler/{docId}": {
+      "schema": "izin",
+      "description": "Leave requests"
+    },
+    "/config/{docId}": {
+      "schema": "object",
+      "description": "System configuration"
+    }
+  }
+}
