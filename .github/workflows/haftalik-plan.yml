@@ -3,7 +3,7 @@ name: Haftalik Plan Olustur
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * 0'
+    - cron: '30 18 * * 0' # Runs at 18:30, only on Sunday
 
 jobs:
   planla:
@@ -20,9 +20,8 @@ jobs:
         run: npm ci
       - name: Planı oluştur
         env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
-          # GITHUB_WORKSPACE ile mutlak yol belirlemek daha güvenlidir
+          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
           export GOOGLE_APPLICATION_CREDENTIALS="${GITHUB_WORKSPACE}/credentials.json"
           npx tsx scripts/haftalikPlanOlustur.ts
