@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic rules for Muezzin app
+    // Allows admin to manage everything
+    // Line 7
+    // Line 8
+    // Line 9
+    // Line 10
+    // Line 11
+    // Line 12
+    // Line 13
+    // Line 14
+    // Line 15
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == 'upOT-kFmqHPdYUH70bGQS87WUd37aPeJ3AjlMCUoYnE';
+    }
+  }
+}
