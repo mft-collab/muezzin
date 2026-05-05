@@ -1,0 +1,39 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "vakit", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "vakit", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "haftaId", "order": "ASCENDING" },
+        { "fieldPath": "tip", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "izinler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "durum", "order": "ASCENDING" },
+        { "fieldPath": "baslangic", "order": "ASCENDING" }
+      ]
+    }
+  ]
+}
