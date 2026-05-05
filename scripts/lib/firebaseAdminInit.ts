@@ -10,11 +10,13 @@ const envKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_AP
 
 if (envKey) {
   try {
-    const serviceAccount = JSON.parse(envKey.startsWith('{') ? envKey : Buffer.from(envKey, 'base64').toString('utf8'));
-    console.log(`Firebase Admin: Using service account for project: ${serviceAccount.project_id}`);
+    const rawKey = envKey.startsWith('{') ? envKey : Buffer.from(envKey, 'base64').toString('utf8');
+    const serviceAccount = JSON.parse(rawKey);
+    console.log(`Firebase Admin: Using service account for project: ${serviceAccount.project_id} (Client Email: ${serviceAccount.client_email})`);
     credential = admin.credential.cert(serviceAccount);
   } catch (error) {
-    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:', error);
+    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS_JSON:', error);
+    console.log('Environment variable length:', envKey?.length || 0);
   }
 }
 
