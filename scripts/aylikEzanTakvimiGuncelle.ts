@@ -1,46 +1,92 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { aylikVakitleriCek } from './lib/ezanFetch.ts';
 
-async function main() {
-  const simdi = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-  // Mevcut ayı da çekelim ki boş kalmasın
-  const aylar = [
-    { y: simdi.getFullYear(), m: simdi.getMonth() + 1 },
-    { y: new Date(simdi.getFullYear(), simdi.getMonth() + 1, 1).getFullYear(), m: new Date(simdi.getFullYear(), simdi.getMonth() + 1, 1).getMonth() + 1 }
-  ];
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
-  for (const dateInfo of aylar) {
-    const yil = dateInfo.y;
-    const ay = dateInfo.m;
-    const ayId = `${yil}-${String(ay).padStart(2, '0')}`;
-
-    console.log(`İşleniyor: ${ayId}...`);
-
-    try {
-      const vakitData = await aylikVakitleriCek(yil, ay);
-      
-      // vakitData içinden sadece gunler kısmını almayalım, 
-      // çünkü aylikVakitleriCek komple AylikVakitler (Vakitler) objesi dönüyor.
-      // Doc.set() ile direkt tüm objeyi yazabiliriz.
-      await db.collection('vakitler').doc(ayId).set({
-        ...vakitData,
-        guncellenmeTarihi: Timestamp.now()
-      });
-      
-      console.log(`Başarılı: ${ayId}`);
-    } catch (err: any) {
-      console.error(`Hata (${ayId}):`, err.message);
-      await db.collection('adminUyarilari').add({
-        tip: 'apiHatasi',
-        mesaj: `Ezan takvimi güncellenemedi (${ayId}): ${err.message}`,
-        tarih: new Date().toISOString().split('T')[0],
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
-      // Bir ay hata verse de diğerini deneyelim ama sonunda hata kodu dönelim
-      process.exitCode = 1;
-    }
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
   }
 }
 
-main();
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: 'SERVICE_ACCOUNT'
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+async function main() {
+  const simdi = getTurkeyNow();
+  
+  try {
+    // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren)
+    const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1);
+    
+    // Verileri aylara göre grupla
+    const aylar: Record<string, any> = {};
+    
+    Object.entries(vakitData.gunler).forEach(([tarih, vakitler]) => {
+      const [y, m] = tarih.split('-');
+      const ayId = `${y}-${m}`;
+      if (!aylar[ayId]) {
+        aylar[ayId] = {
+          ceyhanId: vakitData.ceyhanId,
+          kaynakApi: vakitData.kaynakApi,
+          gunler: {}
+        };
+      }
+      aylar[ayId].gunler[tarih] = vakitler;
+    });
+
+    // Gruplanmış verileri Firestore'a yaz
+    for (const [ayId, data] of Object.entries(aylar)) {
+      await db.collection('vakitler').doc(ayId).set({
+        ...data,
+        guncellenmeTarihi: Timestamp.now()
+      }, { merge: true });
+      console.log(`Başarılı: ${ayId} (${Object.keys(data.gunler).length} gün güncellendi)`);
+    }
+    
+  } catch (err: any) {
+    if (err.message.includes('permission') || err.message.includes('NOT_FOUND') || err.message.includes('code: 5') || err.message.includes('code: 7')) {
+       handleFirestoreError(err, OperationType.WRITE, `vakitler`);
+    }
+    
+    console.error(`Hata:`, err.message);
+    await db.collection('adminUyarilari').add({
+      tip: 'apiHatasi',
+      mesaj: `Vakit güncelleme hatası: ${err.message}`,
+      cozuldu: false,
+      olusturmaTarihi: Timestamp.now()
+    });
+    process.exitCode = 1;
+  }
+}
+
+function getTurkeyNow(): Date {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (3600000 * 3));
+}
+
+main().catch(err => {
+  console.error("Kritik hata:", err);
+  process.exit(1);
+});
