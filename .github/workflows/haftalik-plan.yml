@@ -3,14 +3,11 @@ name: Haftalik Plan Olustur
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * 0' # Runs at 18:30, only on Sunday
+    - cron: '30 18 * * 0'
 
 jobs:
   planla:
     runs-on: ubuntu-latest
-    env:
-      # Actions uyarılarını susturmak için ortam değişkeni
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +18,4 @@ jobs:
       - name: Planı oluştur
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
-          export GOOGLE_APPLICATION_CREDENTIALS="${GITHUB_WORKSPACE}/credentials.json"
-          npx tsx scripts/haftalikPlanOlustur.ts
+        run: npx tsx scripts/haftalikPlanOlustur.ts
