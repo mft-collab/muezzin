@@ -1,15 +1,17 @@
 name: Haftalık Plan Oluşturucu
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * 0'
+    - cron: '30 18 * * 0' # Runs at 18:30, only on Sunday
 
 env:
+  # Actions uyarılarını susturmak için ortam değişkeni
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   automation:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Repo'yu Kontrol Et
         uses: actions/checkout@v4
@@ -24,9 +26,8 @@ jobs:
 
       - name: Haftalık Plan Scriptini Çalıştır
         env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
-          echo "Otomasyon altyapısı hazır, script başlatılıyor..."
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
+          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
           export GOOGLE_APPLICATION_CREDENTIALS="${GITHUB_WORKSPACE}/credentials.json"
           npx tsx scripts/haftalikPlanOlustur.ts
