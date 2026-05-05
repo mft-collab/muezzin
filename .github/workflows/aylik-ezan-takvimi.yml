@@ -17,8 +17,8 @@ jobs:
         run: npm ci
       - name: Takvimi güncelle
         env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
+          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
           export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
           npx tsx scripts/aylikEzanTakvimiGuncelle.ts
