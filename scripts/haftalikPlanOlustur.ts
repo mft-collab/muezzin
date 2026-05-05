@@ -2,11 +2,51 @@ import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
 import { tieBreakerSirala } from './lib/tieBreaker.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: 'SERVICE_ACCOUNT'
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 async function main() {
   console.log("Haftalık plan oluşturma başladı...");
 
   // 1. Girdi okuma
-  const muezzinSnapshot = await db.collection('muezzins').where('aktif', '==', true).get();
+  let muezzinSnapshot;
+  try {
+    muezzinSnapshot = await db.collection('muezzins')
+      .where('aktif', '==', true)
+      .where('role', '==', 'muezzin')
+      .get();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, 'muezzins');
+    return;
+  }
   const muezzinler = muezzinSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }));
 
   if (muezzinler.length < 2) {
@@ -26,76 +66,85 @@ async function main() {
   const simdi = new Date();
   const bugunDay = simdi.getDay(); // 0: Pazar, 1: Pazartesi...
   const diff = simdi.getDate() - (bugunDay === 0 ? 6 : bugunDay - 1); // Pazartesiye git
-  const pazartesi = new Date(simdi.setDate(diff));
-  pazartesi.setHours(0, 0, 0, 0);
+  const pazartesiTemel = new Date(simdi.setDate(diff));
+  pazartesiTemel.setHours(0, 0, 0, 0);
 
-  const haftaBaslangicStr = pazartesi.toISOString().split('T')[0];
-  const haftaId = `W${haftaBaslangicStr}`; // Örn: W2026-04-20
-  
-  const gunler: string[] = [];
-  for(let i=0; i<7; i++) {
-    const gun = new Date(pazartesi);
-    gun.setDate(pazartesi.getDate() + i);
-    gunler.push(gun.toISOString().split('T')[0]);
-  }
-  const haftaBitisStr = gunler[6];
+  // Bu hafta ve gelecek 4 hafta için plan oluştur
+  for (let weekOffset = 0; weekOffset < 5; weekOffset++) {
+    const pazartesi = new Date(pazartesiTemel);
+    pazartesi.setDate(pazartesiTemel.getDate() + (weekOffset * 7));
 
-  const planDoc = await db.collection('haftaPlanlari').doc(haftaId).get();
-  if (planDoc.exists) {
-    console.log(`Plan (${haftaId}) zaten var, atlandı.`);
-    process.exit(0);
-  }
+    const haftaBaslangicStr = pazartesi.toISOString().split('T')[0];
+    const haftaId = `W${haftaBaslangicStr}`; // Örn: W2026-04-20
+    
+    const gunler: string[] = [];
+    for(let i=0; i<7; i++) {
+      const gun = new Date(pazartesi);
+      gun.setDate(pazartesi.getDate() + i);
+      gunler.push(gun.toISOString().split('T')[0]);
+    }
+    const haftaBitisStr = gunler[6];
 
-  // 3. Atama algoritması - buHaftakiYukler takibi
-  const buHaftakiYukler: Record<string, number> = {};
-  muezzinler.forEach(m => buHaftakiYukler[m.id] = 0);
+    const planDoc = await db.collection('haftaPlanlari').doc(haftaId).get();
+    if (planDoc.exists) {
+      console.log(`Plan (${haftaId}) zaten var, atlandı.`);
+      continue;
+    }
 
-  const vakitler = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-  
-  const gunPlan: any = {};
-  const batch = db.batch();
+    console.log(`${haftaId} için plan oluşturuluyor...`);
 
-  for (const gun of gunler) {
-    gunPlan[gun] = {};
-    for (const vakit of vakitler) {
+    // 3. Atama algoritması - buHaftakiYukler takibi
+    const buHaftakiYukler: Record<string, number> = {};
+    muezzinler.forEach(m => buHaftakiYukler[m.id] = 0);
+
+    const vakitler = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
+    
+    const gunPlan: any = {};
+    const batch = db.batch();
+
+    for (const gun of gunler) {
+      gunPlan[gun] = {};
+      
       const sirali = tieBreakerSirala(muezzinler, buHaftakiYukler);
       
       const asil = sirali[0];
       const yedek = sirali[1];
 
-      buHaftakiYukler[asil.id]++;
+      buHaftakiYukler[asil.id] += 5;
 
-      gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
+      for (const vakit of vakitler) {
+        gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
 
-      // Bildirimler
-      const bildirimAsilRef = db.collection('bildirimler').doc();
-      batch.set(bildirimAsilRef, {
-        haftaId, tarih: gun, vakit, uid: asil.id, tip: 'asil',
-        durum: 'bekliyor', pendingAck: false, olusturmaTarihi: Timestamp.now(),
-        sonGuncelleme: Timestamp.now()
-      });
+        // Bildirimler
+        const bildirimAsilRef = db.collection('bildirimler').doc();
+        batch.set(bildirimAsilRef, {
+          haftaId, tarih: gun, vakit, uid: asil.id, tip: 'asil',
+          durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
+          sonGuncelleme: Timestamp.now()
+        });
 
-      const bildirimYedekRef = db.collection('bildirimler').doc();
-      batch.set(bildirimYedekRef, {
-        haftaId, tarih: gun, vakit, uid: yedek.id, tip: 'yedek',
-        durum: 'bekliyor', pendingAck: false, olusturmaTarihi: Timestamp.now(),
-        sonGuncelleme: Timestamp.now()
-      });
+        const bildirimYedekRef = db.collection('bildirimler').doc();
+        batch.set(bildirimYedekRef, {
+          haftaId, tarih: gun, vakit, uid: yedek.id, tip: 'yedek',
+          durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
+          sonGuncelleme: Timestamp.now()
+        });
+      }
     }
+
+    // 4. Yazma
+    batch.set(db.collection('haftaPlanlari').doc(haftaId), {
+      haftaBaslangic: haftaBaslangicStr,
+      haftaBitis: haftaBitisStr,
+      durum: 'yayinda',
+      olusturmaTarihi: Timestamp.now(),
+      gunler: gunPlan
+    });
+
+    await batch.commit();
+    console.log(`Hafta ${haftaId}: Tüm atamalar ve bildirimler tamamlandı.`);
   }
 
-  // 4. Yazma
-  batch.set(db.collection('haftaPlanlari').doc(haftaId), {
-    haftaBaslangic: haftaBaslangicStr,
-    haftaBitis: haftaBitisStr,
-    durum: 'yayinda',
-    olusturmaTarihi: Timestamp.now(),
-    gunler: gunPlan
-  });
-
-  await batch.commit();
-
-  console.log(`Hafta ${haftaId}: Tüm atamalar ve bildirimler tamamlandı.`);
   process.exit(0);
 }
 
