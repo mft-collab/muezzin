@@ -3,7 +3,7 @@ name: Günlük Yatsı Sonu İşlemleri
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * *'
+    - cron: '30 18 * * *' # Runs at 18:30
 
 jobs:
   yatsi:
@@ -13,25 +13,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Paketleri kur
         run: npm ci
-
       - name: Yatsı sonrası işlemleri çalıştır
         env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
-          # Secret'ın dolu olup olmadığını kontrol et
-          if [ -z "$GOOGLE_APPLICATION_CREDENTIALS_JSON" ]; then
-            echo "HATA: GOOGLE_APPLICATION_CREDENTIALS_JSON secret'ı boş veya tanımlanmamış!"
-            exit 1
-          fi
-
-          # JSON dosyasını oluştur
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > credentials.json
-          
-          # Dosyanın fiziksel varlığını doğrula
-          ls -l credentials.json
-          
+          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
           export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
-          npx tsx scripts/yatsiSonuIslemleri.ts
+          npx tsx scripts/gunlukYatsiSonuIslemleri.ts
