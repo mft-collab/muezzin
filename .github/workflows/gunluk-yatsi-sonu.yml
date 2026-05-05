@@ -3,7 +3,7 @@ name: Günlük Yatsı Sonu İşlemleri
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * *' # Runs at 18:30
+    - cron: '30 18 * * *'
 
 jobs:
   yatsi:
@@ -18,7 +18,4 @@ jobs:
       - name: Yatsı sonrası işlemleri çalıştır
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > credentials.json
-          export GOOGLE_APPLICATION_CREDENTIALS=credentials.json
-          npx tsx scripts/gunlukYatsiSonuIslemleri.ts
+        run: npx tsx scripts/yatsiSonuIslemleri.ts
