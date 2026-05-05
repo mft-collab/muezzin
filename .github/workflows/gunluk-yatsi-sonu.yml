@@ -3,19 +3,21 @@ name: Günlük Yatsı Sonu İşlemleri
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 18 * * *'
+    - cron: '30 20 * * *'
 
 jobs:
   yatsi:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
       - name: Paketleri kur
         run: npm ci
       - name: Yatsı sonrası işlemleri çalıştır
         env:
-          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 || secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: npx tsx scripts/yatsiSonuIslemleri.ts
