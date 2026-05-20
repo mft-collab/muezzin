@@ -201,7 +201,7 @@ export default function HaftalikCizelge() {
                      initial={{ opacity: 0, y: 20 }}
                      animate={{ opacity: 1, y: 0 }}
                      transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
-                     className={`flex flex-col xl:flex-row items-stretch xl:items-center p-4 gap-6 rounded-[32px] border transition-all duration-700 relative overflow-hidden ${
+                     className={`flex flex-col lg:flex-row items-stretch lg:items-center p-4 gap-6 rounded-[32px] border transition-all duration-700 relative overflow-hidden ${
                         isToday 
                         ? 'bg-indigo-500/5 border-indigo-500/20 shadow-2xl' 
                         : 'spatial-glass border-white/5 hover:bg-white/[0.02]'

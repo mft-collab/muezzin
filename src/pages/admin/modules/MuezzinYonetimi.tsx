@@ -128,7 +128,7 @@ export default function MuezzinYonetimi() {
   return (
     <div className="flex flex-col gap-10">
       {/* ACTION BAR: Executive Authority */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
         <div className="flex flex-col gap-2">
            <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kadro Operasyonları</h2>
            <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
@@ -171,7 +171,7 @@ export default function MuezzinYonetimi() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 key={m.id} 
-                className="spatial-glass-elevated p-5 flex items-center justify-between group hover:bg-white/[0.04] transition-all duration-500"
+                className="spatial-glass-elevated p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 group hover:bg-white/[0.04] transition-all duration-500"
               >
                  <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center text-indigo-400 font-light text-lg">
@@ -214,7 +214,7 @@ export default function MuezzinYonetimi() {
 
       {/* MAIN PERSONNEL LIST: Living Card Grid */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between mb-2 px-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-2 px-2">
            <div className="flex items-center gap-3">
               <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
               <h2 className="text-lg font-light tracking-tight text-[var(--text-primary)]">Operasyonel Kadro</h2>
@@ -242,7 +242,7 @@ export default function MuezzinYonetimi() {
 
                 <div className="relative z-10 flex flex-col gap-6">
                   {/* Header: Identity */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between items-start gap-4 sm:gap-0">
                     <div className="flex items-center gap-5">
                       <div className="relative">
                         <div className="w-16 h-16 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] flex items-center justify-center font-light text-2xl text-indigo-400 shadow-inner group-hover:scale-105 group-hover:rotate-3 transition-all duration-700 relative overflow-hidden">
@@ -277,7 +277,7 @@ export default function MuezzinYonetimi() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-col items-end gap-1.5">
+                    <div className="flex flex-col items-start sm:items-end gap-1.5 w-full sm:w-auto mt-2 sm:mt-0">
                       {rank === 1 && (
                         <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
                           🏆 LİDER
@@ -347,7 +347,7 @@ export default function MuezzinYonetimi() {
                   </div>
 
                   {/* Footer: Actions */}
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                     <div className="flex items-center gap-2">
                       <div className={`px-2 py-1 rounded-md text-[6px] font-bold tracking-[0.1em] border ${
                         m.aktif ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'

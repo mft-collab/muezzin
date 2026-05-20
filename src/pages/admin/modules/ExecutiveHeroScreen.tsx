@@ -160,7 +160,7 @@ export default function ExecutiveHeroScreen({
           </motion.div>
 
           {/* Leave & Announcements Row */}
-          <div className="flex gap-8 flex-1">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 flex-1">
             <motion.div
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -249,8 +249,8 @@ export default function ExecutiveHeroScreen({
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
 
                     <motion.div layout className="flex items-center justify-between relative z-10">
-                      <div className="flex items-center gap-8">
-                        <div className="w-20 authority-title !text-[7px] opacity-30 tracking-[0.2em]">{record.time.toUpperCase()}</div>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
+                        <div className="w-20 authority-title !text-[7px] opacity-30 tracking-[0.2em] shrink-0">{record.time.toUpperCase()}</div>
                         <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
                           {record.title}
                         </div>
@@ -307,7 +307,7 @@ export default function ExecutiveHeroScreen({
                              </div>
                              <div className="flex flex-col gap-3 col-span-2">
                                <span className="authority-title !text-[7px] opacity-30 tracking-[0.2em]">HIZLI OPERASYONLAR</span>
-                               <div className="flex gap-5">
+                               <div className="flex flex-wrap gap-3">
                                  {record.type === 'izin' && record.status === 'pending' ? (
                                    <>
                                      <motion.button 

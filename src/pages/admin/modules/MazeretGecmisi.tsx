@@ -94,7 +94,7 @@ export default function MazeretGecmisi() {
       <section className="spatial-glass p-8 border border-white/5 relative overflow-hidden min-h-[400px]">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent" />
         
-        <div className="overflow-x-auto no-scrollbar">
+        <div className="hidden md:block overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-separate border-spacing-y-4">
             <thead>
               <tr className="border-b border-white/5">

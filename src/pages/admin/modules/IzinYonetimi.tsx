@@ -46,7 +46,7 @@ export default function IzinYonetimi() {
            <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">PERSONEL İSTİRAHAT VE GÖREV MUAFİYETLERİ</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white/[0.02] p-1.5 rounded-[22px] border border-white/5 shadow-2xl">
+        <div className="flex items-center gap-2 bg-white/[0.02] p-1.5 rounded-[22px] border border-white/5 shadow-2xl overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0">
           {[
             { id: 'all', label: 'TÜMÜ' },
             { id: 'onay_bekliyor', label: 'BEKLEYEN' },
@@ -58,7 +58,7 @@ export default function IzinYonetimi() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setFilter(btn.id as any)}
-              className={`px-6 py-3 rounded-[18px] text-[8px] font-bold uppercase tracking-[0.15em] transition-all duration-500 ${
+              className={`px-6 py-3 rounded-[18px] text-[8px] font-bold uppercase tracking-[0.15em] transition-all duration-500 shrink-0 ${
                 filter === btn.id 
                 ? 'bg-white text-black shadow-xl shadow-white/5' 
                 : 'bg-transparent text-white/30 hover:text-white hover:bg-white/5'
@@ -124,7 +124,7 @@ export default function IzinYonetimi() {
                 </div>
 
                 {/* Temporal Matrix */}
-                <div className="flex flex-col sm:flex-row items-center gap-8 lg:px-8 lg:border-x border-white/5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 lg:px-8 lg:border-x lg:border-y-0 border-y border-white/5 py-4 lg:py-0 w-full lg:w-auto">
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col">
                        <span className="authority-title !text-[6px] opacity-20 uppercase tracking-[0.2em] mb-1">BAŞLANGIÇ</span>
@@ -146,7 +146,7 @@ export default function IzinYonetimi() {
                 </div>
 
                 {/* Decision Matrix */}
-                <div className="flex items-center gap-4 lg:ml-auto">
+                <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-start lg:ml-auto border-t lg:border-t-0 border-white/5 pt-4 lg:pt-0">
                   {izin.durum === 'onay_bekliyor' ? (
                     <div className="flex items-center gap-3">
                       <motion.button

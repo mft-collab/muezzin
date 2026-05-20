@@ -86,8 +86,8 @@ export default function SistemAyarlari() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-10 border-t border-white/5">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6 pt-10 border-t border-white/5">
+          <div className="flex items-center justify-center sm:justify-start gap-4">
             <AnimatePresence>
               {success && (
                 <motion.div 
@@ -108,7 +108,7 @@ export default function SistemAyarlari() {
             whileTap={{ scale: 0.98 }}
             type="submit" 
             disabled={saving}
-            className="bg-white text-black px-12 py-5 rounded-[22px] font-bold text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all disabled:opacity-50 flex items-center gap-4"
+            className="bg-white text-black px-12 py-5 rounded-[22px] font-bold text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-4"
           >
             {saving ? (
               <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin" />

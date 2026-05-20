@@ -172,7 +172,7 @@ export default function EzanOnbellegi() {
                </div>
 
                {/* DATA MATRIX TABLE */}
-               <div className="spatial-glass rounded-[32px] overflow-hidden border border-white/5 relative z-10">
+               <div className="hidden md:block spatial-glass rounded-[32px] overflow-hidden border border-white/5 relative z-10">
                   <table className="w-full text-left">
                      <thead>
                         <tr className="authority-title !text-[8px] opacity-30 uppercase tracking-[0.4em] border-b border-white/5">
@@ -230,6 +230,48 @@ export default function EzanOnbellegi() {
                         )}
                      </tbody>
                   </table>
+               </div>
+
+               {/* MOBILE ARCHIVE CARDS (Fallback) */}
+               <div className="md:hidden flex flex-col gap-4 relative z-10">
+                  {onbellekler.length === 0 ? (
+                     <div className="spatial-glass p-8 text-center rounded-[24px]">
+                        <p className="authority-title !text-[10px] opacity-20 uppercase tracking-[0.5em] font-bold">KAYITLI ÖNBELLEK BULUNAMADI</p>
+                     </div>
+                  ) : (
+                     onbellekler.map((o, idx) => (
+                        <motion.div 
+                           key={o.id}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ delay: idx * 0.05 }}
+                           className="spatial-glass-elevated p-6 rounded-[24px] space-y-4 border border-white/5"
+                        >
+                           <div className="flex justify-between items-center">
+                              <h4 className="text-base font-light text-white tracking-tight leading-none">{o.id.toUpperCase()}</h4>
+                              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[8px] font-bold text-white/40 tracking-[0.2em] uppercase">
+                                 {o.kaynakApi?.toUpperCase() || 'OTONOM'}
+                              </span>
+                           </div>
+                           <div className="flex flex-col gap-1 text-xs">
+                              <span className="authority-title !text-[6px] opacity-30 uppercase tracking-[0.2em]">SON SENKRONİZASYON</span>
+                              <span className="text-[10px] font-medium text-white/60">
+                                 {o.guncellenmeTarihi 
+                                   ? format(
+                                       typeof o.guncellenmeTarihi?.toDate === 'function' ? o.guncellenmeTarihi.toDate() : new Date(o.guncellenmeTarihi?.seconds ? o.guncellenmeTarihi.seconds * 1000 : o.guncellenmeTarihi), 
+                                       'dd MMMM yyyy • HH:mm', 
+                                       { locale: tr }
+                                     ).toUpperCase() 
+                                   : 'SİSTEM KAYDI YOK'}
+                              </span>
+                           </div>
+                           <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-emerald-400">
+                              <CheckCircle2 size={14} strokeWidth={1.5} />
+                              <span className="authority-title !text-[7px] font-bold uppercase tracking-[0.2em]">SİSTEM GÜNCEL</span>
+                           </div>
+                        </motion.div>
+                     ))
+                  )}
                </div>
             </section>
 

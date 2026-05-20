@@ -151,7 +151,7 @@ export const DuyuruYonetimi: React.FC = () => {
   return (
     <div className="flex flex-col gap-10">
       {/* HEADER: Action Control */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div className="flex flex-col gap-2">
            <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Duyuru Panosu</h2>
            <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
@@ -161,7 +161,7 @@ export const DuyuruYonetimi: React.FC = () => {
           whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-[9px] font-bold uppercase tracking-[0.3em] shadow-lg group"
+          className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-[9px] font-bold uppercase tracking-[0.3em] shadow-lg group w-full sm:w-auto"
         >
           <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
           YENİ DUYURU YAYINLA
@@ -409,12 +409,12 @@ export const DuyuruYonetimi: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-8 flex items-center gap-6">
+          <div className="pt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
              <motion.button 
               whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
               whileTap={{ scale: 0.98 }}
               type="submit" 
-              className="flex-1 bg-indigo-500 text-white border border-indigo-400 text-[10px] font-bold uppercase tracking-[0.3em] py-5 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all duration-700"
+              className="flex-1 bg-indigo-500 text-white border border-indigo-400 text-[10px] font-bold uppercase tracking-[0.3em] py-5 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all duration-700 text-center justify-center flex items-center"
              >
               DUYURUYU ŞİMDİ YAYINLA
              </motion.button>
@@ -422,7 +422,7 @@ export const DuyuruYonetimi: React.FC = () => {
               whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
               type="button" 
               onClick={() => setModalOpen(false)} 
-              className="px-10 py-5 text-[10px] font-bold uppercase tracking-[0.3em] text-white/25 hover:text-white transition-all border border-white/5 rounded-2xl"
+              className="px-10 py-5 text-[10px] font-bold uppercase tracking-[0.3em] text-white/25 hover:text-white transition-all border border-white/5 rounded-2xl text-center justify-center flex items-center"
              >
               İPTAL
              </motion.button>
