@@ -40,7 +40,7 @@ export const GorevKarti = React.memo(({
 }: { bildirim: Bildirim; saat: string }) => {
   const [isAktif, setIsAktif] = useState(() => {
     const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
-    return getTurkeyNow().getTime() >= ezanVakti.getTime();
+    return ezanVakti ? getTurkeyNow().getTime() >= ezanVakti.getTime() : false;
   });
   const [isMazeretModalOpen, setIsMazeretModalOpen] = useState(false);
   const [mazeretSebebi, setMazeretSebebi] = useState('');
@@ -62,7 +62,7 @@ export const GorevKarti = React.memo(({
     if (isAktif) return;
     const checkAktif = () => {
       const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
-      if (getTurkeyNow().getTime() >= ezanVakti.getTime()) {
+      if (ezanVakti && getTurkeyNow().getTime() >= ezanVakti.getTime()) {
         setIsAktif(true);
       }
     };

@@ -65,16 +65,18 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
       });
 
       const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
-      const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFriday);
-      
-      const asil = sirali[0];
-      const yedek = sirali[1];
-
-      buHaftakiYukler[asil.id] += 1;
-      // Bir sonraki gün için dinlenme listesini güncelle
-      oncekiVakitUidler = [asil.id, yedek.id];
 
       for (const vakit of vakitler) {
+        const isFridayOgle = isFriday && vakit === 'ogle';
+        const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFridayOgle);
+        
+        const asil = sirali[0];
+        const yedek = sirali[1];
+
+        buHaftakiYukler[asil.id] = (buHaftakiYukler[asil.id] || 0) + 1;
+        // Bir sonraki vakit için dinlenme listesini güncelle
+        oncekiVakitUidler = [asil.id, yedek.id];
+
         gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
         
         // Bildirimleri ekle

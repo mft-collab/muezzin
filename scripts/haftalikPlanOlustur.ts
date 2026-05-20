@@ -112,9 +112,15 @@ async function main() {
     const gunPlan: any = {};
     const batch = db.batch();
 
+    let oncekiVakitUidler: string[] = [];
+
     for (const gun of gunler) {
       gunPlan[gun] = {};
       
+      const [gY, gM, gD] = gun.split('-').map(Number);
+      const currentGunDate = new Date(gY, gM - 1, gD);
+      const isFriday = currentGunDate.getDay() === 5;
+
       // Bugün izinli olanları filtrele
       const bugunIzinliUidler = onayliIzinler
         .filter(izin => gun >= izin.baslangic && gun <= izin.bitis)
@@ -126,11 +132,14 @@ async function main() {
         // Eğer o vakit kimse müsait değilse (nadiren), tüm aktifleri kullan
         const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
         
-        const sirali = tieBreakerSirala(adaylar, buHaftakiYukler);
+        const isFridayOgle = isFriday && vakit === 'ogle';
+        const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFridayOgle);
         const asil = sirali[0];
         const yedek = sirali[1];
 
-        buHaftakiYukler[asil.id] += 1;
+        buHaftakiYukler[asil.id] = (buHaftakiYukler[asil.id] || 0) + 1;
+        // Bir sonraki vakit için dinlenme listesini güncelle
+        oncekiVakitUidler = [asil.id, yedek.id];
 
         gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
 

@@ -152,7 +152,22 @@ export async function kriziBaslat(tarih: string, vakit: string, haricUidler: str
       adaylar = adaylar.filter(m => m.id !== yedekData.uid);
     }
 
-    const siraliAdaylar = tieBreakerSirala(adaylar, {}); 
+    const haftaId = getHaftaIdFromDate(tarih);
+    const planDoc = await getDoc(doc(db, 'haftaPlanlari', haftaId));
+    const buHaftakiYukler: Record<string, number> = {};
+    if (planDoc.exists()) {
+      const planData = planDoc.data();
+      const gunler = planData.gunler || {};
+      Object.values(gunler).forEach((vakitlerObj: any) => {
+        Object.values(vakitlerObj).forEach((atama: any) => {
+          if (atama.asil) {
+            buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + 1;
+          }
+        });
+      });
+    }
+
+    const siraliAdaylar = tieBreakerSirala(adaylar, buHaftakiYukler);
 
     // Fetch all rejected notifications for this specific date and time in a single query (Optimization: avoid N+1 query problem)
     const reddedilenSnap = await getDocs(query(
