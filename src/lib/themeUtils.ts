@@ -14,29 +14,29 @@ export interface DynamicTheme {
 
 export const VAKIT_DYNAMIC_THEMES: Record<string, DynamicTheme> = {
   sabah: { 
-    color: '#22D3EE', // Cyan 400
-    glow: 'rgba(34, 211, 238, 0.5)', 
-    bgGlow: 'rgba(34, 211, 238, 0.08)' 
+    color: '#38BDF8', // Sky 400 (Vibrant Cyan)
+    glow: 'rgba(56, 189, 248, 0.4)', 
+    bgGlow: 'rgba(56, 189, 248, 0.06)' 
   },
   ogle: { 
-    color: '#F59E0B', // Amber 500
-    glow: 'rgba(245, 158, 11, 0.5)', 
-    bgGlow: 'rgba(245, 158, 11, 0.12)' 
+    color: '#FCD34D', // Amber 300 (Soft Gold)
+    glow: 'rgba(252, 211, 77, 0.4)', 
+    bgGlow: 'rgba(252, 211, 77, 0.08)' 
   },
   ikindi: { 
-    color: '#F97316', // Orange 500
-    glow: 'rgba(249, 115, 22, 0.5)', 
-    bgGlow: 'rgba(249, 115, 22, 0.12)' 
+    color: '#FB923C', // Orange 400 (Sunset Orange)
+    glow: 'rgba(251, 146, 60, 0.4)', 
+    bgGlow: 'rgba(251, 146, 60, 0.08)' 
   },
   aksam: { 
-    color: '#F43F5E', // Rose 500
-    glow: 'rgba(244, 63, 94, 0.5)', 
-    bgGlow: 'rgba(244, 63, 114, 0.15)' 
+    color: '#FB7185', // Rose 400 (Soft Ruby)
+    glow: 'rgba(251, 113, 133, 0.4)', 
+    bgGlow: 'rgba(251, 113, 133, 0.1)' 
   },
   yatsi: { 
-    color: '#818CF8', // Indigo 400
-    glow: 'rgba(129, 140, 248, 0.5)', 
-    bgGlow: 'rgba(129, 140, 248, 0.1)' 
+    color: '#A5B4FC', // Indigo 300 (Periwinkle Blue)
+    glow: 'rgba(165, 180, 252, 0.4)', 
+    bgGlow: 'rgba(165, 180, 252, 0.06)' 
   }
 };
 
@@ -47,55 +47,18 @@ export const getDynamicTheme = (vakit: string | undefined): DynamicTheme => {
   return VAKIT_DYNAMIC_THEMES[vakit];
 };
 
-export const getVakitTheme = (vakit: string): VakitTheme => {
-  switch (vakit) {
-    case 'sabah':
-      return {
-        bg: 'bg-gradient-to-br from-[#1A0B2E] via-[#2D1B5E] to-[#1A0B2E]',
-        accent1: 'bg-amber-400/20',
-        accent2: 'bg-purple-400/10',
-        text: 'Sabahın Aydınlığı',
-        icon: 'mosque'
-      };
-    case 'ogle':
-      return {
-        bg: 'bg-gradient-to-br from-[#0F2027] via-[#203A43] to-[#2C5364]',
-        accent1: 'bg-yellow-400/20',
-        accent2: 'bg-blue-300/10',
-        text: 'Öğlenin Bereketi',
-        icon: 'sun'
-      };
-    case 'ikindi':
-      return {
-        bg: 'bg-gradient-to-br from-[#3D2B1F] via-[#5C3A1B] to-[#3D2B1F]',
-        accent1: 'bg-orange-400/20',
-        accent2: 'bg-yellow-600/10',
-        text: 'İkindinin Huzuru',
-        icon: 'leaves'
-      };
-    case 'aksam':
-      return {
-        bg: 'bg-gradient-to-br from-[#230707] via-[#3E1B1B] to-[#230707]',
-        accent1: 'bg-red-500/20',
-        accent2: 'bg-pink-600/10',
-        text: 'Akşamın Sükuneti',
-        icon: 'moon'
-      };
-    case 'yatsi':
-      return {
-        bg: 'bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617]',
-        accent1: 'bg-indigo-500/10',
-        accent2: 'bg-blue-600/10',
-        text: 'Yatsının Derinliği',
-        icon: 'star'
-      };
-    default:
-      return {
-        bg: 'bg-blue-950',
-        accent1: 'bg-blue-500/10',
-        accent2: 'bg-yellow-500/5',
-        text: 'Sıradaki Vakit',
-        icon: 'none'
-      };
-  }
+export const VAKIT_TEXT_COLORS: Record<string, string> = {
+  sabah:  '#BAE6FD',
+  ogle:   '#FEF08A',
+  ikindi: '#FED7AA',
+  aksam:  '#FECDD3',
+  yatsi:  '#C7D2FE',
+};
+
+export const VAKIT_SURFACE_TINTS: Record<string, string> = {
+  sabah:  'rgba(56, 189, 248, 0.04)',
+  ogle:   'rgba(252, 211, 77, 0.05)',
+  ikindi: 'rgba(251, 146, 60, 0.05)',
+  aksam:  'rgba(251, 113, 133, 0.06)',
+  yatsi:  'rgba(165, 180, 252, 0.04)',
 };

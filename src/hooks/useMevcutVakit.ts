@@ -1,24 +1,15 @@
-import { useState, useEffect } from 'react';
-import { GunlukVakit, Vakit } from '../types';
+import { useMemo } from 'react';
+import { GunlukVakit } from '../types';
 import { mevcutVaktiHesapla } from '../services/ezanVaktiServisi';
+import { useMinuteTick } from './useTime';
 
 export function useMevcutVakit(bugunVakitler: GunlukVakit | null) {
-  const [mevcut, setMevcut] = useState<Vakit | null>(null);
+  const tick = useMinuteTick();
 
-  useEffect(() => {
-    if (!bugunVakitler) {
-      setMevcut(null);
-      return;
-    }
-
-    setMevcut(mevcutVaktiHesapla(bugunVakitler));
-
-    const interval = setInterval(() => {
-      setMevcut(mevcutVaktiHesapla(bugunVakitler));
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [bugunVakitler]);
+  const mevcut = useMemo(() => {
+    if (!bugunVakitler) return null;
+    return mevcutVaktiHesapla(bugunVakitler);
+  }, [bugunVakitler, tick]);
 
   return mevcut;
 }

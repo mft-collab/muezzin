@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useMuezzinler } from '../../../hooks/admin/useMuezzinler';
+import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { Muezzin, Invite } from '../../../types';
 import { db } from '../../../lib/firebase';
-import { doc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, Timestamp } from 'firebase/firestore';
-import { Modal } from '../../../components/ui/Modal';
+import { doc, updateDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { handleFirestoreError, OperationType } from '../../../lib/firestore-errors';
+import { PersonelFormModal } from '../components/PersonelFormModal';
 import { 
   Edit2, 
   Power, 
@@ -16,19 +16,21 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GUNLER_TR } from '../../../lib/dateUtils';
-import { formatName } from '../../../lib/stringUtils';
 
 export default function MuezzinYonetimi() {
-  const { muezzinler, loading } = useMuezzinler();
+  // ATOMIC ZUSTAND SELECTORS - (Engeller gereksiz renderları)
+  const muezzinler = useMuezzinStore(state => state.muezzinler);
+  const loading = useMuezzinStore(state => state.loading);
+
   const [invites, setInvites] = useState<(Invite & { id: string })[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<(Muezzin & { id: string }) | null>(null);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'invites'), (snap) => {
       setInvites(snap.docs.map(d => ({ id: d.id, ...d.data() }) as (Invite & { id: string })));
-    }, (error: any) => {
+    }, (error: import('firebase/firestore').FirestoreError) => {
       console.error("Firestore Dinleme Hatası:", error.message);
       if (error.code === 'permission-denied') {
           setErrorStatus("Davetiyeleri görme yetkiniz yok.");
@@ -39,68 +41,16 @@ export default function MuezzinYonetimi() {
     return () => unsub();
   }, []);
 
-  // Confirmation Modal States
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean, data: (Muezzin & { id: string }) | null }>({ open: false, data: null });
   const [confirmToggle, setConfirmToggle] = useState<{ open: boolean, data: (Muezzin & { id: string }) | null }>({ open: false, data: null });
 
-  const [formData, setFormData] = useState({
-    email: '',
-    ad: '',
-    soyad: '',
-    role: 'muezzin' as 'muezzin' | 'admin' | 'gozlemci',
-    haftalikIzinGunu: 0
-  });
-
-  const handleCreateOrUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setErrorStatus(null);
-      if (editingId) {
-        await updateDoc(doc(db, 'muezzins', editingId), {
-          displayName: `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim(),
-          role: formData.role,
-          haftalikIzinGunu: formData.haftalikIzinGunu
-        });
-      } else {
-        const mail = formData.email.trim().toLowerCase();
-        if (!mail || !mail.includes('@')) {
-          setErrorStatus('Geçerli bir e-posta adresi giriniz.');
-          return;
-        }
-        await setDoc(doc(db, 'invites', mail), {
-          email: mail,
-          displayName: `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim(),
-          role: formData.role,
-          haftalikIzinGunu: formData.haftalikIzinGunu,
-          olusturmaTarihi: Timestamp.now()
-        });
-      }
-      setModalOpen(false);
-    } catch (err) {
-      setErrorStatus('Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
-    }
-  };
-
   const openNew = () => {
-    setErrorStatus(null);
-    setEditingId(null);
-    setFormData({ email: '', ad: '', soyad: '', role: 'muezzin', haftalikIzinGunu: 0 });
+    setEditingUser(null);
     setModalOpen(true);
   };
 
   const openEdit = (m: Muezzin & { id: string }) => {
-    setErrorStatus(null);
-    setEditingId(m.id);
-    const parts = (m.displayName || '').split(' ');
-    const soyad = parts.length > 1 ? parts.pop() || '' : '';
-    const ad = parts.join(' ');
-    setFormData({ 
-      email: m.email || '', 
-      ad, 
-      soyad, 
-      role: m.role,
-      haftalikIzinGunu: m.haftalikIzinGunu || 0
-    });
+    setEditingUser(m);
     setModalOpen(true);
   };
 
@@ -152,84 +102,106 @@ export default function MuezzinYonetimi() {
 
   if (loading) return (
     <div className="flex h-96 items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 border-t-indigo-600"></div>
-        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">KADRO VERİLERİ YÜKLENİYOR</p>
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-12 h-12 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin shadow-lg" />
+        <p className="authority-title !text-[9px] opacity-30 tracking-[0.4em]">KADRO VERİLERİ SENKRONİZE EDİLİYOR</p>
       </div>
     </div>
   );
 
-  const pendingUsers = [...muezzinler.filter(m => (m as any).onayBekliyor), ...invites.map(i => ({ ...i, isOnay: false, isInvite: true } as any))];
-  const activeUsers = muezzinler.filter(m => !(m as any).onayBekliyor);
+  const pendingUsers = React.useMemo(() => [
+    ...muezzinler.filter(m => m && (m as any).onayBekliyor === true), 
+    ...invites.map(i => ({ ...i, isOnay: false, isInvite: true } as any))
+  ], [muezzinler, invites]);
+  
+  const activeUsers = React.useMemo(() => 
+    muezzinler.filter(m => m && (m as any).onayBekliyor !== true)
+  , [muezzinler]);
+
+  // Performans Sıralaması ve Maksimum Vakit Hesabı (Memoized)
+  const { maxVakit, sortedMuezzins } = React.useMemo(() => {
+    const maxVal = Math.max(...activeUsers.map(x => x.aylikVakitSayisi || 0), 1);
+    const sorted = [...activeUsers].sort((a, b) => (b.aylikVakitSayisi || 0) - (a.aylikVakitSayisi || 0));
+    return { maxVakit: maxVal, sortedMuezzins: sorted };
+  }, [activeUsers]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 pb-8 border-b border-slate-200">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none lowercase italic text-left">
-            KADRO<span className="text-indigo-600 italic">PORTFÖYÜ</span>
-          </h1>
-          <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-slate-400 mt-3">GÖREVLİ YETKİLENDİRME VE KİMLİK DENETİM MERKEZİ</p>
+    <div className="flex flex-col gap-10">
+      {/* ACTION BAR: Executive Authority */}
+      <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-2">
+           <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kadro Operasyonları</h2>
+           <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
         </div>
         <motion.button 
-          whileHover={{ scale: 1.02, y: -2 }}
+          whileHover={{ y: -3, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={openNew} 
-          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all border border-slate-800"
+          className="px-8 py-4 bg-indigo-500 text-white rounded-2xl text-[9px] font-bold uppercase tracking-[0.3em] shadow-[0_15px_30px_rgba(99,102,241,0.25)] flex items-center gap-4 group"
         >
-          <UserPlus size={16} /> YENİ GÖREVLİ TANIMLA
+          <UserPlus size={16} className="group-hover:rotate-12 transition-transform" /> 
+          YENİ PERSONEL TANIMLA
         </motion.button>
-      </header>
+      </div>
 
-      {/* Bekleyen Davetler ve Onaylar */}
+      {/* PENDING ACTIONS: Spatial Context Alert */}
       {pendingUsers.length > 0 && (
-        <section className="bg-rose-50 border border-rose-100 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/20">
-                <AlertCircle size={16} />
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="spatial-glass p-8 !bg-rose-500/[0.03] border-rose-500/20 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+          
+          <div className="flex items-center gap-4 mb-8">
+             <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shadow-lg border border-rose-500/20">
+               <AlertCircle size={20} strokeWidth={1.5} />
              </div>
              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">BEKLEYEN DAVETLER</h2>
-                <p className="text-[9px] text-rose-500 font-bold uppercase tracking-[0.2em] mt-0.5">PERSONELİN SİSTEME GİRİŞ YAPMASI BEKLENİYOR</p>
+                <h3 className="text-sm font-medium text-rose-500/80 tracking-tight">Bekleyen Onaylar & Davetler</h3>
+                <p className="authority-title !text-[7px] opacity-40 mt-1 font-medium tracking-[0.2em]">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
              </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {pendingUsers.map(m => (
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {pendingUsers.map((m, idx) => (
               <motion.div 
                 layout
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
                 key={m.id} 
-                className="flex items-center justify-between p-4 bg-white border border-rose-100/50 rounded-xl group hover:border-rose-300 transition-colors shadow-sm"
+                className="spatial-glass-elevated p-5 flex items-center justify-between group hover:bg-white/[0.04] transition-all duration-500"
               >
-                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center font-bold text-base border border-slate-100">
+                 <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center text-indigo-400 font-light text-lg">
                        {m.displayName.charAt(0)}
                     </div>
                     <div>
-                       <p className="text-sm font-bold text-slate-900 tracking-tight">{m.displayName}</p>
-                       <p className="text-[10px] text-slate-400 font-bold lowercase tracking-wider mt-0.5">{(m as any).email || 'eposta yok'}</p>
+                       <p className="text-sm font-light text-[var(--text-primary)] tracking-tight">{m.displayName}</p>
+                       <p className="text-[7px] text-[var(--text-secondary)]/50 font-bold uppercase tracking-widest mt-1">{(m as any).email}</p>
                     </div>
                  </div>
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-3">
                     {!(m as any).isInvite ? (
                       <motion.button 
-                        whileHover={{ scale: 1.1 }}
+                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(16,185,129,0.15)' }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleApprove(m)}
-                        className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-md shadow-emerald-900/20 hover:bg-emerald-500 transition-colors"
+                        className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 shadow-sm"
                       >
                         <CheckCircle2 size={16} />
                       </motion.button>
                     ) : (
-                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1.5 rounded-md border border-slate-100 text-center leading-tight">
-                        ONAY<br/>BEKLENİYOR
-                      </span>
+                      <div className="px-3 py-1 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-[6px] font-bold uppercase tracking-[0.2em] text-[var(--text-secondary)] opacity-40">DAVETLİ</span>
+                      </div>
                     )}
                     <motion.button 
-                      whileHover={{ scale: 1.1 }}
+                      whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.15)' }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => (m as any).isInvite ? executeDeleteInvite(m.id) : setConfirmDelete({ open: true, data: m })}
-                      className="p-2.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:bg-rose-600 hover:text-white hover:border-rose-500 transition-all shadow-sm"
-                      title="Daveti İptal Et / Sil"
+                      className="p-3 bg-white/5 text-[var(--text-secondary)]/30 rounded-xl border border-white/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
                     >
                       <Trash2 size={16} />
                     </motion.button>
@@ -237,89 +209,193 @@ export default function MuezzinYonetimi() {
               </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* Ana Liste */}
-      <section className="bg-white/40 backdrop-blur-3xl rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50/50 text-[10px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <th className="px-6 py-4">GÖREVLİ PROFİLİ</th>
-                <th className="px-6 py-4">YETKİ</th>
-                <th className="px-6 py-4 text-center">SABİT İZİN</th>
-                <th className="px-6 py-4 text-center">AYLIK VAKİT</th>
-                <th className="px-6 py-4 text-center">DURUM</th>
-                <th className="px-6 py-4 text-right">EYLEMLER</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-900">
-              {activeUsers.map(m => (
-                <tr key={m.id} className="group hover:bg-slate-50/40 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                       <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-semibold text-xs shadow-inner">
-                          {m.displayName.charAt(0)}
-                       </div>
-                       <div>
-                          <p className="text-sm font-medium text-slate-900">{m.displayName}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <div className={`w-1 h-1 rounded-full ${m.fcmToken ? 'bg-indigo-500' : 'bg-slate-300'}`} />
-                            <p className="text-[9px] font-medium text-slate-400 uppercase tracking-tight">
-                              {m.fcmToken ? 'Uygulama Bağlı' : 'Bağlantı Yok'}
-                            </p>
+      {/* MAIN PERSONNEL LIST: Living Card Grid */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between mb-2 px-2">
+           <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+              <h2 className="text-lg font-light tracking-tight text-[var(--text-primary)]">Operasyonel Kadro</h2>
+           </div>
+           <span className="premium-label !text-[9px] !opacity-20">{activeUsers.length} PERSONEL KAYITLI</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {activeUsers.length > 0 ? activeUsers.map((m, idx) => {
+            const rank = sortedMuezzins.findIndex(x => x.id === m.id) + 1;
+            const efficiency = Math.min(100, ((m.aylikVakitSayisi || 0) / maxVakit) * 100);
+
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                key={m.id} 
+                className="group relative p-6 spatial-glass border-[var(--glass-border)] rounded-[40px] overflow-hidden transition-all duration-700 hover:shadow-2xl hover:shadow-indigo-500/5"
+              >
+                {/* Left Status Pillar */}
+                <div className={`absolute left-0 top-8 bottom-8 w-[4px] rounded-r-full transition-all duration-700 shadow-lg ${
+                  m.aktif ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-rose-500 shadow-rose-500/40'
+                }`} />
+
+                <div className="relative z-10 flex flex-col gap-6">
+                  {/* Header: Identity */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-5">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] flex items-center justify-center font-light text-2xl text-indigo-400 shadow-inner group-hover:scale-105 group-hover:rotate-3 transition-all duration-700 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent z-0" />
+                          {m.photoURL ? (
+                            <img src={m.photoURL} alt={m.displayName} className="w-full h-full object-cover relative z-10" />
+                          ) : (
+                            <span className="relative z-10">{m.displayName.charAt(0)}</span>
+                          )}
+                        </div>
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[3px] border-[var(--app-bg)] shadow-xl ${
+                          m.aktif ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                        }`} />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-light tracking-tight text-[var(--text-primary)] apple-thin group-hover:font-normal transition-all duration-500">
+                          {m.displayName}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="relative flex h-2 w-2">
+                            {m.fcmToken && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                            )}
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${m.fcmToken ? 'bg-indigo-500' : 'bg-[var(--text-primary)]/10'}`} />
                           </div>
-                       </div>
+                          <span className={`text-[8px] font-bold tracking-[0.2em] uppercase transition-colors duration-500 ${
+                            m.fcmToken ? 'text-indigo-400/80' : 'text-[var(--text-secondary)]/20'
+                          }`}>
+                            {m.fcmToken ? 'NETWORK ACTIVE' : 'OFFLINE MODE'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border ${
-                      m.role === 'admin' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'
-                    }`}>
-                      {m.role === 'admin' ? 'YÖNETİCİ' : 'MÜEZZİN'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {m.haftalikIzinGunu && m.haftalikIzinGunu > 0 ? (
-                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md uppercase border border-indigo-100">
-                        {GUNLER_TR[m.haftalikIzinGunu]}
+                    
+                    <div className="flex flex-col items-end gap-1.5">
+                      {rank === 1 && (
+                        <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                          🏆 LİDER
+                        </span>
+                      )}
+                      {rank === 2 && (
+                        <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-slate-400/10 text-slate-400 border border-slate-400/20">
+                          🥈 2. SIRADA
+                        </span>
+                      )}
+                      {rank === 3 && (
+                        <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-amber-700/10 text-amber-700 border border-amber-700/20">
+                          🥉 3. SIRADA
+                        </span>
+                      )}
+                      {rank > 3 && (
+                        <span className="px-2 py-0.5 rounded-md text-[6px] font-bold tracking-[0.1em] bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/30 border border-[var(--glass-border)]">
+                          #{rank} SIRALAMA
+                        </span>
+                      )}
+                      <span className={`px-2.5 py-0.5 rounded-md text-[6px] font-bold tracking-[0.2em] uppercase border shadow-sm ${
+                        m.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)]/50 border-[var(--glass-border)]'
+                      }`}>
+                        {m.role === 'admin' ? 'ADMIN' : 'MÜEZZİN'}
                       </span>
-                    ) : (
-                      <span className="text-[9px] font-medium text-slate-300 uppercase tracking-tighter italic">---</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="text-sm font-semibold text-slate-700 tabular-nums">{m.aylikVakitSayisi || 0}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                       <div className={`flex items-center gap-2 px-2 py-1 rounded-full border ${m.aktif ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                          <div className={`w-1 h-1 rounded-full ${m.aktif ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-                          <span className="text-[9px] font-bold uppercase">{m.aktif ? 'AKTİF' : 'PASİF'}</span>
-                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 text-slate-400 group-hover:text-slate-600">
-                      <button 
+                  </div>
+
+                  {/* Body: Stats Bento Grid */}
+                  <div className="grid grid-cols-2 gap-4 p-5 bg-[var(--text-primary)]/[0.02] rounded-[28px] border border-[var(--glass-border)]">
+                    <div className="space-y-1.5">
+                      <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">İZİN GÜNÜ</p>
+                      <p className="text-xs font-light text-[var(--text-primary)] tracking-wide">
+                        {m.haftalikIzinGunu && m.haftalikIzinGunu > 0 ? GUNLER_TR[m.haftalikIzinGunu] : 'BELİRTİLMEMİŞ'}
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">GÖREV YÜKÜ</p>
+                      <p className="text-xs font-medium text-indigo-400 tabular-nums">
+                        {m.aylikVakitSayisi || 0} Vakit
+                      </p>
+                    </div>
+                    
+                    {/* Full-width Relative Efficiency */}
+                    <div className="col-span-2 space-y-2 border-t border-[var(--glass-border)] pt-3 mt-1">
+                      <div className="flex justify-between items-center">
+                        <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">OPERASYONEL VERİM</p>
+                        <span className={`text-[9px] font-bold tabular-nums ${
+                          efficiency > 80 ? 'text-amber-500' : efficiency > 40 ? 'text-emerald-500' : 'text-[var(--text-secondary)]/40'
+                        }`}>
+                          %{Math.round(efficiency)}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--text-primary)]/[0.05] rounded-full overflow-hidden border border-[var(--glass-border)]">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${efficiency}%` }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                          className={`h-full ${
+                            efficiency > 80 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 
+                            efficiency > 40 ? 'bg-emerald-500/60' : 
+                            'bg-[var(--text-primary)]/10'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer: Actions */}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`px-2 py-1 rounded-md text-[6px] font-bold tracking-[0.1em] border ${
+                        m.aktif ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                      }`}>
+                        {m.aktif ? 'READY' : 'STANDBY'}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <motion.button 
+                        whileHover={{ scale: 1.1, backgroundColor: 'var(--surface-medium)' }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => openEdit(m)} 
-                        className="p-2 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                        className="p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg"
                       >
-                        <Edit2 size={14} />
-                      </button>
-                      <button 
+                        <Edit2 size={16} strokeWidth={1.5} />
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.1, backgroundColor: m.aktif ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)' }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => setConfirmToggle({ open: true, data: m })} 
-                        className={`p-2 rounded-lg transition-all ${m.aktif ? 'hover:text-rose-600 hover:bg-rose-50' : 'hover:text-emerald-600 hover:bg-emerald-50'}`}
+                        className={`p-3 bg-[var(--text-primary)]/[0.03] rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg ${
+                          m.aktif ? 'text-rose-400 hover:border-rose-400/30' : 'text-emerald-400 hover:border-emerald-400/30'
+                        }`}
                       >
-                        <Power size={14} />
-                      </button>
+                        <Power size={16} strokeWidth={1.5} />
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setConfirmDelete({ open: true, data: m })} 
+                        className="p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-rose-500 rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg"
+                      >
+                        <Trash2 size={16} strokeWidth={1.5} />
+                      </motion.button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+
+                {/* Card Decoration */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+              </motion.div>
+            );
+          }) : (
+            <div className="col-span-full py-20 text-center spatial-glass border-dashed border-[var(--glass-border)]">
+              <p className="premium-label !opacity-20 italic">SİSTEME KAYITLI PERSONEL BULUNAMADI</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -329,85 +405,41 @@ export default function MuezzinYonetimi() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-600 text-xs font-medium uppercase tracking-widest mt-8"
+            className="spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-[10px] font-bold uppercase tracking-[0.2em] shadow-xl"
           >
-            <AlertCircle size={16} />
+            <AlertCircle size={20} />
             {errorStatus}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? "PROFİL GÜNCELLEME" : "YENİ GÖREVLİ TANIMI"}>
-        <form onSubmit={handleCreateOrUpdate} className="space-y-8 p-2">
-          <div className="group space-y-3">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">E-POSTA ADRESİ</label>
-            <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} disabled={!!editingId} className={`w-full border border-slate-200 bg-slate-50 p-5 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${editingId ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="Kurumsal e-posta hesabı..." />
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="group space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">AD</label>
-              <input type="text" required value={formData.ad} onChange={e => setFormData({...formData, ad: formatName(e.target.value)})} onBlur={e => setFormData({...formData, ad: formatName(e.target.value)})} className="w-full border border-slate-200 bg-slate-50 p-5 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="İsim..." />
-            </div>
-            <div className="group space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">SOYAD</label>
-              <input type="text" required value={formData.soyad} onChange={e => setFormData({...formData, soyad: formatName(e.target.value)})} onBlur={e => setFormData({...formData, soyad: formatName(e.target.value)})} className="w-full border border-slate-200 bg-slate-50 p-5 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Soyisim..." />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="group space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">YETKİ KADEMESİ</label>
-              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as 'admin'|'muezzin'|'gozlemci'})} className="w-full border border-slate-200 bg-slate-50 p-5 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer">
-                <option value="muezzin">MÜEZZİN</option>
-                <option value="gozlemci">GÖZLEMCİ</option>
-                <option value="admin">YÖNETİCİ</option>
-              </select>
-            </div>
-            <div className="group space-y-3">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">SABİT HAFTALIK İZİN GÜNÜ</label>
-              <select value={formData.haftalikIzinGunu} onChange={e => setFormData({...formData, haftalikIzinGunu: Number(e.target.value)})} className="w-full border border-slate-200 bg-slate-50 p-5 rounded-2xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer">
-                <option value={0}>YOK</option>
-                <option value={1}>PAZARTESİ</option>
-                <option value={2}>SALI</option>
-                <option value={3}>ÇARŞAMBA</option>
-                <option value={4}>PERŞEMBE</option>
-                <option value={5}>CUMA</option>
-                <option value={6}>CUMARTESİ</option>
-                <option value={7}>PAZAR</option>
-              </select>
-            </div>
-          </div>
-          <div className="pt-8 flex flex-col sm:flex-row gap-4">
-            <button type="submit" className="flex-1 bg-slate-900 text-white text-[11px] font-bold uppercase tracking-widest py-5 px-4 rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-indigo-600 transition-all active:scale-95">
-              BİLGİLERİ GÜVENLE KAYDET
-            </button>
-            <button type="button" onClick={() => setModalOpen(false)} className="px-8 py-5 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:bg-slate-50 rounded-2xl hover:text-slate-900 transition-all">
-              İPTAL
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <PersonelFormModal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        editingUser={editingUser} 
+      />
 
       <ConfirmModal 
         isOpen={confirmDelete.open}
         onClose={() => setConfirmDelete({ open: false, data: null })}
         onConfirm={executeDelete}
-        title="Kullanıcıyı Sil"
-        message={`${confirmDelete.data?.displayName} adlı kullanıcının tüm verilerini silmek istiyor musunuz? Bu işlem geri alınamaz.`}
+        title="KALICI OLARAK SİL"
+        message={`${confirmDelete.data?.displayName} adlı personelin tüm sistem yetkileri ve verileri kalıcı olarak silinecektir. Bu operasyon geri döndürülemez.`}
         isDanger={true}
-        confirmText="Evet, Kalıcı Olarak Sil"
+        confirmText="EVET, SİSTEMDEN ÇIKAR"
       />
 
       <ConfirmModal 
         isOpen={confirmToggle.open}
         onClose={() => setConfirmToggle({ open: false, data: null })}
         onConfirm={executeToggleAktif}
-        title={confirmToggle.data?.aktif ? "Personeli Pasife Al" : "Personeli Aktifleştir"}
+        title={confirmToggle.data?.aktif ? "PASİFE AL" : "AKTİFLEŞTİR"}
         message={confirmToggle.data?.aktif 
-          ? `${confirmToggle.data?.displayName} adlı personeli pasife almak istiyor musunuz? Pasif personel planlara dahil edilmez.`
-          : `${confirmToggle.data?.displayName} adlı personeli aktifleştirmek istiyor musunuz?`
+          ? `${confirmToggle.data?.displayName} adlı personel dondurulacaktır. Görev listelerinden ve planlamalardan geçici olarak çıkarılır.`
+          : `${confirmToggle.data?.displayName} adlı personel operasyona geri dahil edilecektir.`
         }
         isDanger={confirmToggle.data?.aktif}
-        confirmText="Devam Et"
+        confirmText="OPERASYONU ONAYLA"
       />
     </div>
   );

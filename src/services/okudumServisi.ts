@@ -12,8 +12,14 @@ export async function okudumOnayla(bildirimId: string): Promise<void> {
     const bildirim = bildirimDoc.data();
     if (bildirim.uid !== auth.currentUser?.uid) throw new Error('Yetkisiz işlem');
 
-    // Ezan saati kontrolü (Buffer kaldırıldı)
-    const vakitDoc = await transaction.get(doc(db, 'vakitler', bildirim.tarih.slice(0, 7)));
+    // Get system settings to fetch district prefix (ilceId) dynamically
+    const settingsDoc = await transaction.get(doc(db, 'settings', 'system'));
+    const ilceId = settingsDoc.exists() ? (settingsDoc.data()?.ilceId || '9148') : '9148';
+
+    // Ezan saati kontrolü (Dynamic prefix fixed)
+    const buAyYYYYMM = bildirim.tarih.slice(0, 7);
+    const buAyDocId = `${ilceId}_${buAyYYYYMM}`;
+    const vakitDoc = await transaction.get(doc(db, 'vakitler', buAyDocId));
     const vakitSaati = vakitDoc.data()?.gunler[bildirim.tarih][bildirim.vakit];
     
     if (!vakitSaati) throw new Error('Vakit bilgisi bulunamadı');

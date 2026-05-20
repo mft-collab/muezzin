@@ -2,20 +2,64 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1e293b" />
-    <meta name="description" content="Külliye Cami Müezzin Takip ve Görev Yönetim Sistemi" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Müezzin" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="format-detection" content="telephone=no" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>Müezzin Takip Sistemi</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- Instant Theme Injector to prevent Flash of Unstyled Content (FOUC) -->
+    <script>
+      (function() {
+        try {
+          var storage = localStorage.getItem('muezzin-theme-storage');
+          var theme = 'dark'; // Varsayılan tema
+          if (storage) {
+            var parsed = JSON.parse(storage);
+            if (parsed && parsed.state && parsed.state.theme) {
+              theme = parsed.state.theme;
+            }
+          } else {
+            // Eğer depoda kayıt yoksa, sistemin koyu/açık mod tercihine göre başla
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- SEO & Identity -->
+    <title>Cami Hizmetleri Koordinasyon Sistemi</title>
+    <meta name="description" content="Cami ve Din Görevlileri Hizmet Planlama Sistemi" />
+    <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Müezzin">
+    
+    <!-- Icons & Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png?v=2">
+    <link rel="mask-icon" href="/favicon.svg?v=2" color="#1e293b">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://muezzin.app/">
+    <meta property="og:title" content="Cami Hizmetleri Koordinasyon Sistemi">
+    <meta property="og:description" content="Cami ve Din Görevlileri Hizmet Planlama Sistemi">
+    <meta property="og:image" content="/pwa-512x512.svg?v=2">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://muezzin.app/">
+    <meta property="twitter:title" content="Cami Hizmetleri Koordinasyon Sistemi">
+    <meta property="twitter:description" content="Cami ve Din Görevlileri Hizmet Planlama Sistemi">
+    <meta property="twitter:image" content="/pwa-512x512.svg?v=2">
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- PWA Install Handling -->
     <script>
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -23,10 +67,14 @@
         window.dispatchEvent(new Event('pwaInstallReady'));
       });
     </script>
+    
+    <style>
+      /* Splash Screen Background Fix */
+      body { background-color: transparent; margin: 0; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

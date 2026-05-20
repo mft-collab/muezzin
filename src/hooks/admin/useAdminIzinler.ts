@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Izin } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/firestore-errors';
@@ -47,5 +47,14 @@ export function useAdminIzinler() {
     }
   };
 
-  return { izinler, loading, error, izinGuncelle };
+  const izinSil = async (id: string) => {
+    const path = `izinler/${id}`;
+    try {
+      await deleteDoc(doc(db, 'izinler', id));
+    } catch (err) {
+      throw handleFirestoreError(err, OperationType.DELETE, path);
+    }
+  };
+
+  return { izinler, loading, error, izinGuncelle, izinSil };
 }

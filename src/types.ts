@@ -27,6 +27,7 @@ export interface Invite {
 
 export interface VakitKaydi {
   sabah: string;
+  gunes: string;
   ogle: string;
   ikindi: string;
   aksam: string;
@@ -34,7 +35,7 @@ export interface VakitKaydi {
 }
 
 export interface Vakitler {
-  ceyhanId: string;
+  ilceId: string;
   gunler: { [key: string]: VakitKaydi };
   kaynakApi: "diyanet" | "aladhan";
   guncellenmeTarihi: Timestamp;
@@ -83,6 +84,7 @@ export interface AdminUyarisi {
 export interface GunlukVakit {
   tarih: string;
   sabah: string;
+  gunes: string;
   ogle: string;
   ikindi: string;
   aksam: string;
@@ -101,3 +103,17 @@ export interface Izin {
   durum: "onay_bekliyor" | "onaylandi" | "reddedildi";
   olusturmaTarihi: Timestamp;
 }
+
+export interface SystemSettings {
+  ilceId: string;
+  ilceAdi: string;
+}
+
+export interface SonrakiVakit {
+  vakit: Vakit;
+  ezanSaati: Date;
+  baslangicZamani: Date;
+  okudumAcilisZamani: Date;
+  t1KilitZamani: Date;
+}
+

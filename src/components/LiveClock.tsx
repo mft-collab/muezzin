@@ -1,22 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { getTurkeyTimeFormatted } from '../lib/dateUtils';
+import { useLiveClock } from '../hooks/useLiveClock';
 
-export function LiveClock() {
-  const [time, setTime] = useState(getTurkeyTimeFormatted());
+interface LiveClockProps {
+  /** Compact mode: sadece saati tek bir span olarak render eder, dış className uygulanır */
+  compact?: boolean;
+  className?: string;
+}
 
-  useEffect(() => {
-    const timer = setInterval(() => setTime(getTurkeyTimeFormatted()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+export function LiveClock({ compact, className }: LiveClockProps = {}) {
+  const time = useLiveClock();
+  const formattedTime = getTurkeyTimeFormatted(time);
+
+  if (compact || className) {
+    return (
+      <span className={className ?? 'font-mono tabular-nums'}>
+        {formattedTime}
+      </span>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1 items-end">
       <div className="flex justify-end items-center gap-1.5 opacity-80">
         <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-        <span className="text-white font-medium text-[10px] uppercase tracking-widest">SAAT</span>
+        <span className="text-[var(--text-primary)] font-medium text-[10px] uppercase tracking-widest">SAAT</span>
       </div>
-      <span className="text-white/70 text-[9px] uppercase tracking-[0.1em] font-mono tabular-nums">
-        {time}
+      <span className="text-[var(--text-secondary)]/70 text-[9px] uppercase tracking-[0.1em] font-mono tabular-nums">
+        {formattedTime}
       </span>
     </div>
   );

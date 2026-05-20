@@ -36,7 +36,6 @@ export default function KrizAlarmlari() {
       });
     } catch (err) {
       console.error("Vaka giderme hatası:", err);
-      alert("Hata oluştu. Yetkiniz olmayabilir veya bağlantı sorunu yaşıyor olabilirsiniz.");
     } finally {
       setResolvingId(null);
     }
@@ -46,21 +45,15 @@ export default function KrizAlarmlari() {
     if (!alarm.tarih || !alarm.vakit) return;
     setIsRetrying(alarm.id);
     try {
-      // Re-trigger the crisis handler to find a new candidate
       const success = await kriziBaslat(alarm.tarih, alarm.vakit, []);
       if (success) {
-        // Automatically resolve the alarm if we found a new candidate
         await updateDoc(doc(db, 'adminUyarilari', alarm.id), { 
           cozuldu: true,
           cozulmeTarihi: new Date()
         });
-        alert("Başarılı: Yeni aday atandı ve vaka otomatik olarak arşivlendi.");
-      } else {
-        alert("Bilgi: Sistemde hâlâ uygun aday bulunamadı. Lütfen manuel müdahale edin.");
       }
     } catch (err) {
       console.error("Retry error:", err);
-      alert("Algoritma çalıştırılırken hata oluştu.");
     } finally {
       setIsRetrying(null);
     }
@@ -68,142 +61,224 @@ export default function KrizAlarmlari() {
 
   const getIcon = (tip: string) => {
     switch (tip) {
-      case 'zincirTukendi': return <AlertTriangle className="text-red-500" size={20} />;
-      case 'apiHatasi': return <ServerCrash className="text-orange-500" size={20} />;
-      case 'planOlusturulamadi': return <CalendarX className="text-orange-500" size={20} />;
-      default: return <AlertTriangle size={20} />;
+      case 'zincirTukendi': return <AlertTriangle size={24} />;
+      case 'apiHatasi': return <ServerCrash size={24} />;
+      case 'planOlusturulamadi': return <CalendarX size={24} />;
+      default: return <AlertTriangle size={24} />;
+    }
+  };
+
+  const getAlertColor = (tip: string) => {
+    switch (tip) {
+      case 'zincirTukendi': return 'rose';
+      case 'apiHatasi': return 'amber';
+      case 'planOlusturulamadi': return 'indigo';
+      default: return 'rose';
     }
   };
 
   if (loading) return (
-    <div className="flex h-96 items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 border-t-rose-600"></div>
-        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">ALARM VERİLERİ ÇEKİLİYOR</p>
+    <div className="flex h-[500px] items-center justify-center">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-14 h-14 border-4 border-rose-500/10 border-t-rose-500 rounded-full animate-spin shadow-xl" />
+        <p className="authority-title !text-[9px] opacity-20 tracking-[0.5em] uppercase">Kriz Verileri Senkronize Ediliyor</p>
       </div>
     </div>
   );
 
   const filteredAlarmlar = showResolved ? alarmlar : alarmlar.filter(a => !a.cozuldu);
 
+  const colorMap = {
+    rose: {
+      bg: 'bg-rose-500/[0.03]',
+      bgHover: 'hover:bg-rose-500/[0.05]',
+      border: 'border-rose-500/20',
+      aura: 'from-rose-500/10',
+      iconBg: 'bg-rose-500/10',
+      iconText: 'text-rose-400',
+      iconBorder: 'border-rose-500/20',
+      iconShadow: 'shadow-rose-500/5',
+      typeText: 'text-rose-500',
+      badgeBg: 'bg-rose-500/10',
+      badgeText: 'text-rose-400',
+      badgeBorder: 'border-rose-500/20',
+      buttonBg: 'bg-rose-500'
+    },
+    amber: {
+      bg: 'bg-amber-500/[0.03]',
+      bgHover: 'hover:bg-amber-500/[0.05]',
+      border: 'border-amber-500/20',
+      aura: 'from-amber-500/10',
+      iconBg: 'bg-amber-500/10',
+      iconText: 'text-amber-400',
+      iconBorder: 'border-amber-500/20',
+      iconShadow: 'shadow-amber-500/5',
+      typeText: 'text-amber-500',
+      badgeBg: 'bg-amber-500/10',
+      badgeText: 'text-amber-400',
+      badgeBorder: 'border-amber-500/20',
+      buttonBg: 'bg-amber-500'
+    },
+    indigo: {
+      bg: 'bg-indigo-500/[0.03]',
+      bgHover: 'hover:bg-indigo-500/[0.05]',
+      border: 'border-indigo-500/20',
+      aura: 'from-indigo-500/10',
+      iconBg: 'bg-indigo-500/10',
+      iconText: 'text-indigo-400',
+      iconBorder: 'border-indigo-500/20',
+      iconShadow: 'shadow-indigo-500/5',
+      typeText: 'text-indigo-500',
+      badgeBg: 'bg-indigo-500/10',
+      badgeText: 'text-indigo-400',
+      badgeBorder: 'border-indigo-500/20',
+      buttonBg: 'bg-indigo-500'
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 pb-8 border-b border-rose-100">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none lowercase italic text-left">
-            OPERASYONEL<span className="text-rose-600 italic">VAKALAR</span>
-          </h1>
-          <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-slate-400 mt-3">GERÇEK ZAMANLI KRİTİK MÜDAHALE BİRİMİ</p>
+    <div className="flex flex-col gap-10">
+      {/* TOOLBAR: Operational Toggle */}
+      <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-2">
+           <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kriz Merkezi</h2>
+           <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">SİSTEM SAPMALARI VE ACİL MÜDAHALE</p>
         </div>
-        
-        <label className="flex items-center gap-4 select-none cursor-pointer group bg-slate-50 p-2 px-4 rounded-2xl border border-slate-200 shadow-inner transition-all hover:bg-white text-[10px] font-bold uppercase tracking-widest text-slate-500">
-          <div className={`w-9 h-5 rounded-full transition-all relative shadow-inner ${showResolved ? 'bg-indigo-600' : 'bg-slate-300'}`}>
-             <div className={`absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm transition-all ${showResolved ? 'left-5' : 'left-1'}`} />
+
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowResolved(!showResolved)}
+          className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 ${
+            showResolved 
+            ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' 
+            : 'bg-white/[0.03] border-white/5 text-white/20'
+          }`}
+        >
+          <span className="authority-title !text-[8px] font-bold tracking-[0.2em] uppercase">ARŞİVLENMİŞ VAKALAR</span>
+          <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-white/10'}`}>
+             <motion.div 
+              animate={{ x: showResolved ? 22 : 2 }}
+              className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm" 
+             />
           </div>
-          <input type="checkbox" className="hidden" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} />
-          <span>ARŞİV GÖRÜNÜMÜ</span>
-        </label>
-      </header>
+        </motion.button>
+      </div>
 
       {filteredAlarmlar.length === 0 && (
         <motion.div 
-          initial={{ opacity: 0, scale: 0.98 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-emerald-600 text-white p-16 rounded-[40px] text-center border border-emerald-500 flex flex-col items-center shadow-xl shadow-emerald-900/10"
+          className="spatial-glass p-20 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-white/10"
         >
-          <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white mb-8 border border-white/20">
-            <CheckCircle size={40} />
+          <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mb-8 shadow-2xl border border-emerald-500/20">
+             <CheckCircle size={36} strokeWidth={1.2} />
           </div>
-          <p className="font-black text-2xl tracking-tighter uppercase italic">SİSTEM GÜVENDE</p>
-          <p className="text-[10px] mt-4 text-emerald-100 font-bold uppercase tracking-[0.3em] leading-relaxed">
-            ŞU ANDA AKTİF BİR KRİZ ALARMI TESPİT EDİLMEDİ.
+          <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Sistem Senkronize</h3>
+          <p className="authority-title !text-[8px] opacity-40 uppercase tracking-[0.3em] leading-relaxed mb-12">
+            ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR KRİZ VEYA SİSTEM SAPMASI BULUNMUYOR.
           </p>
         </motion.div>
       )}
 
-      <div className="space-y-4">
+      {/* ALERT GRID: War Room Matrix */}
+      <div className="grid grid-cols-1 gap-4">
         <AnimatePresence mode="popLayout">
-          {filteredAlarmlar.map((alarm, idx) => (
-            <motion.div 
-              layout
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ delay: idx * 0.05 }}
-              key={alarm.id} 
-              className={`relative overflow-hidden p-6 rounded-2xl border transition-all ${
-                alarm.cozuldu 
-                  ? 'bg-slate-50 border-slate-100 opacity-60' 
-                  : 'bg-white border-slate-200 shadow-sm hover:border-slate-300'
-              }`}
-            >
-              {!alarm.cozuldu && (
-                 <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
-              )}
-              
-              <div className="flex flex-col md:flex-row items-start justify-between gap-6">
-                <div className="flex items-start gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                    alarm.cozuldu ? 'bg-slate-100 text-slate-300 border-slate-200' : 'bg-slate-900 text-white border-slate-800'
+          {filteredAlarmlar.map((alarm, idx) => {
+            const color = getAlertColor(alarm.tip) as keyof typeof colorMap;
+            const styles = colorMap[color];
+
+            return (
+              <motion.div 
+                key={alarm.id} 
+                layout
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
+                className={`relative overflow-hidden p-6 rounded-[32px] border transition-all duration-700 group ${
+                  alarm.cozuldu 
+                    ? 'spatial-glass opacity-30 border-white/5' 
+                    : `${styles.bg} ${styles.border} shadow-2xl ${styles.bgHover}`
+                }`}
+              >
+                {!alarm.cozuldu && (
+                   <motion.div 
+                    animate={{ opacity: [0.1, 0.4, 0.1] }}
+                    transition={{ repeat: Infinity, duration: 3 }}
+                    className={`absolute inset-0 bg-gradient-to-r ${styles.aura} to-transparent pointer-events-none`} 
+                   />
+                )}
+                
+                <div className="relative z-10 flex flex-col lg:flex-row items-stretch lg:items-center gap-8">
+                  {/* Icon Identity */}
+                  <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shrink-0 shadow-lg border ${
+                    alarm.cozuldu ? 'bg-white/5 text-white/10 border-white/5' : `${styles.iconBg} ${styles.iconText} ${styles.iconBorder} ${styles.iconShadow}`
                   }`}>
-                    {React.cloneElement(getIcon(alarm.tip) as React.ReactElement, { size: 16 })}
+                    {getIcon(alarm.tip)}
                   </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                       <h3 className={`text-sm font-bold tracking-tight uppercase ${alarm.cozuldu ? 'text-slate-400' : 'text-slate-900'}`}>
-                         {alarm.tip === 'zincirTukendi' ? 'Veri Zinciri Kesintisi' : 
-                          alarm.tip === 'apiHatasi' ? 'Harici API Arızası' : 
-                          alarm.tip === 'planOlusturulamadi' ? 'Zekâ Planlama Sapması' : 'Sistem Çizelge Sapması'}
-                       </h3>
-                       <div className={`h-1.5 w-1.5 rounded-full ${alarm.cozuldu ? 'bg-slate-300' : 'bg-rose-500 animate-pulse'}`} />
+
+                  {/* Content Matrix */}
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex items-center gap-4">
+                       <span className={`authority-title !text-[9px] font-bold tracking-[0.3em] uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
+                         {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' : 
+                          alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' : 
+                          alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA MOTORU HATASI' : 'KRİTİK SİSTEM SAPMASI'}
+                       </span>
+                       {!alarm.cozuldu && (
+                         <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-[7px] font-bold tracking-[0.2em] border ${styles.badgeBorder} animate-pulse`}>
+                           ACİL MÜDAHALE
+                         </div>
+                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2 mb-3">
-                      <p className={`text-[8px] font-bold uppercase tracking-widest ${alarm.cozuldu ? 'text-slate-300' : 'text-slate-400'}`}>
-                        {alarm.tarih ? format(new Date(alarm.tarih), 'dd/MM/yyyy', { locale: tr }) : '--'}
-                        {alarm.vakit ? ` • ${VAKIT_GORA_ISIMLERI[alarm.vakit as Vakit]}` : ''}
-                      </p>
-                      <span className="w-1 h-1 rounded-full bg-slate-200" />
-                      <span className={`text-[8px] font-bold uppercase tracking-widest ${alarm.cozuldu ? 'text-slate-300' : 'text-rose-500'}`}>
-                        {alarm.cozuldu ? 'ARŞİVLENDİ' : 'ACİL MÜDAHALE BEKLİYOR'}
-                      </span>
+                    <div className="flex items-center gap-4 mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="authority-title !text-[7px] opacity-20 uppercase tracking-[0.2em]">TARİH/VAKİT</span>
+                        <span className={`text-[11px] font-bold tracking-widest ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : 'text-[var(--text-secondary)]/60'}`}>
+                          {alarm.tarih ? format(new Date(alarm.tarih), 'dd MMMM yyyy', { locale: tr }) : '--'}
+                          {alarm.vakit ? ` • ${VAKIT_GORA_ISIMLERI[alarm.vakit as Vakit]}` : ''}
+                        </span>
+                      </div>
                     </div>
 
-                    <p className={`text-xs font-medium leading-relaxed max-w-xl ${alarm.cozuldu ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {alarm.mesaj}
+                    <p className={`text-base font-light leading-relaxed mt-2 max-w-4xl ${alarm.cozuldu ? 'text-[var(--text-secondary)]/20' : 'text-[var(--text-secondary)]/60 italic'}`}>
+                      "{alarm.mesaj}"
                     </p>
                   </div>
-                </div>
-                
-                {!alarm.cozuldu && (
-                  <div className="flex flex-col gap-2 shrink-0 md:min-w-[140px]">
-                    {alarm.tip === 'zincirTukendi' && (
+                  
+                  {/* Action Matrix */}
+                  {!alarm.cozuldu && (
+                    <div className="flex items-center gap-4 shrink-0">
+                      {alarm.tip === 'zincirTukendi' && (
+                        <motion.button 
+                          whileHover={{ y: -4, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          disabled={isRetrying === alarm.id}
+                          onClick={() => handleRetry(alarm)}
+                          className={`${styles.buttonBg} text-white px-8 py-5 rounded-2xl text-[9px] font-bold uppercase tracking-[0.3em] shadow-lg flex items-center gap-4 disabled:opacity-50`}
+                        >
+                          <RefreshCcw size={16} className={isRetrying === alarm.id ? 'animate-spin' : ''} />
+                          {isRetrying === alarm.id ? 'ONARILIYOR...' : 'SİSTEMİ ONAR'}
+                        </motion.button>
+                      )}
+                      
                       <motion.button 
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ y: -4, scale: 1.02, backgroundColor: 'var(--surface-low)' }}
                         whileTap={{ scale: 0.98 }}
-                        disabled={isRetrying === alarm.id}
-                        onClick={() => handleRetry(alarm)}
-                        className="text-[8px] font-bold uppercase tracking-widest bg-slate-900 text-white hover:bg-slate-800 px-4 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        disabled={resolvingId === alarm.id}
+                        onClick={() => handleResolveRequest(alarm)}
+                        className="px-8 py-5 text-[9px] font-bold uppercase tracking-[0.3em] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] transition-all border border-[var(--glass-border)] rounded-2xl"
                       >
-                        <RefreshCcw size={12} className={isRetrying === alarm.id ? 'animate-spin' : ''} />
-                        OTOMATİK ONAR
+                        {resolvingId === alarm.id ? 'İŞLENİYOR...' : 'ÇÖZÜLDÜ OLARAK İŞARETLE'}
                       </motion.button>
-                    )}
-                    
-                    <motion.button 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      disabled={resolvingId === alarm.id}
-                      onClick={() => handleResolveRequest(alarm)}
-                      className="text-[8px] font-bold uppercase tracking-widest bg-white text-slate-900 hover:bg-slate-50 px-4 py-2.5 rounded-lg transition-all border border-slate-200 shadow-sm"
-                    >
-                      MANUEL ARŞİVLE
-                    </motion.button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
@@ -213,7 +288,7 @@ export default function KrizAlarmlari() {
         onConfirm={executeResolve}
         title="Vakayı Çözüldü Olarak İşaretle"
         message={confirmData.alarm ? `${confirmData.alarm.tip === 'zincirTukendi' ? 'Veri Zinciri Tükendi' : 'Sistem Kritik Uyarısı'} başlıklı vakayı arşivlemek üzeresiniz. Lütfen gerekli önlemlerin alındığından emin olun.` : ''}
-        confirmText="Evet, Arşivle"
+        confirmText="EVET, ARŞİVLE"
         isDanger={false}
       />
     </div>

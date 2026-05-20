@@ -1,3 +1,4 @@
+import admin from 'firebase-admin';
 import { db, Timestamp, auth } from './lib/firebaseAdminInit.ts';
 
 enum OperationType {
@@ -105,6 +106,85 @@ async function main() {
   // ADIM 2 & 3: Arşivle ve yarını hazırla (Özet mantık)
   console.log("Bugün arşivlendi, yarın için bildirimler tetiklendi.");
   await batch.commit();
+
+  // YENİ: Yarınki Görevliler İçin Kişiselleştirilmiş FCM Anlık Bildirimi Tetikle
+  try {
+    const yarınTarih = new Date();
+    yarınTarih.setDate(yarınTarih.getDate() + 1);
+    const yarınStr = yarınTarih.toISOString().split('T')[0];
+
+    console.log(`Yarınki (${yarınStr}) görevliler taranıyor...`);
+
+    // Yarınki tüm bildirimleri çek
+    const yarınkiBildirimler = await db.collection('bildirimler')
+      .where('tarih', '==', yarınStr)
+      .get();
+
+    const userDuties: Record<string, string[]> = {};
+    yarınkiBildirimler.docs.forEach(doc => {
+      const data = doc.data();
+      const uid = data.uid;
+      
+      // Türkçe vakit isimleri eşleştirmesi
+      const vakitCeviri: Record<string, string> = {
+        sabah: 'Sabah',
+        ogle: 'Öğle',
+        ikindi: 'İkindi',
+        aksam: 'Akşam',
+        yatsi: 'Yatsı'
+      };
+      
+      const vakitName = vakitCeviri[data.vakit] || data.vakit;
+      const roleType = data.tip === 'asil' ? 'Asil' : 'Yedek';
+      
+      if (!userDuties[uid]) {
+        userDuties[uid] = [];
+      }
+      userDuties[uid].push(`${vakitName} (${roleType})`);
+    });
+
+    const uidList = Object.keys(userDuties);
+    if (uidList.length > 0) {
+      const muezzinsSnap = await db.collection('muezzins').get();
+      const muezzinMap: Record<string, any> = {};
+      muezzinsSnap.docs.forEach(d => {
+        muezzinMap[d.id] = d.data();
+      });
+
+      const messages = [];
+      for (const uid of uidList) {
+        const userProfile = muezzinMap[uid];
+        const token = userProfile?.fcmToken;
+        
+        if (token && token.trim().length > 0 && userProfile?.aktif === true) {
+          const dutyListStr = userDuties[uid].join(', ');
+          messages.push({
+            token,
+            notification: {
+              title: 'Yarınki Ezan Göreviniz var 🕌',
+              body: `Yarın ${dutyListStr} göreviniz bulunmaktadır. Detaylar ve teyit için uygulamayı açın.`
+            },
+            data: {
+              type: 'daily_duty_reminder',
+              tarih: yarınStr
+            }
+          });
+        }
+      }
+
+      if (messages.length > 0) {
+        console.log(`Yarın için ${messages.length} müezzine günlük hatırlatma bildirimleri gönderiliyor...`);
+        const response = await admin.messaging().sendEach(messages);
+        console.log(`Günlük FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
+      } else {
+        console.log('Kayıtlı aktif FCM cihazı bulunamadı, günlük bildirimler gönderilmedi.');
+      }
+    } else {
+      console.log('Yarın için planlanmış herhangi bir nöbet görevi bulunamadı.');
+    }
+  } catch (fcmErr) {
+    console.error('FCM günlük hatırlatma bildirim gönderimi başarısız oldu:', fcmErr);
+  }
 
   // ADIM 4: Aylık skor (örnek)
   const yarın = new Date();

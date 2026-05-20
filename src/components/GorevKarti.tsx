@@ -1,55 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { Bildirim, Vakit } from '../types';
+/**
+ * GorevKarti.tsx
+ * Optimized task component with 5s polling interval and Spatial Design System.
+ */
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Bildirim } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
 import { mazeretBildir } from '../services/mazeretServisi';
-import { getTurkeyNow, parseVakitToDate, VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../lib/dateUtils';
+import {
+  getTurkeyNow,
+  parseVakitToDate,
+  VAKIT_GORA_ISIMLERI,
+  toTurkishUpperCase,
+} from '../lib/dateUtils';
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNotificationStore } from '../store/useNotificationStore';
 
-export const GorevKarti: React.FC<{ bildirim: Bildirim; saat: string }> = ({ bildirim, saat }) => {
-  const [isAktif, setIsAktif] = useState(false);
+const AKTIF_KONTROL_INTERVAL_MS = 5_000;
+
+const getStatusConfig = (bildirim: Bildirim) => {
+  if (bildirim.durum === 'onaylandi')
+    return { color: 'green' as const, text: 'Görev Onaylandı', icon: CheckCircle2 };
+  if (bildirim.durum === 'reddedildi')
+    return { color: 'red' as const, text: 'Mazeret Bildirildi', icon: AlertCircle };
+  if (bildirim.tip === 'gorev_cagrisi')
+    return { color: 'red' as const, text: 'Acil Çağrı', icon: AlertCircle };
+  return {
+    color: 'blue' as const,
+    text: bildirim.tip === 'asil' ? 'Asil Görev' : 'Yedek Nöbet',
+    icon: Info,
+  };
+};
+
+export const GorevKarti = React.memo(({
+  bildirim,
+  saat,
+}: { bildirim: Bildirim; saat: string }) => {
+  const [isAktif, setIsAktif] = useState(() => {
+    const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
+    return getTurkeyNow().getTime() >= ezanVakti.getTime();
+  });
   const [isMazeretModalOpen, setIsMazeretModalOpen] = useState(false);
-  const [mazeretSebebi, setMazeretSebebi] = useState("");
+  const [mazeretSebebi, setMazeretSebebi] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [onay, setOnay] = useState(false);
-  const [uiMessage, setUiMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [uiMessage, setUiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null
+  );
+  const { showNotification } = useNotificationStore();
 
-  // Modal kapandığında state'i temizle
   useEffect(() => {
     if (!isMazeretModalOpen) {
-      setMazeretSebebi("");
+      setMazeretSebebi('');
       setOnay(false);
     }
   }, [isMazeretModalOpen]);
 
   useEffect(() => {
+    if (isAktif) return;
     const checkAktif = () => {
       const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
-      setIsAktif(getTurkeyNow().getTime() >= ezanVakti.getTime());
+      if (getTurkeyNow().getTime() >= ezanVakti.getTime()) {
+        setIsAktif(true);
+      }
     };
-    
-    checkAktif();
-    const interval = setInterval(checkAktif, 1000); // UI tepkiselliği için 1 saniyelik kesin kontrol (Performans engeli aşıldı)
+    const interval = setInterval(checkAktif, AKTIF_KONTROL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [bildirim.tarih, saat]);
+  }, [bildirim.tarih, saat, isAktif]);
 
-  const handleOkudum = async () => {
+  const handleOkudum = useCallback(async () => {
     setUiMessage(null);
     try {
       await okudumOnayla(bildirim.id as string);
-      setUiMessage({ type: 'success', text: 'Başarıyla onaylandı.' });
+      const text = 'Başarıyla onaylandı.';
+      setUiMessage({ type: 'success', text });
+      showNotification('İşlem Başarılı', text, 'success');
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        setUiMessage({ type: 'error', text: error.message });
-      } else {
-        setUiMessage({ type: 'error', text: 'Bilinmeyen bir hata oluştu.' });
-      }
+      const text = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
+      setUiMessage({ type: 'error', text });
+      showNotification('Hata Oluştu', text, 'error');
     }
-  };
+  }, [bildirim.id, showNotification]);
 
-  const submitMazeret = async () => {
+  const submitMazeret = useCallback(async () => {
     if (!mazeretSebebi.trim()) {
-      setUiMessage({ type: 'error', text: 'Lütfen mazeretinizi kısaca belirtin.' });
+      const text = 'Lütfen mazeretinizi kısaca belirtin.';
+      setUiMessage({ type: 'error', text });
+      showNotification('Uyarı', text, 'warning');
       return;
     }
     setUiMessage(null);
@@ -57,124 +96,176 @@ export const GorevKarti: React.FC<{ bildirim: Bildirim; saat: string }> = ({ bil
     try {
       await mazeretBildir(bildirim.id as string, mazeretSebebi);
       setIsMazeretModalOpen(false);
-      setUiMessage({ type: 'success', text: 'Mazeretiniz kaydedildi ve görev devredildi.' });
+      const text = 'Mazeretiniz kaydedildi ve görev devredildi.';
+      setUiMessage({ type: 'success', text });
+      showNotification('Mazeret Kaydedildi', text, 'info');
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        setUiMessage({ type: 'error', text: error.message });
-      } else {
-        setUiMessage({ type: 'error', text: 'Mazeret kaydedilirken hata oluştu.' });
-      }
+      const text = error instanceof Error ? error.message : 'Mazeret kaydedilirken hata oluştu.';
+      setUiMessage({ type: 'error', text });
+      showNotification('Hata Oluştu', text, 'error');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [bildirim.id, mazeretSebebi, showNotification]);
 
-  const getStatusConfig = () => {
-    if (bildirim.durum === 'onaylandi') return { color: 'green', text: 'Görev Onaylandı', icon: CheckCircle2 };
-    if (bildirim.durum === 'reddedildi') return { color: 'red', text: 'Mazeret Bildirildi', icon: AlertCircle };
-    if (bildirim.tip === 'gorev_cagrisi') return { color: 'red', text: 'Acil Çağrı', icon: AlertCircle };
-    return { color: 'blue', text: bildirim.tip === 'asil' ? 'Asil Görev' : 'Yedek Nöbet', icon: Info };
-  };
-
-  const config = getStatusConfig();
+  const config = getStatusConfig(bildirim);
 
   return (
     <>
-      <motion.div 
-        whileHover={{ y: -4, scale: 1.01 }}
-        className={`p-6 xs:p-8 mb-4 sm:mb-6 rounded-none sm:rounded-[40px] bg-white border-x-0 sm:border border-blue-50/50 shadow-[0_20px_50px_-20px_rgba(30,58,138,0.08)] transition-all relative overflow-hidden group ${
-          bildirim.durum === 'onaylandi' ? 'bg-gradient-to-br from-white to-green-50/20' : ''
-        }`}
+      <motion.div
+        whileHover={{ y: -4, scale: 1.005 }}
+        whileTap={{ scale: 0.995 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.6 }}
+        className={`p-4 sm:p-8 spatial-glass relative overflow-hidden group ${
+          bildirim.durum === 'onaylandi' ? 'border-emerald-500/20 shadow-lg shadow-emerald-500/5' : ''
+        } ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-living-glow' : ''}`}
       >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-          <div className="flex items-center gap-4 xs:gap-6">
-             <div className={`w-16 h-16 xs:w-20 xs:h-20 rounded-[28px] flex items-center justify-center shadow-2xl transition-all duration-700 group-hover:rotate-6 ${
-                config.color === 'red' ? 'bg-red-50 text-red-600 shadow-red-200/50 border border-red-100' : 
-                config.color === 'green' ? 'bg-emerald-50 text-emerald-600 shadow-emerald-200/50 border border-emerald-100' :
-                'bg-blue-50 text-blue-900 shadow-blue-200/50 border border-blue-100'
-             }`}>
-                <config.icon size={28} strokeWidth={2} className="xs:size-8" />
-             </div>
-             <div>
-                <div className="flex items-center gap-2 mb-2">
-                   <div className={`w-2 h-2 rounded-full ${isAktif ? 'bg-emerald-500 animate-pulse' : 'bg-gray-200'}`} />
-                   <p className="text-[10px] font-medium uppercase tracking-widest text-blue-900/30">BUGÜN • {toTurkishUpperCase(bildirim.vakit)} VAKTİ</p>
+        {/* Status Indicator Pillar (Luminous) */}
+        <div 
+          className={`absolute left-0 top-0 bottom-0 w-[4px] transition-all duration-700 ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-pulse' : ''}`}
+          style={{
+            background: bildirim.durum === 'onaylandi'
+              ? 'var(--status-success)'
+              : bildirim.durum === 'reddedildi'
+              ? 'var(--status-danger)'
+              : bildirim.tip === 'gorev_cagrisi'
+              ? 'var(--status-danger)'
+              : 'var(--status-info)',
+            boxShadow: `0 0 20px ${
+              bildirim.durum === 'onaylandi' ? 'var(--status-success)' : 
+              (bildirim.durum === 'reddedildi' || bildirim.tip === 'gorev_cagrisi' ? 'var(--status-danger)' : 'var(--status-info)')
+            }44`
+          }}
+        />
+
+        {/* Kinetic Refraction Sheen */}
+        <div className="kinetic-sheen" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">
+          <div className="flex items-center gap-4 sm:gap-7">
+            <div
+              className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] flex items-center justify-center transition-all duration-700 group-hover:rotate-3 border shadow-lg ${
+                config.color === 'red'
+                  ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                  : config.color === 'green'
+                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                  : 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
+              }`}
+            >
+              <config.icon size={24} strokeWidth={1.5} className="sm:size-8" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 mb-2.5">
+                <motion.div
+                  animate={isAktif ? { 
+                    scale: [1, 1.4, 1, 1.2, 1],
+                    opacity: [0.4, 1, 0.4, 0.7, 0.4]
+                  } : {}}
+                  transition={{ duration: 3, repeat: Infinity, times: [0, 0.1, 0.2, 0.3, 0.5] }}
+                  className={`w-2 h-2 rounded-full ${
+                    isAktif ? 'bg-emerald-500 shadow-[0_0_10px_var(--status-success)]' : 'bg-[var(--text-primary)]/10'
+                  }`}
+                />
+                <p className="authority-title !text-[7px] tracking-[0.4em] opacity-40 uppercase">
+                  {toTurkishUpperCase(bildirim.vakit)} VAKTİ • BUGÜN
+                </p>
+              </div>
+              <h3 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none mb-4">
+                {toTurkishUpperCase(VAKIT_GORA_ISIMLERI[bildirim.vakit])}
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="px-4 py-1.5 bg-[var(--text-primary)]/[0.03] rounded-2xl flex items-center gap-2.5 border border-[var(--glass-border)] shadow-sm">
+                  <Clock size={12} strokeWidth={2} className="text-indigo-400" />
+                  <span className="text-[13px] font-medium tabular-nums text-[var(--text-primary)] opacity-80">
+                    {saat}
+                  </span>
                 </div>
-                <h3 className="font-sans font-thin text-2xl xs:text-3xl text-blue-950 tracking-tighter leading-none mb-1">
-                   {toTurkishUpperCase(VAKIT_GORA_ISIMLERI[bildirim.vakit])}
-                </h3>
-                <div className="flex items-center gap-2 mt-3">
-                   <div className="px-3 py-1 bg-blue-50 rounded-full flex items-center gap-1.5 border border-blue-100">
-                      <Clock size={12} strokeWidth={2} className="text-blue-900" />
-                      <span className="text-[12px] font-mono font-medium text-blue-950">{saat}</span>
-                   </div>
-                </div>
-             </div>
+              </div>
+            </div>
           </div>
-          <div className={`px-5 py-2 rounded-2xl text-[10px] font-medium uppercase tracking-widest border border-current shadow-sm ${
-             config.color === 'red' ? 'bg-red-50 border-red-100/30 text-red-600' :
-             config.color === 'green' ? 'bg-emerald-50 border-emerald-100/30 text-emerald-600' :
-             'bg-blue-50 border-blue-100/30 text-blue-900'
-          }`}>
-             {config.text}
+
+          <div
+            className={`px-4 py-1.5 rounded-xl text-[7px] font-bold uppercase tracking-[0.25em] border transition-all duration-500 shadow-sm ${
+              config.color === 'red'
+                ? 'border-rose-500/20 text-rose-500 bg-rose-500/5'
+                : config.color === 'green'
+                ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5'
+                : 'border-indigo-500/20 text-indigo-500 bg-indigo-500/5'
+            }`}
+          >
+            {config.text}
           </div>
         </div>
 
         <AnimatePresence>
           {uiMessage && (
-            <motion.div 
+            <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className={`mb-6 overflow-hidden`}
+              className="mb-8 overflow-hidden"
             >
-               <div className={`p-5 rounded-2xl text-[13px] font-medium border-2 leading-relaxed flex items-center gap-3 ${
-                  uiMessage.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'
-               }`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${uiMessage.type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
-                     {uiMessage.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                  </div>
-                  {uiMessage.text}
-               </div>
+              <div
+                className={`p-6 rounded-[28px] text-[13px] font-light border leading-relaxed flex items-center gap-5 ${
+                  uiMessage.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                    : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                }`}
+              >
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner ${
+                    uiMessage.type === 'success' ? 'bg-emerald-500/20' : 'bg-rose-500/20'
+                  }`}
+                >
+                  {uiMessage.type === 'success' ? (
+                    <CheckCircle2 size={20} />
+                  ) : (
+                    <AlertCircle size={20} />
+                  )}
+                </div>
+                {uiMessage.text}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {/* Actions - Apple Style Buttons */}
-        {bildirim.durum === 'bekliyor' && bildirim.id && (
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <motion.button 
-              whileHover={isAktif ? { scale: 1.02 } : {}}
+
+        {bildirim.durum === 'bekliyor' && (
+          <div className="flex flex-col sm:flex-row gap-5 items-center">
+            <motion.button
+              whileHover={isAktif ? { y: -2, scale: 1.02 } : {}}
               whileTap={isAktif ? { scale: 0.98 } : {}}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              onClick={handleOkudum}
+              onClick={isAktif ? handleOkudum : undefined}
               disabled={!isAktif}
-              className={`flex-1 w-full py-5 rounded-[24px] font-medium text-[11px] tracking-widest uppercase transition-all relative overflow-hidden group/btn shadow-[0_8px_30px_rgb(0,0,0,0.08)] ${
-                isAktif 
-                ? 'bg-blue-950/90 backdrop-blur-xl text-white hover:shadow-[0_20px_40px_rgb(30,58,138,0.2)]' 
-                : 'bg-white/50 backdrop-blur-md text-gray-400 shadow-none cursor-not-allowed border border-gray-200/50'
+              className={`flex-1 w-full py-5 rounded-[22px] font-bold text-[8px] tracking-[0.4em] uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
+                isAktif
+                  ? 'bg-indigo-500 text-white shadow-indigo-500/20'
+                  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/10 cursor-not-allowed border border-[var(--glass-border)]'
               }`}
             >
               {isAktif ? (
                 <>
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
-                   <span className="flex items-center justify-center gap-3 relative z-10">
-                      {bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'} 
-                      <ChevronRight size={18} strokeWidth={1.5} className="transition-transform group-hover:translate-x-1" />
-                   </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                  <span className="flex items-center justify-center gap-3 relative z-10">
+                    {bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
+                    <ChevronRight
+                      size={16}
+                      strokeWidth={2}
+                      className="transition-transform group-hover/btn:translate-x-1"
+                    />
+                  </span>
                 </>
               ) : (
-                <span className="flex items-center justify-center gap-2">
-                   <Clock size={16} strokeWidth={1.5} /> HİZMET SÜRESİ BEKLENİYOR
+                <span className="flex items-center justify-center gap-2.5 opacity-40">
+                  <Clock size={14} strokeWidth={2} /> HİZMET SÜRESİ BEKLENİYOR
                 </span>
               )}
             </motion.button>
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            <motion.button
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setIsMazeretModalOpen(true)}
-              className="flex-1 w-full py-5 rounded-[24px] font-medium text-[10px] tracking-widest uppercase transition-all text-red-500/80 bg-white/60 backdrop-blur-xl border border-red-100/50 hover:bg-red-50 hover:border-red-200 hover:shadow-[0_8px_30px_rgb(239,68,68,0.1)]"
+              className="flex-1 w-full py-5 rounded-[22px] font-bold text-[8px] tracking-[0.4em] uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm"
             >
               MAZERET KAYDI OLUŞTUR
             </motion.button>
@@ -182,22 +273,22 @@ export const GorevKarti: React.FC<{ bildirim: Bildirim; saat: string }> = ({ bil
         )}
 
         {bildirim.durum === 'onaylandi' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="w-full py-5 rounded-[28px] bg-emerald-50 text-emerald-700 font-medium text-center text-[12px] tracking-widest border border-emerald-100 flex flex-col sm:flex-row items-center justify-between px-6 gap-3 shadow-inner"
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-[11px] tracking-[0.2em] border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center">
-                 <CheckCircle2 size={12} strokeWidth={4} />
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <CheckCircle2 size={18} strokeWidth={2} />
               </div>
-              <span>SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
+              <span className="authority-title !text-[9px] !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
             </div>
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
+            <motion.button
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsMazeretModalOpen(true)}
-              className="px-4 py-2 bg-white/50 text-red-600 border border-red-100 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 hover:border-red-200 transition-colors"
+              className="px-6 py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all"
             >
               MAZERET BİLDİR
             </motion.button>
@@ -205,92 +296,99 @@ export const GorevKarti: React.FC<{ bildirim: Bildirim; saat: string }> = ({ bil
         )}
 
         {bildirim.durum === 'reddedildi' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="w-full py-5 rounded-[28px] bg-red-50 text-red-700 font-medium text-center text-[12px] tracking-widest border border-red-100 flex items-center justify-center gap-3 shadow-inner"
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-[11px] tracking-[0.2em] border border-rose-500/10 flex items-center justify-center gap-4"
           >
-            <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center">
-               <AlertCircle size={12} strokeWidth={4} />
+            <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20">
+              <AlertCircle size={18} strokeWidth={2} />
             </div>
-            MAZERET NEDENİYLE GÖREV DEVRİ
+            <span className="authority-title !text-[9px] !text-inherit">MAZERET NEDENİYLE GÖREV DEVRİ</span>
           </motion.div>
         )}
-
-        {/* Subtle background flair */}
-        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-50/30 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-100/40 transition-all duration-1000" />
       </motion.div>
 
-      {/* Mazeret Modal (Custom Dialog) */}
-      <AnimatePresence>
-        {isMazeretModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMazeretModalOpen(false)}
-              className="absolute inset-0 bg-blue-950/60 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-white rounded-[56px] w-full max-w-sm p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] relative z-10 border border-white/20"
-            >
-              <div className="flex flex-col items-center text-center mb-10">
-                <div className="w-20 h-20 bg-red-50 text-red-600 rounded-[30px] flex items-center justify-center mb-6 shadow-xl shadow-red-200">
-                  <AlertCircle size={40} />
-                </div>
-                <h2 className="text-3xl font-sans font-thin text-blue-950 tracking-tight leading-none">Mazeret Kayıt Formu</h2>
-                <p className="text-blue-950/30 text-[11px] font-medium leading-relaxed mt-4 uppercase tracking-widest px-4">
-                  BEYANINIZ SİSTEME İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.
-                </p>
-              </div>
-              
-              <textarea
-                className="w-full bg-blue-50/50 border border-blue-50 rounded-3xl p-6 text-[15px] font-normal text-blue-950 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none resize-none transition-all placeholder:text-blue-950/20"
-                rows={3}
-                placeholder="Nedenini kısaca belirtin..."
-                value={mazeretSebebi}
-                onChange={(e) => setMazeretSebebi(e.target.value)}
-                autoFocus
+      {/* Mazeret Modal (Portaled) */}
+      {createPortal(
+        <AnimatePresence>
+          {isMazeretModalOpen && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                onClick={() => setIsMazeretModalOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
               />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 32 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 32 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                className="spatial-glass w-full max-w-sm p-10 !rounded-[34px] shadow-2xl relative z-10"
+              >
+                <div className="flex flex-col items-center text-center mb-12">
+                  <div className="w-20 h-20 bg-rose-500/10 text-rose-500 rounded-[30px] flex items-center justify-center mb-8 border border-rose-500/20 shadow-inner">
+                    <AlertCircle size={36} strokeWidth={1} />
+                  </div>
+                  <h2 className="text-3xl font-light text-[var(--text-primary)] tracking-tight leading-none">
+                    Mazeret Kaydı
+                  </h2>
+                  <p className="authority-title !text-[7px] mt-5 opacity-30 px-6 leading-relaxed uppercase">
+                    BEYANINIZ SİSTEME İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.
+                  </p>
+                </div>
 
-              <div className="mt-4 flex items-start gap-3">
-                <input 
-                  type="checkbox" 
-                  id="onay" 
-                  checked={onay}
-                  onChange={(e) => setOnay(e.target.checked)}
-                  className="mt-1 w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                <textarea
+                  className="w-full bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-indigo-500/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
+                  rows={3}
+                  placeholder="Nedenini kısaca belirtin..."
+                  value={mazeretSebebi}
+                  onChange={(e) => setMazeretSebebi(e.target.value)}
+                  autoFocus
                 />
-                <label htmlFor="onay" className="text-xs text-blue-950/60 leading-relaxed cursor-pointer select-none">
-                  Mazeretimin geri alınamayacağını ve görev devrinin gerçekleşeceğini anladım ve onaylıyorum.
-                </label>
-              </div>
-              
-              <div className="flex flex-col gap-4 mt-8">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={submitMazeret}
-                  disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
-                  className="w-full py-5 bg-red-600 text-white font-medium rounded-3xl hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-red-600/30 text-[13px] tracking-widest uppercase"
-                >
-                  {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
-                </motion.button>
-                <button 
-                  onClick={() => setIsMazeretModalOpen(false)}
-                  className="w-full py-4 text-blue-950/30 font-medium text-[11px] tracking-widest uppercase hover:text-blue-950 transition"
-                >
-                  VAZGEÇ
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                <div className="mt-6 flex items-start gap-4 px-2">
+                  <input
+                    type="checkbox"
+                    id="onay"
+                    checked={onay}
+                    onChange={(e) => setOnay(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <label
+                    htmlFor="onay"
+                    className="text-[11px] text-[var(--text-secondary)]/60 leading-relaxed cursor-pointer select-none"
+                  >
+                    Mazeretimin geri alınamayacağını ve görev devrinin gerçekleşeceğini anladım.
+                  </label>
+                </div>
+
+                <div className="flex flex-col gap-5 mt-10">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={submitMazeret}
+                    disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
+                    className="w-full py-4 bg-rose-500 text-white font-bold rounded-[20px] hover:opacity-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-xl shadow-rose-500/20 text-[10px] tracking-[0.3em] uppercase"
+                  >
+                    {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
+                  </motion.button>
+                  <button
+                    onClick={() => setIsMazeretModalOpen(false)}
+                    className="w-full py-2 text-[var(--text-secondary)]/30 font-bold text-[9px] tracking-[0.3em] uppercase hover:text-[var(--text-primary)] transition-all duration-500"
+                  >
+                    VAZGEÇ
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
-};
+});

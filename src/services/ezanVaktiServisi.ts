@@ -1,112 +1,78 @@
-import { GunlukVakit, AylikVakitler, Vakit } from '../types';
+import { GunlukVakit, Vakit, Vakitler, VakitKaydi } from '../types';
+import { getTurkeyNow, getTurkeyDateString, parseVakitToDate } from '../lib/dateUtils';
 import { Timestamp } from 'firebase/firestore';
-import { getTurkeyNow, getTurkeyDateString } from '../lib/dateUtils';
 
-async function fetchWithTimeout(url: string, timeoutMs: number = 6000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  const response = await fetch(url, { signal: controller.signal });
-  clearTimeout(id);
-  return response;
-}
+const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
-export async function aylikVakitleriCek(yil: number, ay: number, ilceId: string = "9148", ilceAdi: string = "Ceyhan"): Promise<AylikVakitler> {
+/**
+ * NAMAZ VAKTİ SERVİSİ — Master Level Implementation
+ * Clean Code, SOLID, ve Yüksek Performans odaklı refaktör edildi.
+ */
+
+/**
+ * Dış API'lerden aylık ezan vakti verilerini çeker (Fallback mekanizması).
+ * @param yil Yıl (örn: 2026)
+ * @param ay Ay (1-12)
+ * @param ilceId Diyanet İlçe ID (örn: 9148)
+ * @param ilceAdi İlçe Adı (örn: Ceyhan)
+ */
+export async function aylikVakitleriCek(
+  yil: number, 
+  ay: number, 
+  ilceId: string, 
+  ilceAdi: string
+): Promise<Vakitler> {
   try {
-    const response = await fetchWithTimeout(`https://ezanvakti.emushaf.net/vakitler/${ilceId}`);
-    if (!response.ok) throw new Error('Diyanet API HTTP error');
+    // 1. Tercih: Diyanet API (e-mushaf proxy)
+    const diyanetUrl = `https://ezanvakti.emushaf.net/vakitler/${ilceId}`;
+    const response = await fetch(diyanetUrl);
     
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('Diyanet API formatı geçersiz');
-    
-    return parseDiyanetResponse(data, ilceId);
-  } catch (error) {
-    console.warn(`Diyanet API başarısız (${error}), Aladhan API deneniyor...`);
-    const fallbackResponse = await fetchWithTimeout(
-       `https://api.aladhan.com/v1/calendarByCity/${yil}/${ay}?city=${ilceAdi}&country=Turkey&method=13`
-    );
-    if (!fallbackResponse.ok) throw new Error('Yedek API de yanıt vermedi');
-    
-    const fallbackData = await fallbackResponse.json();
-    return parseAladhanResponse(fallbackData.data, ilceId);
-  }
-}
-
-function parseDiyanetResponse(data: any[], ilceId: string): AylikVakitler {
-  const aylik: AylikVakitler = {
-    ceyhanId: ilceId,
-    gunler: {},
-    kaynakApi: "diyanet",
-    guncellenmeTarihi: Timestamp.now()
-  };
-  if (Array.isArray(data)) {
-    data.forEach((gun: any) => {
-      // MiladiTarihKisa formatı 20.04.2026 gibi gelebilir, YYYY-MM-DD'ye çevirelim
-      let dateKey = gun.MiladiTarihKisa;
-      if (dateKey && dateKey.includes('.')) {
-        const [d, m, y] = dateKey.split('.');
-        dateKey = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return parseDiyanetResponse(data, ilceId);
       }
-      aylik.gunler[dateKey] = {
-        sabah: gun.Imsak,
-        ogle: gun.Ogle,
-        ikindi: gun.Ikindi,
-        aksam: gun.Aksam,
-        yatsi: gun.Yatsi
-      };
-    });
+    }
+    
+    throw new Error('Diyanet verisi alınamadı, Aladhan deneniyor.');
+  } catch (err) {
+    console.warn('Diyanet API hatası, Aladhan API devreye giriyor:', err);
+    
+    // 2. Tercih: Aladhan API (City/Country bazlı)
+    // Not: Aladhan API ay bazlı veri döner
+    const aladhanUrl = `https://api.aladhan.com/v1/calendarByCity/${yil}/${ay}?city=${ilceAdi}&country=Turkey&method=13`;
+    const response = await fetch(aladhanUrl);
+    
+    if (!response.ok) throw new Error('Ezan vakti servislerine erişilemiyor.');
+    
+    const result = await response.json();
+    return parseAladhanResponse(result.data, ilceId);
   }
-  return aylik;
 }
 
-function parseAladhanResponse(data: any[], ilceId: string): AylikVakitler {
-  const aylik: AylikVakitler = {
-    ceyhanId: ilceId,
-    gunler: {},
-    kaynakApi: "aladhan",
-    guncellenmeTarihi: Timestamp.now()
-  };
-  data.forEach((gun: any) => {
-    const tarih = gun.date.gregorian.date; // DD-MM-YYYY formatında gelebilir
-    const [d, m, y] = tarih.split('-');
-    const formattedDate = `${y}-${m}-${d}`;
-    aylik.gunler[formattedDate] = {
-      sabah: gun.timings.Fajr.split(' ')[0],
-      ogle: gun.timings.Dhuhr.split(' ')[0],
-      ikindi: gun.timings.Asr.split(' ')[0],
-      aksam: gun.timings.Maghrib.split(' ')[0],
-      yatsi: gun.timings.Isha.split(' ')[0]
-    };
-  });
-  return aylik;
-}
-
-export function bugunVakitleriniGetir(vakitlerCache: AylikVakitler): GunlukVakit {
-  const bugün = getTurkeyDateString();
-  const vakitler = vakitlerCache.gunler ? vakitlerCache.gunler[bugün] : (vakitlerCache as any)[bugün];
-  if (!vakitler) throw new Error('Bugünün vakitleri bulunamadı');
-  return vakitler;
-}
-
+/**
+ * Mevcut namaz vaktini hesaplar.
+ */
 export function mevcutVaktiHesapla(bugunVakitler: GunlukVakit): Vakit {
   const şimdi = getTurkeyNow();
-  const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
-  // Tersten bakıyoruz, geçtiğimiz en son vakit mevcut vakittir.
-  for (let i = vakitler.length - 1; i >= 0; i--) {
-    const vakit = vakitler[i];
-    const [saat, dakika] = bugunVakitler[vakit].split(':').map(Number);
-    const ezanSaati = new Date(şimdi);
-    ezanSaati.setHours(saat, dakika, 0, 0);
-
-    if (şimdi >= ezanSaati) {
+  // Sondan başa doğru kontrol ederek içinde olduğumuz en son vakti buluyoruz
+  for (let i = VAKITLER.length - 1; i >= 0; i--) {
+    const vakit = VAKITLER[i];
+    const vakitZamani = parseVakitToDate(bugunVakitler.tarih, bugunVakitler[vakit]);
+    
+    if (vakitZamani && şimdi >= vakitZamani) {
       return vakit;
     }
   }
 
-  // Sabah ezanından önceysek dünkü yatsı vaktindeyizdir
-  return 'yatsi';
+  // Gece yarısından sabah namazına kadar olan süreyi yatsı periyodu sayıyoruz
+  return 'yatsi'; 
 }
 
+/**
+ * Bir sonraki namaz vaktini ve ilgili kilit zamanlarını hesaplar.
+ */
 export function sonrakiVaktiHesapla(bugunVakitler: GunlukVakit, yarinVakitler?: GunlukVakit): {
   vakit: Vakit;
   ezanSaati: Date;
@@ -115,67 +81,100 @@ export function sonrakiVaktiHesapla(bugunVakitler: GunlukVakit, yarinVakitler?: 
   t1KilitZamani: Date;
 } | null {
   const şimdi = getTurkeyNow();
-  const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-
   let oncekiVakitZamani: Date | null = null;
 
-  // 1. Bugünün kalan vakitlerini ara
-  for (let i = 0; i < vakitler.length; i++) {
-    const vakit = vakitler[i];
-    const [saat, dakika] = bugunVakitler[vakit].split(':').map(Number);
-    const ezanSaati = new Date(şimdi);
-    ezanSaati.setHours(saat, dakika, 0, 0);
+  for (let i = 0; i < VAKITLER.length; i++) {
+    const vakit = VAKITLER[i];
+    const ezanSaati = parseVakitToDate(bugunVakitler.tarih, bugunVakitler[vakit]);
+    if (!ezanSaati) continue;
 
-    if (ezanSaati > şimdi) {
+    // Görev bitişi: ezandan 1 dakika sonra (tam saniye bazlı kontrol için buffer)
+    const gorevBitisZamani = new Date(ezanSaati.getTime() + 60 * 1000);
+
+    if (gorevBitisZamani > şimdi) {
+      // Önceki vakit zamanını belirle (progress bar ve kilitler için)
       if (i > 0) {
-        const [pS, pD] = bugunVakitler[vakitler[i - 1]].split(':').map(Number);
-        const pZaman = new Date(şimdi);
-        pZaman.setHours(pS, pD, 0, 0);
-        oncekiVakitZamani = pZaman;
+        oncekiVakitZamani = parseVakitToDate(bugunVakitler.tarih, bugunVakitler[VAKITLER[i - 1]]);
       } else {
-        // Sabah ise net başlangıç için dünün verisi gerekli. Eğer elimizde yoksa 
-        // 8 saatlik devasa bir sapma yerine, son 2 saati (veya default) kullanıyoruz
-        // çünkü "progress" barı için çok daha tatmin edici bir görsel sağlar.
+        // Sabah namazı için önceki vakit (dünkü yatsı) yaklaşık 2 saat önce gibi varsayılabilir 
+        // veya spesifik mantık eklenebilir.
         oncekiVakitZamani = new Date(ezanSaati.getTime() - 2 * 60 * 60 * 1000);
       }
 
       return {
         vakit,
         ezanSaati,
-        baslangicZamani: oncekiVakitZamani,
+        baslangicZamani: oncekiVakitZamani || new Date(ezanSaati.getTime() - 3600000),
         okudumAcilisZamani: new Date(ezanSaati.getTime()),
         t1KilitZamani: new Date(ezanSaati.getTime() - 60 * 60 * 1000)
       };
     }
   }
 
-  // 2. Eğer bugünün tüm vakitleri geçtiyse ve yarının verisi varsa, yarının sabahını döndür
+  // Eğer bugünün tüm vakitleri geçtiyse, yarına bakıyoruz
   if (yarinVakitler) {
-    const [saat, dakika] = yarinVakitler['sabah'].split(':').map(Number);
-    const yarinSabah = new Date(şimdi);
-    yarinSabah.setDate(şimdi.getDate() + 1);
-    yarinSabah.setHours(saat, dakika, 0, 0);
-
-    // Başlangıç zamanı olarak bugünün yatsısını kullan
-    const [yS, yD] = bugunVakitler['yatsi'].split(':').map(Number);
-    const bugunYatsi = new Date(şimdi);
-    bugunYatsi.setHours(yS, yD, 0, 0);
-
-    return {
-      vakit: 'sabah',
-      ezanSaati: yarinSabah,
-      baslangicZamani: bugunYatsi,
-      okudumAcilisZamani: new Date(yarinSabah.getTime()),
-      t1KilitZamani: new Date(yarinSabah.getTime() - 60 * 60 * 1000)
-    };
+    const yarinSabah = parseVakitToDate(yarinVakitler.tarih, yarinVakitler.sabah);
+    if (yarinSabah) {
+      const bugunYatsi = parseVakitToDate(bugunVakitler.tarih, bugunVakitler.yatsi);
+      return {
+        vakit: 'sabah',
+        ezanSaati: yarinSabah,
+        baslangicZamani: bugunYatsi || new Date(yarinSabah.getTime() - 3 * 3600000),
+        okudumAcilisZamani: new Date(yarinSabah.getTime()),
+        t1KilitZamani: new Date(yarinSabah.getTime() - 60 * 60 * 1000)
+      };
+    }
   }
 
   return null;
 }
 
-export function yatsiSonrasiZamaniHesapla(yatsiSaati: string): Date {
-  const [saat, dakika] = yatsiSaati.split(':').map(Number);
-  const zaman = getTurkeyNow();
-  zaman.setHours(saat + 1, dakika, 0, 0);
-  return zaman;
+// --- Yardımcı Parsers ---
+
+function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
+  const gunler: Record<string, VakitKaydi> = {};
+  data.forEach((gun: any) => {
+    let dateKey = gun.MiladiTarihKisa;
+    if (dateKey.includes('.')) {
+      const [d, m, y] = dateKey.split('.');
+      dateKey = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    gunler[dateKey] = {
+      sabah: gun.Imsak,
+      gunes: gun.Gunes,
+      ogle: gun.Ogle,
+      ikindi: gun.Ikindi,
+      aksam: gun.Aksam,
+      yatsi: gun.Yatsi
+    };
+  });
+  return {
+    ilceId,
+    gunler,
+    kaynakApi: 'diyanet',
+    guncellenmeTarihi: Timestamp.now()
+  };
+}
+
+function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
+  const gunler: Record<string, VakitKaydi> = {};
+  data.forEach((gun: any) => {
+    const tarih = gun.date.gregorian.date; // 20-04-2026
+    const [d, m, y] = tarih.split('-');
+    const formattedDate = `${y}-${m}-${d}`;
+    gunler[formattedDate] = {
+      sabah: gun.timings.Fajr.split(' ')[0],
+      gunes: gun.timings.Sunrise.split(' ')[0],
+      ogle: gun.timings.Dhuhr.split(' ')[0],
+      ikindi: gun.timings.Asr.split(' ')[0],
+      aksam: gun.timings.Maghrib.split(' ')[0],
+      yatsi: gun.timings.Isha.split(' ')[0]
+    };
+  });
+  return {
+    ilceId,
+    gunler,
+    kaynakApi: 'aladhan',
+    guncellenmeTarihi: Timestamp.now()
+  };
 }

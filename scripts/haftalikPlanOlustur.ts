@@ -1,3 +1,4 @@
+import admin from 'firebase-admin';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
 import { tieBreakerSirala } from './lib/tieBreaker.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
@@ -36,25 +37,27 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 async function main() {
   console.log("Haftalık plan oluşturma başladı...");
 
-  // 1. Girdi okuma
+  // 1. Personel Çekme (Adminler ve Müezzinler dahil, Gözlemciler hariç)
   let muezzinSnapshot;
   try {
     muezzinSnapshot = await db.collection('muezzins')
       .where('aktif', '==', true)
-      .where('role', '==', 'muezzin')
       .get();
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, 'muezzins');
     return;
   }
-  const muezzinler = muezzinSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }));
+  
+  // Sadece 'gozlemci' olmayanları alalım
+  const muezzinler = muezzinSnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }))
+    .filter(m => m.role !== 'gozlemci');
 
   if (muezzinler.length < 2) {
-    console.error("Yetersiz müezzin!");
-    // adminUyarilari'na yaz
+    console.error("Yetersiz müezzin! Planlama yapılamıyor.");
     await db.collection('adminUyarilari').add({
       tip: 'zincirTukendi',
-      mesaj: 'Aktif müezzin sayısı 2\'den az!',
+      mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 2 gerekli).',
       tarih: new Date().toISOString().split('T')[0],
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
@@ -62,20 +65,29 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Dinamik Tarih Hesaplama
+  // 2. Onaylanmış İzinleri Çek
+  const izinSnapshot = await db.collection('izinler')
+    .where('durum', '==', 'onaylandi')
+    .get();
+  const onayliIzinler = izinSnapshot.docs.map(doc => doc.data());
+
+  // 3. Dinamik Tarih Hesaplama
   const simdi = new Date();
-  const bugunDay = simdi.getDay(); // 0: Pazar, 1: Pazartesi...
-  const diff = simdi.getDate() - (bugunDay === 0 ? 6 : bugunDay - 1); // Pazartesiye git
-  const pazartesiTemel = new Date(simdi.setDate(diff));
+  const bugunDay = simdi.getDay(); 
+  // Pazartesiye git (0: Pazar ise -6 gün, 1: Pzt ise 0 gün...)
+  const diff = bugunDay === 0 ? -6 : 1 - bugunDay;
+  
+  const pazartesiTemel = new Date(simdi);
+  pazartesiTemel.setDate(simdi.getDate() + diff);
   pazartesiTemel.setHours(0, 0, 0, 0);
 
-  // Bu hafta ve gelecek 4 hafta için plan oluştur
-  for (let weekOffset = 0; weekOffset < 5; weekOffset++) {
+  // Gelecek 3 hafta için plan oluşturmayı dene (Daha güvenli bir aralık)
+  for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
     const pazartesi = new Date(pazartesiTemel);
     pazartesi.setDate(pazartesiTemel.getDate() + (weekOffset * 7));
 
     const haftaBaslangicStr = pazartesi.toISOString().split('T')[0];
-    const haftaId = `W${haftaBaslangicStr}`; // Örn: W2026-04-20
+    const haftaId = `W${haftaBaslangicStr}`;
     
     const gunler: string[] = [];
     for(let i=0; i<7; i++) {
@@ -87,44 +99,50 @@ async function main() {
 
     const planDoc = await db.collection('haftaPlanlari').doc(haftaId).get();
     if (planDoc.exists) {
-      console.log(`Plan (${haftaId}) zaten var, atlandı.`);
+      console.log(`Plan (${haftaId}) zaten mevcut, atlanıyor.`);
       continue;
     }
 
-    console.log(`${haftaId} için plan oluşturuluyor...`);
+    console.log(`${haftaId} haftası için otomatik plan oluşturuluyor...`);
 
-    // 3. Atama algoritması - buHaftakiYukler takibi
     const buHaftakiYukler: Record<string, number> = {};
     muezzinler.forEach(m => buHaftakiYukler[m.id] = 0);
 
     const vakitler = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-    
     const gunPlan: any = {};
     const batch = db.batch();
 
     for (const gun of gunler) {
       gunPlan[gun] = {};
       
-      const sirali = tieBreakerSirala(muezzinler, buHaftakiYukler);
+      // Bugün izinli olanları filtrele
+      const bugunIzinliUidler = onayliIzinler
+        .filter(izin => gun >= izin.baslangic && gun <= izin.bitis)
+        .map(izin => izin.uid);
       
-      const asil = sirali[0];
-      const yedek = sirali[1];
-
-      buHaftakiYukler[asil.id] += 5;
+      const musaitMuezzinler = muezzinler.filter(m => !bugunIzinliUidler.includes(m.id));
 
       for (const vakit of vakitler) {
+        // Eğer o vakit kimse müsait değilse (nadiren), tüm aktifleri kullan
+        const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
+        
+        const sirali = tieBreakerSirala(adaylar, buHaftakiYukler);
+        const asil = sirali[0];
+        const yedek = sirali[1];
+
+        buHaftakiYukler[asil.id] += 1;
+
         gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
 
-        // Bildirimler
-        const bildirimAsilRef = db.collection('bildirimler').doc();
-        batch.set(bildirimAsilRef, {
+        const bAsil = db.collection('bildirimler').doc();
+        batch.set(bAsil, {
           haftaId, tarih: gun, vakit, uid: asil.id, tip: 'asil',
           durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
           sonGuncelleme: Timestamp.now()
         });
 
-        const bildirimYedekRef = db.collection('bildirimler').doc();
-        batch.set(bildirimYedekRef, {
+        const bYedek = db.collection('bildirimler').doc();
+        batch.set(bYedek, {
           haftaId, tarih: gun, vakit, uid: yedek.id, tip: 'yedek',
           durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
           sonGuncelleme: Timestamp.now()
@@ -132,7 +150,6 @@ async function main() {
       }
     }
 
-    // 4. Yazma
     batch.set(db.collection('haftaPlanlari').doc(haftaId), {
       haftaBaslangic: haftaBaslangicStr,
       haftaBitis: haftaBitisStr,
@@ -142,7 +159,35 @@ async function main() {
     });
 
     await batch.commit();
-    console.log(`Hafta ${haftaId}: Tüm atamalar ve bildirimler tamamlandı.`);
+    console.log(`Başarı: ${haftaId} planı ve bildirimleri oluşturuldu.`);
+
+    // YENİ: Haftalık Plan Bildirimini Aktif Müezzinlerin Cihazlarına Gönder (FCM V1)
+    try {
+      const fcmTokens = muezzinler
+        .map(m => m.fcmToken)
+        .filter((token): token is string => typeof token === 'string' && token.trim().length > 0);
+
+      if (fcmTokens.length > 0) {
+        console.log(`FCM anlık bildirimleri ${fcmTokens.length} aktif müezzine gönderiliyor...`);
+        const messages = fcmTokens.map(token => ({
+          token,
+          notification: {
+            title: 'Yeni Haftalık Plan Yayınlandı 🗓️',
+            body: 'Önümüzdeki haftanın ezan nöbet planı hazırlandı. Görevlerinizi kontrol etmek için dokunun.'
+          },
+          data: {
+            type: 'weekly_plan_published'
+          }
+        }));
+
+        const response = await admin.messaging().sendEach(messages);
+        console.log(`FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
+      } else {
+        console.log('Kayıtlı aktif FCM cihaz tokenı bulunamadı, bildirim gönderilmedi.');
+      }
+    } catch (fcmErr) {
+      console.error('FCM haftalık plan bildirim gönderimi başarısız oldu:', fcmErr);
+    }
   }
 
   process.exit(0);

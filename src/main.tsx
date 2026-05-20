@@ -8,10 +8,10 @@ import { registerSW } from 'virtual:pwa-register';
 registerSW({ 
   immediate: true,
   onNeedRefresh() {
-    console.log('Yeni versiyon mevcut, lütfen sayfayı yenileyin.');
+    // Yeni versiyon mevcut
   },
   onOfflineReady() {
-    console.log('Uygulama çevrimdışı kullanım için hazır.');
+    // Uygulama hazır
   }
 });
 

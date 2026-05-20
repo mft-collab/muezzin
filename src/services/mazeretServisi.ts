@@ -1,6 +1,8 @@
-import { doc, getDoc, runTransaction, query, collection, where, getDocs, setDoc, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc, Timestamp, runTransaction } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { Bildirim } from '../types';
 import { tieBreakerSirala } from '../utils/tieBreaker';
+import { getHaftaIdFromDate } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 /**
@@ -76,18 +78,8 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string): Prom
       const bildirimDoc = await transaction.get(bildirimRef);
       if (!bildirimDoc.exists()) throw new Error('Bildirim bulunamadı');
       
-      // T-1 saat kontrolü için takvim verisini çek (vakitlere gitmeli)
       const bildirim = bildirimDoc.data();
-      const vakitDoc = await transaction.get(doc(db, 'vakitler', bildirim.tarih.slice(0, 7)));
       
-      // Ezan saati kontrolü
-      const gunVakitleri = vakitDoc.data()?.gunler[bildirim.tarih];
-      if (gunVakitleri && gunVakitleri[bildirim.vakit]) {
-        const [saat, dakika] = gunVakitleri[bildirim.vakit].split(':').map(Number);
-        const ezanSaati = new Date();
-        ezanSaati.setHours(saat, dakika, 0, 0);
-      }
-
       transaction.update(bildirimRef, {
         durum: 'reddedildi',
         retSebebi,
@@ -105,23 +97,39 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string): Prom
 export async function kriziBaslat(tarih: string, vakit: string, haricUidler: string[]): Promise<boolean> {
   const pathPrefix = 'bildirimler';
   try {
-    // İlk olarak haftalık planda zaten atanmış olan yedeği tespit et.
-    const yedekSorgu = query(collection(db, 'bildirimler'), 
+    // 2. Yedek görevliyi bul (Query ile, çünkü ID'ler rastgele)
+    const bildirimlerRef = collection(db, 'bildirimler');
+    const yedekQuery = query(
+      bildirimlerRef, 
       where('tarih', '==', tarih), 
       where('vakit', '==', vakit), 
       where('tip', '==', 'yedek')
     );
-    
-    const yedekSnapshot = await getDocs(yedekSorgu);
-    if (!yedekSnapshot.empty) {
-      const yedekDoc = yedekSnapshot.docs[0];
-      const yedekData = yedekDoc.data();
+    const yedekSnap = await getDocs(yedekQuery);
+    const yedekDoc = yedekSnap.docs[0];
+    const yedekData = yedekDoc?.data() as Bildirim | undefined;
+
+    if (yedekData && !haricUidler.includes(yedekData.uid) && yedekData.durum !== 'reddedildi') {
+      // Yedek müsait, onu Asil yap
+      const haftaId = getHaftaIdFromDate(tarih);
       
-      if (!haricUidler.includes(yedekData.uid) && yedekData.durum !== 'reddedildi') {
-        // Yedeğe çağrıyı yönlendir
-        await setDoc(doc(db, 'bildirimler', yedekDoc.id), { tip: 'gorev_cagrisi' }, { merge: true });
-        return true;
-      }
+      await runTransaction(db, async (transaction) => {
+        // Yedek bildirimini güncelle
+        transaction.update(doc(db, 'bildirimler', yedekDoc.id), {
+          tip: 'asil',
+          durum: 'bekliyor',
+          pendingAck: true,
+          sonGuncelleme: Timestamp.now()
+        });
+
+        // Haftalık planı güncelle (Sync Back) — SADECE bu vakti güncelle
+        const updateObj: Record<string, any> = {
+          [`gunler.${tarih}.${vakit}.asil`]: yedekData.uid
+        };
+        transaction.update(doc(db, 'haftaPlanlari', haftaId), updateObj);
+      });
+      
+      return true;
     }
 
     // Yedek de reddettiyse veya yoksa yeni aday bul
@@ -138,25 +146,38 @@ export async function kriziBaslat(tarih: string, vakit: string, haricUidler: str
       .filter(d => tarih <= d.data().bitis)
       .map(d => d.data().uid);
 
-    // Haric tutulanlar, yedeği ve izinli olanları adaylardan çıkart
+    // Haric tutulanlar ve izinli olanları adaylardan çıkart
     let adaylar = muezzinler.filter(m => !haricUidler.includes(m.id) && !izinliUidler.includes(m.id));
-    if (!yedekSnapshot.empty) {
-      adaylar = adaylar.filter(m => m.id !== yedekSnapshot.docs[0].data().uid);
+    if (yedekData) {
+      adaylar = adaylar.filter(m => m.id !== yedekData.uid);
     }
 
     const siraliAdaylar = tieBreakerSirala(adaylar, {}); 
 
+    // Fetch all rejected notifications for this specific date and time in a single query (Optimization: avoid N+1 query problem)
+    const reddedilenSnap = await getDocs(query(
+      collection(db, 'bildirimler'),
+      where('tarih', '==', tarih),
+      where('vakit', '==', vakit),
+      where('durum', '==', 'reddedildi')
+    ));
+    const reddedenUidler = new Set(reddedilenSnap.docs.map(doc => doc.data().uid));
+
     for (const aday of siraliAdaylar) {
-      const kontrol = await getDocs(query(collection(db, 'bildirimler'), 
-        where('uid', '==', aday.id), where('tarih', '==', tarih), where('vakit', '==', vakit), where('durum', '==', 'reddedildi')));
-      
-      if (kontrol.empty) {
+      if (!reddedenUidler.has(aday.id)) {
         // Bulundu, yeni bildirim, atama vs.
-        const yeniBildirimRef = doc(collection(db, 'bildirimler'));
-        await setDoc(yeniBildirimRef, {
-          haftaId: 'Acil', tarih, vakit, uid: aday.id, tip: 'gorev_cagrisi',
+        const haftaId = getHaftaIdFromDate(tarih);
+        const yeniBildirimRef = collection(db, 'bildirimler');
+        await addDoc(yeniBildirimRef, {
+          haftaId, tarih, vakit, uid: aday.id, tip: 'gorev_cagrisi',
           durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(), sonGuncelleme: Timestamp.now()
         });
+
+        // Haftalık planı senkronize et: Yeni adayı SADECE bu vakitte Asil olarak ata
+        await updateDoc(doc(db, 'haftaPlanlari', haftaId), {
+          [`gunler.${tarih}.${vakit}.asil`]: aday.id
+        });
+
         return true;
       }
     }

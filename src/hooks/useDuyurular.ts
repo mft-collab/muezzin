@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
@@ -9,7 +9,7 @@ export interface Duyuru {
   icerik: string;
   tip: 'onemli' | 'bilgi' | 'duyuru';
   yazar?: string;
-  tarih: any;
+  tarih: import('firebase/firestore').Timestamp | string;
 }
 
 export function useDuyurular(count = 3) {
@@ -17,26 +17,30 @@ export function useDuyurular(count = 3) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const path = 'duyurular';
-    const q = query(
-      collection(db, path),
-      orderBy('tarih', 'desc'),
-      limit(count)
-    );
+    const fetchDuyurular = async () => {
+      setLoading(true);
+      const path = 'duyurular';
+      const q = query(
+        collection(db, path),
+        orderBy('tarih', 'desc'),
+        limit(count)
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Duyuru[];
-      setDuyurular(data);
-      setLoading(false);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, path);
-      setLoading(false);
-    });
+      try {
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Duyuru[];
+        setDuyurular(data);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, path);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchDuyurular();
   }, [count]);
 
   return { duyurular, loading };

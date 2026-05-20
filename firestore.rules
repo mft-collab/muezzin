@@ -6,14 +6,11 @@ service cloud.firestore {
     // GLOBALS & HELPERS
     // ---------------------------------------------------------
     function isSignedIn() { return request.auth != null && request.auth.uid != null; }
-    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.uid == 'upOT-kFmqHPdYUH70bGQS87WUd37aPeJ3AjlMCUoYnE' ||
         request.auth.token.email == 'muftum@gmail.com' ||
         (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'admin')
@@ -32,13 +29,13 @@ service cloud.firestore {
     function isValidMuezzin(data) {
       return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
              data.displayName is string && data.displayName.size() <= 100 &&
-             data.role in ['admin', 'muezzin'] &&
+             data.role in ['admin', 'muezzin', 'gozlemci'] &&
              data.email is string && data.email.size() <= 100 &&
              data.aktif is bool;
     }
 
     match /muezzins/{uid} {
-      allow read: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if (isAdmin() || (isSignedIn() && request.auth.uid == uid)) && isValidMuezzin(incoming()) && (isAdmin() || incoming().role == 'muezzin');
       allow delete: if isAdmin();
       allow update: if isSignedIn() && (
@@ -59,21 +56,21 @@ service cloud.firestore {
     function isValidInvite(data) {
       return data.keys().hasAll(['email', 'role']) &&
              data.email is string && data.email.size() <= 100 &&
-             data.role in ['admin', 'muezzin'];
+             data.role in ['admin', 'muezzin', 'gozlemci'];
     }
 
     match /invites/{emailId} {
       allow list: if isAdmin();
-      allow get: if isVerified() && (isAdmin() || request.auth.token.email.lower() == emailId.lower());
+      allow get: if isSignedIn() && (isAdmin() || request.auth.token.email.lower() == emailId.lower());
       allow create, update: if isAdmin() && isValidInvite(incoming());
-      allow delete: if isAdmin() || (isVerified() && request.auth.token.email.lower() == emailId.lower());
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.token.email.lower() == emailId.lower());
     }
 
     // ---------------------------------------------------------
     // ENTITY: Vakitler
     // ---------------------------------------------------------
     match /vakitler/{docId} {
-      allow read: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow write: if isAdmin();
     }
 
@@ -81,18 +78,25 @@ service cloud.firestore {
     // ENTITY: Hafta Planları
     // ---------------------------------------------------------
     match /haftaPlanlari/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, list: if isSignedIn();
+      allow create, delete: if isAdmin();
+      // Only admins can update the plan. Swaps should be handled via a secure process.
+      allow update: if isAdmin(); 
     }
 
     // ---------------------------------------------------------
     // ENTITY: Bildirimler
     // ---------------------------------------------------------
     match /bildirimler/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && incoming().uid == request.auth.uid;
-      allow update: if isSignedIn() && existing().uid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
-      allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isAdmin() || 
+        incoming().uid == request.auth.uid ||
+        // Allow creating task calls for others during mazeret swaps
+        (incoming().tip == 'gorev_cagrisi' && incoming().durum == 'bekliyor')
+      );
+      allow update: if isSignedIn() && (isAdmin() || existing().uid == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // ---------------------------------------------------------
@@ -103,9 +107,26 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------
-    // ENTITY: Config
+    // ENTITY: Sistem Günlükleri ve Hata Raporları
+    // ---------------------------------------------------------
+    match /error_logs/{docId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    match /telemetry_logs/{docId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Config & Settings
     // ---------------------------------------------------------
     match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /settings/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
@@ -119,15 +140,13 @@ service cloud.firestore {
              data.tip in ['haftalik', 'yillik', 'mazeret'] &&
              data.durum == 'onay_bekliyor' &&
              data.baslangic is string && data.baslangic.size() == 10 &&
-             data.bitis is string && data.bitis.size() == 10 &&
-             data.sebep is string && data.sebep.size() <= 1000;
+             data.bitis is string && data.bitis.size() == 10;
     }
 
     match /izinler/{docId} {
-      allow list: if isAdmin() || (isSignedIn() && resource.data.durum == 'onaylandi');
-      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow list: if isAdmin() || (isSignedIn() && (resource == null || resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       allow get: if isAdmin() || resource.data.durum == 'onaylandi' || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && isValidIzin(incoming()) && incoming().olusturmaTarihi == request.time;
+      allow create: if isSignedIn() && isValidIzin(incoming());
       allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi'])) || 
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));
       allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor');
@@ -139,3 +158,4 @@ service cloud.firestore {
     }
   }
 }
+

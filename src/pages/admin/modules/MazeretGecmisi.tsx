@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMazeretGecmisi } from '../../../hooks/admin/useMazeretGecmisi';
-import { useMuezzinler } from '../../../hooks/admin/useMuezzinler';
+import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -8,12 +8,13 @@ import { FileDown, Filter, User } from 'lucide-react';
 
 export default function MazeretGecmisi() {
   const { gecmis, loading } = useMazeretGecmisi();
-  const { muezzinler } = useMuezzinler();
+  const muezzinler = useMuezzinStore(s => s.muezzinler);
+  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
   
   const [selectedMuezzin, setSelectedMuezzin] = useState<string>('all');
 
   const getMuezzinName = (uid: string) => {
-    return muezzinler.find(m => m.id === uid)?.displayName || 'Bilinmiyor';
+    return muezzinMap[uid]?.displayName || 'Bilinmiyor';
   };
 
   const filtered = gecmis.filter(g => {
@@ -44,111 +45,111 @@ export default function MazeretGecmisi() {
 
   if (loading) return (
     <div className="flex h-96 items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 border-t-indigo-600"></div>
-        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">LOG KAYITLARI SIRALANIYOR</p>
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-12 h-12 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin shadow-lg" />
+        <p className="authority-title !text-[9px] opacity-30 tracking-[0.4em]">ARŞİV KAYITLARI SENKRONİZE EDİLİYOR</p>
       </div>
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 pb-8 border-b border-slate-200">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter leading-none lowercase italic text-left">
-            MAZERET<span className="text-indigo-600 italic">LOGLARI</span>
-          </h1>
-          <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-slate-400 mt-3">HİZMET AKIŞI VE PERSONEL MAZERET ARŞİVİ</p>
+    <div className="flex flex-col gap-8">
+      {/* TOOLBAR: Operational Intelligence */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex flex-col gap-2">
+           <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Mazeret Arşivi</h2>
+           <p className="authority-title !text-[7px] opacity-30 font-medium tracking-[0.2em]">{filtered.length} TOPLAM KAYIT LİSTELENDİ</p>
         </div>
         
-        <motion.button 
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={exportCSV} 
-          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-slate-900 text-white hover:bg-emerald-600 px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/10 transition-all border border-slate-800"
-        >
-          <FileDown size={16} />
-          VERİYİ DIŞA AKTAR
-        </motion.button>
-      </header>
-
-      <section className="bg-white/70 backdrop-blur-2xl rounded-[24px] border border-slate-200/60 p-8 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center border border-slate-200/50"><Filter size={20} /></div>
-          <div className="flex-1 w-full">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 px-1">Görevli Bazlı Log Sorgulama</label>
-            <div className="relative">
-              <select 
-                value={selectedMuezzin} 
-                onChange={e => setSelectedMuezzin(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 px-5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-slate-900 transition-all appearance-none cursor-pointer shadow-inner"
-              >
-                <option value="all">TÜM KADRO LİSTESİ</option>
-                {muezzinler.map(m => (
-                  <option key={m.id} value={m.id}>{m.displayName.toUpperCase()}</option>
-                ))}
-              </select>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <Filter size={14} />
-              </div>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex-1 md:w-64 relative group">
+            <select 
+              value={selectedMuezzin} 
+              onChange={e => setSelectedMuezzin(e.target.value)}
+              className="w-full spatial-glass-elevated py-3.5 px-6 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--text-primary)] outline-none border border-white/5 hover:bg-white/[0.05] focus:border-indigo-500/30 transition-all appearance-none cursor-pointer"
+            >
+              <option value="all" className="bg-[#0a0a0a]">TÜM PERSONEL</option>
+              {muezzinler.map(m => (
+                <option key={m.id} value={m.id} className="bg-[#0a0a0a]">{m.displayName.toUpperCase()}</option>
+              ))}
+            </select>
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+               <Filter size={14} />
             </div>
           </div>
-        </div>
-      </section>
 
-      <div className="bg-white/70 backdrop-blur-2xl rounded-[24px] border border-slate-200/60 overflow-hidden shadow-sm mt-12">
-        {/* Desktop Table (High Visibility) */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left">
+          <motion.button 
+            whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={exportCSV}
+            className="flex items-center gap-3 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-6 py-3.5 rounded-2xl text-[9px] font-bold uppercase tracking-[0.3em] shadow-lg transition-all"
+          >
+            <FileDown size={14} />
+            DIŞA AKTAR
+          </motion.button>
+        </div>
+      </div>
+
+      {/* TIMELINE TABLE: Chronological Context */}
+      <section className="spatial-glass p-8 border border-white/5 relative overflow-hidden min-h-[400px]">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent" />
+        
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-separate border-spacing-y-4">
             <thead>
-              <tr className="bg-slate-50/50 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                <th className="px-8 py-4">TARİH & VAKİT</th>
-                <th className="px-8 py-4">GÖREVLİ PERSONEL</th>
-                <th className="px-8 py-4">MAZERET DETAYI</th>
+              <tr className="border-b border-white/5">
+                <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-[0.3em]">ZAMAN DAMGASI</th>
+                <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-[0.3em]">PERSONEL</th>
+                <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-[0.3em]">MAZERET GEREKÇESİ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               <AnimatePresence mode="popLayout">
                 {filtered.length === 0 ? (
                   <motion.tr 
-                    layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-center"
                   >
-                    <td colSpan={3} className="p-20 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Kayıt Bulunmuyor</td>
+                    <td colSpan={3} className="py-32 authority-title !text-[9px] opacity-20 tracking-[0.4em] italic uppercase">Arşivde kayıt bulunmuyor</td>
                   </motion.tr>
                 ) : filtered.map((g, idx) => (
                   <motion.tr 
                     layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: idx * 0.03 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.03 }}
                     key={g.id} 
-                    className="group hover:bg-slate-50/40 transition-colors"
+                    className="group"
                   >
-                    <td className="px-8 py-5">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-900 tracking-tight">
+                    <td className="px-6 py-5 spatial-glass-elevated !rounded-l-[24px] border-r-0">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-sm font-medium text-[var(--text-primary)] tracking-tight">
                            {g.tarih ? format(parseISO(g.tarih), 'dd MMMM yyyy', { locale: tr }) : '-'}
                         </span>
-                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-0.5">
-                           {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {g.vakit.toUpperCase()} VAKTİ
-                        </span>
+                        <div className="flex items-center gap-2">
+                           <div className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+                           <span className="authority-title !text-[7px] opacity-40 uppercase tracking-[0.2em]">
+                              {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {g.vakit.toUpperCase()} VAKTİ
+                           </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-8 py-5">
-                       <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                            <User size={14} />
+                    <td className="px-6 py-5 spatial-glass-elevated border-x-0">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-[14px] bg-white/[0.03] border border-white/5 flex items-center justify-center text-indigo-400 font-light text-lg shadow-lg">
+                             {getMuezzinName(g.uid).charAt(0)}
                           </div>
-                          <span className="text-sm font-bold text-slate-700 tracking-tight">{getMuezzinName(g.uid)}</span>
+                          <span className="text-sm font-light text-[var(--text-primary)] tracking-tight">{getMuezzinName(g.uid)}</span>
                        </div>
                     </td>
-                    <td className="px-8 py-5">
-                       <div className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest inline-block border border-slate-200">
-                          {g.retSebebi || 'BELIRTILMEDI'}
+                    <td className="px-6 py-5 spatial-glass-elevated !rounded-r-[24px] border-l-0">
+                       <div className="bg-indigo-500/10 border border-indigo-500/20 px-5 py-2.5 rounded-xl inline-flex items-center gap-3 shadow-sm group-hover:bg-indigo-500/15 transition-all duration-500">
+                          <div className="w-1 h-1 rounded-full bg-indigo-500" />
+                          <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest leading-none">
+                            {g.retSebebi || 'SEBEP BELİRTİLMEDİ'}
+                          </span>
                        </div>
                     </td>
                   </motion.tr>
@@ -158,38 +159,37 @@ export default function MazeretGecmisi() {
           </table>
         </div>
 
-        {/* Mobile List */}
-        <div className="md:hidden divide-y divide-slate-100">
-           {filtered.length === 0 ? (
-             <div className="p-12 text-center text-slate-300 font-bold uppercase tracking-widest text-[11px] italic">Kayıt bulunmuyor.</div>
-           ) : filtered.map(g => (
+        {/* MOBILE ARCHIVE CARDS (Fallback) */}
+        <div className="md:hidden flex flex-col gap-4 mt-6">
+           {filtered.map((g, idx) => (
              <motion.div 
-               layout
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: idx * 0.05 }}
                key={g.id} 
-               className="p-6 space-y-4 bg-white"
+               className="spatial-glass-elevated p-6 space-y-6"
              >
                 <div className="flex justify-between items-start">
-                   <div>
-                      <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                   <div className="flex flex-col gap-1.5">
+                      <h3 className="text-sm font-medium text-[var(--text-primary)]">
                          {g.tarih ? format(parseISO(g.tarih), 'dd MMM yyyy', { locale: tr }) : '-'}
                       </h3>
-                      <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest mt-1">{g.vakit} VAKTİ</p>
+                      <p className="authority-title !text-[7px] text-indigo-400 font-bold uppercase tracking-widest">{g.vakit} VAKTİ</p>
                    </div>
                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-900 tracking-tight">{getMuezzinName(g.uid)}</p>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">PERSONEL</p>
+                      <p className="text-[10px] font-bold text-[var(--text-primary)]">{getMuezzinName(g.uid)}</p>
+                      <p className="authority-title !text-[6px] opacity-30 uppercase tracking-widest mt-1">OPERASYONEL PERSONEL</p>
                    </div>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic">
-                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-0.5">MAZERET GEREKÇESİ</p>
-                   <p className="text-[12px] font-medium text-slate-600 leading-relaxed">"{g.retSebebi || 'Sebep belirtilmedi.'}"</p>
+                <div className="p-5 bg-white/[0.02] rounded-2xl border border-white/5 relative overflow-hidden">
+                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/40" />
+                   <p className="authority-title !text-[6px] opacity-20 uppercase tracking-[0.3em] mb-2">MAZERET GEREKÇESİ</p>
+                   <p className="text-[11px] font-light text-[var(--text-primary)]/80 leading-relaxed italic">"{g.retSebebi || 'Sebep belirtilmedi.'}"</p>
                 </div>
              </motion.div>
            ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

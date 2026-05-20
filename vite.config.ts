@@ -3,7 +3,14 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  server: {
+    port: 3000,
+    strictPort: true, // Port kaymasını engelle (Firebase Auth için kritik)
+    headers: {
+      'Cross-Origin-Opener-Policy': 'unsafe-none',
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -13,15 +20,16 @@ export default defineConfig({
       injectRegister: 'auto',
       devOptions: {
         enabled: true,
-        type: 'module'
+        type: 'module',
+        suppressWarnings: true
       },
       includeAssets: ['favicon.svg', 'pwa-192x192.svg', 'pwa-512x512.svg'],
       manifest: {
-        name: "Müezzin Takip Sistemi v2.0.0",
-        short_name: "Müezzin v2",
-        description: "Külliye Cami Müezzin Takip ve Görev Yönetim Sistemi v2.0.0",
-        theme_color: "#1e293b",
-        background_color: "#f8fafc",
+        name: "Cami Hizmetleri Koordinasyon Sistemi",
+        short_name: "Cami Hizmetleri",
+        description: "Cami ve Din Görevlileri Hizmet Planlama Sistemi",
+        theme_color: "#F5F5F7",
+        background_color: "#F5F5F7",
         display: "standalone",
         id: "/",
         orientation: "portrait",
@@ -31,19 +39,19 @@ export default defineConfig({
         categories: ["productivity", "utilities"],
         icons: [
           {
-            src: '/pwa-192x192.svg',
+            src: '/pwa-192x192.svg?v=3',
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any'
           },
           {
-            src: '/pwa-512x512.svg',
+            src: '/pwa-512x512.svg?v=3',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any'
           },
           {
-            src: '/pwa-512x512.svg',
+            src: '/pwa-512x512.svg?v=3',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'maskable'
@@ -51,7 +59,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globDirectory: 'dist',
+        globPatterns: ['**/*.{js,css,html,png,svg}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         importScripts: ['/firebase-messaging-sw.js'],
         runtimeCaching: [
           {
@@ -61,7 +71,7 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -75,7 +85,7 @@ export default defineConfig({
               cacheName: 'gstatic-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -89,6 +99,48 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: false
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          // 1. Core Framework (strictly isolated — must not share with others)
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/') ||
+            id.includes('/object-assign/')
+          ) {
+            return 'vendor-react';
+          }
+
+          // 2. Firebase (large, self-contained)
+          if (id.includes('firebase') || id.includes('@firebase')) {
+            return 'vendor-firebase';
+          }
+
+          // 3. Animation library
+          if (id.includes('motion') || id.includes('framer-motion')) {
+            return 'vendor-motion';
+          }
+
+          // 4. Routing
+          if (id.includes('react-router') || id.includes('@remix-run')) {
+            return 'vendor-router';
+          }
+
+          // 5. State management
+          if (id.includes('zustand')) {
+            return 'vendor-state';
+          }
+
+          // 6. Everything else (date-fns, lucide, etc.)
+          return 'vendor-utils';
+        }
+      }
+    }
   }
-});
+}));
+
