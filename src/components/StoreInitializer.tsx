@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { useVakitStore } from '../store/useVakitStore';
+import { useCircadianTheme } from '../hooks/useCircadianTheme';
 
 /**
  * Bootstraps all global Zustand stores once.
@@ -13,18 +14,20 @@ import { useVakitStore } from '../store/useVakitStore';
  * or when the user closes the tab.
  */
 export const StoreInitializer = () => {
-  const initialized = useRef(false);
+ const initialized = useRef(false);
 
-  useEffect(() => {
-    // Guard: only ever run once across the app lifetime
-    if (initialized.current) return;
-    initialized.current = true;
+ // Initialize global Google Neural Expressive circadian theme engine
+ useCircadianTheme();
 
-    useAuthStore.getState().init();
-    useSystemSettingsStore.getState().init();
-    useMuezzinStore.getState().init();
-    useVakitStore.getState().init();
-  }, []); // Empty deps: run once only
+ useEffect(() => {
+ // Guard: only ever run once across the app lifetime
+ if (initialized.current) return;
+ initialized.current = true;
 
-  return null;
+ useSystemSettingsStore.getState().init();
+ useMuezzinStore.getState().init();
+ useVakitStore.getState().init();
+ }, []); // Empty deps: run once only
+
+ return null;
 };

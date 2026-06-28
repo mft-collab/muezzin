@@ -1,28 +1,54 @@
 import { useState, useEffect } from 'react';
 import { getTurkeyNow } from '../lib/dateUtils';
 
+// Global Observer variables to share a single saniyelik interval across all subscribers
+let globalNow = getTurkeyNow();
+const listeners = new Set<(date: Date) => void>();
+let globalTimeout: NodeJS.Timeout | null = null;
+let globalInterval: NodeJS.Timeout | null = null;
+
+function updateTime() {
+  globalNow = getTurkeyNow();
+  listeners.forEach(listener => listener(globalNow));
+}
+
+function startGlobalClock() {
+  if (globalTimeout || globalInterval) return;
+
+  const msToNextSecond = 1000 - new Date().getMilliseconds();
+  globalTimeout = setTimeout(() => {
+    updateTime();
+    globalInterval = setInterval(updateTime, 1000);
+  }, msToNextSecond);
+}
+
+function stopGlobalClock() {
+  if (globalTimeout) {
+    clearTimeout(globalTimeout);
+    globalTimeout = null;
+  }
+  if (globalInterval) {
+    clearInterval(globalInterval);
+    globalInterval = null;
+  }
+}
+
 /**
  * useTime — Global synchronized clock hook.
- * Syncs with the system clock to provide a 1s tick exactly at the second mark.
+ * Shares a single global interval across all subscribers to conserve CPU & battery.
  */
 export function useTime() {
-  const [now, setNow] = useState(getTurkeyNow());
+  const [now, setNow] = useState(globalNow);
 
   useEffect(() => {
-    // Calculate ms until the next second
-    const msToNextSecond = 1000 - new Date().getMilliseconds();
-    
-    let interval: NodeJS.Timeout;
-    const timeout = setTimeout(() => {
-      setNow(getTurkeyNow());
-      interval = setInterval(() => {
-        setNow(getTurkeyNow());
-      }, 1000);
-    }, msToNextSecond);
+    listeners.add(setNow);
+    startGlobalClock();
 
     return () => {
-      clearTimeout(timeout);
-      if (interval) clearInterval(interval);
+      listeners.delete(setNow);
+      if (listeners.size === 0) {
+        stopGlobalClock();
+      }
     };
   }, []);
 
@@ -33,23 +59,23 @@ export function useTime() {
  * useMinuteTick — Synchronized minute watcher.
  */
 export function useMinuteTick() {
-  const [tick, setTick] = useState(0);
+ const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    const now = new Date();
-    const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    
-    let interval: NodeJS.Timeout;
-    const timeout = setTimeout(() => {
-      setTick(t => t + 1);
-      interval = setInterval(() => setTick(t => t + 1), 60000);
-    }, delay);
+ useEffect(() => {
+ const now = new Date();
+ const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+ 
+ let interval: NodeJS.Timeout;
+ const timeout = setTimeout(() => {
+ setTick(t => t + 1);
+ interval = setInterval(() => setTick(t => t + 1), 60000);
+ }, delay);
 
-    return () => {
-      clearTimeout(timeout);
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+ return () => {
+ clearTimeout(timeout);
+ if (interval) clearInterval(interval);
+ };
+ }, []);
 
-  return tick;
+ return tick;
 }

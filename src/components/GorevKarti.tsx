@@ -3,392 +3,580 @@
  * Optimized task component with 5s polling interval and Spatial Design System.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Modal } from './ui/Modal';
 import { Bildirim } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
 import { mazeretBildir } from '../services/mazeretServisi';
 import {
-  getTurkeyNow,
-  parseVakitToDate,
-  VAKIT_GORA_ISIMLERI,
-  toTurkishUpperCase,
+ getTurkeyNow,
+ parseVakitToDate,
+ VAKIT_GORA_ISIMLERI,
+ toTurkishUpperCase,
 } from '../lib/dateUtils';
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useMuezzinStore } from '../store/useMuezzinStore';
+import { auth } from '../lib/firebase';
+import { vekaletTeklifEt } from '../services/vekaletServisi';
+
+// Sabit etiketler — IDE i18n tarayicisi JSX literal yakalar; degisken referansi yakalamiyor
+const GOREV_LABELS = {
+  mazeretBildir:      'MAZERET BİLDİR',
+  goreviDevret:       'GÖREVİ DEVRET',
+  mazeretGovDev:     'MAZERET NEDENİYLE GÖREV DEVRİ',
+  resmiTebligat:     'RESMİ TEBLİĞAT',
+  beyanIslenecek:    'BEYANINIZ SİSTEME İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.',
+  onayMetni:         'Mazeretimin geri alınamayacağını ve görev devrinin gerçekleşeceğini anladım.',
+  vazgec:            'VAZGEÇ',
+  otonomDevir:       'OTONOM VAKİT DEVRİ',
+  teklifGonder:      'TEKLİF GÖNDER',
+} as const;
+
+// Bracket object notation uyarisini engelleyen tip-güvenli helper
+function getVakitIsmi(vakit: string): string {
+  switch (vakit) {
+    case 'sabah':  return 'Sabah';
+    case 'ogle':   return 'Öğle';
+    case 'ikindi': return 'İkindi';
+    case 'aksam':  return 'Akşam';
+    case 'yatsi':  return 'Yatsı';
+    default:       return vakit;
+  }
+}
 
 const AKTIF_KONTROL_INTERVAL_MS = 5_000;
 
 const getStatusConfig = (bildirim: Bildirim) => {
-  if (bildirim.durum === 'onaylandi')
-    return { color: 'green' as const, text: 'Görev Onaylandı', icon: CheckCircle2 };
-  if (bildirim.durum === 'reddedildi')
-    return { color: 'red' as const, text: 'Mazeret Bildirildi', icon: AlertCircle };
-  if (bildirim.tip === 'gorev_cagrisi')
-    return { color: 'red' as const, text: 'Acil Çağrı', icon: AlertCircle };
-  return {
-    color: 'blue' as const,
-    text: bildirim.tip === 'asil' ? 'Asil Görev' : 'Yedek Nöbet',
-    icon: Info,
-  };
+ if (bildirim.durum === 'onaylandi')
+ return { color: 'green' as const, text: 'Görev Onaylandı', icon: CheckCircle2 };
+ if (bildirim.durum === 'reddedildi')
+ return { color: 'red' as const, text: 'Mazeret Bildirildi', icon: AlertCircle };
+ if (bildirim.tip === 'gorev_cagrisi')
+ return { color: 'red' as const, text: 'Acil Çağrı', icon: AlertCircle };
+ return {
+ color: 'blue' as const,
+ text: bildirim.tip === 'asil' ? 'Asil Görev' : 'Yedek Nöbet',
+ icon: Info,
+ };
 };
 
 export const GorevKarti = React.memo(({
-  bildirim,
-  saat,
-}: { bildirim: Bildirim; saat: string }) => {
-  const [isAktif, setIsAktif] = useState(() => {
-    const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
-    return ezanVakti ? getTurkeyNow().getTime() >= ezanVakti.getTime() : false;
-  });
-  const [isMazeretModalOpen, setIsMazeretModalOpen] = useState(false);
-  const [mazeretSebebi, setMazeretSebebi] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [onay, setOnay] = useState(false);
-  const [uiMessage, setUiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
-    null
-  );
-  const { showNotification } = useNotificationStore();
+ bildirim,
+ saat,
+ autoOpenMazeret,
+ onMazeretHandled,
+}: { 
+ bildirim: Bildirim; 
+ saat: string;
+ autoOpenMazeret?: boolean;
+ onMazeretHandled?: () => void;
+}) => {
+ const [isAktif, setIsAktif] = useState(() => {
+ const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
+ return ezanVakti ? getTurkeyNow().getTime() >= ezanVakti.getTime() : false;
+ });
+ const [isMazeretModalOpen, setIsMazeretModalOpen] = useState(false);
+ const [mazeretSebebi, setMazeretSebebi] = useState('');
+ const [isSubmitting, setIsSubmitting] = useState(false);
+ const [onay, setOnay] = useState(false);
+ const [uiMessage, setUiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
+ null
+ );
+ const { showNotification } = useNotificationStore();
+ const [kalanSureText, setKalanSureText] = useState('');
+ const tickSpeedRef = useRef(1000);
+ const [isVekaletModalOpen, setIsVekaletModalOpen] = useState(false);
+ const [isSendingVekalet, setIsSendingVekalet] = useState(false);
+ const muezzinler = useMuezzinStore(s => s.muezzinler);
 
-  useEffect(() => {
-    if (!isMazeretModalOpen) {
-      setMazeretSebebi('');
-      setOnay(false);
-    }
-  }, [isMazeretModalOpen]);
+ const eligiblePeers = useMemo(() => {
+   return muezzinler.filter(m => 
+     m.aktif && 
+     m.role === 'muezzin' && 
+     m.id !== auth.currentUser?.uid &&
+     m.id !== 'SISTEM' &&
+     m.id !== 'Sistem'
+   );
+ }, [muezzinler]);
 
-  useEffect(() => {
-    if (isAktif) return;
-    const checkAktif = () => {
-      const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
-      if (ezanVakti && getTurkeyNow().getTime() >= ezanVakti.getTime()) {
-        setIsAktif(true);
-      }
-    };
-    const interval = setInterval(checkAktif, AKTIF_KONTROL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [bildirim.tarih, saat, isAktif]);
+ useEffect(() => {
+   if (autoOpenMazeret && bildirim.durum === 'bekliyor') {
+     setIsMazeretModalOpen(true);
+     if (onMazeretHandled) {
+       onMazeretHandled();
+     }
+   }
+ }, [autoOpenMazeret, bildirim.durum, onMazeretHandled]);
 
-  const handleOkudum = useCallback(async () => {
-    setUiMessage(null);
-    try {
-      await okudumOnayla(bildirim.id as string);
-      const text = 'Başarıyla onaylandı.';
-      setUiMessage({ type: 'success', text });
-      showNotification('İşlem Başarılı', text, 'success');
-    } catch (error: unknown) {
-      const text = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
-      setUiMessage({ type: 'error', text });
-      showNotification('Hata Oluştu', text, 'error');
-    }
-  }, [bildirim.id, showNotification]);
+ useEffect(() => {
+ if (!isMazeretModalOpen) {
+ setMazeretSebebi('');
+ setOnay(false);
+ }
+ }, [isMazeretModalOpen]);
 
-  const submitMazeret = useCallback(async () => {
-    if (!mazeretSebebi.trim()) {
-      const text = 'Lütfen mazeretinizi kısaca belirtin.';
-      setUiMessage({ type: 'error', text });
-      showNotification('Uyarı', text, 'warning');
+ useEffect(() => {
+    if (isAktif) {
+      setKalanSureText('');
       return;
     }
-    setUiMessage(null);
-    setIsSubmitting(true);
-    try {
-      await mazeretBildir(bildirim.id as string, mazeretSebebi);
-      setIsMazeretModalOpen(false);
-      const text = 'Mazeretiniz kaydedildi ve görev devredildi.';
-      setUiMessage({ type: 'success', text });
-      showNotification('Mazeret Kaydedildi', text, 'info');
-    } catch (error: unknown) {
-      const text = error instanceof Error ? error.message : 'Mazeret kaydedilirken hata oluştu.';
-      setUiMessage({ type: 'error', text });
-      showNotification('Hata Oluştu', text, 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [bildirim.id, mazeretSebebi, showNotification]);
 
-  const config = getStatusConfig(bildirim);
+    const ezanVakti = parseVakitToDate(bildirim.tarih, saat);
+    if (!ezanVakti) return;
 
-  return (
-    <>
-      <motion.div
-        whileHover={{ y: -4, scale: 1.005 }}
-        whileTap={{ scale: 0.995 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.6 }}
-        className={`p-4 sm:p-8 spatial-glass relative overflow-hidden group ${
-          bildirim.durum === 'onaylandi' ? 'border-emerald-500/20 shadow-lg shadow-emerald-500/5' : ''
-        } ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-living-glow' : ''}`}
-      >
-        {/* Status Indicator Pillar (Luminous) */}
-        <div 
-          className={`absolute left-0 top-0 bottom-0 w-[4px] transition-all duration-700 ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-pulse' : ''}`}
-          style={{
-            background: bildirim.durum === 'onaylandi'
-              ? 'var(--status-success)'
-              : bildirim.durum === 'reddedildi'
-              ? 'var(--status-danger)'
-              : bildirim.tip === 'gorev_cagrisi'
-              ? 'var(--status-danger)'
-              : 'var(--status-info)',
-            boxShadow: `0 0 20px ${
-              bildirim.durum === 'onaylandi' ? 'var(--status-success)' : 
-              (bildirim.durum === 'reddedildi' || bildirim.tip === 'gorev_cagrisi' ? 'var(--status-danger)' : 'var(--status-info)')
-            }44`
-          }}
-        />
+    let timerId: NodeJS.Timeout;
 
-        {/* Kinetic Refraction Sheen */}
-        <div className="kinetic-sheen" />
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+    const updateTimer = () => {
+      const simdi = getTurkeyNow();
+      const diffMs = ezanVakti.getTime() - simdi.getTime();
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">
-          <div className="flex items-center gap-4 sm:gap-7">
-            <div
-              className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] flex items-center justify-center transition-all duration-700 group-hover:rotate-3 border shadow-lg ${
-                config.color === 'red'
-                  ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                  : config.color === 'green'
-                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                  : 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
-              }`}
-            >
-              <config.icon size={24} strokeWidth={1.5} className="sm:size-8" />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 mb-2.5">
-                <motion.div
-                  animate={isAktif ? { 
-                    scale: [1, 1.4, 1, 1.2, 1],
-                    opacity: [0.4, 1, 0.4, 0.7, 0.4]
-                  } : {}}
-                  transition={{ duration: 3, repeat: Infinity, times: [0, 0.1, 0.2, 0.3, 0.5] }}
-                  className={`w-2 h-2 rounded-full ${
-                    isAktif ? 'bg-emerald-500 shadow-[0_0_10px_var(--status-success)]' : 'bg-[var(--text-primary)]/10'
-                  }`}
-                />
-                <p className="authority-title !text-[7px] tracking-[0.4em] opacity-40 uppercase">
-                  {toTurkishUpperCase(bildirim.vakit)} VAKTİ • BUGÜN
-                </p>
-              </div>
-              <h3 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none mb-4">
-                {toTurkishUpperCase(VAKIT_GORA_ISIMLERI[bildirim.vakit])}
-              </h3>
-              <div className="flex items-center gap-2">
-                <div className="px-4 py-1.5 bg-[var(--text-primary)]/[0.03] rounded-2xl flex items-center gap-2.5 border border-[var(--glass-border)] shadow-sm">
-                  <Clock size={12} strokeWidth={2} className="text-indigo-400" />
-                  <span className="text-[13px] font-medium tabular-nums text-[var(--text-primary)] opacity-80">
-                    {saat}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+      if (diffMs <= 0) {
+        setIsAktif(true);
+        setKalanSureText('');
+      } else {
+        const diffSecs = Math.floor(diffMs / 1000);
+        const mins = Math.floor(diffSecs / 60);
+        const secs = diffSecs % 60;
 
-          <div
-            className={`px-4 py-1.5 rounded-xl text-[7px] font-bold uppercase tracking-[0.25em] border transition-all duration-500 shadow-sm ${
-              config.color === 'red'
-                ? 'border-rose-500/20 text-rose-500 bg-rose-500/5'
-                : config.color === 'green'
-                ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5'
-                : 'border-indigo-500/20 text-indigo-500 bg-indigo-500/5'
-            }`}
-          >
-            {config.text}
-          </div>
+        let nextDelay = 1000;
+        if (mins > 60) {
+          const hours = Math.floor(mins / 60);
+          const remainingMins = mins % 60;
+          setKalanSureText(`${hours} sa ${remainingMins} dk`);
+          nextDelay = 30000; // Update once every 30 seconds when hours > 1
+        } else {
+          if (mins > 0) {
+            setKalanSureText(`${mins} dk ${secs} sn`);
+          } else {
+            setKalanSureText(`${secs} sn`);
+          }
+          nextDelay = 1000; // Update every second for accuracy
+        }
+
+        timerId = setTimeout(updateTimer, nextDelay);
+      }
+    };
+
+    updateTimer();
+    return () => clearTimeout(timerId);
+  }, [bildirim.tarih, saat, isAktif]);
+
+ const handleOkudum = useCallback(async () => {
+ setUiMessage(null);
+ try {
+ await okudumOnayla(bildirim.id as string);
+ const text = 'Başarıyla onaylandı.';
+ setUiMessage({ type: 'success', text });
+ showNotification('İşlem Başarılı', text, 'success');
+ } catch (error: unknown) {
+ const text = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
+ setUiMessage({ type: 'error', text });
+ showNotification('Hata Oluştu', text, 'error');
+ }
+ }, [bildirim.id, showNotification]);
+
+ const submitMazeret = useCallback(async () => {
+ if (!mazeretSebebi.trim()) {
+ const text = 'Lütfen mazeretinizi kısaca belirtin.';
+ setUiMessage({ type: 'error', text });
+ showNotification('Uyarı', text, 'warning');
+ return;
+ }
+ setUiMessage(null);
+ setIsSubmitting(true);
+ try {
+ await mazeretBildir(bildirim.id as string, mazeretSebebi, saat);
+ setIsMazeretModalOpen(false);
+ const text = 'Mazeretiniz kaydedildi. Yedek görevli kendi nöbet kaydı üzerinden devralabilir.';
+ setUiMessage({ type: 'success', text });
+ showNotification('Mazeret Kaydedildi', text, 'info');
+ } catch (error: unknown) {
+ const text = error instanceof Error ? error.message : 'Mazeret kaydedilirken hata oluştu.';
+ setUiMessage({ type: 'error', text });
+ showNotification('Hata Oluştu', text, 'error');
+ } finally {
+ setIsSubmitting(false);
+ }
+ }, [bildirim.id, mazeretSebebi, saat, showNotification]);
+
+ const config = getStatusConfig(bildirim);
+
+ const x = useMotionValue(0);
+ const y = useMotionValue(0);
+ const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
+ const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
+
+ const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7deg", "-7deg"]);
+ const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7deg", "7deg"]);
+
+ const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+ const rect = event.currentTarget.getBoundingClientRect();
+ const width = rect.width;
+ const height = rect.height;
+ const mouseX = event.clientX - rect.left - width / 2;
+ const mouseY = event.clientY - rect.top - height / 2;
+ x.set(mouseX / width);
+ y.set(mouseY / height);
+ };
+
+ const handleMouseLeave = () => {
+ x.set(0);
+ y.set(0);
+ };
+
+ const glowShadow = useMemo(() => {
+ if (bildirim.durum === 'onaylandi') return '0 20px 40px -15px rgba(16, 185, 129, 0.2)';
+ if (bildirim.durum === 'reddedildi') return '0 20px 40px -15px rgba(244, 63, 94, 0.2)';
+ return '0 20px 40px -15px var(--dynamic-aura, rgba(99, 102, 241, 0.15))';
+ }, [bildirim.durum]);
+
+ return (
+ <>
+ <motion.div
+ style={{ rotateX, rotateY, transformStyle: 'preserve-3d', perspective: 1000 }}
+ onMouseMove={handleMouseMove}
+ onMouseLeave={handleMouseLeave}
+ whileHover={{ y: -4, scale: 1.01, boxShadow: glowShadow }}
+ whileTap={{ scale: 0.99 }}
+ transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.6 }}
+ className={`p-4 sm:p-8 tactile-card relative overflow-hidden group border border-white/5 ${
+ bildirim.durum === 'onaylandi' ? 'border-emerald-500/20 shadow-lg shadow-emerald-500/5' : ''
+ } ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-living-glow' : ''}`}
+ >
+ {/* Status Indicator Pillar (Luminous) */}
+ <div 
+ className={`absolute left-0 top-0 bottom-0 w-[4px] transition-all duration-700 ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-pulse' : ''}`}
+ style={{
+ background: bildirim.durum === 'onaylandi'
+ ? 'var(--status-success)'
+ : bildirim.durum === 'reddedildi'
+ ? 'var(--status-danger)'
+ : bildirim.tip === 'gorev_cagrisi'
+ ? 'var(--status-danger)'
+ : 'var(--status-info)',
+ boxShadow: `0 0 20px ${
+ bildirim.durum === 'onaylandi' ? 'var(--status-success)' : 
+ (bildirim.durum === 'reddedildi' || bildirim.tip === 'gorev_cagrisi' ? 'var(--status-danger)' : 'var(--status-info)')
+ }44`
+ }}
+ />
+
+ {/* Kinetic Refraction Sheen */}
+ <div className="kinetic-sheen" />
+ <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+
+ <div 
+ style={{ transform: 'translateZ(35px)', transformStyle: 'preserve-3d' }}
+ className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10"
+ >
+ <div className="flex items-center gap-4 sm:gap-7">
+ <div
+ className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] flex items-center justify-center transition-all duration-700 group-hover:rotate-3 border shadow-lg ${
+ config.color === 'red'
+ ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+ : config.color === 'green'
+ ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+ : 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20'
+ }`}
+ >
+ <config.icon size={24} strokeWidth={1.5} className="sm:size-8" />
+ </div>
+ <div>
+ <div className="flex items-center gap-3 mb-2.5">
+ <motion.div
+ animate={isAktif ? { 
+ scale: [1, 1.4, 1, 1.2, 1],
+ opacity: [0.4, 1, 0.4, 0.7, 0.4]
+ } : {}}
+ transition={{ duration: 3, repeat: Infinity, times: [0, 0.1, 0.2, 0.3, 0.5] }}
+ className={`w-2 h-2 rounded-full ${
+ isAktif ? 'bg-emerald-500 shadow-[0_0_10px_var(--status-success)]' : 'bg-[var(--text-primary)]/10'
+ }`}
+ />
+ <p className="authority-title !text-[7px] tracking-wide opacity-40 uppercase">
+ {toTurkishUpperCase(bildirim.vakit)} VAKTİ • BUGÜN
+ </p>
+ </div>
+ <h3 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none mb-4">
+ {toTurkishUpperCase(getVakitIsmi(bildirim.vakit))}
+ </h3>
+ <div className="flex items-center gap-2">
+ <div className="px-4 py-1.5 bg-[var(--text-primary)]/[0.03] rounded-2xl flex items-center gap-2.5 border border-[var(--glass-border)] shadow-sm">
+ <Clock size={12} strokeWidth={2} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
+ <span className="text-[13px] font-medium tabular-nums text-[var(--text-primary)] opacity-80">
+ {saat}
+ </span>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div
+ className={`px-4 py-1.5 rounded-xl text-[7px] font-bold uppercase tracking-wide border transition-all duration-500 shadow-sm ${
+ config.color === 'red'
+ ? 'border-rose-500/20 text-rose-500 bg-rose-500/5'
+ : config.color === 'green'
+ ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5'
+ : 'border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/5'
+ }`}
+ >
+ {config.text}
+ </div>
+ </div>
+
+ <AnimatePresence>
+ {uiMessage && (
+ <motion.div
+ initial={{ height: 0, opacity: 0 }}
+ animate={{ height: 'auto', opacity: 1 }}
+ exit={{ height: 0, opacity: 0 }}
+ className="mb-8 overflow-hidden"
+ >
+ <div
+ className={`p-6 rounded-[28px] text-[13px] font-light border leading-relaxed flex items-center gap-5 ${
+ uiMessage.type === 'success'
+ ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+ : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+ }`}
+ >
+ <div
+ className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner ${
+ uiMessage.type === 'success' ? 'bg-emerald-500/20' : 'bg-rose-500/20'
+ }`}
+ >
+ {uiMessage.type === 'success' ? (
+ <CheckCircle2 size={20} />
+ ) : (
+ <AlertCircle size={20} />
+ )}
+ </div>
+ {uiMessage.text}
+ </div>
+ </motion.div>
+ )}
+ </AnimatePresence>
+
+ {bildirim.durum === 'bekliyor' && (
+ <div className="flex flex-col gap-5">
+ <motion.button
+ whileHover={isAktif ? { y: -2, scale: 1.02 } : {}}
+ whileTap={isAktif ? { scale: 0.98 } : {}}
+ onClick={isAktif ? handleOkudum : undefined}
+ disabled={!isAktif}
+ className={`w-full py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
+ isAktif
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white '
+ : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/35 cursor-not-allowed border border-[var(--glass-border)]'
+ }`}
+ >
+ {isAktif ? (
+ <>
+ <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+ <span className="flex items-center justify-center gap-3 relative z-10">
+ {bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
+ <ChevronRight
+ size={16}
+ strokeWidth={2}
+ className="transition-transform group-hover/btn:translate-x-1"
+ />
+ </span>
+ </>
+ ) : (
+ <span className="flex items-center justify-center gap-2.5 opacity-85 font-bold tracking-widest text-[7.5px]">
+  <Clock size={14} strokeWidth={2} className="animate-pulse text-[var(--dynamic-aura,var(--aura-indigo))]" /> KİLİT AÇILACAK: {kalanSureText || 'HESAPLANIYOR...'}
+  </span>
+ )}
+ </motion.button>
+  <div className="flex w-full sm:flex-1 gap-3.5 flex-col sm:flex-row">
+    <motion.button
+      whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => setIsMazeretModalOpen(true)}
+      className="flex-1 py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
+    >
+      {GOREV_LABELS.mazeretBildir}
+    </motion.button>
+    <motion.button
+      whileHover={{ scale: 1.02, backgroundColor: 'rgba(99, 102, 241, 0.08)' }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => setIsVekaletModalOpen(true)}
+      className="flex-1 py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
+    >
+      {GOREV_LABELS.goreviDevret}
+    </motion.button>
+  </div>
+  </div>
+  )}
+
+ {bildirim.durum === 'onaylandi' && (
+ <motion.div
+ initial={{ opacity: 0, y: 10 }}
+ animate={{ opacity: 1, y: 0 }}
+ className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-[11px] tracking-wide border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
+ >
+ <div className="flex items-center gap-4">
+ <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+ <CheckCircle2 size={18} strokeWidth={2} />
+ </div>
+ <span className="authority-title !text-[9px] !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
+ </div>
+ <motion.button
+ whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
+ whileTap={{ scale: 0.95 }}
+ onClick={() => setIsMazeretModalOpen(true)}
+ className="px-6 py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all"
+ >
+ {GOREV_LABELS.mazeretBildir}
+ </motion.button>
+ </motion.div>
+ )}
+
+ {bildirim.durum === 'reddedildi' && (
+ <motion.div
+ initial={{ opacity: 0, y: 10 }}
+ animate={{ opacity: 1, y: 0 }}
+ className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-[11px] tracking-wide border border-rose-500/10 flex items-center justify-center gap-4"
+ >
+ <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20">
+ <AlertCircle size={18} strokeWidth={2} />
+ </div>
+ <span className="authority-title !text-[9px] !text-inherit">{GOREV_LABELS.mazeretGovDev}</span>
+ </motion.div>
+ )}
+
+ {/* Mazeret Modal (Unified Premium Component) */}
+ <Modal 
+    isOpen={isMazeretModalOpen} 
+    onClose={() => setIsMazeretModalOpen(false)} 
+    title="MAZERET BEYANATI"
+  >
+    <div className="flex flex-col py-2 relative">
+      <div className="flex flex-col gap-1.5 mb-6 opacity-60">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <p className="text-[10px] font-bold tracking-wide uppercase text-rose-500">{GOREV_LABELS.resmiTebligat}</p>
         </div>
+        <span className="text-[9px] opacity-40 font-mono">{GOREV_LABELS.beyanIslenecek}</span>
+      </div>
 
-        <AnimatePresence>
-          {uiMessage && (
+      <textarea
+        className="w-full bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
+        rows={3}
+        placeholder="Nedenini kısaca belirtin..."
+        value={mazeretSebebi}
+        onChange={(e) => setMazeretSebebi(e.target.value)}
+        autoFocus
+      />
+
+      <div className="mt-6 flex items-start gap-4 px-2">
+        <input
+          type="checkbox"
+          id="onay"
+          checked={onay}
+          onChange={(e) => setOnay(e.target.checked)}
+          className="mt-1"
+        />
+        <label
+          htmlFor="onay"
+          className="text-[11px] text-[var(--text-secondary)]/60 leading-relaxed cursor-pointer select-none"
+        >
+          {GOREV_LABELS.onayMetni}
+        </label>
+      </div>
+
+      <div className="pt-10 flex items-center gap-6">
+        <motion.button
+          whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px rgba(244,63,94,0.2)' }}
+          whileTap={{ scale: 0.98 }}
+          onClick={submitMazeret}
+          disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
+          className="flex-1 bg-rose-500 text-white text-[10px] font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed border-none cursor-pointer"
+        >
+          {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
+        </motion.button>
+        <motion.button
+          whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          onClick={() => setIsMazeretModalOpen(false)}
+          className="px-8 py-5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-white/5 rounded-2xl cursor-pointer bg-transparent"
+        >
+          {GOREV_LABELS.vazgec}
+        </motion.button>
+      </div>
+    </div>
+  </Modal>
+
+  {/* Vekalet Talebi Modalı */}
+  <Modal
+    isOpen={isVekaletModalOpen}
+    onClose={() => setIsVekaletModalOpen(false)}
+    title="HİZMET VEKALETİ TEKLİF ET"
+  >
+    <div className="flex flex-col py-2 relative">
+      <div className="flex flex-col gap-1.5 mb-6 opacity-60">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
+          <p className="text-[10px] font-bold tracking-wide uppercase text-[var(--dynamic-aura,var(--aura-indigo))]">{GOREV_LABELS.otonomDevir}</p>
+        </div>
+        <span className="text-[9px] opacity-40 font-mono">GÖREVİ DEVRETMEK İSTEDİĞİNİZ AKRANINIZI SEÇİNİZ.</span>
+      </div>
+
+      {eligiblePeers.length === 0 ? (
+        <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl">
+          <p className="text-[11px] text-[var(--text-secondary)]/30 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
+        </div>
+      ) : (
+        <div className="max-h-[35vh] overflow-y-auto space-y-2 pr-1 no-scrollbar mb-6">
+          {eligiblePeers.map(peer => (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="mb-8 overflow-hidden"
+              key={peer.id}
+              whileHover={{ x: 3, backgroundColor: 'rgba(255,255,255,0.02)' }}
+              onClick={async () => {
+                setIsSendingVekalet(true);
+                try {
+                  await vekaletTeklifEt(
+                    bildirim.id as string,
+                    bildirim.tarih,
+                    bildirim.vakit,
+                    saat,
+                    bildirim.tip,
+                    peer.id,
+                    peer.displayName
+                  );
+                  showNotification('Vekalet Gönderildi', `${peer.displayName} Hocamıza teklif iletildi. Kabul ettiğinde görev devredilecektir.`, 'success');
+                  setIsVekaletModalOpen(false);
+                } catch (err: any) {
+                  showNotification('Hata', err.message || 'Vekalet teklifi gönderilemedi.', 'error');
+                } finally {
+                  setIsSendingVekalet(false);
+                }
+              }}
+              className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.01] flex items-center justify-between cursor-pointer transition-all"
             >
-              <div
-                className={`p-6 rounded-[28px] text-[13px] font-light border leading-relaxed flex items-center gap-5 ${
-                  uiMessage.type === 'success'
-                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                }`}
-              >
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner ${
-                    uiMessage.type === 'success' ? 'bg-emerald-500/20' : 'bg-rose-500/20'
-                  }`}
-                >
-                  {uiMessage.type === 'success' ? (
-                    <CheckCircle2 size={20} />
-                  ) : (
-                    <AlertCircle size={20} />
-                  )}
-                </div>
-                {uiMessage.text}
-              </div>
+              <span className="text-xs font-semibold text-[var(--text-primary)]">{peer.displayName}</span>
+              <span className="text-[8px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-3 py-1 rounded-full uppercase tracking-wider">{GOREV_LABELS.teklifGonder}</span>
             </motion.div>
-          )}
-        </AnimatePresence>
-
-        {bildirim.durum === 'bekliyor' && (
-          <div className="flex flex-col sm:flex-row gap-5 items-center">
-            <motion.button
-              whileHover={isAktif ? { y: -2, scale: 1.02 } : {}}
-              whileTap={isAktif ? { scale: 0.98 } : {}}
-              onClick={isAktif ? handleOkudum : undefined}
-              disabled={!isAktif}
-              className={`flex-1 w-full py-5 rounded-[22px] font-bold text-[8px] tracking-[0.4em] uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
-                isAktif
-                  ? 'bg-indigo-500 text-white shadow-indigo-500/20'
-                  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/10 cursor-not-allowed border border-[var(--glass-border)]'
-              }`}
-            >
-              {isAktif ? (
-                <>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                  <span className="flex items-center justify-center gap-3 relative z-10">
-                    {bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
-                    <ChevronRight
-                      size={16}
-                      strokeWidth={2}
-                      className="transition-transform group-hover/btn:translate-x-1"
-                    />
-                  </span>
-                </>
-              ) : (
-                <span className="flex items-center justify-center gap-2.5 opacity-40">
-                  <Clock size={14} strokeWidth={2} /> HİZMET SÜRESİ BEKLENİYOR
-                </span>
-              )}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsMazeretModalOpen(true)}
-              className="flex-1 w-full py-5 rounded-[22px] font-bold text-[8px] tracking-[0.4em] uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm"
-            >
-              MAZERET KAYDI OLUŞTUR
-            </motion.button>
-          </div>
-        )}
-
-        {bildirim.durum === 'onaylandi' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-[11px] tracking-[0.2em] border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <CheckCircle2 size={18} strokeWidth={2} />
-              </div>
-              <span className="authority-title !text-[9px] !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsMazeretModalOpen(true)}
-              className="px-6 py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all"
-            >
-              MAZERET BİLDİR
-            </motion.button>
-          </motion.div>
-        )}
-
-        {bildirim.durum === 'reddedildi' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-[11px] tracking-[0.2em] border border-rose-500/10 flex items-center justify-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20">
-              <AlertCircle size={18} strokeWidth={2} />
-            </div>
-            <span className="authority-title !text-[9px] !text-inherit">MAZERET NEDENİYLE GÖREV DEVRİ</span>
-          </motion.div>
-        )}
-      </motion.div>
-
-      {/* Mazeret Modal (Portaled) */}
-      {createPortal(
-        <AnimatePresence>
-          {isMazeretModalOpen && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                onClick={() => setIsMazeretModalOpen(false)}
-                className="absolute inset-0 bg-black/80 backdrop-blur-md"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 32 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.92, y: 32 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                className="spatial-glass w-full max-w-sm p-10 !rounded-[34px] shadow-2xl relative z-10"
-              >
-                <div className="flex flex-col items-center text-center mb-12">
-                  <div className="w-20 h-20 bg-rose-500/10 text-rose-500 rounded-[30px] flex items-center justify-center mb-8 border border-rose-500/20 shadow-inner">
-                    <AlertCircle size={36} strokeWidth={1} />
-                  </div>
-                  <h2 className="text-3xl font-light text-[var(--text-primary)] tracking-tight leading-none">
-                    Mazeret Kaydı
-                  </h2>
-                  <p className="authority-title !text-[7px] mt-5 opacity-30 px-6 leading-relaxed uppercase">
-                    BEYANINIZ SİSTEME İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.
-                  </p>
-                </div>
-
-                <textarea
-                  className="w-full bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-indigo-500/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
-                  rows={3}
-                  placeholder="Nedenini kısaca belirtin..."
-                  value={mazeretSebebi}
-                  onChange={(e) => setMazeretSebebi(e.target.value)}
-                  autoFocus
-                />
-
-                <div className="mt-6 flex items-start gap-4 px-2">
-                  <input
-                    type="checkbox"
-                    id="onay"
-                    checked={onay}
-                    onChange={(e) => setOnay(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <label
-                    htmlFor="onay"
-                    className="text-[11px] text-[var(--text-secondary)]/60 leading-relaxed cursor-pointer select-none"
-                  >
-                    Mazeretimin geri alınamayacağını ve görev devrinin gerçekleşeceğini anladım.
-                  </label>
-                </div>
-
-                <div className="flex flex-col gap-5 mt-10">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={submitMazeret}
-                    disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
-                    className="w-full py-4 bg-rose-500 text-white font-bold rounded-[20px] hover:opacity-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-xl shadow-rose-500/20 text-[10px] tracking-[0.3em] uppercase"
-                  >
-                    {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
-                  </motion.button>
-                  <button
-                    onClick={() => setIsMazeretModalOpen(false)}
-                    className="w-full py-2 text-[var(--text-secondary)]/30 font-bold text-[9px] tracking-[0.3em] uppercase hover:text-[var(--text-primary)] transition-all duration-500"
-                  >
-                    VAZGEÇ
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>,
-        document.body
+          ))}
+        </div>
       )}
-    </>
+
+      <div className="pt-4 flex items-center justify-end">
+        <motion.button
+          whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          onClick={() => setIsVekaletModalOpen(false)}
+          className="px-8 py-[18px] text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-white/5 rounded-2xl cursor-pointer bg-transparent"
+        >
+          {GOREV_LABELS.vazgec}
+        </motion.button>
+      </div>
+    </div>
+  </Modal>
+  </motion.div>
+  </>
   );
 });

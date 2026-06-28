@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => ({
       'Cross-Origin-Opener-Policy': 'unsafe-none',
     },
   },
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -25,8 +28,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ['favicon.svg', 'pwa-192x192.svg', 'pwa-512x512.svg'],
       manifest: {
-        name: "Cami Hizmetleri Koordinasyon Sistemi",
-        short_name: "Cami Hizmetleri",
+        name: "Müezzin - Ezan Hizmetleri Düzenleme Dizgesi",
+        short_name: "Müezzin Ezan",
         description: "Cami ve Din Görevlileri Hizmet Planlama Sistemi",
         theme_color: "#F5F5F7",
         background_color: "#F5F5F7",
@@ -116,31 +119,35 @@ export default defineConfig(({ mode }) => ({
             return 'vendor-react';
           }
 
-          // 2. Firebase (large, self-contained)
+          // 2. Firebase Messaging is lazy-loaded after app boot.
+          if (id.includes('firebase/messaging') || id.includes('@firebase/messaging')) {
+            return 'vendor-firebase-messaging';
+          }
+
+          // 3. Firebase core/Auth/Firestore
           if (id.includes('firebase') || id.includes('@firebase')) {
             return 'vendor-firebase';
           }
 
-          // 3. Animation library
+          // 4. Animation library
           if (id.includes('motion') || id.includes('framer-motion')) {
             return 'vendor-motion';
           }
 
-          // 4. Routing
+          // 5. Routing
           if (id.includes('react-router') || id.includes('@remix-run')) {
             return 'vendor-router';
           }
 
-          // 5. State management
+          // 6. State management
           if (id.includes('zustand')) {
             return 'vendor-state';
           }
 
-          // 6. Everything else (date-fns, lucide, etc.)
+          // 7. Everything else (date-fns, lucide, etc.)
           return 'vendor-utils';
         }
       }
     }
   }
 }));
-

@@ -4,33 +4,44 @@ import { db } from '../lib/firebase';
 import { HaftaPlan } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
+import { SizeLimitedCache } from '../lib/cache';
+
+// Sayfa geçişlerinde skeleton 'zıplamasını' engellemek için Global Memory Cache
+const globalHaftaPlanCache = new SizeLimitedCache<string, HaftaPlan & { id: string }>(10);
+
 export function useHaftaPlan(haftaId: string) {
-  const [plan, setPlan] = useState<(HaftaPlan & { id: string }) | null>(null);
-  const [loading, setLoading] = useState(true);
+ const [plan, setPlan] = useState<(HaftaPlan & { id: string }) | null>(() => globalHaftaPlanCache.get(haftaId) || null);
+ const [loading, setLoading] = useState(!globalHaftaPlanCache.has(haftaId));
 
-  useEffect(() => {
-    if (!haftaId) {
-      setPlan(null);
-      setLoading(false);
-      return;
-    }
+ useEffect(() => {
+ if (!haftaId) {
+ setPlan(null);
+ setLoading(false);
+ return;
+ }
 
-    setLoading(true);
+ // Önbellekte yoksa yükleme ekranı göster
+ if (!globalHaftaPlanCache.has(haftaId)) {
+ setLoading(true);
+ }
 
-    const unsubPlan = onSnapshot(doc(db, 'haftaPlanlari', haftaId), (snapshot) => {
-      if (snapshot.exists()) {
-        setPlan({ id: snapshot.id, ...snapshot.data() } as (HaftaPlan & { id: string }));
-      } else {
-        setPlan(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `haftaPlanlari/${haftaId}`);
-      setLoading(false);
-    });
-    
-    return () => unsubPlan();
-  }, [haftaId]);
+ const unsubPlan = onSnapshot(doc(db, 'haftaPlanlari', haftaId), (snapshot) => {
+ if (snapshot.exists()) {
+ const data = { id: snapshot.id, ...snapshot.data() } as (HaftaPlan & { id: string });
+ globalHaftaPlanCache.set(haftaId, data);
+ setPlan(data);
+ } else {
+ globalHaftaPlanCache.delete(haftaId);
+ setPlan(null);
+ }
+ setLoading(false);
+ }, (error) => {
+ handleFirestoreError(error, OperationType.GET, `haftaPlanlari/${haftaId}`);
+ setLoading(false);
+ });
+ 
+ return () => unsubPlan();
+ }, [haftaId]);
 
-  return { plan, loading };
+ return { plan, loading };
 }

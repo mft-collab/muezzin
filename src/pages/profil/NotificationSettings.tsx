@@ -1,0 +1,238 @@
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { BellRing } from 'lucide-react';
+import { updateDoc, doc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { User as FirebaseUser } from 'firebase/auth';
+import { UserData } from '../Profil';
+import { registerFcmToken } from '../../hooks/useFcmToken';
+import { useThemeStore } from '../../store/useThemeStore';
+
+interface NotificationSettingsProps {
+  userData: UserData | null;
+  user: FirebaseUser | null;
+}
+
+export default function NotificationSettings({ userData, user }: NotificationSettingsProps) {
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [uiMessage, setUiMessage] = useState<string | null>(null);
+  const { theme, toggleTheme } = useThemeStore();
+
+  const handleRequestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setUiMessage('Bu tarayıcı anlık bildirim sistemini desteklemiyor.');
+      return;
+    }
+    
+    if (Notification.permission === 'denied') {
+      setUiMessage('Bildirim izinleri tarayıcınızda engellenmiş. Adres çubuğunun solundaki kilit simgesinden manuel izin verin.');
+      return;
+    }
+
+    setIsRequesting(true);
+    try {
+      await registerFcmToken(true);
+      setUiMessage(null);
+    } catch (err) {
+      console.error('Bildirim izni istenirken hata:', err);
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  const handleTestNotification = () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setUiMessage('Bu tarayıcı bildirimleri desteklemiyor.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      new Notification('Ezan Vakti Takip Sistemi', {
+        body: 'Bu bir sistem tanı test bildirimidir. Bağlantınız başarıyla sağlandı!',
+        icon: '/favicon.ico'
+      });
+      setUiMessage(null);
+    } else {
+      setUiMessage('Lütfen önce bildirim iznini verin.');
+    }
+  };
+
+  const handleToggleSetting = async (key: 'nobetHatirlatici' | 'duyurular' | 'mazeretDurumu') => {
+    if (!user || !userData) return;
+    
+    const currentSettings = userData.notificationSettings || {
+      nobetHatirlatici: true,
+      duyurular: true,
+      mazeretDurumu: true
+    };
+    
+    const newSettings = {
+      ...currentSettings,
+      [key]: !currentSettings[key]
+    };
+    
+    try {
+      await updateDoc(doc(db, 'muezzins', user.uid), {
+        notificationSettings: newSettings
+      });
+    } catch (err) {
+      console.error('Bildirim tercihleri güncellenemedi:', err);
+    }
+  };
+
+  return (
+    <motion.div 
+      whileHover={{ y: -4 }}
+      className="p-8 spatial-glass rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
+    >
+      <div className="flex justify-between items-center mb-8 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
+          <h4 className="premium-label !text-[9px] !opacity-70 tracking-wide">BİLDİRİM TERCİHLERİ VE TANI DİREKTİFİ</h4>
+        </div>
+        <span className="text-[8px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+          {userData?.fcmToken ? 'BAĞLANTI AKTİF' : 'İZİN GEREKLİ'}
+        </span>
+      </div>
+
+      {uiMessage && (
+        <div className="mb-4 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium leading-relaxed flex justify-between items-start gap-3">
+          <span>{uiMessage}</span>
+          <button onClick={() => setUiMessage(null)} className="shrink-0 opacity-50 hover:opacity-100 text-xs">✕</button>
+        </div>
+      )}
+
+      <div className="mb-6 p-4 bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-[20px] flex items-start gap-4 flex-col sm:flex-row">
+        <div className={`p-2.5 rounded-xl flex items-center justify-center shrink-0 ${
+          userData?.fcmToken 
+            ? 'bg-[var(--status-success)]/10 text-[var(--status-success)]' 
+            : typeof window !== 'undefined' && !('Notification' in window)
+            ? 'bg-[var(--status-danger)]/10 text-[var(--status-danger)]'
+            : typeof window !== 'undefined' && Notification.permission === 'denied'
+            ? 'bg-[var(--status-danger)]/10 text-[var(--status-danger)]'
+            : 'bg-[var(--status-warning)]/10 text-[var(--status-warning)]'
+        }`}>
+          <BellRing size={16} />
+        </div>
+        <div className="space-y-1">
+          <h5 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]">SİSTEM DURUM TANI</h5>
+          <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light">
+            {userData?.fcmToken 
+              ? 'Anlık bildirim alıcınız başarıyla Google sunucularına bağlandı ve bu cihaz yetkilendirildi.' 
+              : typeof window !== 'undefined' && !('Notification' in window)
+              ? 'Bu cihazın tarayıcısı Web-Push anlık bildirim sistemini desteklemiyor.'
+              : typeof window !== 'undefined' && Notification.permission === 'denied'
+              ? 'Tarayıcı bildirim izinleri kalıcı olarak engellenmiş. Lütfen adres çubuğundaki kilit simgesinden izin verin.'
+              : 'İzin verilmemiş veya cihaz kaydı yok. Bildirimleri etkinleştirerek görev ve duyuru uyarılarını alabilirsiniz.'}
+          </p>
+          
+          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && (
+            <motion.button
+              whileHover={{ y: -1, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleTestNotification}
+              className="mt-3 px-4 py-2 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl text-[8.5px] font-bold uppercase tracking-wider hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <BellRing size={10} />
+              TANI TEST BİLDİRİMİ GÖNDER
+            </motion.button>
+          )}
+        </div>
+      </div>
+
+      {!userData?.fcmToken && typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'denied' && (
+        <motion.button
+          whileHover={{ y: -2, scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleRequestNotificationPermission}
+          disabled={isRequesting}
+          className={`w-full mb-6 py-4 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-white text-[9px] font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 ${isRequesting ? 'opacity-70 cursor-wait' : ''}`}
+        >
+          {isRequesting ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <BellRing size={15} strokeWidth={2} />
+          )}
+          {isRequesting ? 'İSTEK GÖNDERİLİYOR...' : 'BİLDİRİMLERİ ETKİNLEŞTİR'}
+        </motion.button>
+      )}
+
+      <div className="space-y-5">
+        {[
+          {
+            key: 'nobetHatirlatici',
+            title: 'Nöbet & Vakit Hatırlatıcıları',
+            desc: 'Adınıza atanan nöbet saatleri yaklaşırken anlık uyarı alırsınız.'
+          },
+          {
+            key: 'duyurular',
+            title: 'Resmi Tebliğler & Duyurular',
+            desc: 'Yönetim tarafından yayınlanan resmi tebliğlerden anında haberdar olursunuz.'
+          },
+          {
+            key: 'mazeretDurumu',
+            title: 'Mazeret & İzin Talebi Güncellemeleri',
+            desc: 'Gönderdiğiniz mazeret veya izin talebi onaylandığında anlık bildirim alırsınız.'
+          }
+        ].map((setting) => {
+          const currentSettings = userData?.notificationSettings || {
+            nobetHatirlatici: true,
+            duyurular: true,
+            mazeretDurumu: true
+          };
+          const isChecked = currentSettings[setting.key as 'nobetHatirlatici' | 'duyurular' | 'mazeretDurumu'] !== false;
+
+          return (
+            <div key={setting.key} className="flex items-center justify-between gap-6 py-2">
+              <div className="space-y-1">
+                <h5 className="text-xs font-semibold text-[var(--text-primary)]">{setting.title}</h5>
+                <p className="text-[9px] text-[var(--text-secondary)]/40 leading-normal max-w-[280px] font-light">{setting.desc}</p>
+              </div>
+              <button 
+                onClick={() => handleToggleSetting(setting.key as any)}
+                className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
+                  isChecked ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
+                }`}
+              >
+                <motion.div 
+                  layout
+                  animate={{ 
+                    x: isChecked ? 20 : 0,
+                    backgroundColor: isChecked ? 'var(--status-info)' : 'var(--text-secondary)'
+                  }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className="w-4 h-4 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                />
+              </button>
+            </div>
+          );
+        })}
+
+        {/* Tema Seçimi Switch */}
+        <div className="flex items-center justify-between gap-6 py-2 border-t border-[var(--glass-border)] pt-5 mt-5">
+          <div className="space-y-1">
+            <h5 className="text-xs font-semibold text-[var(--text-primary)]">Koyu Tema (Karanlık Mod)</h5>
+            <p className="text-[9px] text-[var(--text-secondary)]/40 leading-normal max-w-[280px] font-light">
+              Uygulamanın görsel temasını el ile ayarlar. Açık olduğunda Koyu (Dark) modu etkinleştirir.
+            </p>
+          </div>
+          <button 
+            onClick={(e) => toggleTheme(e)}
+            className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
+              theme === 'dark' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
+            }`}
+          >
+            <motion.div 
+              layout
+              animate={{ 
+                x: theme === 'dark' ? 20 : 0,
+                backgroundColor: theme === 'dark' ? 'var(--status-info)' : 'var(--text-secondary)'
+              }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className="w-4 h-4 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+            />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

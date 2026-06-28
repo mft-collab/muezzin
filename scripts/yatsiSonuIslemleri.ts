@@ -32,6 +32,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+function formatDateLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 async function main() {
   console.log("Günlük yatsı sonrası işlemleri başladı...");
   
@@ -44,7 +51,7 @@ async function main() {
     console.log("Debug bilgisi alınamadı.");
   }
 
-  const bugün = new Date().toISOString().split('T')[0];
+  const bugün = formatDateLocal(new Date());
 
   // ADIM 1: "Okudum" kontrolü
   let bildirimler;
@@ -87,7 +94,7 @@ async function main() {
     muezzinlerDocs.docs.forEach(mDoc => {
       if (asilKredi[mDoc.id]) {
         batch.update(mDoc.ref, { 
-          aylikVakitSayisi: mDoc.data().aylikVakitSayisi + asilKredi[mDoc.id] 
+          aylikVakitSayisi: (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id] 
         });
       }
     });
@@ -111,7 +118,7 @@ async function main() {
   try {
     const yarınTarih = new Date();
     yarınTarih.setDate(yarınTarih.getDate() + 1);
-    const yarınStr = yarınTarih.toISOString().split('T')[0];
+    const yarınStr = formatDateLocal(yarınTarih);
 
     console.log(`Yarınki (${yarınStr}) görevliler taranıyor...`);
 
@@ -154,21 +161,33 @@ async function main() {
       const messages = [];
       for (const uid of uidList) {
         const userProfile = muezzinMap[uid];
-        const token = userProfile?.fcmToken;
-        
-        if (token && token.trim().length > 0 && userProfile?.aktif === true) {
+        const remindersEnabled = userProfile?.notificationSettings?.nobetHatirlatici !== false;
+
+        if (userProfile?.aktif === true && remindersEnabled) {
+          const tokens: string[] = [];
+          if (userProfile.fcmTokens && typeof userProfile.fcmTokens === 'object') {
+            Object.keys(userProfile.fcmTokens).forEach(t => {
+              if (t.trim().length > 0) tokens.push(t);
+            });
+          }
+          if (tokens.length === 0 && userProfile.fcmToken && userProfile.fcmToken.trim().length > 0) {
+            tokens.push(userProfile.fcmToken);
+          }
+
           const dutyListStr = userDuties[uid].join(', ');
-          messages.push({
-            token,
-            notification: {
-              title: 'Yarınki Ezan Göreviniz var 🕌',
-              body: `Yarın ${dutyListStr} göreviniz bulunmaktadır. Detaylar ve teyit için uygulamayı açın.`
-            },
-            data: {
-              type: 'daily_duty_reminder',
-              tarih: yarınStr
-            }
-          });
+          for (const token of tokens) {
+            messages.push({
+              token,
+              notification: {
+                title: 'Yarınki Ezan Göreviniz var 🕌',
+                body: `Yarın ${dutyListStr} göreviniz bulunmaktadır. Detaylar ve teyit için uygulamayı açın.`
+              },
+              data: {
+                type: 'daily_duty_reminder',
+                tarih: yarınStr
+              }
+            });
+          }
         }
       }
 

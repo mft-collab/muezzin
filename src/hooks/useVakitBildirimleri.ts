@@ -4,33 +4,45 @@ import { db } from '../lib/firebase';
 import { Bildirim, Vakit } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
+import { SizeLimitedCache } from '../lib/cache';
+
+// Sayfa geçişlerinde skeleton zıplamasını engellemek için Global Memory Cache
+const globalVakitBildirimleriCache = new SizeLimitedCache<string, Bildirim[]>(50);
+
 export function useVakitBildirimleri(tarih: string | undefined, vakit: Vakit | undefined) {
-  const [bildirimler, setBildirimler] = useState<Bildirim[]>([]);
-  const [loading, setLoading] = useState(true);
+ const cacheKey = tarih && vakit ? `${tarih}_${vakit}` : '';
+ const [bildirimler, setBildirimler] = useState<Bildirim[]>(() => globalVakitBildirimleriCache.get(cacheKey) || []);
+ const [loading, setLoading] = useState(cacheKey ? !globalVakitBildirimleriCache.has(cacheKey) : false);
 
-  useEffect(() => {
-    if (!tarih || !vakit) {
-      setBildirimler([]);
-      setLoading(false);
-      return;
-    }
+ useEffect(() => {
+ if (!tarih || !vakit || !cacheKey) {
+ setBildirimler([]);
+ setLoading(false);
+ return;
+ }
 
-    const q = query(
-      collection(db, 'bildirimler'),
-      where('tarih', '==', tarih),
-      where('vakit', '==', vakit)
-    );
+ if (!globalVakitBildirimleriCache.has(cacheKey)) {
+ setLoading(true);
+ }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setBildirimler(snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Bildirim, 'id'>) } as Bildirim)));
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'bildirimler');
-      setLoading(false);
-    });
+ const q = query(
+ collection(db, 'bildirimler'),
+ where('tarih', '==', tarih),
+ where('vakit', '==', vakit)
+ );
 
-    return () => unsubscribe();
-  }, [tarih, vakit]);
+ const unsubscribe = onSnapshot(q, (snapshot) => {
+ const data = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Bildirim, 'id'>) } as Bildirim));
+ globalVakitBildirimleriCache.set(cacheKey, data);
+ setBildirimler(data);
+ setLoading(false);
+ }, (error) => {
+ handleFirestoreError(error, OperationType.LIST, 'bildirimler');
+ setLoading(false);
+ });
 
-  return { bildirimler, loading };
+ return () => unsubscribe();
+ }, [tarih, vakit, cacheKey]);
+
+ return { bildirimler, loading };
 }

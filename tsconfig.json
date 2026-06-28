@@ -24,6 +24,9 @@
     "noEmit": true
   },
   "exclude": [
+    "dist",
+    "dev-dist",
+    "node_modules",
     "scripts",
     "test-fs.js"
   ]

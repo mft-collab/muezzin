@@ -22,9 +22,52 @@
       "collectionGroup": "bildirimler",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "vakit", "order": "ASCENDING" },
+        { "fieldPath": "tip", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "haftaId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "pendingAck", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "haftaId", "order": "ASCENDING" },
         { "fieldPath": "tip", "order": "ASCENDING" },
         { "fieldPath": "durum", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tip", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "haftaId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "vakit", "order": "ASCENDING" },
+        { "fieldPath": "tip", "order": "ASCENDING" }
       ]
     },
     {
@@ -33,6 +76,40 @@
       "fields": [
         { "fieldPath": "durum", "order": "ASCENDING" },
         { "fieldPath": "baslangic", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "izinler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "durum", "order": "ASCENDING" },
+        { "fieldPath": "bitis", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vekalet_talepleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "aliciUid", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "adminUyarilari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "vakit", "order": "ASCENDING" },
+        { "fieldPath": "cozuldu", "order": "ASCENDING" }
       ]
     }
   ]

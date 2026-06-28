@@ -1,0 +1,12 @@
+{
+  "search.exclude": {
+    "**/dist": true,
+    "**/dev-dist": true,
+    "**/.firebase": true
+  },
+  "files.watcherExclude": {
+    "**/dist/**": true,
+    "**/dev-dist/**": true,
+    "**/.firebase/**": true
+  }
+}

@@ -34,6 +34,14 @@ service cloud.firestore {
              data.aktif is bool;
     }
 
+    function isValidNotificationSettings(settings) {
+      return settings is map &&
+             settings.keys().hasOnly(['nobetHatirlatici', 'duyurular', 'mazeretDurumu']) &&
+             (!settings.keys().hasAny(['nobetHatirlatici']) || settings.nobetHatirlatici is bool) &&
+             (!settings.keys().hasAny(['duyurular']) || settings.duyurular is bool) &&
+             (!settings.keys().hasAny(['mazeretDurumu']) || settings.mazeretDurumu is bool);
+    }
+
     match /muezzins/{uid} {
       allow get, list: if isSignedIn();
       allow create: if (isAdmin() || (isSignedIn() && request.auth.uid == uid)) && isValidMuezzin(incoming()) && (isAdmin() || incoming().role == 'muezzin');
@@ -45,7 +53,8 @@ service cloud.firestore {
             incoming().email == existing().email && 
             incoming().role == existing().role &&
             incoming().aktif == existing().aktif &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'fcmToken'])
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'fcmToken', 'notificationSettings']) &&
+            (!incoming().keys().hasAny(['notificationSettings']) || isValidNotificationSettings(incoming().notificationSettings))
         )
       );
     }
@@ -87,15 +96,37 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Bildirimler
     // ---------------------------------------------------------
+    function isSelfBildirimUpdate() {
+      let changed = incoming().diff(existing()).affectedKeys();
+      return existing().uid == request.auth.uid &&
+             incoming().uid == existing().uid &&
+             incoming().haftaId == existing().haftaId &&
+             incoming().tarih == existing().tarih &&
+             incoming().vakit == existing().vakit &&
+             incoming().tip == existing().tip &&
+             changed.hasOnly(['durum', 'pendingAck', 'retSebebi', 'sonGuncelleme']) &&
+             (
+               (
+                 existing().durum == 'bekliyor' &&
+                 incoming().durum == 'onaylandi' &&
+                 incoming().pendingAck == false
+               ) ||
+               (
+                 existing().durum == 'bekliyor' &&
+                 existing().tip == 'asil' &&
+                 incoming().durum == 'reddedildi' &&
+                 incoming().pendingAck == false &&
+                 incoming().retSebebi is string &&
+                 incoming().retSebebi.size() > 0 &&
+                 incoming().retSebebi.size() <= 500
+               )
+             );
+    }
+
     match /bildirimler/{docId} {
       allow read, list: if isSignedIn();
-      allow create: if isSignedIn() && (
-        isAdmin() || 
-        incoming().uid == request.auth.uid ||
-        // Allow creating task calls for others during mazeret swaps
-        (incoming().tip == 'gorev_cagrisi' && incoming().durum == 'bekliyor')
-      );
-      allow update: if isSignedIn() && (isAdmin() || existing().uid == request.auth.uid);
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && (isAdmin() || isSelfBildirimUpdate());
       allow delete: if isAdmin();
     }
 
@@ -110,12 +141,12 @@ service cloud.firestore {
     // ENTITY: Sistem Günlükleri ve Hata Raporları
     // ---------------------------------------------------------
     match /error_logs/{docId} {
-      allow create: if true;
+      allow create: if isSignedIn();
       allow read, write: if isAdmin();
     }
 
     match /telemetry_logs/{docId} {
-      allow create: if true;
+      allow create: if isSignedIn();
       allow read, write: if isAdmin();
     }
 
@@ -158,4 +189,3 @@ service cloud.firestore {
     }
   }
 }
-

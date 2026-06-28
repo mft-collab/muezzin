@@ -5,8 +5,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap&subset=latin,latin-ext');
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Inter", ui-sans-serif, sans-serif;
   --font-serif: "Instrument Serif", serif;
   --font-mono: "JetBrains Mono", monospace;
 
@@ -14,12 +16,12 @@
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
   --spatial-highlight: rgba(255, 255, 255, 0.15);
   
-  /* Ambient Aura Palette (Base HSL) */
-  --aura-ruby-h: 345;
-  --aura-amber-h: 42;
-  --aura-emerald-h: 155;
-  --aura-indigo-h: 235;
-  --aura-rose-h: 350;
+  /* Ambient Aura Palette (Base HSL - Velvet Jewel-Toned Circadian Color System) */
+  --aura-ruby-h: 343;
+  --aura-amber-h: 38;
+  --aura-emerald-h: 162;
+  --aura-indigo-h: 244;
+  --aura-rose-h: 343;
 }
 
 :root {
@@ -38,62 +40,95 @@
   --fluid-h2: clamp(1.75rem, 5vw, 3.5rem);
   --fluid-body: clamp(0.875rem, 1.2vw, 1.125rem);
   --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
-  --tracking-authority: 0.4em;
+  --tracking-authority: 0.12em;
   --tracking-tight: -0.04em;
 }
+
 [data-theme='light'] {
-  --bg-h: 220; --bg-s: 12%; --bg-l: 88.5%;
+  --bg-h: 38; --bg-s: 20%; --bg-l: 94.5%;
   --app-bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l));
-  --spatial-glass-bg: hsla(220, 25%, 98.5%, 0.72);
-  --spatial-highlight: hsla(220, 30%, 100%, 0.75);
-  --text-primary: hsl(var(--bg-h), 50%, 12%);
-  --text-secondary: hsl(var(--bg-h), 15%, 35%);
-  --aura-opacity: 0.15;
-  --glass-border: hsla(var(--bg-h), 40%, 10%, 0.08);
-  --spatial-shadow: 0 1px 2px rgba(0, 0, 0, 0.01), 0 8px 16px rgba(0, 0, 0, 0.02), 0 24px 48px -12px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  /* Cam arka plan doygunlugu ve opakligi artirildi (Apple HIG cam morfizasyonu standardi) */
+  --spatial-glass-bg: hsla(38, 25%, 98.5%, 0.65);
+  --spatial-highlight: hsla(38, 30%, 100%, 0.90);
+  --glass-fallback-bg: hsla(38, 25%, 98.5%, 0.98);
+  
+  /* Lüks ve yuksek kontrastli Nordic Graphite tipografi standardı */
+  --text-primary: hsl(210, 25%, 8%);     /* Deep Graphite Obsidian */
+  --text-secondary: hsl(210, 15%, 26%);  /* Soft Graphite Dark Muted for WCAG AA */
+  --aura-opacity: 0.16;
+  
+  /* Sinir çizgileri aydinlik modda netlik için belirginlestirildi */
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --spatial-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65), inset 0 -1px 1px rgba(0, 0, 0, 0.04), 0 4px 12px -1px rgba(0, 0, 0, 0.02), 0 12px 24px -6px rgba(0, 0, 0, 0.04);
 
-  --surface-low: rgba(0, 0, 0, 0.02);
-  --surface-medium: rgba(0, 0, 0, 0.04);
-  --surface-high: rgba(0, 0, 0, 0.06);
+  --surface-low: hsla(210, 15%, 10%, 0.02);
+  --surface-medium: hsla(210, 15%, 10%, 0.04);
+  --surface-high: hsla(210, 15%, 10%, 0.06);
+  --card-elevated-bg: hsla(38, 25%, 100%, 0.96);
+  --card-flat-bg: hsla(210, 10%, 94%, 0.50);
+  --card-active-bg: hsla(38, 30%, 91%, 0.70);
 
-  --status-success: hsl(155, 100%, 25%);
-  --status-warning: hsl(38, 100%, 30%);
-  --status-danger: hsl(345, 95%, 35%);
-  --status-error: hsl(345, 95%, 35%);
-  --status-info: hsl(225, 100%, 40%);
+  --status-success: hsl(var(--aura-emerald-h), 85%, 32%);
+  --status-warning: hsl(42, 95%, 38%); /* Gilded Gold warning override */
+  --status-danger: hsl(var(--aura-ruby-h), 88%, 38%);
+  --status-error: hsl(var(--aura-ruby-h), 88%, 38%);
+  --status-info: hsl(var(--aura-indigo-h), 78%, 42%);
 
-  /* Light Mode Aura Overrides (Higher saturation, lower lightness) */
-  --aura-ruby: hsl(var(--aura-ruby-h), 90%, 45%);
-  --aura-amber: hsl(var(--aura-amber-h), 100%, 45%);
-  --aura-emerald: hsl(var(--aura-emerald-h), 90%, 40%);
-  --aura-indigo: hsl(var(--aura-indigo-h), 85%, 45%);
+  /* Light Mode Aura Overrides (Warm honey, malachite, and royal velvet tone presets) */
+  --aura-ruby: hsl(var(--aura-ruby-h), 76%, 42%);
+  --aura-amber: hsl(42, 85%, 48%); /* Gilded Honey Gold standard override */
+  --aura-emerald: hsl(var(--aura-emerald-h), 82%, 36%);
+  --aura-indigo: hsl(var(--aura-indigo-h), 62%, 48%);
+  --aura-rose: hsl(var(--aura-rose-h), 76%, 42%);
+  --specular-glow: rgba(255, 255, 255, 0.70);
 }
 
+
+
 [data-theme='dark'] {
-  --bg-h: 240; --bg-s: 14%; --bg-l: 6.5%;
+  --bg-h: 240; --bg-s: 10%; --bg-l: 3.5%;
   --app-bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l));
-  --spatial-glass-bg: hsla(var(--bg-h), 14%, 100%, 0.025);
-  --spatial-highlight: hsla(240, 100%, 100%, 0.08);
+  --spatial-glass-bg: rgba(20, 20, 24, 0.35);
+  --spatial-highlight: hsla(240, 100%, 100%, 0.05);
+  --glass-fallback-bg: hsla(240, 10%, 6%, 0.98);
   --text-primary: hsl(var(--bg-h), 12%, 98%);
   --text-secondary: hsl(var(--bg-h), 16%, 72%);
   --aura-opacity: 0.28;
-  --glass-border: hsla(var(--bg-h), 14%, 100%, 0.045);
-  --spatial-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --spatial-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(0, 0, 0, 0.2), 0 4px 24px -1px rgba(0, 0, 0, 0.03), 0 20px 40px -12px rgba(0, 0, 0, 0.65);
 
-  --surface-low: rgba(255, 255, 255, 0.015);
-  --surface-medium: rgba(255, 255, 255, 0.03);
-  --surface-high: rgba(255, 255, 255, 0.055);
+  --surface-low: rgba(255, 255, 255, 0.01);
+  --surface-medium: rgba(255, 255, 255, 0.025);
+  --surface-high: rgba(255, 255, 255, 0.045);
+  --card-elevated-bg: hsla(var(--bg-h), var(--bg-s), 100%, 0.04);
+  --card-flat-bg: hsla(var(--bg-h), var(--bg-s), 50%, 0.015);
+  --card-active-bg: hsla(var(--bg-h), var(--bg-s), 100%, 0.025);
 
-  --status-success: hsl(155, 80%, 65%);
-  --status-warning: hsl(45, 95%, 70%);
-  --status-danger: hsl(350, 95%, 70%);
-  --status-error: hsl(350, 95%, 70%);
-  --status-info: hsl(235, 85%, 75%);
+  --status-success: hsl(var(--aura-emerald-h), 80%, 65%);
+  --status-warning: hsl(var(--aura-amber-h), 95%, 70%);
+  --status-danger: hsl(var(--aura-ruby-h), 90%, 70%);
+  --status-error: hsl(var(--aura-ruby-h), 90%, 70%);
+  --status-info: hsl(var(--aura-indigo-h), 85%, 75%);
+
+  /* Dark Mode Aura Overrides (Velvet Jewel deep shadows) */
+  --aura-ruby: hsl(var(--aura-ruby-h), 82%, 52%);
+  --aura-amber: hsl(var(--aura-amber-h), 92%, 58%);
+  --aura-emerald: hsl(var(--aura-emerald-h), 82%, 48%);
+  --aura-indigo: hsl(var(--aura-indigo-h), 78%, 62%);
+  --aura-rose: hsl(var(--aura-rose-h), 92%, 62%);
+  --specular-glow: rgba(255, 255, 255, 0.04);
 }
 
+
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply antialiased selection:bg-indigo-500/30;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     background: var(--app-bg) !important;
     color: var(--text-primary);
     transition: background 1.2s var(--spring-easing), color 0.8s var(--spring-easing);
@@ -107,15 +142,14 @@
     border-radius: 8px;
   }
 
-  /* Global Button Spring Physics - Every button feels like physical hardware springs */
+  /* Apple Standard Button Physics - Subtle fade, no aggressive scale globally */
   button, 
   [role="button"] {
-    transition: transform 0.5s var(--spring-easing), background 0.4s var(--spring-easing), border-color 0.4s var(--spring-easing), box-shadow 0.5s var(--spring-easing), opacity 0.4s var(--spring-easing);
-    will-change: transform;
+    transition: transform 0.3s var(--spring-easing), background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.2s ease;
     
     &:active {
-      transform: scale(0.962) translateY(0);
-      transition: transform 0.12s cubic-bezier(0.25, 1, 0.5, 1);
+      opacity: 0.6;
+      transition: opacity 0.1s ease;
     }
   }
 
@@ -128,23 +162,75 @@
 
 
 @utility spatial-glass {
+  background: var(--spatial-glass-bg) !important;
+  backdrop-filter: blur(40px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(210%) !important;
+  border-radius: 34px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--spatial-shadow) !important;
+  transition: background 0.4s var(--spring-easing), border-color 0.4s var(--spring-easing), box-shadow 0.4s var(--spring-easing) !important;
+  
+  /* GPU Layer and Compositor Optimization (Anti-gravity Rendering) */
+  will-change: transform, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  
+  /* Webkit Border-Radius Backdrop-Filter Overflow clipping fix */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  
+  /* Specular Highlight + Kristal Dokusu (Noise) */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: 
+      radial-gradient(circle at var(--specular-x, 50%) var(--specular-y, 0%), var(--specular-glow, rgba(255, 255, 255, 0.04)) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.015'/%3E%3C/svg%3E");
+    z-index: 1;
+    transition: opacity 0.5s ease;
+  }
+
+  /* Browser Support Fallback */
+  @supports not (backdrop-filter: blur(1px)) {
+    background: var(--glass-fallback-bg) !important;
+  }
+}
+
+.apple-glass {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(35px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(35px) saturate(210%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    0 -10px 40px rgba(0, 0, 0, 0.04),
+    0 12px 32px -8px rgba(0, 0, 0, 0.05) !important;
+  transition: background 0.5s var(--spring-easing), border-color 0.5s var(--spring-easing), box-shadow 0.5s var(--spring-easing) !important;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .apple-glass {
+  background: rgba(18, 18, 20, 0.65) !important;
+  backdrop-filter: blur(35px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(35px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 -10px 40px rgba(0, 0, 0, 0.45),
+    0 20px 40px -12px rgba(0, 0, 0, 0.75) !important;
+}
+
+@utility spatial-glass-flat {
   background: var(--spatial-glass-bg);
-  backdrop-filter: blur(24px) saturate(210%);
-  -webkit-backdrop-filter: blur(24px) saturate(210%);
   border-radius: 34px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border);
   box-shadow: var(--spatial-shadow);
   transition: background 0.4s var(--spring-easing), border-color 0.4s var(--spring-easing);
-  transform: translateZ(0);
-  will-change: transform, backdrop-filter;
-  
-  /* Browser Support Fallback */
-  @supports not (backdrop-filter: blur(1px)) {
-    background: hsla(var(--bg-h), var(--bg-s), 5%, 0.95);
-  }
-
 }
 
 @utility apple-card {
@@ -157,35 +243,36 @@
   will-change: transform;
   
   &:active {
-    transform: scale(0.965) translateY(0);
-    background: hsla(var(--bg-h), var(--bg-s), 100%, 0.02);
-    backdrop-filter: blur(30px) saturate(240%);
-    transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+    transform: scale(0.985) translateY(0);
+    background: var(--card-active-bg);
+    backdrop-filter: blur(30px) saturate(240%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(240%) !important;
+    transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1);
   }
 }
 
 @utility apple-card-elevated {
   @apply apple-card;
-  background: hsla(var(--bg-h), var(--bg-s), 100%, 0.05);
+  background: var(--card-elevated-bg);
   box-shadow: none !important; /* Force shadowless except global tokens */
 }
 
 @utility apple-card-flat {
   @apply spatial-glass;
   box-shadow: none !important;
-  background: hsla(var(--bg-h), var(--bg-s), 50%, 0.03);
-  border: 1px solid hsla(var(--bg-h), var(--bg-s), 50%, 0.06);
+  background: var(--card-flat-bg);
+  border: 1px solid var(--glass-border);
 }
 
 @utility apple-card-flat-active {
   @apply apple-card-flat;
-  background: hsla(var(--bg-h), var(--bg-s), 50%, 0.06);
+  background: var(--surface-medium);
   border: 1.5px solid var(--status-info);
 }
 
 @utility spatial-glass-elevated {
   @apply spatial-glass;
-  background: hsla(var(--bg-h), var(--bg-s), 100%, 0.06);
+  background: var(--card-elevated-bg);
   box-shadow: 
     var(--spatial-shadow),
     inset 0 0 80px rgba(255, 255, 255, 0.02);
@@ -209,8 +296,9 @@
 
 @utility premium-label {
   @apply authority-title;
-  font-size: 7px;
-  opacity: 0.4;
+  font-size: 8px;
+  opacity: 0.65;
+  font-weight: 600;
 }
 
 @utility premium-muted {
@@ -399,11 +487,20 @@
 .phi-padding { padding: var(--phi-space); }
 .phi-gap { gap: var(--phi-space); }
 
-/* Custom Scrollbar for Spatial Canvas */
-::-webkit-scrollbar { width: 2px; height: 2px; }
+/* Custom Scrollbar macOS Style */
+::-webkit-scrollbar { width: 14px; height: 14px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+::-webkit-scrollbar-thumb { 
+  background: rgba(150, 150, 150, 0.3); 
+  border-radius: 9999px; 
+  border: 4px solid var(--app-bg); 
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: rgba(150, 150, 150, 0.5); 
+  border: 4px solid var(--app-bg); 
+  background-clip: padding-box;
+}
 
 @media (max-width: 640px) {
   :root {
@@ -457,6 +554,71 @@
   animation: skeleton-sweep 1.8s ease-in-out infinite;
 }
 
+/* ─────────────────────────────────────────
+ * Google Neural Expressive Global Utilities
+ * ───────────────────────────────────────── */
+@utility neural-btn {
+  background: var(--text-primary);
+  color: var(--app-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  transition: all 0.5s var(--spring-easing);
+  box-shadow: 0 4px 15px -3px color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 20%, transparent);
+  
+  &:hover {
+    transform: translateY(-2px);
+    opacity: 0.95;
+    box-shadow: 0 8px 25px -5px color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 40%, transparent);
+  }
+}
+
+@utility tactile-card {
+  @apply spatial-glass;
+  transition: transform 0.6s var(--spring-easing), background 0.6s var(--spring-easing), box-shadow 0.6s var(--spring-easing);
+  will-change: transform;
+  
+  &:hover {
+    transform: translateY(-4px) scale(1.01);
+    background: rgba(255, 255, 255, 0.035);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  
+  &:active {
+    transform: scale(0.985);
+    transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+}
+
+@utility fluid-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 6%, transparent),
+      transparent
+    );
+    animation: fluid-shimmer 2.5s infinite var(--spring-easing);
+  }
+}
+
+@keyframes fluid-shimmer {
+  100% { transform: translateX(100%); }
+}
+
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -467,5 +629,271 @@
     transition-duration: 0.15s !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Expressive View Transition Theme Ripple Overrides */
+::view-transition-old(root), 
+::view-transition-new(root) { 
+  animation: none; 
+  mix-blend-mode: normal; 
+}
+::view-transition-old(root) { 
+  z-index: 1; 
+}
+::view-transition-new(root) { 
+  z-index: 9999; 
+}
+
+
+/* ─────────────────────────────────────────
+ * Premium Layout & Responsive Viewport Utils
+ * ───────────────────────────────────────── */
+
+@utility fluid-wrapper {
+  width: 100%;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--phi-space);
+  padding-right: var(--phi-space);
+  /* Safe Area padding dynamic inset guards */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(var(--phi-space), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--phi-space), env(safe-area-inset-right, 0px));
+}
+
+@utility sticky-hero {
+  @media (min-width: 1024px) {
+    position: sticky;
+    top: var(--phi-space);
+    max-height: calc(100vh - calc(var(--phi-space) * 2));
+    overflow-y: auto;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+@utility snap-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility snap-card {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Aydinlik modda düşük opaklikli etiketlerin okunabilirligini koruma kurallari */
+[data-theme='light'] .authority-title,
+[data-theme='light'] .premium-label {
+  opacity: 0.55 !important;
+  font-weight: 600 !important;
+}
+
+/* ─────────────────────────────────────────
+ * NEURO-AESTHETIC & SPECULAR GLASS OVERRIDES
+ * ───────────────────────────────────────── */
+
+/* Specular 1px Top Highlight Details (Apple Glass style) */
+[data-theme='light'] .spatial-glass,
+[data-theme='light'] .apple-card,
+[data-theme='light'] .spatial-glass-elevated,
+[data-theme='light'] .apple-card-elevated {
+  border-top: 1.5px solid hsla(40, 30%, 100%, 0.75) !important;
+}
+
+[data-theme='dark'] .spatial-glass,
+[data-theme='dark'] .apple-card,
+[data-theme='dark'] .spatial-glass-elevated,
+[data-theme='dark'] .apple-card-elevated {
+  border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
+}
+
+@keyframes aura-float {
+  0%, 100% {
+    transform: scale(1) translate(0px, 0px) rotate(0deg);
+  }
+  33% {
+    transform: scale(1.15) translate(40px, -30px) rotate(120deg);
+  }
+  66% {
+    transform: scale(0.9) translate(-20px, 50px) rotate(240deg);
+  }
+}
+
+.animate-aura {
+  animation: aura-float 25s ease-in-out infinite;
+  transform-origin: center center;
+  filter: blur(200px) saturate(130%);
+  will-change: transform;
+}
+
+/* ──────────────────────────────────────────────────────────
+ * LIGHT MODE HIGH-CONTRAST & CLARITY OVERRIDES
+ * ────────────────────────────────────────────────────────── */
+
+[data-theme='light'] {
+  /* Ultra-Premium Champagne Silk & Royal Graphite Design Tokens */
+  --bg-h: 38 !important; --bg-s: 20% !important; --bg-l: 94.5% !important;
+  --app-bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l)) !important;
+  --glass-border: hsla(210, 15%, 10%, 0.08) !important;
+  --spatial-glass-bg: hsla(38, 25%, 98.5%, 0.88) !important;
+  --spatial-shadow: 0 4px 12px rgba(0, 0, 0, 0.015), 0 20px 32px -8px rgba(0, 0, 0, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  
+  --text-primary: hsl(210, 25%, 8%) !important;
+  --text-secondary: hsl(210, 15%, 34%) !important;
+
+  --surface-low: hsla(210, 15%, 10%, 0.02) !important;
+  --surface-medium: hsla(210, 15%, 10%, 0.04) !important;
+  --surface-high: hsla(210, 15%, 10%, 0.06) !important;
+  --card-elevated-bg: hsla(38, 25%, 100%, 0.96) !important;
+  --card-flat-bg: hsla(210, 10%, 94%, 0.50) !important;
+  --card-active-bg: hsla(38, 30%, 91%, 0.70) !important;
+  --specular-glow: rgba(255, 255, 255, 0.70) !important;
+  --aura-opacity: 0.16 !important;
+
+
+  /* Hardcoded white background overrides */
+  .bg-white\/5,
+  .bg-white\/\[0\.05\],
+  .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.02\],
+  .bg-white\/10,
+  .bg-white\/\[0\.01\],
+  .bg-white\/\[0\.08\],
+  .bg-white\/\[0\.04\] {
+    background-color: var(--surface-low) !important;
+  }
+  
+  .bg-white\/20,
+  .bg-white\/15,
+  .bg-white\/\[0\.15\] {
+    background-color: var(--surface-medium) !important;
+  }
+
+  .bg-white\/30,
+  .bg-white\/40,
+  .bg-white\/50,
+  .bg-white\/\[0\.3\] {
+    background-color: var(--surface-high) !important;
+  }
+
+  /* Hardcoded white border overrides */
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20,
+  .border-white\/\[0\.05\],
+  .border-white\/\[0\.06\],
+  .border-white\/\[0\.08\],
+  .border-white\/\[0\.1\],
+  .border-white\/\[0\.15\],
+  .border-white\/\[0\.2\] {
+    border-color: var(--glass-border) !important;
+  }
+
+  /* Hardcoded white text overrides */
+  .text-white {
+    color: var(--text-primary) !important;
+  }
+
+  .text-white\/90,
+  .text-white\/80,
+  .text-white\/70,
+  .text-white\/\[0\.9\],
+  .text-white\/\[0\.8\] {
+    color: var(--text-primary) !important;
+    opacity: 0.9 !important;
+  }
+
+  .text-white\/60,
+  .text-white\/50,
+  .text-white\/40,
+  .text-white\/\[0\.6\],
+  .text-white\/\[0\.5\],
+  .text-white\/\[0\.4\] {
+    color: var(--text-secondary) !important;
+    opacity: 0.75 !important;
+  }
+
+  .text-white\/30,
+  .text-white\/20,
+  .text-white\/25,
+  .text-white\/\[0\.3\],
+  .text-white\/\[0\.2\],
+  .text-white\/\[0\.25\] {
+    color: var(--text-secondary) !important;
+    opacity: 0.50 !important;
+  }
+
+  .placeholder\:text-white\/10::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.35 !important;
+  }
+}
+
+/* Boost low-contrast text primary/secondary opacities specifically in light mode */
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/30,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/40,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/50 {
+  color: var(--text-secondary) !important;
+  opacity: 0.70 !important;
+}
+
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/20,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/25,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/35 {
+  color: var(--text-secondary) !important;
+  opacity: 0.55 !important;
+}
+
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/10,
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/15,
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/20 {
+  color: var(--text-primary) !important;
+  opacity: 0.50 !important;
+}
+
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/30,
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/40 {
+  color: var(--text-primary) !important;
+  opacity: 0.75 !important;
+}
+
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/70,
+[data-theme='light'] .text-\[var\(--text-primary\)\]\/80 {
+  color: var(--text-primary) !important;
+  opacity: 0.85 !important;
+}
+
+/* Faded states for cards and text */
+[data-theme='light'] .opacity-35 {
+  opacity: 0.65 !important;
+}
+
+[data-theme='light'] .opacity-50 {
+  opacity: 0.75 !important;
+}
+
+/* Premium Apple-Style Soft Heartbeat / Respiration Avatar Effect */
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.03); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.03); }
+  70% { transform: scale(1); }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 3s ease-in-out infinite;
+  will-change: transform;
 }
 

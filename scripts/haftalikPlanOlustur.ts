@@ -34,6 +34,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+function formatDateLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 async function main() {
   console.log("Haftalık plan oluşturma başladı...");
 
@@ -48,17 +55,17 @@ async function main() {
     return;
   }
   
-  // Sadece 'gozlemci' olmayanları alalım
+  // Sadece aktif müezzinleri alalım
   const muezzinler = muezzinSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }))
-    .filter(m => m.role !== 'gozlemci');
+    .filter(m => m.role === 'muezzin');
 
   if (muezzinler.length < 2) {
     console.error("Yetersiz müezzin! Planlama yapılamıyor.");
     await db.collection('adminUyarilari').add({
       tip: 'zincirTukendi',
       mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 2 gerekli).',
-      tarih: new Date().toISOString().split('T')[0],
+      tarih: formatDateLocal(new Date()),
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });
@@ -86,14 +93,14 @@ async function main() {
     const pazartesi = new Date(pazartesiTemel);
     pazartesi.setDate(pazartesiTemel.getDate() + (weekOffset * 7));
 
-    const haftaBaslangicStr = pazartesi.toISOString().split('T')[0];
+    const haftaBaslangicStr = formatDateLocal(pazartesi);
     const haftaId = `W${haftaBaslangicStr}`;
     
     const gunler: string[] = [];
     for(let i=0; i<7; i++) {
       const gun = new Date(pazartesi);
       gun.setDate(pazartesi.getDate() + i);
-      gunler.push(gun.toISOString().split('T')[0]);
+      gunler.push(formatDateLocal(gun));
     }
     const haftaBitisStr = gunler[6];
 
@@ -128,19 +135,17 @@ async function main() {
       
       const musaitMuezzinler = muezzinler.filter(m => !bugunIzinliUidler.includes(m.id));
 
+      // Eğer o gün kimse müsait değilse (nadiren), tüm aktifleri kullan
+      const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
+      const isFridayOgle = isFriday;
+      const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFridayOgle);
+      const asil = sirali[0];
+      const yedek = sirali[1];
+      buHaftakiYukler[asil.id] = (buHaftakiYukler[asil.id] || 0) + vakitler.length;
+      // Bir sonraki gün için dinlenme listesini güncelle
+      oncekiVakitUidler = [asil.id, yedek.id];
+
       for (const vakit of vakitler) {
-        // Eğer o vakit kimse müsait değilse (nadiren), tüm aktifleri kullan
-        const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
-        
-        const isFridayOgle = isFriday && vakit === 'ogle';
-        const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFridayOgle);
-        const asil = sirali[0];
-        const yedek = sirali[1];
-
-        buHaftakiYukler[asil.id] = (buHaftakiYukler[asil.id] || 0) + 1;
-        // Bir sonraki vakit için dinlenme listesini güncelle
-        oncekiVakitUidler = [asil.id, yedek.id];
-
         gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
 
         const bAsil = db.collection('bildirimler').doc();
@@ -170,11 +175,22 @@ async function main() {
     await batch.commit();
     console.log(`Başarı: ${haftaId} planı ve bildirimleri oluşturuldu.`);
 
-    // YENİ: Haftalık Plan Bildirimini Aktif Müezzinlerin Cihazlarına Gönder (FCM V1)
     try {
-      const fcmTokens = muezzinler
-        .map(m => m.fcmToken)
-        .filter((token): token is string => typeof token === 'string' && token.trim().length > 0);
+      const fcmTokens: string[] = [];
+      muezzinler
+        .filter(m => m.notificationSettings?.nobetHatirlatici !== false)
+        .forEach(m => {
+          const userTokens: string[] = [];
+          if (m.fcmTokens && typeof m.fcmTokens === 'object') {
+            Object.keys(m.fcmTokens).forEach(t => {
+              if (t.trim().length > 0) userTokens.push(t);
+            });
+          }
+          if (userTokens.length === 0 && m.fcmToken && m.fcmToken.trim().length > 0) {
+            userTokens.push(m.fcmToken);
+          }
+          fcmTokens.push(...userTokens);
+        });
 
       if (fcmTokens.length > 0) {
         console.log(`FCM anlık bildirimleri ${fcmTokens.length} aktif müezzine gönderiliyor...`);

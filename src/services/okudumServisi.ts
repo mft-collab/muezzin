@@ -1,42 +1,47 @@
-import { doc, getDoc, runTransaction, increment } from 'firebase/firestore';
+import { doc, runTransaction, increment, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
 
 export async function okudumOnayla(bildirimId: string): Promise<void> {
-  const bildirimRef = doc(db, 'bildirimler', bildirimId);
-  
-  await runTransaction(db, async (transaction) => {
-    const bildirimDoc = await transaction.get(bildirimRef);
-    if (!bildirimDoc.exists()) throw new Error('Bildirim bulunamadı');
-    
-    const bildirim = bildirimDoc.data();
-    if (bildirim.uid !== auth.currentUser?.uid) throw new Error('Yetkisiz işlem');
+ // İstemci tarafı tepe yükü düzleştirme (Jittering: Spark planda ezan vakti eşzamanlı veritabanı yazma baskısını önler)
+ const randomDelay = Math.floor(Math.random() * 1500);
+ await new Promise(resolve => setTimeout(resolve, randomDelay));
 
-    // Get system settings to fetch district prefix (ilceId) dynamically
-    const settingsDoc = await transaction.get(doc(db, 'settings', 'system'));
-    const ilceId = settingsDoc.exists() ? (settingsDoc.data()?.ilceId || '9148') : '9148';
+ const bildirimRef = doc(db, 'bildirimler', bildirimId);
+ 
+ await runTransaction(db, async (transaction) => {
+ const bildirimDoc = await transaction.get(bildirimRef);
+ if (!bildirimDoc.exists()) throw new Error('Bildirim bulunamadı');
+ 
+ const bildirim = bildirimDoc.data();
+ if (bildirim.uid !== auth.currentUser?.uid) throw new Error('Yetkisiz işlem');
+ if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
 
-    // Ezan saati kontrolü (Dynamic prefix fixed)
-    const buAyYYYYMM = bildirim.tarih.slice(0, 7);
-    const buAyDocId = `${ilceId}_${buAyYYYYMM}`;
-    const vakitDoc = await transaction.get(doc(db, 'vakitler', buAyDocId));
-    const vakitSaati = vakitDoc.data()?.gunler[bildirim.tarih][bildirim.vakit];
-    
-    if (!vakitSaati) throw new Error('Vakit bilgisi bulunamadı');
+ // Get system settings to fetch district prefix (ilceId) dynamically
+ const settingsDoc = await transaction.get(doc(db, 'settings', 'system'));
+ const ilceId = settingsDoc.exists() ? (settingsDoc.data()?.ilceId || '9148') : '9148';
 
-    const ezanSaati = parseVakitToDate(bildirim.tarih, vakitSaati);
-    const simdi = getTurkeyNow();
+ // Ezan saati kontrolü (Dynamic prefix fixed)
+ const buAyYYYYMM = bildirim.tarih.slice(0, 7);
+ const buAyDocId = `${ilceId}_${buAyYYYYMM}`;
+ const vakitDoc = await transaction.get(doc(db, 'vakitler', buAyDocId));
+ const vakitSaati = vakitDoc.data()?.gunler[bildirim.tarih][bildirim.vakit];
+ 
+ if (!vakitSaati) throw new Error('Vakit bilgisi bulunamadı');
 
-    if (simdi.getTime() < ezanSaati.getTime()) {
-      throw new Error('Henüz ezan vakti gelmedi');
-    }
+ const ezanSaati = parseVakitToDate(bildirim.tarih, vakitSaati);
+ const simdi = getTurkeyNow();
 
-    transaction.update(bildirimRef, { durum: 'onaylandi', pendingAck: false, sonGuncelleme: getTurkeyNow() });
-    // Puan artış
-    transaction.update(doc(db, 'muezzins', auth.currentUser!.uid), {
-      aylikVakitSayisi: increment(1)
-    });
-  });
+ if (simdi.getTime() < ezanSaati.getTime()) {
+ throw new Error('Henüz ezan vakti gelmedi');
+ }
+
+ transaction.update(bildirimRef, { durum: 'onaylandi', pendingAck: false, sonGuncelleme: serverTimestamp() });
+ // Puan artış
+ transaction.update(doc(db, 'muezzins', auth.currentUser!.uid), {
+ aylikVakitSayisi: increment(1)
+ });
+ });
 }
 
 export async function adminOkudumOnayla(bildirimId: string): Promise<void> {
@@ -44,11 +49,24 @@ export async function adminOkudumOnayla(bildirimId: string): Promise<void> {
   
   await runTransaction(db, async (transaction) => {
     const bildirimDoc = await transaction.get(bildirimRef);
-    const bildirim = bildirimDoc.data()!;
+    if (!bildirimDoc.exists()) {
+      throw new Error('Bildirim bulunamadı');
+    }
+    
+    const bildirim = bildirimDoc.data();
+    if (bildirim.durum !== 'bekliyor') {
+      throw new Error('Bu görev zaten sonuçlandırılmış.');
+    }
 
-    transaction.update(bildirimRef, { durum: 'onaylandi', pendingAck: false });
+    transaction.update(bildirimRef, { 
+      durum: 'onaylandi', 
+      pendingAck: false, 
+      sonGuncelleme: serverTimestamp() 
+    });
+    
     transaction.update(doc(db, 'muezzins', bildirim.uid), {
       aylikVakitSayisi: increment(1)
     });
   });
 }
+

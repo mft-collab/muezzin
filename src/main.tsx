@@ -6,17 +6,17 @@ import { registerSW } from 'virtual:pwa-register';
 
 // PWA Service Worker Registration
 registerSW({ 
-  immediate: true,
-  onNeedRefresh() {
-    // Yeni versiyon mevcut
-  },
-  onOfflineReady() {
-    // Uygulama hazır
-  }
+ immediate: true,
+ onNeedRefresh() {
+ // Yeni versiyon mevcut
+ },
+ onOfflineReady() {
+ // Uygulama hazır
+ }
 });
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+ <StrictMode>
+ <App />
+ </StrictMode>,
 );

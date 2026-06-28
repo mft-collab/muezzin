@@ -1,56 +1,80 @@
 import React, { useEffect, useRef } from 'react';
-import { useVakitStore } from '../store/useVakitStore';
+import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useNotificationStore } from '../store/useNotificationStore';
-import { getTurkeyNow, getTurkeyDateString } from '../lib/dateUtils';
+import {
+ getTurkeyNow,
+ getTurkeyDateString,
+ parseVakitToDate,
+} from '../lib/dateUtils';
 import { Vakit } from '../types';
 
+const VAKIT_DISPLAY_NAMES: Record<Vakit, string> = {
+ sabah: 'Sabah',
+ ogle: 'Öğle',
+ ikindi: 'İkindi',
+ aksam: 'Akşam',
+ yatsi: 'Yatsı',
+};
+
 /**
- * VakitMonitor — Global Time Watcher
- * Ezan vakti geldiğinde otomatik olarak sesli ve yazılı bildirim tetikler.
+ * Global time watcher. Triggers one audible/written local alert when a prayer
+ * time enters, with a small grace window so interval drift cannot miss it.
  */
 export const VakitMonitor: React.FC = () => {
-  const { bugunVakitler } = useVakitStore();
-  const { showNotification } = useNotificationStore();
-  const sonTetiklenenVakit = useRef<string | null>(null);
+ const { bugunVakitler } = useEzanVakitleri();
+ const { showNotification } = useNotificationStore();
+ const sonTetiklenenVakit = useRef<string | null>(null);
 
-  useEffect(() => {
+ useEffect(() => {
     if (!bugunVakitler) return;
+
+    const bugunStr = bugunVakitler.tarih;
+    const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
+
+    // Pre-parse dates once
+    const parsedVakitler = vakitler.map(vakitKey => ({
+      key: vakitKey,
+      date: parseVakitToDate(bugunStr, bugunVakitler[vakitKey]),
+      triggerId: `${bugunStr}_${vakitKey}`,
+      storageKey: `vakit-bildirimi:${bugunStr}_${vakitKey}`
+    })).filter(item => item.date !== null) as Array<{
+      key: Vakit;
+      date: Date;
+      triggerId: string;
+      storageKey: string;
+    }>;
 
     const checkVakit = () => {
       const now = getTurkeyNow();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      const nowTimeStr = `${h}:${m}`;
-      const bugunStr = getTurkeyDateString(now);
 
-      const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-      
-      for (const vakitKey of vakitler) {
-        const vakitSaati = bugunVakitler[vakitKey];
-        const triggerId = `${bugunStr}_${vakitKey}`;
+      for (const item of parsedVakitler) {
+        const elapsedMs = now.getTime() - item.date.getTime();
+        const inTriggerWindow = elapsedMs >= 0 && elapsedMs < 90_000;
+        const alreadyTriggered =
+          sonTetiklenenVakit.current === item.triggerId ||
+          window.localStorage.getItem(item.storageKey) === '1';
 
-        // Eğer şu anki saat vakit saatine eşitse ve henüz bu vakit için bildirim verilmemişse
-        if (nowTimeStr === vakitSaati && sonTetiklenenVakit.current !== triggerId) {
-          const vakitAdi = vakitKey.charAt(0).toUpperCase() + vakitKey.slice(1);
-          
+        if (inTriggerWindow && !alreadyTriggered) {
+          const vakitAdi = VAKIT_DISPLAY_NAMES[item.key];
+
           showNotification(
             `${vakitAdi} Vakti Girdi`,
             `Aziz Allah... ${vakitAdi} vakti ezanı okunuyor.`,
             'info'
           );
-          
-          sonTetiklenenVakit.current = triggerId;
+
+          sonTetiklenenVakit.current = item.triggerId;
+          window.localStorage.setItem(item.storageKey, '1');
           break;
         }
       }
     };
 
-    // Her 30 saniyede bir kontrol et (vakit kaçırmamak için yeterli hassasiyet)
-    const interval = setInterval(checkVakit, 30000);
-    checkVakit(); // İlk renderda da kontrol et
+    const interval = setInterval(checkVakit, 15_000);
+    checkVakit();
 
     return () => clearInterval(interval);
   }, [bugunVakitler, showNotification]);
 
-  return null;
+ return null;
 };

@@ -17,9 +17,11 @@ export function useDuyurular(count = 3) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    const path = 'duyurular';
+
     const fetchDuyurular = async () => {
-      setLoading(true);
-      const path = 'duyurular';
+      if (isMounted) setLoading(true);
       const q = query(
         collection(db, path),
         orderBy('tarih', 'desc'),
@@ -28,20 +30,27 @@ export function useDuyurular(count = 3) {
 
       try {
         const snapshot = await getDocs(q);
+        if (!isMounted) return;
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Duyuru[];
         setDuyurular(data);
       } catch (err) {
+        if (!isMounted) return;
         handleFirestoreError(err, OperationType.GET, path);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchDuyurular();
+
+    return () => {
+      isMounted = false;
+    };
   }, [count]);
 
   return { duyurular, loading };
 }
+

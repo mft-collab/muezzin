@@ -3,58 +3,65 @@ import { collection, query, onSnapshot, updateDoc, doc, deleteDoc } from 'fireba
 import { db } from '../../lib/firebase';
 import { Izin } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/firestore-errors';
+import { telemetryService } from '../../services/telemetryService';
 
 export function useAdminIzinler() {
-  const [izinler, setIzinler] = useState<Izin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+ const [izinler, setIzinler] = useState<Izin[]>([]);
+ const [loading, setLoading] = useState(true);
+ const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const path = 'izinler';
-    const q = query(
-      collection(db, path)
-    );
+ useEffect(() => {
+ const path = 'izinler';
+ const q = query(
+ collection(db, path)
+ );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Izin[];
-      
-      data.sort((a, b) => {
-        const timeA = a.olusturmaTarihi?.toMillis() || 0;
-        const timeB = b.olusturmaTarihi?.toMillis() || 0;
-        return timeB - timeA;
-      });
+ const unsubscribe = onSnapshot(q, (snapshot) => {
+ const data = snapshot.docs.map(doc => ({
+ id: doc.id,
+ ...doc.data()
+ })) as Izin[];
+ 
+ data.sort((a, b) => {
+ const timeA = a.olusturmaTarihi?.toMillis() || 0;
+ const timeB = b.olusturmaTarihi?.toMillis() || 0;
+ return timeB - timeA;
+ });
 
-      setIzinler(data);
-      setLoading(false);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, path);
-      setError(err instanceof Error ? err.message : String(err));
-      setLoading(false);
-    });
+ setIzinler(data);
+ setLoading(false);
+ }, (err) => {
+ handleFirestoreError(err, OperationType.LIST, path);
+ setError(err instanceof Error ? err.message : String(err));
+ setLoading(false);
+ });
 
-    return () => unsubscribe();
-  }, []);
+ return () => unsubscribe();
+ }, []);
 
-  const izinGuncelle = async (id: string, durum: 'onaylandi' | 'reddedildi') => {
-    const path = `izinler/${id}`;
-    try {
-      await updateDoc(doc(db, 'izinler', id), { durum });
-    } catch (err) {
-      throw handleFirestoreError(err, OperationType.UPDATE, path);
-    }
-  };
+ const izinGuncelle = async (id: string, durum: 'onaylandi' | 'reddedildi') => {
+ const path = `izinler/${id}`;
+ try {
+ await updateDoc(doc(db, 'izinler', id), { durum });
+ sessionStorage.removeItem('admin_pendingIzinler');
+ sessionStorage.removeItem('admin_counts_time');
+ await telemetryService.logAudit('İzin Talebi Kararı', id, `Talep durumu '${durum.toUpperCase()}' olarak güncellendi.`);
+ } catch (err) {
+ throw handleFirestoreError(err, OperationType.UPDATE, path);
+ }
+ };
 
-  const izinSil = async (id: string) => {
-    const path = `izinler/${id}`;
-    try {
-      await deleteDoc(doc(db, 'izinler', id));
-    } catch (err) {
-      throw handleFirestoreError(err, OperationType.DELETE, path);
-    }
-  };
+ const izinSil = async (id: string) => {
+ const path = `izinler/${id}`;
+ try {
+ await deleteDoc(doc(db, 'izinler', id));
+ sessionStorage.removeItem('admin_pendingIzinler');
+ sessionStorage.removeItem('admin_counts_time');
+ await telemetryService.logAudit('İzin Talebi Silme', id, 'İzin kaydı sistemden kalıcı olarak silindi.');
+ } catch (err) {
+ throw handleFirestoreError(err, OperationType.DELETE, path);
+ }
+ };
 
-  return { izinler, loading, error, izinGuncelle, izinSil };
+ return { izinler, loading, error, izinGuncelle, izinSil };
 }
