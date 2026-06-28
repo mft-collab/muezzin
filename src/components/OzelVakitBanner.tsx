@@ -75,6 +75,21 @@ function getBayramStyle(tip: OzelVakitTip) {
   };
 }
 
+function getCumaStyle() {
+  return {
+    bg:      'bg-emerald-500/[0.04] dark:bg-emerald-500/[0.02]',
+    border:  'border-emerald-500/20 dark:border-emerald-400/15',
+    glow:    'from-emerald-500/10 to-transparent',
+    dot:     'bg-emerald-500',
+    icon:    'text-emerald-600 dark:text-emerald-400',
+    title:   'text-[var(--text-primary)] font-black',
+    sub:     'text-emerald-600 dark:text-emerald-400/80',
+    body:    'text-[var(--text-secondary)]',
+    bar:     'bg-emerald-500',
+    shadow:  'shadow-emerald-500/5',
+  };
+}
+
 const TESRIK_RENK_MAP: Record<TesrikVakitRenk, ReturnType<typeof getTeheccudStyle>> = {
   emerald: {
     bg: 'bg-emerald-500/[0.04] dark:bg-emerald-500/[0.02]', border: 'border-emerald-500/20 dark:border-emerald-400/15',
@@ -115,6 +130,7 @@ function getStyle(durum: OzelVakitDurumu) {
   if (tip === 'teheccud') return getTeheccudStyle();
   if (tip === 'bayram_arife' || tip === 'bayram') return getBayramStyle(tip);
   if (tip === 'tesrik') return TESRIK_RENK_MAP[tesrikVakitRenk ?? 'violet'];
+  if (tip === 'cuma') return getCumaStyle();
   return null;
 }
 
@@ -127,6 +143,7 @@ function getIkon(tip: OzelVakitTip) {
     case 'bayram_arife':  return <Star size={16} strokeWidth={1.5} />;
     case 'bayram':        return <Bell size={16} strokeWidth={1.5} />;
     case 'tesrik':        return <Bell size={16} strokeWidth={1.5} />;
+    case 'cuma':          return <Star size={16} strokeWidth={1.5} />;
     default:              return <Clock size={16} strokeWidth={1.5} />;
   }
 }

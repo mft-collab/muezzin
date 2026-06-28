@@ -17,9 +17,7 @@ import { RamazanHub } from './RamazanHub';
 import { useThemeStore } from '../store/useThemeStore';
 
 // Sabit etiketler — IDE i18n tarayicisinin JSX string literal uyarisini engellemek icin
-const HERO_LABELS = {
-  hayirliCumalar: 'Hayirlı Cumalar',
-} as const;
+const HERO_LABELS = {} as const;
 
 // Tip-güvenli vakit saati okuyucu — dinamik bracket notasyonu uyarisini engeller
 function getVakitSaati(vakitler: GunlukVakit, vakit: string): string {
@@ -181,11 +179,6 @@ export const AnaEkranHero = React.memo(({
   {hijriDate}
   </span>
   </div>
-  {isFriday && (
-  <span className="text-[9px] font-bold bg-[var(--status-success)]/15 text-[var(--status-success)] px-2.5 py-0.5 rounded-full border border-[var(--status-success)]/25 w-max">
-  {HERO_LABELS.hayirliCumalar}
-  </span>
-  )}
   </div>
  
  {gpsEnabled && gpsCoords && (

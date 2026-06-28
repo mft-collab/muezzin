@@ -10,6 +10,8 @@ import { AnaEkranHero } from '../components/AnaEkranHero';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { Modal } from '../components/ui/Modal';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { GpsConsentModal } from '../components/GpsConsentModal';
+import { GpsHelpModal } from '../components/GpsHelpModal';
 
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { KiblePusulasiModal } from '../components/KiblePusulasiModal';
@@ -56,6 +58,8 @@ export default function MuezzinAnaEkran() {
   const [pendingRejectId, setPendingRejectId] = useState<string | null>(null);
 
   const [autoOpenMazeretId, setAutoOpenMazeretId] = useState<string | null>(null);
+  const [isGpsConsentOpen, setIsGpsConsentOpen] = useState(false);
+  const [isGpsHelpOpen, setIsGpsHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const showNotification = useNotificationStore(s => s.showNotification);
@@ -102,12 +106,18 @@ export default function MuezzinAnaEkran() {
     if (gpsEnabled) {
       disableGps();
     } else {
-      try {
-        await enableGps();
-      } catch (err: any) {
-        console.error('GPS Vakit Hatası:', err);
-        alert(err.message || 'Konum alınamadı. Lütfen cihazınızda konum izinlerinin açık olduğundan emin olun.');
-      }
+      setIsGpsConsentOpen(true);
+    }
+  };
+
+  const handleGpsConfirm = async () => {
+    try {
+      await enableGps();
+      setIsGpsConsentOpen(false);
+    } catch (err: any) {
+      console.error('GPS Vakit Hatası:', err);
+      setIsGpsConsentOpen(false);
+      setIsGpsHelpOpen(true);
     }
   };
 
@@ -583,6 +593,22 @@ export default function MuezzinAnaEkran() {
   <KiblePusulasiModal 
     isOpen={isQiblaOpen} 
     onClose={() => setIsQiblaOpen(false)} 
+  />
+
+  <GpsConsentModal
+    isOpen={isGpsConsentOpen}
+    onClose={() => setIsGpsConsentOpen(false)}
+    onConfirm={handleGpsConfirm}
+    isLoading={gpsLoading}
+  />
+
+  <GpsHelpModal
+    isOpen={isGpsHelpOpen}
+    onClose={() => setIsGpsHelpOpen(false)}
+    onRetry={() => {
+      setIsGpsHelpOpen(false);
+      setIsGpsConsentOpen(true);
+    }}
   />
 
   </div>

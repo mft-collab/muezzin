@@ -35,6 +35,7 @@ export type OzelVakitTip =
   | 'bayram_arife'
   | 'bayram'
   | 'tesrik'
+  | 'cuma'
   | null;
 
 export type TesrikVakitRenk = 'emerald' | 'amber' | 'orange' | 'rose' | 'violet';
@@ -315,6 +316,20 @@ export function useOzelVakitMesaji(
           altBaslik: 'GECENİN SON ÜÇTE BİRİ',
           aciklama: 'Teheccüd namazı için en faziletli zaman. İmsak ezanından önce kılınmalıdır.',
           bitisZamani: teheccudBitis,
+        };
+      }
+    }
+
+    // Cuma Günü (İmsak ile Akşam ezanı arasında)
+    const isFriday = bugunDate.getDay() === 5;
+    if (isFriday && imsakDate && aksamDate) {
+      if (now >= imsakDate && now < aksamDate) {
+        return {
+          tip: 'cuma',
+          baslik: 'Hayırlı Cumalar',
+          altBaslik: 'CUMA GÜNÜ',
+          aciklama: 'Bugün Müslümanların haftalık bayramıdır. Günün hayrı, bereketi ve huzuru üzerinize olsun.',
+          bitisZamani: aksamDate,
         };
       }
     }
