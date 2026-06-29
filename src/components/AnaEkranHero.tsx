@@ -16,8 +16,6 @@ import { OzelVakitBanner } from './OzelVakitBanner';
 import { RamazanHub } from './RamazanHub';
 import { useThemeStore } from '../store/useThemeStore';
 
-// Sabit etiketler — IDE i18n tarayicisinin JSX string literal uyarisini engellemek icin
-const HERO_LABELS = {} as const;
 
 // Tip-güvenli vakit saati okuyucu — dinamik bracket notasyonu uyarisini engeller
 function getVakitSaati(vakitler: GunlukVakit, vakit: string): string {
