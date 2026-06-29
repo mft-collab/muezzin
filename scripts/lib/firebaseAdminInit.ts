@@ -48,6 +48,8 @@ const dbId = (firebaseConfig.firestoreDatabaseId === "(default)" || !firebaseCon
   ? undefined 
   : firebaseConfig.firestoreDatabaseId;
 
-export const db = getFirestore(dbId);
+export const db = dbId 
+  ? (getFirestore as any)(app, dbId) 
+  : getFirestore(app);
 export const auth = admin.auth();
 export { Timestamp, FieldValue };
