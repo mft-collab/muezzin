@@ -31,7 +31,15 @@ export async function konumVakitleriniCek(
     return result.data.timings;
   })();
 
+  const cacheKey = `gps_geo_${latitude.toFixed(3)}_${longitude.toFixed(3)}`;
+  const cachedVal = typeof window !== 'undefined' ? sessionStorage.getItem(cacheKey) : null;
+
   const geoPromise = (async () => {
+    if (cachedVal) {
+      try {
+        return JSON.parse(cachedVal);
+      } catch (e) {}
+    }
     try {
       const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=tr`;
       const response = await fetch(geoUrl, {
@@ -40,7 +48,11 @@ export async function konumVakitleriniCek(
         }
       });
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        }
+        return data;
       }
     } catch (e) {
       console.warn('Geocoding hatası:', e);

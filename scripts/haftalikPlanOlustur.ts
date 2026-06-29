@@ -176,6 +176,7 @@ async function main() {
     console.log(`Başarı: ${haftaId} planı ve bildirimleri oluşturuldu.`);
 
     try {
+      const tokenToUidMap: Record<string, string> = {};
       const fcmTokens: string[] = [];
       muezzinler
         .filter(m => m.notificationSettings?.nobetHatirlatici !== false)
@@ -189,6 +190,9 @@ async function main() {
           if (userTokens.length === 0 && m.fcmToken && m.fcmToken.trim().length > 0) {
             userTokens.push(m.fcmToken);
           }
+          userTokens.forEach(t => {
+            tokenToUidMap[t] = m.id;
+          });
           fcmTokens.push(...userTokens);
         });
 
@@ -207,6 +211,37 @@ async function main() {
 
         const response = await admin.messaging().sendEach(messages);
         console.log(`FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
+
+        // Clean up invalid tokens
+        const tokensToRemove: Record<string, string[]> = {};
+        response.responses.forEach((res, index) => {
+          if (!res.success) {
+            const errCode = res.error?.code;
+            if (errCode === 'messaging/registration-token-not-registered' || errCode === 'messaging/invalid-registration-token') {
+              const failedToken = messages[index].token;
+              const uid = tokenToUidMap[failedToken];
+              if (uid) {
+                if (!tokensToRemove[uid]) tokensToRemove[uid] = [];
+                tokensToRemove[uid].push(failedToken);
+              }
+            }
+          }
+        });
+
+        const uidsToUpdate = Object.keys(tokensToRemove);
+        if (uidsToUpdate.length > 0) {
+          const cleanupBatch = db.batch();
+          for (const uid of uidsToUpdate) {
+            const userRef = db.collection('muezzins').doc(uid);
+            const updates: Record<string, any> = {};
+            tokensToRemove[uid].forEach(t => {
+              updates[`fcmTokens.${t}`] = FieldValue.delete();
+            });
+            cleanupBatch.update(userRef, updates);
+          }
+          await cleanupBatch.commit();
+          console.log(`FCM Cleanup: ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
+        }
       } else {
         console.log('Kayıtlı aktif FCM cihaz tokenı bulunamadı, bildirim gönderilmedi.');
       }
