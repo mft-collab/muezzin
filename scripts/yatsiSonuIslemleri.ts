@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import { db, Timestamp, auth } from './lib/firebaseAdminInit.ts';
+import { db, Timestamp, auth, FieldValue } from './lib/firebaseAdminInit.ts';
 
 enum OperationType {
   CREATE = 'create',

@@ -50,7 +50,11 @@ export async function konumVakitleriniCek(
       if (response.ok) {
         const data = await response.json();
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          } catch (storageErr) {
+            console.warn('sessionStorage write error:', storageErr);
+          }
         }
         return data;
       }
