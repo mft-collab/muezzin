@@ -4,6 +4,7 @@ import { collection, query, limit, getDocs, waitForPendingWrites } from 'firebas
 import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, Database, BellRing, Layers, Wifi, Play, Sparkles, CheckCircle2, XCircle, Info, ChevronDown, ChevronUp, Terminal, ShieldAlert } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { telemetryService } from '../../../services/telemetryService';
 
 export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
   const [dbTestState, setDbTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -258,9 +259,17 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
 
   const executeSimulateError = () => {
     setConfirmSimulateOpen(false);
-    setTimeout(() => {
-      throw new Error(`Sistem Teşhisi Simülasyon Hatası - Saat: ${new Date().toLocaleTimeString('tr-TR')}`);
-    }, 50);
+    // Hatayı global olarak fırlatmak yerine telemetri pipeline'ı güvenli şekilde test ediyoruz.
+    // setTimeout + throw, React ErrorBoundary'yi atlatarak tarayıcıyı çökertir;
+    // bunun yerine gerçek hata objesini oluşturup Firestore'a kaydediyoruz.
+    const simulatedError = new Error(
+      `Sistem Teşhisi Simülasyon Hatası - Saat: ${new Date().toLocaleTimeString('tr-TR')}`
+    );
+    simulatedError.stack = `Error: Simülasyon\n    at executeSimulateError (SistemTestleriSekmesi.tsx:260)\n    at onClick (SistemTestleriSekmesi.tsx:530)`;
+    telemetryService.addBreadcrumb('Admin: Hata simülasyonu tetiklendi', 'user_action');
+    telemetryService.logError(simulatedError, 'ADMIN_SIMULATION').catch(() => {
+      // Sessizce yut — bu zaten bir test
+    });
     setActiveTab('errors');
   };
 
