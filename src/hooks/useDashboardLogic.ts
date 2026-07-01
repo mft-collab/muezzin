@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { parseISO, startOfWeek, format } from 'date-fns';
 import { useBugunkuGorevlerim } from './useBugunkuGorevlerim';
 import { useEzanVakitleri } from './useEzanVakitleri';
@@ -43,14 +43,25 @@ export function useDashboardLogic() {
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const isAdmin = useAuthStore(state => state.isAdmin);
 
+ // Race condition kilidi: useDashboardLogic ve HaftalikCizelge aynı anda
+ // haftalikPlanOlustur çağırmasın — yalnızca bir kez tetikle
+ const selfHealingFiredRef = useRef(false);
+
  useEffect(() => {
-   if (!planLoading && !plan && isAdmin && haftaId) {
+   if (!planLoading && !plan && isAdmin && haftaId && !selfHealingFiredRef.current) {
+     selfHealingFiredRef.current = true;
      console.log(`[Self-Healing] Hafta planı bulunamadı (${haftaId}). Yönetici yetkisiyle otomatik oluşturuluyor...`);
      import('../services/planServisi').then(({ haftalikPlanOlustur }) => {
        haftalikPlanOlustur(haftaId).catch(err => {
          console.error('[Self-Healing] Otomatik plan oluşturma başarısız:', err);
+         // Başarısız olursa bir sonraki render döngüsünde tekrar denenebilmesi için kilidi aç
+         selfHealingFiredRef.current = false;
        });
      });
+   }
+   // Plan gelirse kilidi sıfırla (ilerleyen hafta geçişlerinde tekrar çalışabilsin)
+   if (plan && selfHealingFiredRef.current) {
+     selfHealingFiredRef.current = false;
    }
  }, [plan, planLoading, isAdmin, haftaId]);
 

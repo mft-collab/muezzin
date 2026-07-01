@@ -10,6 +10,8 @@ export interface Muezzin {
  role: "muezzin" | "admin" | "gozlemci";
  aktif: boolean;
  fcmToken: string | null;
+ /** Çok cihazlı FCM token haritası: { [token]: kayitTarihi } */
+ fcmTokens?: { [token: string]: import('firebase/firestore').Timestamp };
  notificationSettings?: {
  nobetHatirlatici?: boolean;
  duyurular?: boolean;

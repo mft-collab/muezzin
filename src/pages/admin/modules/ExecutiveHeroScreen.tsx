@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, Megaphone } from 'lucide-react';
 import { useKrizAlarmlari } from '../../../hooks/admin/useKrizAlarmlari';
 import { useAdminIzinler } from '../../../hooks/admin/useAdminIzinler';
+import { useDuyurular } from '../../../hooks/useDuyurular';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
@@ -30,6 +31,7 @@ export default function ExecutiveHeroScreen({
  const [expandedId, setExpandedId] = useState<string | null>(null);
  const { alarmlar } = useKrizAlarmlari();
  const { izinler, izinGuncelle } = useAdminIzinler();
+ const { duyurular } = useDuyurular(50);
 
  const combinedOperations = [
  ...alarmlar.slice(0, 5).map(a => ({
@@ -230,8 +232,8 @@ export default function ExecutiveHeroScreen({
  <Megaphone size={18} strokeWidth={1.5} />
  </div>
  <div className="text-right">
- <div className="text-3xl font-light text-[var(--text-primary)]/20 tracking-tighter leading-none italic">
- —
+ <div className="text-3xl font-light text-[var(--text-primary)] tracking-tighter leading-none tabular-nums">
+ {duyurular.length > 0 ? duyurular.length : <span className="italic opacity-20">—</span>}
  </div>
  <span className="authority-title !text-[7px] opacity-40 mt-2 font-medium tracking-wide">DUYURU</span>
  </div>
