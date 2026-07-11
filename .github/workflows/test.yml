@@ -33,7 +33,8 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          # firebase-tools artık Auth emülatörü için JDK 21+ istiyor.
+          java-version: '21'
 
       - name: Install Firebase Tools
         run: npm install -g firebase-tools
