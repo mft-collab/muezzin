@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { Save, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
@@ -13,6 +14,7 @@ type StatusMessage = {
 
 export default function SistemAyarlari() {
  const { settings, loading, updateSettings } = useSystemSettingsStore();
+ const { theme } = useThemeStore();
  const [ilceId, setIlceId] = useState('');
  const [ilceAdi, setIlceAdi] = useState('');
  const [hicriDuzeltme, setHicriDuzeltme] = useState(0);
@@ -148,13 +150,13 @@ export default function SistemAyarlari() {
              value={hicriDuzeltme}
              onChange={(e) => setHicriDuzeltme(Number(e.target.value))}
              className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors"
-             style={{ colorScheme: 'dark' }}
+             style={{ colorScheme: theme }}
            >
-             <option value={-2} className="bg-neutral-900 text-white">-2 Gün (Geriye Al)</option>
-            <option value={-1} className="bg-neutral-900 text-white">-1 Gün (Geriye Al)</option>
-            <option value={0} className="bg-neutral-900 text-white">Normal (Diyanet Uyumlu)</option>
-             <option value={1} className="bg-neutral-900 text-white">+1 Gün (İleriye Al)</option>
-             <option value={2} className="bg-neutral-900 text-white">+2 Gün (İleriye Al)</option>
+             <option value={-2} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">-2 Gün (Geriye Al)</option>
+            <option value={-1} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">-1 Gün (Geriye Al)</option>
+            <option value={0} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">Normal (Diyanet Uyumlu)</option>
+             <option value={1} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">+1 Gün (İleriye Al)</option>
+             <option value={2} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">+2 Gün (İleriye Al)</option>
            </select>
          </div>
        </div>

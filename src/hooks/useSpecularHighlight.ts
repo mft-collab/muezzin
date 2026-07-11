@@ -4,7 +4,7 @@ import { useEffect } from 'react';
  * useSpecularHighlight
  * 
  * Throttled requestAnimationFrame mouse-move & mobile gyroscope listener.
- * Dynamically updates global CSS variables --specular-x, --specular-y, and --specular-deg
+ * Dynamically updates global CSS variables --specular-x and --specular-y
  * on the document element to create high-end volumetric glass reflections.
  */
 export function useSpecularHighlight() {
@@ -25,10 +25,6 @@ export function useSpecularHighlight() {
       const docEl = document.documentElement;
       docEl.style.setProperty('--specular-x', `${currentX.toFixed(2)}%`);
       docEl.style.setProperty('--specular-y', `${currentY.toFixed(2)}%`);
-      
-      // Calculate dynamic angle for linear specular gradients
-      const angle = Math.atan2(currentY - 50, currentX - 50) * (180 / Math.PI) + 90;
-      docEl.style.setProperty('--specular-deg', `${angle.toFixed(1)}deg`);
 
       rafId = requestAnimationFrame(updateCSS);
     };

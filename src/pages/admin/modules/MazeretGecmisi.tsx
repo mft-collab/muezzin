@@ -90,9 +90,9 @@ export default function MazeretGecmisi() {
  onChange={e => setSelectedMuezzin(e.target.value)}
  className="w-full spatial-glass-elevated py-3.5 px-6 rounded-2xl text-[10px] font-bold uppercase tracking-wide text-[var(--text-primary)] outline-none border border-white/5 hover:bg-white/[0.05] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all appearance-none cursor-pointer"
  >
- <option value="all" className="bg-[#0a0a0a]">TÜM PERSONEL</option>
+ <option value="all" className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">TÜM PERSONEL</option>
  {muezzinler.map(m => (
- <option key={m.id} value={m.id} className="bg-[#0a0a0a]">{m.displayName.toUpperCase()}</option>
+ <option key={m.id} value={m.id} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">{m.displayName.toUpperCase()}</option>
  ))}
  </select>
  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
