@@ -1,3 +1,14 @@
+// Bu script'in tüm Date hesaplamaları Türkiye saatine göre yazılmış
+// varsayımlarla test ediliyor (getTurkeyNow() farkı sıfırlanır). CI
+// runner'ları genelde UTC'de çalıştığından, süreç saat dilimini burada
+// açıkça sabitliyoruz — aksi halde testler yalnızca geliştiricinin yerel
+// makinesi UTC+3'teyse "tesadüfen" geçer (bu tam olarak CI'de yaşanan
+// hataydı: withFakeNow'daki getTimezoneOffset() override'ı, Date'in
+// getHours()/getDate() gibi yerel-saat metodlarını etkilemiyor — bunlar
+// V8 içinde gerçek sistem saat dilimini kullanıyor, alt sınıf metod
+// override'ını değil).
+process.env.TZ = 'Europe/Istanbul';
+
 import assert from 'node:assert/strict';
 import {
   calculateKerahatTimes,
