@@ -3,6 +3,12 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
+  // CI runner'ında dev server + 2 Firestore/Auth emülatörü + Chromium ile
+  // aynı anda çalışırken paralel worker'lar arasındaki kaynak çekişmesi
+  // (CPU/ağ) flaky zaman aşımlarına yol açıyordu. Bu küçük test setinde
+  // hız kaybı ihmal edilebilir, kararlılık daha değerli.
+  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI ? 1 : 0,
   expect: {
     timeout: 10_000
   },
