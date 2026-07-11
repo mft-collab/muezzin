@@ -41,5 +41,5 @@ jobs:
       - name: Run rules & smoke tests
         run: npm run test:all
 
-      - name: Run Playwright E2E tests
-        run: npx playwright test
+      - name: Run Playwright E2E tests (against Firestore + Auth emulators)
+        run: firebase emulators:exec --only firestore,auth --project muezzin-c8485 "npx playwright test"

@@ -50,7 +50,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
               <Shield size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Kayıt Bulunmuyor</p>
-            <p className="premium-label !text-[8px] !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
+            <p className="premium-label !text-[10px] !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
           </div>
         ) : (
           logs.map((log) => (
@@ -69,7 +69,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                       <span className="text-sm font-medium text-[var(--text-primary)] tracking-tight">
                         {log.userDisplayName}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[7px] font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
                         {log.actionType}
                       </span>
                     </div>
@@ -82,7 +82,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                   <span className="text-[10px] text-[var(--text-secondary)]/50 font-bold block">
                     {formatDate(log.timestamp)}
                   </span>
-                  <span className="text-[8px] text-[var(--text-secondary)]/20 font-mono block mt-1">
+                  <span className="text-[10px] text-[var(--text-secondary)]/20 font-mono block mt-1">
                     LOG ID: {log.id}
                   </span>
                 </div>

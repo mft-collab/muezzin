@@ -36,12 +36,12 @@
   --phi: 1.618;
   --phi-space: clamp(1rem, 2.5vw, 3rem);
   --phi-gap: clamp(1.5rem, 4vw, 5rem);
-  --fluid-h1: clamp(2.5rem, 8vw, 5rem);
-  --fluid-h2: clamp(1.75rem, 5vw, 3.5rem);
+  --fluid-h1: clamp(2.5rem, 4rem, 5rem);
+  --fluid-h2: clamp(1.75rem, 2.75rem, 3.5rem);
   --fluid-body: clamp(0.875rem, 1.2vw, 1.125rem);
   --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
   --tracking-authority: 0.12em;
-  --tracking-tight: -0.04em;
+  --tracking-tight: 0;
 }
 
 [data-theme='light'] {
@@ -163,9 +163,9 @@
 
 @utility spatial-glass {
   background: var(--spatial-glass-bg) !important;
-  backdrop-filter: blur(40px) saturate(210%) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(210%) !important;
-  border-radius: 34px;
+  backdrop-filter: blur(28px) saturate(175%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(175%) !important;
+  border-radius: 24px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border) !important;
@@ -225,7 +225,7 @@
 
 @utility spatial-glass-flat {
   background: var(--spatial-glass-bg);
-  border-radius: 34px;
+  border-radius: 24px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border);
@@ -238,7 +238,7 @@
   background: var(--spatial-glass-bg);
   border: 1px solid var(--glass-border);
   transition: box-shadow 0.6s var(--spring-easing), background 0.6s var(--spring-easing), border-color 0.6s var(--spring-easing), font-weight 0.4s var(--spring-easing), transform 0.5s var(--spring-easing);
-  border-radius: 34px !important;
+  border-radius: 24px !important;
   cursor: pointer;
   will-change: transform;
   
@@ -309,7 +309,7 @@
 
 /* Premium Badges & Notifications */
 @utility badge-premium {
-  @apply inline-flex items-center justify-center px-2 py-0.5 rounded-full border text-[7px] font-bold uppercase tracking-widest backdrop-blur-md;
+  @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide backdrop-blur-md;
 }
 
 @utility badge-glow-amber {
@@ -331,7 +331,7 @@
 }
 
 @utility badge-pulse-danger {
-  @apply absolute flex items-center justify-center text-[8px] font-bold text-white bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.6)];
+  @apply absolute flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.6)];
   animation: pulse-danger-ring 2s infinite;
 }
 
@@ -896,4 +896,3 @@
   animation: heartbeat 3s ease-in-out infinite;
   will-change: transform;
 }
-

@@ -168,10 +168,10 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <h4 className="premium-label !text-[9px] !opacity-70 tracking-wide uppercase">MÜEZZİN İZİN TALEP İSTASYONU</h4>
+              <h4 className="premium-label !text-[9px] !opacity-70 tracking-wide uppercase">İZİN & MAZERET TALEBİ</h4>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed max-w-sm font-light">
-              Mihrap muafiyet, yıllık izin ve mazeret taleplerinizi otonom koordinasyon kuruluna iletmek için dokunun.
+              Haftalık izin, yıllık izin ve mazeret taleplerinizi yönetici onayına iletmek için dokunun.
             </p>
           </div>
           
@@ -180,7 +180,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             className="px-6 py-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))] text-white rounded-2xl text-[9px] font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
           >
             <Calendar size={13} strokeWidth={2} />
-            <span>TALEP İSTASYONUNU AÇ</span>
+            <span>TALEP OLUŞTUR</span>
           </button>
         </div>
       </motion.div>
@@ -189,13 +189,13 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="MÜEZZİN İZİN TALEP İSTASYONU"
+        title="İZİN & MAZERET TALEBİ"
       >
         <div className="flex flex-col py-2 relative text-left">
           <div className="flex flex-col gap-1.5 mb-6 opacity-60">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <p className="text-[10px] font-bold tracking-wide uppercase text-amber-500">SELF-SERVIS TALEP</p>
+              <p className="text-[10px] font-bold tracking-wide uppercase text-amber-500">YÖNETİCİ ONAYINA GÖNDERİLİR</p>
             </div>
             <span className="text-[9px] opacity-40 font-mono">LÜTFEN BİLGİLERİ EKSİKSİZ VE DOĞRU BİR ŞEKİLDE DOLDURUNUZ.</span>
           </div>

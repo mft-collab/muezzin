@@ -10,7 +10,6 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
   const [dbTestState, setDbTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [dbLatency, setDbLatency] = useState<number | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
-  const [activeListeners, setActiveListeners] = useState<number>(0);
 
   const [fcmTestState, setFcmTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [fcmPermission, setFcmPermission] = useState<string | null>(null);
@@ -40,19 +39,6 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
   // Collapsible Sandbox State
   const [showSandbox, setShowSandbox] = useState<boolean>(false);
   const [confirmSimulateOpen, setConfirmSimulateOpen] = useState(false);
-
-  // Hook into onSnapshot change telemetry
-  useEffect(() => {
-    setActiveListeners((window as any).__activeFirestoreListeners || 0);
-
-    (window as any).__onFirestoreListenersChange = (count: number) => {
-      setActiveListeners(count);
-    };
-
-    return () => {
-      (window as any).__onFirestoreListenersChange = null;
-    };
-  }, []);
 
   // Run offline outbox sync check
   const runSyncCheck = async () => {
@@ -122,16 +108,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         suggestions.push("Firestore yanıt hızını netleştirmek için 'Veritabanı Katmanı' testini çalıştırın.");
       }
 
-      // 2. Active Listeners check
-      metrics.push(`Aktif Veri Abonelikleri (onSnapshot): ${activeListeners} adet`);
-      if (activeListeners > 8) {
-        score -= 5;
-        suggestions.push(`Açık dinleyici sayısı yüksek (${activeListeners}). Firebase okuma maliyetlerini düşürmek için kullanılmayan sayfaların snapshot aboneliğini iptal edin.`);
-      } else {
-        score += 5;
-      }
-
-      // 3. Offline Outbox check
+      // 2. Offline Outbox check
       if (syncState === 'pending') {
         score -= 10;
         metrics.push("Çevrimdışı Eşitleme Kuyruğu: Senkronize edilmemiş veriler var");
@@ -141,7 +118,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         metrics.push("Çevrimdışı Eşitleme Kuyruğu: Tüm veriler eşitlendi");
       }
 
-      // 4. Notifications & FCM checks
+      // 3. Notifications & FCM checks
       if (fcmTestState === 'success') {
         score += 5;
         if (fcmPermission === 'granted') {
@@ -153,7 +130,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         }
       }
 
-      // 5. Network Latency ping checks
+      // 4. Network Latency ping checks
       if (networkTestState === 'success') {
         score += 5;
         if (networkLatency && networkLatency < 100) {
@@ -164,7 +141,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         }
       }
 
-      // 6. SW Version check
+      // 5. SW Version check
       if (swUpdateWaiting) {
         score -= 5;
         metrics.push("PWA Durumu: Yeni güncelleme bekliyor");
@@ -278,7 +255,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       {/* Intro Banner */}
       <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-[20px] sm:rounded-[28px] bg-gradient-to-r from-[var(--text-primary)]/[0.01] to-[var(--dynamic-aura,var(--aura-indigo))]/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div className="space-y-1">
-          <span className="premium-label !text-[8px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
+          <span className="premium-label !text-[10px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
             <Sparkles size={10} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" /> SİSTEM SAĞLIK MODÜLÜ
           </span>
           <h4 className="text-sm font-semibold text-[var(--text-primary)]">İnteraktif Sistem Teşhis Paneli</h4>
@@ -315,21 +292,15 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             </div>
             
             <div>
-              {dbTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[8px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {dbTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[10px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {dbTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {dbTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">AKTİF <CheckCircle2 size={10} /></span>}
-              {dbTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[8px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">ÇEVRİMDIŞI <XCircle size={10} /></span>}
+              {dbTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">AKTİF <CheckCircle2 size={10} /></span>}
+              {dbTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[10px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">ÇEVRİMDIŞI <XCircle size={10} /></span>}
             </div>
           </div>
 
           <div className="my-4 space-y-2">
             <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-[var(--text-secondary)]/60">Canlı Veri Abonelikleri (onSnapshot):</span>
-                <span className={`font-semibold ${activeListeners > 8 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {activeListeners} Aktif Dinleyici
-                </span>
-              </div>
               {dbTestState === 'success' && (
                 <div className="flex justify-between text-[11px]">
                   <span className="text-[var(--text-secondary)]/60">DB Yanıt Süresi:</span>
@@ -354,7 +325,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={runDbTest}
             disabled={dbTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {dbTestState === 'running' ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
           </motion.button>
@@ -385,10 +356,10 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             </div>
 
             <div>
-              {fcmTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[8px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {fcmTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[10px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {fcmTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {fcmTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {fcmTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[8px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
+              {fcmTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {fcmTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[10px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
             </div>
           </div>
 
@@ -421,7 +392,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={runFcmTest}
             disabled={fcmTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {fcmTestState === 'running' ? 'Sorgulanıyor...' : 'İzinleri Denetle'}
           </motion.button>
@@ -450,9 +421,9 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             </div>
 
             <div>
-              {pwaTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[8px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {pwaTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[10px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {pwaTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {pwaTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {pwaTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
             </div>
           </div>
 
@@ -486,7 +457,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               whileTap={{ scale: 0.99 }}
               onClick={runPwaTest}
               disabled={pwaTestState === 'running'}
-              className="flex-1 py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {pwaTestState === 'running' ? 'Denetleniyor...' : 'PWA Denetle'}
             </motion.button>
@@ -530,10 +501,10 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             </div>
 
             <div>
-              {networkTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[8px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {networkTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[10px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {networkTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {networkTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {networkTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[8px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
+              {networkTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {networkTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[10px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
             </div>
           </div>
 
@@ -566,7 +537,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={() => { runNetworkTest(); runSyncCheck(); }}
             disabled={networkTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[9px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {networkTestState === 'running' ? 'Ping Ölçülüyor...' : 'Ağ ve Kuyruğu Sorgula'}
           </motion.button>
@@ -584,7 +555,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               <Sparkles size={22} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
             </div>
             <div>
-              <span className="premium-label !text-[8px] text-purple-400 font-bold tracking-wide uppercase flex items-center gap-1">
+              <span className="premium-label !text-[10px] text-purple-400 font-bold tracking-wide uppercase flex items-center gap-1">
                 <Sparkles size={10} className="text-purple-400 animate-pulse" /> SİSTEM SAĞLIĞI ANALİZİ
               </span>
               <h4 className="text-sm font-semibold text-[var(--text-primary)]">Otonom Sağlık Teşhis Motoru</h4>
@@ -677,7 +648,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
                       diagScore >= 90 ? 'text-emerald-400' :
                       diagScore >= 70 ? 'text-amber-400' : 'text-rose-400'
                     }`}>{diagScore}</span>
-                    <span className="text-[7.5px] text-[var(--text-secondary)]/30 font-bold uppercase tracking-widest mt-0.5">Skor</span>
+                    <span className="text-[9px] text-[var(--text-secondary)]/30 font-bold uppercase tracking-widest mt-0.5">Skor</span>
                   </div>
                 </div>
               </div>
@@ -788,7 +759,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
                   whileHover={{ scale: 1.02, y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setConfirmSimulateOpen(true)}
-                  className="px-4 py-3.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl text-[8.5px] font-bold uppercase tracking-wider shadow-md flex items-center gap-2 transition-all whitespace-nowrap self-end sm:self-center"
+                  className="px-4 py-3.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-md flex items-center gap-2 transition-all whitespace-nowrap self-end sm:self-center"
                 >
                   <Play size={10} /> Hata Simüle Et
                 </motion.button>

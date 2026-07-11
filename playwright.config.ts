@@ -14,7 +14,14 @@ export default defineConfig({
     command: process.platform === 'win32' ? 'npm.cmd run dev' : 'npm run dev',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,
-    timeout: 120_000
+    timeout: 120_000,
+    // E2E testleri production Firestore/Auth'a değil, yerel emülatörlere
+    // karşı çalışsın (bkz. src/lib/firebase.ts, tests/e2e/seed-mazeret.ts).
+    // Emülatörlerin de `firebase emulators:start --only firestore,auth`
+    // ile ayrıca çalışıyor olması gerekir (bkz. .github/workflows/test.yml).
+    env: {
+      VITE_USE_EMULATOR: '1'
+    }
   },
   projects: [
     {

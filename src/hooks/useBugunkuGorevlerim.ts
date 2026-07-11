@@ -10,6 +10,16 @@ import { SizeLimitedCache } from '../lib/cache';
 
 // Sayfa geçişlerinde görevlerin 'zıplamasını' engellemek için Global Memory Cache
 const globalGorevlerCache = new SizeLimitedCache<string, Bildirim[]>(50);
+const VAKIT_SIRASI = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
+const TIP_SIRASI = ['asil', 'yedek', 'gorev_cagrisi'];
+
+function sortGorevler(gorevler: Bildirim[]) {
+ return [...gorevler].sort((a, b) => {
+ const vakitDiff = VAKIT_SIRASI.indexOf(a.vakit) - VAKIT_SIRASI.indexOf(b.vakit);
+ if (vakitDiff !== 0) return vakitDiff;
+ return TIP_SIRASI.indexOf(a.tip) - TIP_SIRASI.indexOf(b.tip);
+ });
+}
 
 export function useBugunkuGorevlerim() {
  const uid = useAuthStore(s => s.user?.uid);
@@ -17,7 +27,7 @@ export function useBugunkuGorevlerim() {
  
  const cacheKey = uid ? `${uid}_${currentTarih}` : '';
 
- const [gorevler, setGorevler] = useState<Bildirim[]>(() => globalGorevlerCache.get(cacheKey) || []);
+ const [gorevler, setGorevler] = useState<Bildirim[]>(() => sortGorevler(globalGorevlerCache.get(cacheKey) || []));
  const [loading, setLoading] = useState(cacheKey ? !globalGorevlerCache.has(cacheKey) : false);
 
  useEffect(() => {
@@ -39,7 +49,7 @@ export function useBugunkuGorevlerim() {
  );
 
  const unsubscribe = onSnapshot(q, (snapshot) => {
- const data = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Bildirim, 'id'>) } as Bildirim));
+ const data = sortGorevler(snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Bildirim, 'id'>) } as Bildirim)));
  globalGorevlerCache.set(cacheKey, data);
  setGorevler(data);
  setLoading(false);

@@ -8,6 +8,7 @@ import {
   toTurkishUpperCase
 } from '../src/lib/dateUtils';
 import { tieBreakerSirala } from '../src/utils/tieBreaker';
+import { haftalikPlanUret } from '../src/lib/planlamaCekirdegi';
 import { mevcutVaktiHesapla, sonrakiVaktiHesapla } from '../src/services/ezanVaktiServisi';
 import { Muezzin } from '../src/types';
 import { isRamazanArifeOncesi, isKurbanArifeOncesi, isRamazanBaslangiciOncesi } from '../src/lib/islamicCalendar';
@@ -154,6 +155,56 @@ const tests: TestCase[] = [
         ['a']
       );
       assert.equal(sirali.at(-1)?.id, 'a');
+    }
+  },
+  {
+    name: 'K3: haftalik plan ureticisi izinli personeli asla atamaz',
+    run: () => {
+      const gunler = ['2026-06-01', '2026-06-02'];
+      const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c')];
+      const onayliIzinler = [{ uid: 'a', baslangic: '2026-06-01', bitis: '2026-06-01' }];
+
+      const plan = haftalikPlanUret(gunler, muezzinler, onayliIzinler);
+
+      for (const vakit of ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] as const) {
+        assert.notEqual(plan['2026-06-01'][vakit].asil, 'a', `2026-06-01 ${vakit}: izinli 'a' asil atanmis`);
+        assert.notEqual(plan['2026-06-01'][vakit].yedek, 'a', `2026-06-01 ${vakit}: izinli 'a' yedek atanmis`);
+      }
+    }
+  },
+  {
+    name: 'K3: haftalik plan ureticisi sabit haftalik izin gununde atama yapmaz',
+    run: () => {
+      // 2026-06-01 Pazartesi (haftalikIzinGunu ölçeği: Pazartesi=1)
+      const gunler = ['2026-06-01'];
+      const muezzinler = [
+        { ...muezzin('a'), haftalikIzinGunu: 1 },
+        muezzin('b'),
+        muezzin('c')
+      ];
+
+      const plan = haftalikPlanUret(gunler, muezzinler, []);
+
+      assert.notEqual(plan['2026-06-01'].sabah.asil, 'a');
+      assert.notEqual(plan['2026-06-01'].sabah.yedek, 'a');
+    }
+  },
+  {
+    name: 'K3: korunmusAtama resolver mevcut atamayi degistirmeden korur',
+    run: () => {
+      const gunler = ['2026-06-01'];
+      const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c')];
+
+      const plan = haftalikPlanUret(gunler, muezzinler, [], (gun, vakit) => {
+        if (gun === '2026-06-01' && vakit === 'sabah') {
+          return { asil: 'c', yedek: 'Sistem' };
+        }
+        return null;
+      });
+
+      assert.deepEqual(plan['2026-06-01'].sabah, { asil: 'c', yedek: 'Sistem' });
+      // Korunmayan diğer vakitler taze hesaplanmaya devam eder (Sistem değil).
+      assert.notEqual(plan['2026-06-01'].ogle.asil, 'Sistem');
     }
   },
   {

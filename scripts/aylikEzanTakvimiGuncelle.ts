@@ -1,36 +1,7 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { aylikVakitleriCek } from './lib/ezanFetch.ts';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: 'SERVICE_ACCOUNT'
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
+import { getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
 async function main() {
   const simdi = getTurkeyNow();
@@ -78,12 +49,6 @@ async function main() {
     });
     process.exitCode = 1;
   }
-}
-
-function getTurkeyNow(): Date {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  return new Date(utc + (3600000 * 3));
 }
 
 main().catch(err => {

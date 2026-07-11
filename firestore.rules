@@ -28,10 +28,25 @@ service cloud.firestore {
     // ENTITY: Muezzins
     function isValidMuezzin(data) {
       return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
+             data.keys().hasOnly([
+               'displayName', 'aktif', 'role', 'email', 'photoURL', 'fcmToken', 'fcmTokens',
+               'aylikVakitSayisi', 'haftalikIzinGunu', 'notificationSettings',
+               'onayBekliyor', 'kayitTarihi', 'arsivlendi', 'arsivTarihi'
+             ]) &&
              data.displayName is string && data.displayName.size() <= 100 &&
              data.role in ['admin', 'muezzin', 'gozlemci'] &&
              data.email is string && data.email.size() <= 100 &&
-             data.aktif is bool;
+             data.aktif is bool &&
+             (!data.keys().hasAny(['photoURL']) || data.photoURL is string) &&
+             (!data.keys().hasAny(['fcmToken']) || data.fcmToken is string || data.fcmToken == null) &&
+             (!data.keys().hasAny(['fcmTokens']) || isValidFcmTokens(data.fcmTokens)) &&
+             (!data.keys().hasAny(['aylikVakitSayisi']) || (data.aylikVakitSayisi is int && data.aylikVakitSayisi >= 0)) &&
+             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 0 && data.haftalikIzinGunu <= 7)) &&
+             (!data.keys().hasAny(['notificationSettings']) || isValidNotificationSettings(data.notificationSettings)) &&
+             (!data.keys().hasAny(['onayBekliyor']) || data.onayBekliyor is bool) &&
+             (!data.keys().hasAny(['kayitTarihi']) || data.kayitTarihi is string) &&
+             (!data.keys().hasAny(['arsivlendi']) || data.arsivlendi is bool) &&
+             (!data.keys().hasAny(['arsivTarihi']) || data.arsivTarihi == null || data.arsivTarihi is timestamp);
     }
 
     function isValidNotificationSettings(settings) {
@@ -42,19 +57,33 @@ service cloud.firestore {
              (!settings.keys().hasAny(['mazeretDurumu']) || settings.mazeretDurumu is bool);
     }
 
+    function isValidFcmTokens(tokens) {
+      return tokens is map && tokens.size() <= 20;
+    }
+
+    function isInvitedSelfMuezzinCreate(uid) {
+      let emailId = request.auth.token.email.lower();
+      let invite = get(/databases/$(database)/documents/invites/$(emailId)).data;
+      return isSignedIn() &&
+             request.auth.uid == uid &&
+             incoming().email == emailId &&
+             exists(/databases/$(database)/documents/invites/$(emailId)) &&
+             incoming().role == invite.role;
+    }
+
     match /muezzins/{uid} {
       allow get, list: if isSignedIn();
-      allow create: if (isAdmin() || (isSignedIn() && request.auth.uid == uid)) && isValidMuezzin(incoming()) && (isAdmin() || incoming().role == 'muezzin');
+      allow create: if isValidMuezzin(incoming()) && (isAdmin() || isInvitedSelfMuezzinCreate(uid));
       allow delete: if isAdmin();
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && isValidMuezzin(incoming()) && (
         isAdmin() || (
             request.auth.uid == uid && 
-            isValidMuezzin(incoming()) &&
             incoming().email == existing().email && 
             incoming().role == existing().role &&
             incoming().aktif == existing().aktif &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'fcmToken', 'notificationSettings']) &&
-            (!incoming().keys().hasAny(['notificationSettings']) || isValidNotificationSettings(incoming().notificationSettings))
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'fcmToken', 'fcmTokens', 'notificationSettings']) &&
+            (!incoming().keys().hasAny(['notificationSettings']) || isValidNotificationSettings(incoming().notificationSettings)) &&
+            (!incoming().keys().hasAny(['fcmTokens']) || isValidFcmTokens(incoming().fcmTokens))
         )
       );
     }
@@ -64,23 +93,35 @@ service cloud.firestore {
     // ---------------------------------------------------------
     function isValidInvite(data) {
       return data.keys().hasAll(['email', 'role']) &&
+             data.keys().hasOnly(['email', 'displayName', 'role', 'haftalikIzinGunu', 'olusturmaTarihi']) &&
              data.email is string && data.email.size() <= 100 &&
-             data.role in ['admin', 'muezzin', 'gozlemci'];
+             data.role in ['admin', 'muezzin', 'gozlemci'] &&
+             (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 1 && data.haftalikIzinGunu <= 7));
     }
 
     match /invites/{emailId} {
       allow list: if isAdmin();
       allow get: if isSignedIn() && (isAdmin() || request.auth.token.email.lower() == emailId.lower());
-      allow create, update: if isAdmin() && isValidInvite(incoming());
+      allow create, update: if isAdmin() && isValidInvite(incoming()) && incoming().email.lower() == emailId.lower();
       allow delete: if isAdmin() || (isSignedIn() && request.auth.token.email.lower() == emailId.lower());
     }
 
     // ---------------------------------------------------------
     // ENTITY: Vakitler
     // ---------------------------------------------------------
+    function isValidVakitCache(data) {
+      return data.keys().hasAll(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
+             data.keys().hasOnly(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
+             data.ilceId is string && data.ilceId.size() >= 3 && data.ilceId.size() <= 8 &&
+             data.gunler is map && data.gunler.size() >= 28 && data.gunler.size() <= 32 &&
+             data.kaynakApi in ['diyanet', 'aladhan'] &&
+             data.guncellenmeTarihi is timestamp;
+    }
+
     match /vakitler/{docId} {
       allow get, list: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && isValidVakitCache(incoming());
     }
 
     // ---------------------------------------------------------
@@ -98,18 +139,20 @@ service cloud.firestore {
     // ---------------------------------------------------------
     function isSelfBildirimUpdate() {
       let changed = incoming().diff(existing()).affectedKeys();
-      return existing().uid == request.auth.uid &&
+      return isAssignableDutyUid(request.auth.uid) &&
+             existing().uid == request.auth.uid &&
              incoming().uid == existing().uid &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
              incoming().vakit == existing().vakit &&
              incoming().tip == existing().tip &&
-             changed.hasOnly(['durum', 'pendingAck', 'retSebebi', 'sonGuncelleme']) &&
+             changed.hasOnly(['durum', 'pendingAck', 'retSebebi', 'sonGuncelleme', 'devirSonucu']) &&
              (
                (
                  existing().durum == 'bekliyor' &&
                  incoming().durum == 'onaylandi' &&
-                 incoming().pendingAck == false
+                 incoming().pendingAck == false &&
+                 !changed.hasAny(['devirSonucu'])
                ) ||
                (
                  existing().durum == 'bekliyor' &&
@@ -118,16 +161,167 @@ service cloud.firestore {
                  incoming().pendingAck == false &&
                  incoming().retSebebi is string &&
                  incoming().retSebebi.size() > 0 &&
-                 incoming().retSebebi.size() <= 500
+                 incoming().retSebebi.size() <= 500 &&
+                 incoming().devirSonucu in ['yedek_atandi', 'alarm_bekliyor']
                )
              );
     }
 
+    // Bir müezzin mazeret bildirdiğinde (yukarıdaki reddedildi geçişi), aynı
+    // transaction içinde -- eğer uygun bir yedek varsa -- yedeğin kendi
+    // bildirim belgesi 'asil' rolüne terfi eder. Bildirim ID'leri deterministik
+    // olduğundan (haftaId_tarih_vakit_tip), yedek belgesi kendi alanlarından
+    // asil belgesinin yolunu hesaplayıp getAfter() ile o belgenin bu
+    // transaction'da gerçekten 'reddedildi' durumuna geçtiğini doğrulayabilir.
+    function isBackupPromotionFromMazeret() {
+      let changed = incoming().diff(existing()).affectedKeys();
+      let asilDocId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_asil';
+      let asilAfter = getAfter(/databases/$(database)/documents/bildirimler/$(asilDocId)).data;
+      return isSignedIn() &&
+             existing().tip == 'yedek' &&
+             existing().durum != 'reddedildi' &&
+             existing().uid != request.auth.uid &&
+             isAssignableDutyUid(existing().uid) &&
+             incoming().tip == 'asil' &&
+             incoming().durum == 'bekliyor' &&
+             incoming().pendingAck == true &&
+             incoming().uid == existing().uid &&
+             incoming().haftaId == existing().haftaId &&
+             incoming().tarih == existing().tarih &&
+             incoming().vakit == existing().vakit &&
+             incoming().asilMazeretUid == request.auth.uid &&
+             changed.hasOnly(['tip', 'durum', 'pendingAck', 'sonGuncelleme', 'asilMazeretUid']) &&
+             asilAfter.tip == 'asil' &&
+             asilAfter.durum == 'reddedildi' &&
+             asilAfter.uid == request.auth.uid &&
+             asilAfter.haftaId == existing().haftaId &&
+             asilAfter.tarih == existing().tarih &&
+             asilAfter.vakit == existing().vakit &&
+             asilAfter.devirSonucu == 'yedek_atandi';
+    }
+
+    function vekaletTalepId(data) {
+      return data.haftaId + '_' + data.tarih + '_' + data.vakit + '_' + data.tip + '_' + data.aliciUid;
+    }
+
+    function isVekaletParticipant(data) {
+      return isSignedIn() && (data.gonderenUid == request.auth.uid || data.aliciUid == request.auth.uid);
+    }
+
+    function isValidVekaletTalebi(data) {
+      return data.keys().hasAll([
+               'bildirimId', 'haftaId', 'gonderenUid', 'gonderenIsim',
+               'aliciUid', 'aliciIsim', 'tarih', 'vakit', 'saat',
+               'tip', 'durum', 'olusturmaTarihi'
+             ]) &&
+             data.keys().hasOnly([
+               'bildirimId', 'haftaId', 'gonderenUid', 'gonderenIsim',
+               'aliciUid', 'aliciIsim', 'tarih', 'vakit', 'saat',
+               'tip', 'durum', 'olusturmaTarihi', 'sonGuncelleme'
+             ]) &&
+             data.bildirimId is string &&
+             data.haftaId is string &&
+             data.gonderenUid == request.auth.uid &&
+             data.gonderenIsim is string && data.gonderenIsim.size() > 0 && data.gonderenIsim.size() <= 120 &&
+             data.aliciUid is string && data.aliciUid != request.auth.uid &&
+             data.aliciIsim is string && data.aliciIsim.size() > 0 && data.aliciIsim.size() <= 120 &&
+             data.tarih is string && data.tarih.size() == 10 &&
+             data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
+             data.saat is string && data.saat.size() >= 4 && data.saat.size() <= 5 &&
+             data.tip in ['asil', 'yedek', 'gorev_cagrisi'] &&
+             data.durum == 'beklemede';
+    }
+
+    function isValidVekaletCreate(talepId) {
+      let bildirim = get(/databases/$(database)/documents/bildirimler/$(incoming().bildirimId)).data;
+      let alici = get(/databases/$(database)/documents/muezzins/$(incoming().aliciUid)).data;
+      return isValidVekaletTalebi(incoming()) &&
+             talepId == vekaletTalepId(incoming()) &&
+             bildirim.uid == request.auth.uid &&
+             bildirim.haftaId == incoming().haftaId &&
+             bildirim.tarih == incoming().tarih &&
+             bildirim.vakit == incoming().vakit &&
+             bildirim.tip == incoming().tip &&
+             bildirim.durum == 'bekliyor' &&
+             alici.role == 'muezzin' &&
+             alici.aktif == true;
+    }
+
+    function isRecipientVekaletStatusUpdate() {
+      let changed = incoming().diff(existing()).affectedKeys();
+      return isSignedIn() &&
+             existing().aliciUid == request.auth.uid &&
+             existing().durum == 'beklemede' &&
+             incoming().diff(existing()).unchangedKeys().hasAll([
+               'bildirimId', 'haftaId', 'gonderenUid', 'gonderenIsim',
+               'aliciUid', 'aliciIsim', 'tarih', 'vakit', 'saat',
+               'tip', 'olusturmaTarihi'
+             ]) &&
+             changed.hasOnly(['durum', 'sonGuncelleme']) &&
+             incoming().durum in ['kabul_edildi', 'reddedildi'];
+    }
+
+    function isAcceptedVekaletBildirimTransfer(bildirimId) {
+      let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
+      let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
+      let changed = incoming().diff(existing()).affectedKeys();
+      return existing().durum == 'bekliyor' &&
+             incoming().durum == existing().durum &&
+             incoming().haftaId == existing().haftaId &&
+             incoming().tarih == existing().tarih &&
+             incoming().vakit == existing().vakit &&
+             incoming().tip == existing().tip &&
+             incoming().pendingAck == existing().pendingAck &&
+             incoming().uid == request.auth.uid &&
+             changed.hasOnly(['uid', 'sonGuncelleme']) &&
+             talep.bildirimId == bildirimId &&
+             talep.haftaId == existing().haftaId &&
+             talep.tarih == existing().tarih &&
+             talep.vakit == existing().vakit &&
+             talep.tip == existing().tip &&
+             talep.gonderenUid == existing().uid &&
+             talep.aliciUid == request.auth.uid &&
+             talep.durum == 'kabul_edildi';
+    }
+
+    function isAssignableDutyUid(uid) {
+      return uid is string &&
+             exists(/databases/$(database)/documents/muezzins/$(uid)) &&
+             get(/databases/$(database)/documents/muezzins/$(uid)).data.role == 'muezzin' &&
+             get(/databases/$(database)/documents/muezzins/$(uid)).data.aktif == true;
+    }
+
+    function isValidBildirim(data) {
+      return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi']) &&
+             data.haftaId is string &&
+             data.tarih is string && data.tarih.size() == 10 &&
+             data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
+             isAssignableDutyUid(data.uid) &&
+             data.tip in ['asil', 'yedek', 'gorev_cagrisi'] &&
+             data.durum in ['bekliyor', 'onaylandi', 'reddedildi', 'sistem_atadi', 'iptal', 'okundu_varsayilan'] &&
+             data.pendingAck is bool &&
+             (!data.keys().hasAny(['retSebebi']) || data.retSebebi == null || (data.retSebebi is string && data.retSebebi.size() <= 500)) &&
+             (!data.keys().hasAny(['planSenkronEdildi']) || data.planSenkronEdildi is bool) &&
+             (!data.keys().hasAny(['devirSonucu']) || data.devirSonucu is string) &&
+             (!data.keys().hasAny(['asilMazeretUid']) || data.asilMazeretUid is string);
+    }
+
     match /bildirimler/{docId} {
       allow read, list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isSignedIn() && (isAdmin() || isSelfBildirimUpdate());
+      allow create: if isAdmin() && isValidBildirim(incoming());
+      allow update: if isSignedIn() && ((isAdmin() && isValidBildirim(incoming())) || isSelfBildirimUpdate() || isAcceptedVekaletBildirimTransfer(docId) || isBackupPromotionFromMazeret());
       allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Vekalet Talepleri
+    // ---------------------------------------------------------
+    match /vekalet_talepleri/{talepId} {
+      allow get, list: if isAdmin() || isVekaletParticipant(existing());
+      allow create: if isSignedIn() && isValidVekaletCreate(talepId);
+      allow update: if isAdmin() || isRecipientVekaletStatusUpdate();
+      allow delete: if isAdmin() || (isSignedIn() && existing().gonderenUid == request.auth.uid && existing().durum == 'beklemede');
     }
 
     // ---------------------------------------------------------
@@ -140,13 +334,53 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Sistem Günlükleri ve Hata Raporları
     // ---------------------------------------------------------
+    // Alan/boyut sınırları, tek bir bozuk/kötü niyetli istemcinin sınırsız
+    // büyüyen belgelerle günlük Firestore yazma kotasını (Spark plan) veya
+    // 1 GB depolama sınırını tüketmesini engeller.
+    function isValidErrorLog(data) {
+      return data.keys().hasAll(['errorMessage', 'errorStack', 'componentStack', 'userId', 'device', 'breadcrumbs', 'stateSnapshot', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.errorMessage is string && data.errorMessage.size() <= 2000 &&
+             data.errorStack is string && data.errorStack.size() <= 8000 &&
+             data.componentStack is string && data.componentStack.size() <= 8000 &&
+             data.device is map &&
+             data.breadcrumbs is list && data.breadcrumbs.size() <= 30 &&
+             data.stateSnapshot is map &&
+             data.timestamp is timestamp;
+    }
+
     match /error_logs/{docId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isValidErrorLog(incoming());
       allow read, write: if isAdmin();
     }
 
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['actionType', 'targetName', 'details', 'userId', 'userDisplayName', 'timestamp']) &&
+             data.keys().hasOnly(['actionType', 'targetName', 'details', 'userId', 'userDisplayName', 'timestamp']) &&
+             data.actionType is string && data.actionType.size() > 0 && data.actionType.size() <= 80 &&
+             data.targetName is string && data.targetName.size() > 0 && data.targetName.size() <= 160 &&
+             data.details is string && data.details.size() > 0 && data.details.size() <= 500 &&
+             data.userId == request.auth.uid &&
+             data.userDisplayName is string && data.userDisplayName.size() > 0 && data.userDisplayName.size() <= 120;
+    }
+
+    match /audit_logs/{docId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn() && isValidAuditLog(incoming());
+      allow update, delete: if false;
+    }
+
+    function isValidTelemetryLog(data) {
+      return data.keys().hasAll(['eventType', 'eventName', 'userId', 'metadata', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.eventType in ['page_view', 'click', 'error', 'performance'] &&
+             data.eventName is string && data.eventName.size() <= 200 &&
+             data.metadata is map &&
+             data.timestamp is timestamp;
+    }
+
     match /telemetry_logs/{docId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isValidTelemetryLog(incoming());
       allow read, write: if isAdmin();
     }
 
@@ -157,9 +391,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    function isValidSystemSettings(data) {
+      return data.keys().hasAll(['ilceId', 'ilceAdi', 'hicriDuzeltme']) &&
+             data.keys().hasOnly(['ilceId', 'ilceAdi', 'hicriDuzeltme']) &&
+             data.ilceId is string && data.ilceId.size() >= 3 && data.ilceId.size() <= 8 &&
+             data.ilceAdi is string && data.ilceAdi.size() >= 2 && data.ilceAdi.size() <= 80 &&
+             data.hicriDuzeltme is int &&
+             data.hicriDuzeltme >= -2 &&
+             data.hicriDuzeltme <= 2;
+    }
+
     match /settings/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && docId == 'system' && isValidSystemSettings(incoming());
     }
 
     // ---------------------------------------------------------

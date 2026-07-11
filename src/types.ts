@@ -19,8 +19,12 @@ export interface Muezzin {
  };
  aylikVakitSayisi: number;
  haftalikIzinGunu?: number;
- puan?: number;
  kayitTarihi?: string;
+ /** Davet kabul edip hesap oluşturdu ama admin onayı bekliyor */
+ onayBekliyor?: boolean;
+ /** Personel arşivlendi mi (soft-delete) — bkz. src/pages/admin/modules/MuezzinYonetimi.tsx */
+ arsivlendi?: boolean;
+ arsivTarihi?: Timestamp | null;
 }
 
 export interface Invite {
@@ -77,6 +81,29 @@ export interface Bildirim {
  retSebebi: string | null;
  olusturmaTarihi: Timestamp;
  sonGuncelleme: Timestamp;
+ /** Bir mazeret bildiriminin sonucu (bkz. src/services/mazeretServisi.ts) */
+ devirSonucu?: 'yedek_atandi' | 'alarm_bekliyor' | 'alarm_uretildi';
+ /** Terfi eden bir yedek bildirimi üzerinde: mazereti bildiren asil görevlinin uid'si */
+ asilMazeretUid?: string;
+ /** admin-SDK uzlaştırma işi (scripts/mazeretDevirleriniIsle.ts) haftaPlanlari'nı senkronize etti mi */
+ planSenkronEdildi?: boolean;
+}
+
+export interface VekaletTalebi {
+ id?: string;
+ bildirimId: string;
+ haftaId: string;
+ gonderenUid: string;
+ gonderenIsim: string;
+ aliciUid: string;
+ aliciIsim: string;
+ tarih: string;
+ vakit: Vakit;
+ saat: string;
+ tip: "asil" | "yedek" | "gorev_cagrisi";
+ durum: "beklemede" | "kabul_edildi" | "reddedildi";
+ olusturmaTarihi: Timestamp;
+ sonGuncelleme?: Timestamp;
 }
 
 export interface AdminUyarisi {
@@ -110,6 +137,8 @@ export interface Izin {
  sebep: string;
  durum: "onay_bekliyor" | "onaylandi" | "reddedildi";
  olusturmaTarihi: Timestamp;
+ /** Admin reddederken gerekçe girebilir (bkz. firestore.rules izinler update) */
+ redSebebi?: string;
 }
 
 export interface SystemSettings {

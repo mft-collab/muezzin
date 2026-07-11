@@ -21,17 +21,17 @@ export const CommandPalette: React.FC = () => {
 
  const actions: CommandItem[] = [
  { 
- id: 'dash', title: 'Genel Bakış', description: 'Dashboard ve sistem özetini gör', 
+ id: 'dash', title: 'Genel Bakış', description: 'Yönetim özetini ve canlı durumu gör', 
  icon: <LayoutDashboard size={18} />, category: 'Navigasyon', 
  action: () => navigate('/admin?tab=dashboard') 
  },
  { 
- id: 'plan', title: 'Nöbet Çizelgesi', description: 'Haftalık hizmet planlamasını yönet', 
+ id: 'plan', title: 'Hizmet Cetveli', description: 'Haftalık hizmet planlamasını yönet', 
  icon: <CalendarDays size={18} />, category: 'Navigasyon', 
  action: () => navigate('/admin?tab=planlama') 
  },
  { 
- id: 'ekip', title: 'Personel Yönetimi', description: 'Müezzin ve kadro listesini düzenle', 
+ id: 'ekip', title: 'Kadro Yönetimi', description: 'Müezzin ve kadro listesini düzenle', 
  icon: <Users size={18} />, category: 'Navigasyon', 
  action: () => navigate('/admin?tab=ekip') 
  },
@@ -41,7 +41,7 @@ export const CommandPalette: React.FC = () => {
  action: () => navigate('/admin?tab=ayarlar') 
  },
  { 
- id: 'kriz', title: 'Kriz Alarmları', description: 'Çözülmemiş vakit sorunlarını listele', 
+ id: 'kriz', title: 'Nöbet Uyarıları', description: 'Çözülmemiş nöbet ve vakit uyarılarını listele', 
  icon: <ShieldAlert size={18} />, category: 'İşlemler', 
  action: () => navigate('/admin?tab=dashboard&sub=alarmlar') 
  },
@@ -51,13 +51,13 @@ export const CommandPalette: React.FC = () => {
  action: () => navigate('/admin?tab=dashboard&sub=duyurular') 
  },
  { 
- id: 'cache', title: 'Önbelleği Temizle', description: 'Ezan vakitleri önbelleğini yenile', 
+ id: 'cache', title: 'Ezan Önbelleği', description: 'Vakit cache durumunu görüntüle ve senkronize et', 
  icon: <Database size={18} />, category: 'Sistem', 
  action: () => {
  sessionStorage.removeItem('admin_pendingIzinler');
  sessionStorage.removeItem('admin_activeDuyurular');
  sessionStorage.removeItem('admin_counts_time');
- navigate('/admin?tab=ayarlar');
+ navigate('/admin?tab=ayarlar&subtab=onbellek');
  } 
  },
  ];
@@ -68,17 +68,30 @@ export const CommandPalette: React.FC = () => {
  );
 
  useEffect(() => {
- const handleKeyDown = (e: KeyboardEvent) => {
- if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
- e.preventDefault();
+ const handleKeyDown = (e: Event) => {
+ if (e.type === 'admin-command-palette:open') {
+ setIsOpen(true);
+ return;
+ }
+ const ke = e as KeyboardEvent;
+ if ((ke.metaKey || ke.ctrlKey) && ke.key === 'k') {
+ ke.preventDefault();
  setIsOpen(prev => !prev);
  }
- if (e.key === 'Escape') setIsOpen(false);
+ if (ke.key === '/' && !isOpen) {
+ ke.preventDefault();
+ setIsOpen(true);
+ }
+ if (ke.key === 'Escape') setIsOpen(false);
  };
 
  window.addEventListener('keydown', handleKeyDown);
- return () => window.removeEventListener('keydown', handleKeyDown);
- }, []);
+ window.addEventListener('admin-command-palette:open', handleKeyDown);
+ return () => {
+ window.removeEventListener('keydown', handleKeyDown);
+ window.removeEventListener('admin-command-palette:open', handleKeyDown);
+ };
+ }, [isOpen]);
 
  useEffect(() => {
  if (isOpen) {

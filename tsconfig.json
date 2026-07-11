@@ -21,7 +21,19 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true
+    // NOT: "noImplicitAny" ve tam "strict": true KASITLI OLARAK açılmadı.
+    // Bu iki bayrak ~3750 satırlık mevcut hata yüzeyi açıyor (kod tabanında
+    // yaygın örtük `any` kullanımı var) — güvenli bir kademeli geçiş,
+    // dosya dosya `// @ts-check` ile izlenen ayrı bir migrasyon gerektirir.
   },
   "exclude": [
     "dist",

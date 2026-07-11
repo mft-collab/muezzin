@@ -1,20 +1,15 @@
-import React, { useState, useEffect, Suspense, lazy, useRef, useCallback } from 'react';
-import { auth, db } from '../lib/firebase';
+import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
+import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { LogOut, Award, Shield, User } from 'lucide-react';
+import { Award, Shield, User } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { HakkindaModal } from '../components/HakkindaModal';
-import { playClick } from '../lib/sounds';
 
 // Kritik bileşenler — hemen yükle
 import ProfileHeader from './profil/ProfileHeader';
 import ProfileStats from './profil/ProfileStats';
 
 // Ağır bileşenler — lazy: yalnızca ekrana gelince yüklensin
-const NotificationSettings = lazy(() => import('./profil/NotificationSettings'));
-const VacationRequestCard   = lazy(() => import('./profil/VacationRequestCard'));
 const PersonalHistoryCard   = lazy(() => import('./profil/PersonalHistoryCard'));
 
 export interface UserData {
@@ -81,14 +76,12 @@ function LazySection({ children, fallback }: { children: React.ReactNode; fallba
 export default function Profil() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const navigate = useNavigate();
 
   const user = useAuthStore(s => s.user);
   const authInitialized = useAuthStore(s => s.initialized);
 
   useEffect(() => {
-    if (!authInitialized) return;
+    if (!authInitialized) return undefined;
 
     if (user) {
       setLoading(true);
@@ -107,16 +100,8 @@ export default function Profil() {
       setUserData(null);
       setLoading(false);
     }
+    return undefined;
   }, [user, authInitialized]);
-
-  const handleLogout = useCallback(async () => {
-    try {
-      await auth.signOut();
-      navigate('/');
-    } catch (err) {
-      console.error('Çıkış yapılamadı', err);
-    }
-  }, [navigate]);
 
   const currentAylikVakit = userData?.aylikVakitSayisi || 0;
 
@@ -160,7 +145,7 @@ export default function Profil() {
               <div className="grid grid-cols-3 gap-4 relative z-10">
                 {([
                   {
-                    label: 'Mihrap Muhafızı',
+                    label: 'Mihrap Görevlisi',
                     desc: '5 Vakit Hizmet',
                     threshold: 5,
                     icon: <User size={20} strokeWidth={1.5} />,
@@ -210,58 +195,12 @@ export default function Profil() {
             {/* 3. Core Profile Stats — hafif, hemen render */}
             <ProfileStats userData={userData} />
 
-            {/* 4-6. Ağır bileşenler — LazySection ile kademeli yükleme */}
-            <LazySection>
-              <Suspense fallback={<SectionSkeleton />}>
-                <VacationRequestCard user={user} />
-              </Suspense>
-            </LazySection>
-
+            {/* 4. Ağır bileşen — LazySection ile kademeli yükleme */}
             <LazySection>
               <Suspense fallback={<SectionSkeleton />}>
                 <PersonalHistoryCard user={user} />
               </Suspense>
             </LazySection>
-
-            <LazySection>
-              <Suspense fallback={<SectionSkeleton />}>
-                <NotificationSettings userData={userData} user={user} />
-              </Suspense>
-            </LazySection>
-
-            {/* Çıkış Bölümü */}
-            <div className="space-y-6 pt-8">
-              <motion.button
-                whileHover={{ scale: 1.01, backgroundColor: 'hsla(var(--bg-h), 100%, 50%, 0.08)' }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleLogout}
-                className="w-full py-6 flex items-center justify-center gap-5 bg-[var(--status-error)]/[0.04] border border-[var(--status-error)]/20 text-[var(--status-error)] hover:border-[var(--status-error)]/40 hover:shadow-[0_20px_50px_-10px_var(--status-error)] transition-all duration-700 rounded-[32px] text-[10px] font-bold uppercase tracking-wide group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                <LogOut size={18} strokeWidth={2.5} className="transition-transform duration-500 group-hover:-translate-x-1.5" />
-                <span>SİSTEMDEN GÜVENLİ ÇIKIŞ</span>
-              </motion.button>
-
-              <div className="text-center pb-10">
-                <button 
-                  onClick={() => {
-                    playClick();
-                    setIsAboutOpen(true);
-                  }}
-                  className="group flex items-center justify-center gap-6 mx-auto hover:opacity-100 transition-opacity"
-                >
-                  <div className="h-px w-12 bg-gradient-to-r from-transparent to-[var(--glass-border)] group-hover:to-white/20 transition-colors" />
-                  <div className="flex flex-col items-center gap-1">
-                    <p className="premium-label !text-[10px] !opacity-45 !font-bold tracking-wide group-hover:opacity-100 transition-opacity">v2.1.0</p>
-                    <span className="text-[7px] font-bold text-white/20 group-hover:text-[var(--aura-indigo)] uppercase tracking-widest transition-colors">Hakkında</span>
-                  </div>
-                  <div className="h-px w-12 bg-gradient-to-l from-transparent to-[var(--glass-border)] group-hover:to-white/20 transition-colors" />
-                </button>
-              </div>
-            </div>
-
-            {/* Hakkında Modalı */}
-            <HakkindaModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
           </div>
         )}
       </div>

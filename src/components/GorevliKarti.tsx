@@ -104,7 +104,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
         layout: { type: 'spring', stiffness: 220, damping: 25 }
       }}
       style={unassignedBorderStyle}
-      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[38px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass} shimmer-trigger`}
+      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[28px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass} shimmer-trigger`}
     >
       <div className="kinetic-sheen" />
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
@@ -120,7 +120,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
             <div>
               <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
-                <span className={`authority-title !text-[7.5px] tracking-wide font-semibold ${titleColorClass}`}>
+                <span className={`authority-title !text-[10px] tracking-wide font-semibold ${titleColorClass}`}>
                   {titleText}
                 </span>
               </div>
@@ -142,7 +142,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
             {durum === 'onaylandi' && (
               <div className={`flex items-center gap-2 px-4 py-1.5 rounded-[14px] border transition-all duration-500 ${isFriday ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
                 <CheckCircle2 size={11} className="text-emerald-400 shadow-sm" />
-                <span className="text-[7.5px] font-bold uppercase tracking-[0.15em] text-emerald-400">AKTİF</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">AKTİF</span>
               </div>
             )}
             {durum === 'bekliyor' && (
@@ -151,13 +151,13 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
                 className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-amber-500/10 border border-amber-500/20 shadow-sm cursor-pointer hover:bg-amber-500/15 transition-all"
               >
                 <Hourglass size={11} className="text-amber-400 animate-spin" style={{ animationDuration: '4s' }} />
-                <span className="text-[7.5px] font-bold uppercase tracking-[0.15em] text-amber-400">BEKLEYİŞTE</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400">BEKLEYİŞTE</span>
               </motion.div>
             )}
             {izinde && (
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-rose-500/10 border border-rose-500/20 shadow-sm">
                 <Compass size={11} className="text-rose-400" />
-                <span className="text-[7.5px] font-bold uppercase tracking-[0.15em] text-rose-400">MEŞRU MAZERET</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-rose-400">MEŞRU MAZERET</span>
               </div>
             )}
           </div>

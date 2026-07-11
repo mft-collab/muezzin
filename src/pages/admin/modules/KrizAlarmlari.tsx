@@ -35,7 +35,7 @@ export default function KrizAlarmlari() {
         cozuldu: true,
         cozulmeTarihi: new Date()
       });
-      await telemetryService.logAudit('Kriz Vakası Arşivleme', alarm.id, `Kritik kriz alarmı yönetici tarafından çözüldü olarak işaretlendi ve arşivlendi. Mesaj: "${alarm.mesaj}"`);
+      await telemetryService.logAudit('Nöbet Uyarısı Arşivleme', alarm.id, `Nöbet uyarısı yönetici tarafından çözüldü olarak işaretlendi ve arşivlendi. Mesaj: "${alarm.mesaj}"`);
     } catch (err) {
       console.error("Vaka giderme hatası:", err);
     } finally {
@@ -53,7 +53,7 @@ export default function KrizAlarmlari() {
           cozuldu: true,
           cozulmeTarihi: new Date()
         });
-        await telemetryService.logAudit('Otonom Nöbet Onarımı', alarm.id, `Eşik dışı veri zinciri tükendi krizi sistem tarafından otomatik onarıldı ve yedek görevli devraldı.`);
+        await telemetryService.logAudit('Otomatik Nöbet Onarımı', alarm.id, `Eşik dışı nöbet zinciri sistem tarafından otomatik onarıldı ve yedek görevli devraldı.`);
       }
     } catch (err) {
       console.error("Retry error:", err);
@@ -84,7 +84,7 @@ export default function KrizAlarmlari() {
  <div className="flex h-[500px] items-center justify-center">
  <div className="flex flex-col items-center gap-6">
  <div className="w-14 h-14 border-4 border-rose-500/10 border-t-rose-500 rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
- <p className="authority-title !text-[9px] opacity-20 tracking-wide uppercase">Kriz Verileri Senkronize Ediliyor</p>
+ <p className="authority-title !text-[9px] opacity-20 tracking-wide uppercase">Nöbet Uyarıları Yükleniyor</p>
  </div>
  </div>
  );
@@ -144,8 +144,8 @@ export default function KrizAlarmlari() {
  {/* TOOLBAR: Operational Toggle */}
  <div className="flex justify-between items-center">
  <div className="flex flex-col gap-2">
- <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kriz Merkezi</h2>
- <p className="authority-title !text-[7px] opacity-30 font-medium tracking-wide">SİSTEM SAPMALARI VE ACİL MÜDAHALE</p>
+ <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Nöbet Uyarıları</h2>
+ <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">NÖBET VE VAKİT AKIŞI TAKİBİ</p>
  </div>
 
  <motion.button 
@@ -158,7 +158,7 @@ export default function KrizAlarmlari() {
  : 'bg-white/[0.03] border-white/5 text-white/20'
  }`}
  >
- <span className="authority-title !text-[8px] font-bold tracking-wide uppercase">ARŞİVLENMİŞ VAKALAR</span>
+ <span className="authority-title !text-[10px] font-bold tracking-wide uppercase">ARŞİVLENMİŞ UYARILAR</span>
  <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-white/10'}`}>
  <motion.div 
  animate={{ x: showResolved ? 22 : 2 }}
@@ -177,9 +177,9 @@ export default function KrizAlarmlari() {
  <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border border-emerald-500/20">
  <CheckCircle size={36} strokeWidth={1.2} />
  </div>
- <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Sistem Senkronize</h3>
- <p className="authority-title !text-[8px] opacity-40 uppercase tracking-wide leading-relaxed mb-12">
- ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR KRİZ VEYA SİSTEM SAPMASI BULUNMUYOR.
+ <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Uyarı Bulunmuyor</h3>
+ <p className="authority-title !text-[10px] opacity-40 uppercase tracking-wide leading-relaxed mb-12">
+ ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR NÖBET UYARISI BULUNMUYOR.
  </p>
  </motion.div>
  )}
@@ -227,10 +227,10 @@ export default function KrizAlarmlari() {
  <span className={`authority-title !text-[9px] font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
  {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' : 
  alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' : 
- alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA MOTORU HATASI' : 'KRİTİK SİSTEM SAPMASI'}
+ alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' : 'NÖBET UYARISI'}
  </span>
  {!alarm.cozuldu && (
- <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-[7px] font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
+ <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-[9px] font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
  ACİL MÜDAHALE
  </div>
  )}
@@ -238,7 +238,7 @@ export default function KrizAlarmlari() {
  
  <div className="flex items-center gap-4 mt-1">
  <div className="flex items-center gap-2">
- <span className="authority-title !text-[7px] opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
+ <span className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
  <span className={`text-[11px] font-bold tracking-wide ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : 'text-[var(--text-secondary)]/60'}`}>
  {alarm.tarih ? format(new Date(alarm.tarih), 'dd MMMM yyyy', { locale: tr }) : '--'}
  {alarm.vakit ? ` • ${VAKIT_GORA_ISIMLERI[alarm.vakit as Vakit]}` : ''}
@@ -289,8 +289,8 @@ export default function KrizAlarmlari() {
  isOpen={confirmData.open}
  onClose={() => setConfirmData({ open: false, alarm: null })}
  onConfirm={executeResolve}
- title="Vakayı Çözüldü Olarak İşaretle"
- message={confirmData.alarm ? `${confirmData.alarm.tip === 'zincirTukendi' ? 'Veri Zinciri Tükendi' : 'Sistem Kritik Uyarısı'} başlıklı vakayı arşivlemek üzeresiniz. Lütfen gerekli önlemlerin alındığından emin olun.` : ''}
+ title="Uyarıyı Çözüldü Olarak İşaretle"
+ message={confirmData.alarm ? `${confirmData.alarm.tip === 'zincirTukendi' ? 'Nöbet Zinciri Tükendi' : 'Nöbet Uyarısı'} başlıklı kaydı arşivlemek üzeresiniz. Lütfen gerekli önlemlerin alındığından emin olun.` : ''}
  confirmText="EVET, ARŞİVLE"
  isDanger={false}
  />

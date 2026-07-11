@@ -2,24 +2,27 @@ import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { LogOut, Moon, Search, Sun, X } from 'lucide-react';
 import { db } from '../../lib/firebase';
-import { getCountFromServer, query, collection, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { auth } from '../../lib/firebase';
 import { useKrizAlarmlari } from '../../hooks/admin/useKrizAlarmlari';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMuezzinStore } from '../../store/useMuezzinStore';
 import { motion, AnimatePresence } from 'motion/react';
-import { SplashLoader } from '../../components/SplashLoader';
 import { useThemeStore } from '../../store/useThemeStore';
 
 import { useEzanVakitleri } from '../../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../../hooks/useMevcutVakit';
+import { getActiveAuraColor, getSecondaryAuraColor } from '../../lib/auraTheme';
 import { IslamicGeometricBg } from '../../components/ui/IslamicGeometricBg';
+import { playClick } from '../../lib/sounds';
 
 import { SlimSidebar } from './components/SlimSidebar';
 import { MobileDock } from './components/MobileDock';
 import { CommandPalette } from './components/CommandPalette';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const HaftalikCizelge = lazy(() => import('./modules/HaftalikCizelge'));
 const KrizAlarmlari = lazy(() => import('./modules/KrizAlarmlari'));
@@ -99,12 +102,13 @@ export default function AdminPanel() {
  };
 
  const [drawerContent, setDrawerContent] = useState<'alarmlar' | 'duyurular' | null>(null);
+ const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
  const navigate = useNavigate();
  const isAdmin = useAuthStore(s => s.isAdmin);
  const authLoading = useAuthStore(s => s.loading);
  
  // Stats & States
- const muezzinlerLength = useMuezzinStore(s => s.muezzinler.filter(m => (m as any).arsivlendi !== true).length);
+ const muezzinlerLength = useMuezzinStore(s => s.muezzinler.filter(m => m.role === 'muezzin' && m.aktif === true && m.arsivlendi !== true).length);
  const { cozulmamisSayisi } = useKrizAlarmlari();
  const [pendingIzinler, setPendingIzinler] = useState(0);
 
@@ -128,63 +132,24 @@ export default function AdminPanel() {
  });
  };
 
- // Aktif vakte göre ana aura rengi
- const activeAuraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-rose)';
- case 'yatsi': return 'var(--aura-indigo)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-amber)';
- case 'sabah': return 'var(--aura-emerald)';
- default: return 'var(--aura-indigo)';
- }
- }, [mevcutVakit]);
-
+ // Aktif vakte göre ana aura rengi (bkz. src/lib/auraTheme.ts)
+ const activeAuraColor = useMemo(() => getActiveAuraColor(mevcutVakit), [mevcutVakit]);
  // Sekonder tamamlayıcı aura rengi (kontrast için)
- const secondaryAuraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-indigo)';
- case 'yatsi': return 'var(--aura-emerald)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-rose)';
- case 'sabah': return 'var(--aura-amber)';
- default: return 'var(--aura-emerald)';
- }
- }, [mevcutVakit]);
+ const secondaryAuraColor = useMemo(() => getSecondaryAuraColor(mevcutVakit), [mevcutVakit]);
 
 
  useEffect(() => {
- let mounted = true;
- const fetchCounts = async () => {
- try {
- const cachedIzin = sessionStorage.getItem('admin_pendingIzinler');
- const cachedDuyuru = sessionStorage.getItem('admin_activeDuyurular');
- const cacheTime = sessionStorage.getItem('admin_counts_time');
- 
- const isCacheValid = cacheTime && (Date.now() - parseInt(cacheTime) < 5 * 60 * 1000); // 5 minutes TTL
+ const izinQuery = query(collection(db, 'izinler'), where('durum', '==', 'onay_bekliyor'));
+ const unsubscribe = onSnapshot(izinQuery, (snap) => {
+ setPendingIzinler(snap.size);
+ sessionStorage.removeItem('admin_pendingIzinler');
+ sessionStorage.removeItem('admin_activeDuyurular');
+ sessionStorage.removeItem('admin_counts_time');
+ }, (err) => {
+ console.error("Count listener error:", err);
+ });
 
- if (isCacheValid && cachedIzin !== null && cachedDuyuru !== null) {
- if (mounted) {
- setPendingIzinler(parseInt(cachedIzin));
- }
- return;
- }
-
- const izinSnap = await getCountFromServer(query(collection(db, 'izinler'), where('durum', '==', 'onay_bekliyor')));
- 
- if (mounted) {
- setPendingIzinler(izinSnap.data().count);
- sessionStorage.setItem('admin_pendingIzinler', izinSnap.data().count.toString());
- sessionStorage.setItem('admin_activeDuyurular', '0');
- sessionStorage.setItem('admin_counts_time', Date.now().toString());
- }
- } catch (err) {
- console.error("Count fetch error:", err);
- }
- };
- 
- fetchCounts();
- return () => { mounted = false; };
+ return () => unsubscribe();
  }, []);
 
  useEffect(() => {
@@ -192,9 +157,6 @@ export default function AdminPanel() {
  navigate('/');
  }
  }, [isAdmin, authLoading, navigate]);
-
- // authLoading is handled by AuthGuard. No need to flash a SplashLoader inside the layout.
- if (!isAdmin) return null;
 
  const renderContent = useMemo(() => {
  switch (activeTab) {
@@ -233,14 +195,38 @@ export default function AdminPanel() {
  const pageTitle = useMemo(() => {
  switch (activeTab) {
  case 'dashboard': return 'Genel Bakış';
- case 'planlama': return 'Nöbet Çizelgesi';
- case 'ekip': return 'Personel Yönetimi';
+ case 'planlama': return 'Hizmet Cetveli';
+ case 'ekip': return 'Kadro Yönetimi';
  case 'ayarlar': return 'Sistem Ayarları';
  default: return '';
  }
  }, [activeTab]);
 
  const { theme, toggleTheme } = useThemeStore();
+
+ // Rules-of-Hooks: bu erken dönüş TÜM hook çağrılarından (useState/useEffect/
+ // useMemo/useThemeStore) SONRA gelmelidir. isAdmin bir oturum sırasında
+ // false'a dönerse (rol değişikliği/pasifleştirme), hook çağrı sırası hâlâ
+ // sabit kalır ve React "Rendered fewer hooks than expected" ile çökmez.
+ // Yönlendirme zaten yukarıdaki useEffect ile yapılıyor; authLoading da
+ // AuthGuard tarafından ele alınıyor.
+ if (!isAdmin) return null;
+
+ const requestLogout = () => setLogoutConfirmOpen(true);
+ const confirmLogout = async () => {
+ setLogoutConfirmOpen(false);
+ await auth.signOut();
+ window.location.reload();
+ };
+
+ const openCommandPalette = () => {
+ window.dispatchEvent(new Event('admin-command-palette:open'));
+ };
+
+ const navigateApp = (path: string) => {
+ playClick?.();
+ navigate(path);
+ };
 
  return (
  <div 
@@ -251,13 +237,13 @@ export default function AdminPanel() {
  {/* Dynamic Ambient Auras (Sirkadiyen Geçiş) */}
  <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
  <div 
- className="absolute top-[10%] left-[-15%] w-[60%] h-[60%] blur-[200px] rounded-full animate-aura transition-all duration-[3000ms]" 
+ className="absolute top-[10%] left-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
  style={{ 
  background: `radial-gradient(circle, ${activeAuraColor} 0%, transparent 70%)` 
  }}
  />
  <div 
- className="absolute bottom-[10%] right-[-15%] w-[60%] h-[60%] blur-[200px] rounded-full animate-aura transition-all duration-[3000ms]" 
+ className="absolute bottom-[10%] right-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
  style={{ 
  background: `radial-gradient(circle, ${secondaryAuraColor} 0%, transparent 70%)`,
  animationDelay: '-4s'
@@ -276,20 +262,19 @@ export default function AdminPanel() {
  setActiveTab={setActiveTab}
  pendingIzinler={pendingIzinler}
  cozulmamisSayisi={cozulmamisSayisi}
- onLogout={() => navigate('/')}
- theme={theme}
- toggleTheme={toggleTheme}
+ onNavigateApp={navigateApp}
  />
 
  <SlimSidebar 
  activeTab={activeTab} 
  setActiveTab={setActiveTab}
- onLogout={() => navigate('/')}
+ onLogout={requestLogout}
  pendingIzinler={pendingIzinler}
  cozulmamisSayisi={cozulmamisSayisi}
  onPrefetch={prefetchTab}
  theme={theme}
  toggleTheme={toggleTheme}
+ onNavigateApp={navigateApp}
  />
 
  {/* Main Content Area */}
@@ -304,13 +289,44 @@ export default function AdminPanel() {
  className="fluid-wrapper"
  >
  {/* Authority Header */}
- <header className="mb-5 lg:mb-8 px-1 sm:px-0">
+ <header className="mb-5 lg:mb-8 px-1 sm:px-0 flex items-center justify-between gap-4">
  <h1 className={`text-xl sm:text-2xl lg:text-3xl font-light text-[var(--text-primary)] tracking-tight leading-none fluid-transition group-hover:font-bold duration-700 ${isPending ? 'opacity-20 blur-sm' : 'opacity-100'}`}>
  {pageTitle}
  </h1>
+ <div className="flex items-center gap-2 shrink-0">
+  <button
+  type="button"
+  onClick={openCommandPalette}
+  className="flex items-center gap-2 px-3 py-2.5 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/65 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.045] transition-all"
+  aria-label="Komut paletini aç"
+  title="Komut paletini aç"
+  >
+  <Search size={16} strokeWidth={1.7} />
+  <span className="authority-title !text-[10px] tracking-wide hidden sm:inline">Ara</span>
+  <span className="hidden md:inline-flex items-center rounded-md border border-[var(--glass-border)] px-1.5 py-0.5 text-[9px] font-mono opacity-45">Ctrl K</span>
+  </button>
+  <button
+  type="button"
+  onClick={toggleTheme}
+  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/55 hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-all"
+  aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+  title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+  >
+  {theme === 'dark' ? <Sun size={16} strokeWidth={1.7} /> : <Moon size={16} strokeWidth={1.7} />}
+  </button>
+  <button
+  type="button"
+  onClick={requestLogout}
+  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+  aria-label="Oturumu kapat"
+  title="Oturumu kapat"
+  >
+  <LogOut size={16} strokeWidth={1.7} />
+  </button>
+ </div>
  </header>
 
- <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-[24px] sm:!rounded-[28px] lg:!rounded-[32px]`}>
+ <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-[20px] sm:!rounded-[24px] lg:!rounded-[28px]`}>
  <ErrorBoundary FallbackComponent={AdminTabFallback} onReset={() => setSearchParams(prev => prev)}>
   <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[32px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
  {renderContent}
@@ -363,7 +379,7 @@ export default function AdminPanel() {
             <div className="flex items-center justify-between phi-padding spatial-glass rounded-none border-b border-[var(--glass-border)] relative z-50">
               <div>
                 <h2 className="text-3xl font-light text-[var(--text-primary)] tracking-tight">
-                  {drawerContent === 'alarmlar' ? 'Vakit Alarmları' : 'Duyuru Paneli'}
+                  {drawerContent === 'alarmlar' ? 'Nöbet Uyarıları' : 'Duyuru Paneli'}
                 </h2>
               </div>
               <button 
@@ -385,6 +401,16 @@ export default function AdminPanel() {
     </AnimatePresence>,
     document.body
   )}
+  <ConfirmModal
+    isOpen={logoutConfirmOpen}
+    onClose={() => setLogoutConfirmOpen(false)}
+    onConfirm={confirmLogout}
+    title="Oturumu Kapat"
+    message="Yönetim oturumunuzu kapatmak üzeresiniz. Devam etmek istiyor musunuz?"
+    confirmText="Çıkış Yap"
+    cancelText="Vazgeç"
+    isDanger
+  />
   </div>
   );
 }

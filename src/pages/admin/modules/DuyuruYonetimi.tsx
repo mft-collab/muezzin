@@ -44,12 +44,14 @@ export const DuyuruYonetimi: React.FC = () => {
  const [aiTone, setAiTone] = useState<'resmi' | 'hitabet' | 'kisa'>('resmi');
  const [aiGenerating, setAiGenerating] = useState(false);
  const [aiResult, setAiResult] = useState('');
+ const [aiError, setAiError] = useState<string | null>(null);
 
  const handleAiOptimize = () => {
  if (!formData.icerik.trim()) {
- alert("Lütfen önce yapay zekanın optimize etmesi için 'İçerik Detayı' alanına kısa bir taslak veya anahtar kelimeler yazın.");
+ setAiError("Lütfen önce içerik detayı alanına kısa bir taslak veya anahtar kelimeler yazın.");
  return;
  }
+ setAiError(null);
  setAiGenerating(true);
  setTimeout(() => {
  const rawText = formData.icerik.trim();
@@ -163,7 +165,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Duyuru Panosu</h2>
- <p className="authority-title !text-[7px] opacity-30 font-medium tracking-wide">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
+ <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
  </div>
  
  <motion.button 
@@ -226,7 +228,7 @@ export const DuyuruYonetimi: React.FC = () => {
  
  <div className="flex items-center justify-between pt-6 mt-6 border-t border-[var(--glass-border)]">
  <div className="flex flex-col gap-0.5">
- <span className="authority-title !text-[6px] opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
+ <span className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
  <span className="text-[9px] font-medium text-[var(--text-primary)]/40 uppercase tracking-wide">
  {duyuru.tarih 
  ? format(
@@ -238,7 +240,7 @@ export const DuyuruYonetimi: React.FC = () => {
  </span>
  </div>
  
- <div className={`px-4 py-1.5 rounded-full border text-[8px] font-bold uppercase tracking-wide shadow-sm ${
+ <div className={`px-4 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${
  duyuru.tip === 'onemli' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-rose-500/5' :
  duyuru.tip === 'bilgi' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20 shadow-sky-500/5' : 'bg-[var(--surface-low)] text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--glass-border)] shadow-[var(--spatial-shadow)]'
  }`}>
@@ -258,12 +260,12 @@ export const DuyuruYonetimi: React.FC = () => {
  className="items-start pt-24 sm:pt-32"
  >
  <div className="flex flex-col gap-1.5 mb-10">
- <p className="authority-title !text-[7px] opacity-30 uppercase tracking-wide">OPERASYONEL BİLGİLENDİRME PARAMETRELERİ</p>
+ <p className="authority-title !text-[9px] opacity-30 uppercase tracking-wide">OPERASYONEL BİLGİLENDİRME PARAMETRELERİ</p>
  </div>
 
  <form onSubmit={handleCreate} className="space-y-8 pb-4">
  <div className="space-y-3 group">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
+ <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
  <div className="relative">
  <input 
  required 
@@ -276,7 +278,7 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
  
  <div className="space-y-3 group">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
+ <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
  <div className="relative">
  <textarea 
  required 
@@ -312,7 +314,7 @@ export const DuyuruYonetimi: React.FC = () => {
  className="space-y-4 overflow-hidden pt-2 border-t border-white/5"
  >
  <div className="space-y-2">
- <span className="text-[8px] text-white/30 font-bold uppercase tracking-wider block">Üslup ve Ton Seçimi</span>
+ <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider block">Üslup ve Ton Seçimi</span>
  <div className="grid grid-cols-3 gap-2">
  {[
  { key: 'resmi', label: 'Resmi / Kurumsal' },
@@ -323,7 +325,7 @@ export const DuyuruYonetimi: React.FC = () => {
  key={tone.key}
  type="button"
  onClick={() => setAiTone(tone.key as any)}
- className={`py-2 px-1 rounded-xl text-[8px] font-bold uppercase tracking-wider transition-all border ${
+ className={`py-2 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
  aiTone === tone.key 
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
  : 'bg-white/[0.01] text-white/30 border-white/5 hover:border-white/10'
@@ -356,6 +358,16 @@ export const DuyuruYonetimi: React.FC = () => {
  </button>
  </div>
 
+ {aiError && (
+ <motion.div
+ initial={{ opacity: 0, y: -6 }}
+ animate={{ opacity: 1, y: 0 }}
+ className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold leading-relaxed"
+ >
+ {aiError}
+ </motion.div>
+ )}
+
  {aiResult && (
  <motion.div 
  initial={{ opacity: 0, y: 10 }}
@@ -363,8 +375,8 @@ export const DuyuruYonetimi: React.FC = () => {
  className="space-y-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl"
  >
  <div className="flex justify-between items-center border-b border-white/5 pb-2">
- <span className="text-[8px] text-purple-400 font-bold uppercase tracking-wider">AI TARAFINDAN ÖNERİLEN METİN:</span>
- <span className="text-[7px] text-white/30 uppercase tracking-wide">({aiTone} üslup)</span>
+ <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">AI TARAFINDAN ÖNERİLEN METİN:</span>
+ <span className="text-[9px] text-white/30 uppercase tracking-wide">({aiTone} üslup)</span>
  </div>
  <p className="text-xs text-white/80 leading-relaxed font-light whitespace-pre-wrap">
  {aiResult}
@@ -373,14 +385,14 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={applyAiText}
- className="flex-1 py-2.5 bg-white text-black rounded-lg text-[8px] font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
+ className="flex-1 py-2.5 bg-white text-black rounded-lg text-[10px] font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
  >
  Öneriyi Metne Uygula
  </button>
  <button
  type="button"
  onClick={() => setAiResult('')}
- className="px-4 py-2.5 bg-white/5 text-white/50 rounded-lg text-[8px] font-bold uppercase tracking-wide hover:text-white transition-all"
+ className="px-4 py-2.5 bg-white/5 text-white/50 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:text-white transition-all"
  >
  Temizle
  </button>
@@ -392,7 +404,7 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
 
  <div className="space-y-4">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
+ <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
  <div className="grid grid-cols-3 gap-3">
  {['onemli', 'bilgi', 'duyuru'].map((type) => {
  const isSelected = formData.tip === type;

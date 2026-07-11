@@ -23,9 +23,52 @@ export interface FirestoreErrorInfo {
   };
 }
 
+// Firestore/Firebase SDK hata kodlarından kullanıcıya gösterilecek kısa,
+// Türkçe mesajlara eşleme. Ham SDK mesajları ("Missing or insufficient
+// permissions", teknik JSON vb.) hiçbir zaman doğrudan kullanıcıya
+// gösterilmemeli — tam detay yalnızca console.error + telemetri'ye gider.
+const FRIENDLY_MESSAGES: Record<string, string> = {
+  'permission-denied': 'Bu işlem için yetkiniz yok.',
+  'not-found': 'Aradığınız kayıt bulunamadı.',
+  'unavailable': 'Sunucuya şu anda ulaşılamıyor. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+  'deadline-exceeded': 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.',
+  'resource-exhausted': 'Sistem şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin.',
+  'unauthenticated': 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.',
+  'cancelled': 'İşlem iptal edildi.',
+  'already-exists': 'Bu kayıt zaten mevcut.',
+  'failed-precondition': 'Bu işlem şu anda gerçekleştirilemez. Sayfayı yenileyip tekrar deneyin.',
+  'aborted': 'İşlem bir çakışma nedeniyle iptal edildi. Lütfen tekrar deneyin.',
+  'internal': 'Beklenmeyen bir sistem hatası oluştu.',
+  'unknown': 'Beklenmeyen bir hata oluştu.',
+};
+const DEFAULT_FRIENDLY_MESSAGE = 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
+
+function isFirebaseSdkError(error: unknown): error is { code: string; message: string } {
+  return typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string';
+}
+
+/**
+ * Bir hatadan kullanıcıya gösterilecek kısa Türkçe mesajı türetir.
+ *  - Firebase SDK hataları (permission-denied vb.) → sabit, anlaşılır mesaj.
+ *  - Uygulama içinde elle fırlatılan `Error`lar (ör. "Ezan vaktine 50
+ *    dakikadan az kaldı...") zaten kullanıcıya yönelik olduğundan olduğu
+ *    gibi korunur.
+ */
+function toUserMessage(error: unknown): string {
+  if (isFirebaseSdkError(error)) {
+    return FRIENDLY_MESSAGES[error.code] ?? DEFAULT_FRIENDLY_MESSAGE;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return DEFAULT_FRIENDLY_MESSAGE;
+}
+
 /**
  * Merkezi Firestore hata işleyicisi.
- * Hataları hem konsola hem telemetri servisine iletir — sessiz hata kalmasın.
+ * Teknik detay konsola ve telemetri servisine gider (sessiz hata kalmasın);
+ * çağırana ise yalnızca kullanıcıya gösterilebilir kısa bir mesaj taşıyan
+ * bir Error döner.
  */
 export function handleFirestoreError(
   error: unknown,
@@ -45,8 +88,7 @@ export function handleFirestoreError(
     path,
   };
 
-  const stringified = JSON.stringify(errInfo);
-  console.error('Firestore Error Detailed: ', stringified);
+  console.error('Firestore Error Detailed: ', JSON.stringify(errInfo));
 
   // Telemetri servisine ilet (statik, döngü riski yok)
   try {
@@ -64,5 +106,5 @@ export function handleFirestoreError(
     /* telemetri servisine ulaşılamazsa sessizce devam et */
   }
 
-  return new Error(stringified);
+  return new Error(toUserMessage(error));
 }

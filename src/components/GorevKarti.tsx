@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Modal } from './ui/Modal';
-import { Bildirim } from '../types';
+import { Bildirim, Vakit } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
 import { mazeretBildir } from '../services/mazeretServisi';
 import {
@@ -15,11 +15,13 @@ import {
  toTurkishUpperCase,
 } from '../lib/dateUtils';
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { auth } from '../lib/firebase';
 import { vekaletTeklifEt } from '../services/vekaletServisi';
+import { useAktifIzinler } from '../hooks/useAktifIzinler';
+import { useVakitBildirimleri } from '../hooks/useVakitBildirimleri';
 
 // Sabit etiketler — IDE i18n tarayicisi JSX literal yakalar; degisken referansi yakalamiyor
 const GOREV_LABELS = {
@@ -90,6 +92,8 @@ export const GorevKarti = React.memo(({
  const [isVekaletModalOpen, setIsVekaletModalOpen] = useState(false);
  const [isSendingVekalet, setIsSendingVekalet] = useState(false);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
+ const { aktifIzinler } = useAktifIzinler();
+ const { bildirimler: vakitBildirimleri } = useVakitBildirimleri(bildirim.tarih, bildirim.vakit as Vakit);
 
  const eligiblePeers = useMemo(() => {
    return muezzinler.filter(m => 
@@ -97,9 +101,11 @@ export const GorevKarti = React.memo(({
      m.role === 'muezzin' && 
      m.id !== auth.currentUser?.uid &&
      m.id !== 'SISTEM' &&
-     m.id !== 'Sistem'
+     m.id !== 'Sistem' &&
+     !aktifIzinler.some(izin => izin.uid === m.id && bildirim.tarih >= izin.baslangic && bildirim.tarih <= izin.bitis) &&
+     !vakitBildirimleri.some(b => b.uid === m.id && b.durum !== 'reddedildi')
    );
- }, [muezzinler]);
+ }, [muezzinler, aktifIzinler, vakitBildirimleri, bildirim.tarih]);
 
  useEffect(() => {
    if (autoOpenMazeret && bildirim.durum === 'bekliyor') {
@@ -203,29 +209,6 @@ export const GorevKarti = React.memo(({
 
  const config = getStatusConfig(bildirim);
 
- const x = useMotionValue(0);
- const y = useMotionValue(0);
- const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
- const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
-
- const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7deg", "-7deg"]);
- const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7deg", "7deg"]);
-
- const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
- const rect = event.currentTarget.getBoundingClientRect();
- const width = rect.width;
- const height = rect.height;
- const mouseX = event.clientX - rect.left - width / 2;
- const mouseY = event.clientY - rect.top - height / 2;
- x.set(mouseX / width);
- y.set(mouseY / height);
- };
-
- const handleMouseLeave = () => {
- x.set(0);
- y.set(0);
- };
-
  const glowShadow = useMemo(() => {
  if (bildirim.durum === 'onaylandi') return '0 20px 40px -15px rgba(16, 185, 129, 0.2)';
  if (bildirim.durum === 'reddedildi') return '0 20px 40px -15px rgba(244, 63, 94, 0.2)';
@@ -235,10 +218,8 @@ export const GorevKarti = React.memo(({
  return (
  <>
  <motion.div
- style={{ rotateX, rotateY, transformStyle: 'preserve-3d', perspective: 1000 }}
- onMouseMove={handleMouseMove}
- onMouseLeave={handleMouseLeave}
- whileHover={{ y: -4, scale: 1.01, boxShadow: glowShadow }}
+ style={{ boxShadow: undefined }}
+ whileHover={{ y: -2, boxShadow: glowShadow }}
  whileTap={{ scale: 0.99 }}
  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.6 }}
  className={`p-4 sm:p-8 tactile-card relative overflow-hidden group border border-white/5 ${
@@ -267,10 +248,7 @@ export const GorevKarti = React.memo(({
  <div className="kinetic-sheen" />
  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
- <div 
- style={{ transform: 'translateZ(35px)', transformStyle: 'preserve-3d' }}
- className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10"
- >
+ <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">
  <div className="flex items-center gap-4 sm:gap-7">
  <div
  className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] flex items-center justify-center transition-all duration-700 group-hover:rotate-3 border shadow-lg ${
@@ -295,7 +273,7 @@ export const GorevKarti = React.memo(({
  isAktif ? 'bg-emerald-500 shadow-[0_0_10px_var(--status-success)]' : 'bg-[var(--text-primary)]/10'
  }`}
  />
- <p className="authority-title !text-[7px] tracking-wide opacity-40 uppercase">
+ <p className="authority-title !text-[10px] tracking-wide opacity-45 uppercase">
  {toTurkishUpperCase(bildirim.vakit)} VAKTİ • BUGÜN
  </p>
  </div>
@@ -314,7 +292,7 @@ export const GorevKarti = React.memo(({
  </div>
 
  <div
- className={`px-4 py-1.5 rounded-xl text-[7px] font-bold uppercase tracking-wide border transition-all duration-500 shadow-sm ${
+ className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide border transition-all duration-500 shadow-sm ${
  config.color === 'red'
  ? 'border-rose-500/20 text-rose-500 bg-rose-500/5'
  : config.color === 'green'
@@ -365,7 +343,7 @@ export const GorevKarti = React.memo(({
  whileTap={isAktif ? { scale: 0.98 } : {}}
  onClick={isAktif ? handleOkudum : undefined}
  disabled={!isAktif}
- className={`w-full py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
+ className={`w-full py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
  isAktif
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white '
  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/35 cursor-not-allowed border border-[var(--glass-border)]'
@@ -384,7 +362,7 @@ export const GorevKarti = React.memo(({
  </span>
  </>
  ) : (
- <span className="flex items-center justify-center gap-2.5 opacity-85 font-bold tracking-widest text-[7.5px]">
+ <span className="flex items-center justify-center gap-2.5 opacity-85 font-bold tracking-wide text-[10px]">
   <Clock size={14} strokeWidth={2} className="animate-pulse text-[var(--dynamic-aura,var(--aura-indigo))]" /> KİLİT AÇILACAK: {kalanSureText || 'HESAPLANIYOR...'}
   </span>
  )}
@@ -394,7 +372,7 @@ export const GorevKarti = React.memo(({
       whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
       whileTap={{ scale: 0.98 }}
       onClick={() => setIsMazeretModalOpen(true)}
-      className="flex-1 py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
+      className="flex-1 py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
     >
       {GOREV_LABELS.mazeretBildir}
     </motion.button>
@@ -402,7 +380,7 @@ export const GorevKarti = React.memo(({
       whileHover={{ scale: 1.02, backgroundColor: 'rgba(99, 102, 241, 0.08)' }}
       whileTap={{ scale: 0.98 }}
       onClick={() => setIsVekaletModalOpen(true)}
-      className="flex-1 py-5 rounded-[22px] font-bold text-[8px] tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
+      className="flex-1 py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
     >
       {GOREV_LABELS.goreviDevret}
     </motion.button>
@@ -533,12 +511,14 @@ export const GorevKarti = React.memo(({
           {eligiblePeers.map(peer => (
             <motion.div
               key={peer.id}
-              whileHover={{ x: 3, backgroundColor: 'rgba(255,255,255,0.02)' }}
+              whileHover={isSendingVekalet ? {} : { x: 3, backgroundColor: 'rgba(255,255,255,0.02)' }}
               onClick={async () => {
+                if (isSendingVekalet) return;
                 setIsSendingVekalet(true);
                 try {
                   await vekaletTeklifEt(
                     bildirim.id as string,
+                    bildirim.haftaId,
                     bildirim.tarih,
                     bildirim.vakit,
                     saat,
@@ -554,10 +534,10 @@ export const GorevKarti = React.memo(({
                   setIsSendingVekalet(false);
                 }
               }}
-              className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.01] flex items-center justify-between cursor-pointer transition-all"
+              className={`p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.01] flex items-center justify-between transition-all ${isSendingVekalet ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
             >
               <span className="text-xs font-semibold text-[var(--text-primary)]">{peer.displayName}</span>
-              <span className="text-[8px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-3 py-1 rounded-full uppercase tracking-wider">{GOREV_LABELS.teklifGonder}</span>
+              <span className="text-[10px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-3 py-1 rounded-full uppercase tracking-wide">{isSendingVekalet ? 'GÖNDERİLİYOR' : GOREV_LABELS.teklifGonder}</span>
             </motion.div>
           ))}
         </div>

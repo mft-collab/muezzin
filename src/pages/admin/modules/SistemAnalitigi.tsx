@@ -43,7 +43,7 @@ export default function SistemAnalitigi({ onInceleClick }: { onInceleClick?: () 
       for (const { dateStr, dayName } of days) {
         const dayBildirimler = allBildirimler.filter(b => b.tarih === dateStr);
 
-        // Yalnızca asil görevleri sayıyoruz — bunlar operasyonel tamamlanma ölçütü
+        // Yalnızca asil görevleri sayıyoruz; bunlar hizmet tamamlanma ölçütü.
         const asilGorevler = dayBildirimler.filter(b => b.tip === 'asil');
         const tamamlananlar = asilGorevler.filter(
           b => b.durum === 'onaylandi' || b.durum === 'okundu_varsayilan' || b.durum === 'sistem_atadi'
@@ -125,10 +125,10 @@ export default function SistemAnalitigi({ onInceleClick }: { onInceleClick?: () 
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-            <span className="authority-title !text-[8px] !text-emerald-400 font-bold tracking-wide uppercase">SİSTEM SAĞLIK PARAMETRELERİ • CANLI</span>
+            <span className="authority-title !text-[10px] !text-emerald-400 font-bold tracking-wide uppercase">SİSTEM SAĞLIK PARAMETRELERİ • CANLI</span>
           </div>
           <h2 className="text-4xl md:text-6xl font-light text-[var(--text-primary)] tracking-tight leading-none">
-            Operasyonel <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Analitik</span>
+            Hizmet <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Verimliliği</span>
           </h2>
         </motion.div>
       </div>
@@ -144,9 +144,9 @@ export default function SistemAnalitigi({ onInceleClick }: { onInceleClick?: () 
           
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <p className="authority-title mb-8 flex items-center gap-3 !text-[8px] opacity-40 font-bold tracking-wide">
+              <p className="authority-title mb-8 flex items-center gap-3 !text-[10px] opacity-40 font-bold tracking-wide">
                 <Activity size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
-                DÖNEMSEL VERİMLİLİK SPEKTRUMU — GÖREVLERİN TAMAMLANMA ORANI
+                HAFTALIK HİZMET VERİMLİLİĞİ — GÖREV TAMAMLANMA ORANI
               </p>
               <div className="flex items-baseline gap-6">
                 <h3 className="text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
@@ -154,7 +154,7 @@ export default function SistemAnalitigi({ onInceleClick }: { onInceleClick?: () 
                 </h3>
                 <div className="flex flex-col">
                   <span className="text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
-                  <span className={`authority-title !text-[7px] mt-2 font-bold tracking-wide uppercase ${
+                  <span className={`authority-title !text-[9px] mt-2 font-bold tracking-wide uppercase ${
                     healthScore >= 80 ? 'text-emerald-500' :
                     healthScore >= 60 ? 'text-amber-500' :
                     healthScore > 0 ? 'text-rose-500' : 'text-[var(--text-secondary)]/30'

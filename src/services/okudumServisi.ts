@@ -30,17 +30,19 @@ export async function okudumOnayla(bildirimId: string): Promise<void> {
  if (!vakitSaati) throw new Error('Vakit bilgisi bulunamadı');
 
  const ezanSaati = parseVakitToDate(bildirim.tarih, vakitSaati);
+ if (!ezanSaati) throw new Error('Vakit bilgisi bulunamadı');
  const simdi = getTurkeyNow();
 
  if (simdi.getTime() < ezanSaati.getTime()) {
  throw new Error('Henüz ezan vakti gelmedi');
  }
 
+ // Not: aylikVakitSayisi puanı burada artırılmıyor — bu alan Firestore
+ // kurallarında müezzinin kendi profilini güncelleme iznine dahil değil
+ // (bkz. firestore.rules `muezzins` self-update). Puan, gece yatsı sonrası
+ // cron'unda (scripts/yatsiSonuIslemleri.ts) bu bildirimin `durum` alanına
+ // bakılarak merkezi olarak veriliyor.
  transaction.update(bildirimRef, { durum: 'onaylandi', pendingAck: false, sonGuncelleme: serverTimestamp() });
- // Puan artış
- transaction.update(doc(db, 'muezzins', auth.currentUser!.uid), {
- aylikVakitSayisi: increment(1)
- });
  });
 }
 

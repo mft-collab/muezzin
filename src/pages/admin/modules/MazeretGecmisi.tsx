@@ -17,6 +17,7 @@ export default function MazeretGecmisi() {
  const [selectedMuezzin, setSelectedMuezzin] = useState<string>('all');
  const [deletingId, setDeletingId] = useState<string | null>(null);
  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+ const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
  const executeDelete = async () => {
    const id = confirmDelete.id;
@@ -26,8 +27,8 @@ export default function MazeretGecmisi() {
      await deleteDoc(doc(db, 'bildirimler', id));
      setConfirmDelete({ open: false, id: null });
    } catch (err) {
-     console.error("Mazeret silme hatası:", err);
-     alert("Mazeret kaydı silinirken bir hata oluştu.");
+     if (import.meta.env.DEV) console.error('Mazeret silme hatasi:', err);
+     setErrorStatus('Mazeret kaydı silinirken bir hata oluştu.');
      setConfirmDelete({ open: false, id: null });
    } finally {
      setDeletingId(null);
@@ -79,7 +80,7 @@ export default function MazeretGecmisi() {
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Mazeret Arşivi</h2>
- <p className="authority-title !text-[7px] opacity-30 font-medium tracking-wide">{filtered.length} TOPLAM KAYIT LİSTELENDİ</p>
+ <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">{filtered.length} TOPLAM KAYIT LİSTELENDİ</p>
  </div>
  
  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
@@ -111,6 +112,22 @@ export default function MazeretGecmisi() {
  </div>
  </div>
 
+ <AnimatePresence>
+ {errorStatus && (
+ <motion.div
+ initial={{ opacity: 0, y: -8 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0, y: -8 }}
+ className="spatial-glass !bg-rose-500/10 border-rose-500/30 p-4 flex items-center gap-3 text-rose-500 text-[10px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
+ >
+ <span className="leading-relaxed">{errorStatus}</span>
+ <button type="button" onClick={() => setErrorStatus(null)} className="ml-auto text-rose-500/50 hover:text-rose-500 transition-colors">
+ KAPAT
+ </button>
+ </motion.div>
+ )}
+ </AnimatePresence>
+
  {/* TIMELINE TABLE: Chronological Context */}
  <section className="spatial-glass p-5 sm:p-8 border border-white/5 relative overflow-hidden min-h-[400px] !rounded-[24px] sm:!rounded-[32px]">
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent" />
@@ -119,9 +136,9 @@ export default function MazeretGecmisi() {
  <table className="w-full text-left border-separate border-spacing-y-4">
  <thead>
  <tr className="border-b border-white/5">
- <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-wide">ZAMAN DAMGASI</th>
- <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-wide">PERSONEL</th>
- <th className="px-6 pb-4 authority-title !text-[7px] opacity-30 font-bold tracking-wide">MAZERET GEREKÇESİ</th>
+ <th className="px-6 pb-4 authority-title !text-[9px] opacity-30 font-bold tracking-wide">ZAMAN DAMGASI</th>
+ <th className="px-6 pb-4 authority-title !text-[9px] opacity-30 font-bold tracking-wide">PERSONEL</th>
+ <th className="px-6 pb-4 authority-title !text-[9px] opacity-30 font-bold tracking-wide">MAZERET GEREKÇESİ</th>
  </tr>
  </thead>
  <tbody>
@@ -151,7 +168,7 @@ export default function MazeretGecmisi() {
  </span>
  <div className="flex items-center gap-2">
  <div className="w-1 h-1 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
- <span className="authority-title !text-[7px] opacity-40 uppercase tracking-wide">
+ <span className="authority-title !text-[9px] opacity-40 uppercase tracking-wide">
  {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {g.vakit.toUpperCase()} VAKTİ
  </span>
  </div>
@@ -212,17 +229,17 @@ export default function MazeretGecmisi() {
             <h3 className="text-sm font-medium text-[var(--text-primary)]">
               {g.tarih ? format(parseISO(g.tarih), 'dd MMM yyyy', { locale: tr }) : '-'}
             </h3>
-            <p className="authority-title !text-[7px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold uppercase tracking-wide">{g.vakit} VAKTİ</p>
+            <p className="authority-title !text-[9px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold uppercase tracking-wide">{g.vakit} VAKTİ</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-[var(--text-primary)]">{getMuezzinName(g.uid)}</p>
-            <p className="authority-title !text-[6px] opacity-30 uppercase tracking-wide mt-1">OPERASYONEL PERSONEL</p>
+            <p className="authority-title !text-[9px] opacity-30 uppercase tracking-wide mt-1">OPERASYONEL PERSONEL</p>
           </div>
         </div>
         <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5 relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--dynamic-aura,var(--aura-indigo))]/40" />
           <div className="flex justify-between items-start mb-2">
-            <p className="authority-title !text-[6px] opacity-20 uppercase tracking-wide">MAZERET GEREKÇESİ</p>
+            <p className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">MAZERET GEREKÇESİ</p>
             <button
               type="button"
               onClick={() => setConfirmDelete({ open: true, id: g.id })}

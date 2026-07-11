@@ -16,8 +16,9 @@ import {
  RotateCcw 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GUNLER_TR } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, GUNLER_TR } from '../../../lib/dateUtils';
 import { telemetryService } from '../../../services/telemetryService';
+import { haftalikPlanOlustur } from '../../../services/planServisi';
 let globalHasAnimatedPersonel = false;
 
 export default function MuezzinYonetimi() {
@@ -60,20 +61,42 @@ export default function MuezzinYonetimi() {
  };
 
  const openEdit = (m: Muezzin & { id: string }) => {
- setEditingUser(m);
- setModalOpen(true);
+  setEditingUser(m);
+  setModalOpen(true);
+  };
+
+ const isLastActiveAdmin = (m: Muezzin & { id: string }) => {
+ const activeAdmins = muezzinler.filter(user => user.role === 'admin' && user.aktif === true && user.arsivlendi !== true);
+ return m.role === 'admin' && m.aktif === true && activeAdmins.length <= 1;
  };
 
- const executeToggleAktif = async () => {
- const m = confirmToggle.data;
- if (!m) return;
+ const refreshCurrentWeekPlanIfNeeded = async (m: Muezzin & { id: string }) => {
+ if (m.role !== 'muezzin') return;
  try {
+ const haftaId = getHaftaIdFromDate(getTurkeyDateString());
+ await haftalikPlanOlustur(haftaId);
+ } catch (err) {
+ console.warn('Kadro değişikliği sonrası plan yenilenemedi:', err);
+ setErrorStatus('Kadro güncellendi; mevcut hafta planı otomatik yenilenemedi. Hizmet Cetveli üzerinden güvenli güncelleme yapabilirsiniz.');
+ }
+ };
+
+  const executeToggleAktif = async () => {
+  const m = confirmToggle.data;
+  if (!m) return;
+  if (isLastActiveAdmin(m)) {
+  setErrorStatus('Son aktif yönetici pasife alınamaz.');
+  setConfirmToggle({ open: false, data: null });
+  return;
+  }
+  try {
  await updateDoc(doc(db, 'muezzins', m.id), {
  aktif: !m.aktif,
  onayBekliyor: false
  });
+ await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmToggle({ open: false, data: null });
- await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'READY (Aktif)' : 'STANDBY (Pasif)'} yapıldı.`);
+ await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'AKTİF' : 'PASİF'} yapıldı.`);
  } catch (err) {
  setErrorStatus('Personel durumu güncellenemedi.');
  setConfirmToggle({ open: false, data: null });
@@ -86,6 +109,10 @@ export default function MuezzinYonetimi() {
  aktif: true,
  onayBekliyor: false
  });
+ if (m.email) {
+ await deleteDoc(doc(db, 'invites', m.email.toLowerCase()));
+ }
+ await refreshCurrentWeekPlanIfNeeded(m);
  await telemetryService.logAudit('Personel Onaylama', m.displayName, 'Sisteme katılım talebi onaylandı ve aktif kadroya dahil edildi.');
  } catch (err) {
  setErrorStatus('Onay işlemi sırasında bir hata oluştu.');
@@ -98,27 +125,35 @@ export default function MuezzinYonetimi() {
  try {
  await updateDoc(doc(db, 'muezzins', m.id), {
  aktif: true,
+ onayBekliyor: false,
  arsivlendi: false,
  arsivTarihi: null
  });
+ await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmRestore({ open: false, data: null });
- await telemetryService.logAudit('Personel Geri Yükleme', m.displayName, 'Arşivlenmiş personel aktif operasyonel kadroya geri yüklendi.');
+ await telemetryService.logAudit('Personel Geri Yükleme', m.displayName, 'Arşivlenmiş personel aktif kadroya geri yüklendi.');
  } catch (err) {
  setErrorStatus('Personel geri yüklenemedi.');
  setConfirmRestore({ open: false, data: null });
  }
  };
 
- const executeDelete = async () => {
- const m = confirmDelete.data;
- if (!m) return;
- try {
+  const executeDelete = async () => {
+  const m = confirmDelete.data;
+  if (!m) return;
+  if (isLastActiveAdmin(m)) {
+  setErrorStatus('Son aktif yönetici arşive alınamaz.');
+  setConfirmDelete({ open: false, data: null });
+  return;
+  }
+  try {
  await updateDoc(doc(db, 'muezzins', m.id), {
  aktif: false,
  onayBekliyor: false,
  arsivlendi: true,
  arsivTarihi: Timestamp.now()
  });
+ await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmDelete({ open: false, data: null });
  await telemetryService.logAudit('Personel Arşivleme', m.displayName, 'Personel aktif kadrodan çıkarılarak arşiv kategorisine alındı.');
  } catch (err) {
@@ -136,7 +171,43 @@ export default function MuezzinYonetimi() {
  }
  };
 
-  if (loading) return (
+ const pendingUsers = React.useMemo(() => {
+ const pendingMuezzins = muezzinler.filter(m => m && m.onayBekliyor === true && m.arsivlendi !== true);
+ const knownEmails = new Set(
+ muezzinler
+ .map(m => m.email?.trim().toLowerCase())
+ .filter(Boolean)
+ );
+ const pendingInvites = invites
+ .filter(i => !knownEmails.has(i.email?.trim().toLowerCase()))
+ .map(i => ({ ...i, isOnay: false, isInvite: true } as any));
+ return [...pendingMuezzins, ...pendingInvites];
+ }, [muezzinler, invites]);
+ 
+ const activeUsers = React.useMemo(() => 
+ muezzinler.filter(m => m && m.onayBekliyor !== true && m.arsivlendi !== true)
+ , [muezzinler]);
+
+ const operationalUsers = React.useMemo(() =>
+ activeUsers.filter(m => m.role === 'muezzin')
+ , [activeUsers]);
+
+ const archivedUsers = React.useMemo(() => 
+ muezzinler.filter(m => m && m.arsivlendi === true)
+ , [muezzinler]);
+
+ const displayedUsers = showArchived ? archivedUsers : activeUsers;
+
+ // Performans Sıralaması ve Maksimum Vakit Hesabı (Memoized)
+ const { maxVakit, sortedMuezzins } = React.useMemo(() => {
+ const maxVal = Math.max(...operationalUsers.map(x => x.aylikVakitSayisi || 0), 1);
+ const sorted = [...operationalUsers].sort((a, b) => (b.aylikVakitSayisi || 0) - (a.aylikVakitSayisi || 0));
+ return { maxVakit: maxVal, sortedMuezzins: sorted };
+ }, [operationalUsers]);
+
+ // Rules-of-Hooks: bu erken dönüş tüm hook çağrılarından SONRA gelmelidir
+ // (bkz. src/pages/admin/AdminPanel.tsx'teki aynı sınıf düzeltme).
+ if (loading) return (
   <div className="flex flex-col gap-10">
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
   <div className="flex flex-col gap-2">
@@ -165,42 +236,20 @@ export default function MuezzinYonetimi() {
   </div>
   );
 
- const pendingUsers = React.useMemo(() => [
- ...muezzinler.filter(m => m && (m as any).onayBekliyor === true && (m as any).arsivlendi !== true), 
- ...invites.map(i => ({ ...i, isOnay: false, isInvite: true } as any))
- ], [muezzinler, invites]);
- 
- const activeUsers = React.useMemo(() => 
- muezzinler.filter(m => m && (m as any).onayBekliyor !== true && (m as any).arsivlendi !== true)
- , [muezzinler]);
-
- const archivedUsers = React.useMemo(() => 
- muezzinler.filter(m => m && (m as any).arsivlendi === true)
- , [muezzinler]);
-
- const displayedUsers = showArchived ? archivedUsers : activeUsers;
-
- // Performans Sıralaması ve Maksimum Vakit Hesabı (Memoized)
- const { maxVakit, sortedMuezzins } = React.useMemo(() => {
- const maxVal = Math.max(...activeUsers.map(x => x.aylikVakitSayisi || 0), 1);
- const sorted = [...activeUsers].sort((a, b) => (b.aylikVakitSayisi || 0) - (a.aylikVakitSayisi || 0));
- return { maxVakit: maxVal, sortedMuezzins: sorted };
- }, [activeUsers]);
-
  return (
  <div className="flex flex-col gap-10">
  {/* ACTION BAR: Executive Authority */}
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
   <div className="flex flex-col gap-2">
-  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kadro Operasyonları</h2>
-  <p className="authority-title !text-[7px] opacity-30 font-medium tracking-wide">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
+  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kadro Yönetimi</h2>
+  <p className="authority-title !text-[10px] opacity-40 font-medium tracking-wide">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
   </div>
   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
      <motion.button 
        whileHover={{ y: -3, scale: 1.02 }}
        whileTap={{ scale: 0.98 }}
        onClick={() => setShowArchived(!showArchived)} 
-       className={`flex-1 sm:flex-initial px-6 py-3 sm:py-4 rounded-2xl text-[9px] font-bold uppercase tracking-wide border transition-all ${showArchived ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-white/[0.03] border-white/5 text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)]'}`}
+       className={`flex-1 sm:flex-initial px-6 py-3 sm:py-4 rounded-xl text-[10px] font-bold uppercase tracking-wide border transition-all ${showArchived ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-white/[0.03] border-white/5 text-[var(--text-secondary)]/55 hover:text-[var(--text-primary)]'}`}
      >
        {showArchived ? 'KADROYU GÖSTER' : 'ARŞİVİ GÖSTER'}
      </motion.button>
@@ -208,7 +257,7 @@ export default function MuezzinYonetimi() {
        whileHover={{ y: -3, scale: 1.02 }}
        whileTap={{ scale: 0.98 }}
        onClick={openNew} 
-       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-white rounded-2xl text-[9px] font-bold uppercase tracking-wide shadow-[0_15px_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)] flex items-center justify-center gap-4 group"
+       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-white rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-[0_12px_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_18%,transparent)] flex items-center justify-center gap-4 group"
      >
        <UserPlus size={16} className="group-hover:rotate-12 transition-transform" /> 
        YENİ PERSONEL TANIMLA
@@ -231,7 +280,7 @@ export default function MuezzinYonetimi() {
  </div>
  <div>
  <h3 className="text-sm font-medium text-rose-500/80 tracking-tight">Bekleyen Onaylar & Davetler</h3>
- <p className="authority-title !text-[7px] opacity-40 mt-1 font-medium tracking-wide">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
+ <p className="authority-title !text-[10px] opacity-45 mt-1 font-medium tracking-wide">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
  </div>
  </div>
 
@@ -251,7 +300,7 @@ export default function MuezzinYonetimi() {
   </div>
   <div className="min-w-0 flex-1">
   <p className="text-sm font-light text-[var(--text-primary)] tracking-tight truncate">{m.displayName}</p>
-  <p className="text-[7px] text-[var(--text-secondary)]/50 font-bold uppercase tracking-wide mt-1 break-all">{(m as any).email}</p>
+  <p className="text-[10px] text-[var(--text-secondary)]/60 font-bold uppercase tracking-wide mt-1 break-all">{(m as any).email}</p>
   </div>
   </div>
  <div className="flex items-center gap-3">
@@ -266,7 +315,7 @@ export default function MuezzinYonetimi() {
  </motion.button>
  ) : (
  <div className="px-3 py-1 bg-[var(--surface-medium)] rounded-xl border border-[var(--glass-border)]">
- <span className="text-[6px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40">DAVETLİ</span>
+ <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-55">DAVETLİ</span>
  </div>
  )}
  <motion.button 
@@ -289,15 +338,16 @@ export default function MuezzinYonetimi() {
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-2 px-2">
  <div className="flex items-center gap-3">
  <div className="w-1.5 h-6 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full" />
- <h2 className="text-lg font-light tracking-tight text-[var(--text-primary)]">{showArchived ? 'Arşivlenmiş Kadro' : 'Operasyonel Kadro'}</h2>
+ <h2 className="text-lg font-light tracking-tight text-[var(--text-primary)]">{showArchived ? 'Arşivlenmiş Kadro' : 'Aktif Kadro'}</h2>
  </div>
  <span className="premium-label !text-[9px] !opacity-20">{displayedUsers.length} PERSONEL LİSTELENDİ</span>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
  {displayedUsers.length > 0 ? displayedUsers.map((m, idx) => {
- const rank = sortedMuezzins.findIndex(x => x.id === m.id) + 1;
- const efficiency = Math.min(100, ((m.aylikVakitSayisi || 0) / maxVakit) * 100);
+ const isOperationalMuezzin = m.role === 'muezzin';
+ const rank = isOperationalMuezzin ? sortedMuezzins.findIndex(x => x.id === m.id) + 1 : 0;
+ const efficiency = isOperationalMuezzin ? Math.min(100, ((m.aylikVakitSayisi || 0) / maxVakit) * 100) : 0;
 
  return (
  <motion.div 
@@ -305,7 +355,7 @@ export default function MuezzinYonetimi() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: globalHasAnimatedPersonel ? 0 : idx * 0.05 }}
  key={m.id} 
- className="group relative p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-[36px] overflow-hidden transition-all duration-700 hover:shadow-[var(--spatial-shadow)]"
+ className="group relative p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-3xl overflow-hidden transition-all duration-700 hover:shadow-[var(--spatial-shadow)]"
  >
  {/* Left Status Pillar */}
  <div className={`absolute left-0 top-6 bottom-6 w-[4px] rounded-r-full transition-all duration-700 shadow-lg ${
@@ -340,10 +390,10 @@ export default function MuezzinYonetimi() {
  )}
  <span className={`relative inline-flex rounded-full h-2 w-2 ${m.fcmToken ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-[var(--text-primary)]/10'}`} />
  </div>
- <span className={`text-[8px] font-bold tracking-wide uppercase transition-colors duration-500 ${
- m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/80' : 'text-[var(--text-secondary)]/20'
+ <span className={`text-[10px] font-bold tracking-wide uppercase transition-colors duration-500 ${
+ m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-[var(--text-secondary)]/35'
  }`}>
- {m.fcmToken ? 'NETWORK ACTIVE' : 'OFFLINE MODE'}
+ {m.fcmToken ? 'Bildirim Aktif' : 'Bildirim Kapalı'}
  </span>
  </div>
  </div>
@@ -351,29 +401,29 @@ export default function MuezzinYonetimi() {
  
  <div className="flex flex-row flex-wrap items-center sm:flex-col sm:items-end gap-1.5 w-full sm:w-auto mt-2 sm:mt-0">
  {rank === 1 && !showArchived && (
- <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
- 🏆 LİDER
+ <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+ LİDER
  </span>
  )}
  {rank === 2 && !showArchived && (
- <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-slate-400/10 text-slate-400 border border-slate-400/20">
- 🥈 2. SIRADA
+ <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-slate-400/10 text-slate-400 border border-slate-400/20">
+ 2. SIRADA
  </span>
  )}
  {rank === 3 && !showArchived && (
- <span className="px-2 py-0.5 rounded-md text-[6px] font-black tracking-[0.1em] bg-amber-700/10 text-amber-700 border border-amber-700/20">
- 🥉 3. SIRADA
+ <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-amber-700/10 text-amber-700 border border-amber-700/20">
+ 3. SIRADA
  </span>
  )}
  {rank > 3 && !showArchived && (
- <span className="px-2 py-0.5 rounded-md text-[6px] font-bold tracking-[0.1em] bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/30 border border-[var(--glass-border)]">
+ <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/45 border border-[var(--glass-border)]">
  #{rank} SIRALAMA
  </span>
  )}
- <span className={`px-2.5 py-0.5 rounded-md text-[6px] font-bold tracking-wide uppercase border shadow-sm ${
+ <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border shadow-sm ${
  m.role === 'admin' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20' : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)]/50 border-[var(--glass-border)]'
  }`}>
- {m.role === 'admin' ? 'ADMIN' : 'MÜEZZİN'}
+ {m.role === 'admin' ? 'YÖNETİCİ' : m.role === 'gozlemci' ? 'GÖZLEMCİ' : 'MÜEZZİN'}
  </span>
  </div>
  </div>
@@ -381,26 +431,26 @@ export default function MuezzinYonetimi() {
  {/* Body: Stats Bento Grid */}
  <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-5 bg-[var(--text-primary)]/[0.02] rounded-[20px] sm:rounded-[28px] border border-[var(--glass-border)]">
  <div className="space-y-1.5">
- <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">İZİN GÜNÜ</p>
+ <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">İZİN GÜNÜ</p>
  <p className="text-xs font-light text-[var(--text-primary)] tracking-wide">
  {m.haftalikIzinGunu && m.haftalikIzinGunu > 0 ? GUNLER_TR[m.haftalikIzinGunu] : 'BELİRTİLMEMİŞ'}
  </p>
  </div>
  <div className="space-y-1.5">
- <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">GÖREV YÜKÜ</p>
+ <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">GÖREV YÜKÜ</p>
  <p className="text-xs font-medium text-[var(--dynamic-aura,var(--aura-indigo))] tabular-nums">
- {m.aylikVakitSayisi || 0} Vakit
+ {isOperationalMuezzin ? `${m.aylikVakitSayisi || 0} Vakit` : 'Yönetim'}
  </p>
  </div>
  
  {/* Full-width Relative Efficiency */}
  <div className="col-span-2 space-y-2 border-t border-[var(--glass-border)] pt-3 mt-1">
  <div className="flex justify-between items-center">
- <p className="premium-label !text-[8px] !opacity-20 uppercase tracking-[0.15em]">OPERASYONEL VERİM</p>
+ <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">HİZMET VERİMİ</p>
  <span className={`text-[9px] font-bold tabular-nums ${
  efficiency > 80 ? 'text-amber-500' : efficiency > 40 ? 'text-emerald-500' : 'text-[var(--text-secondary)]/40'
  }`}>
- %{Math.round(efficiency)}
+ {isOperationalMuezzin ? `%${Math.round(efficiency)}` : 'Kadro dışı'}
  </span>
  </div>
  <div className="w-full h-1.5 bg-[var(--text-primary)]/[0.05] rounded-full overflow-hidden border border-[var(--glass-border)]">
@@ -421,10 +471,10 @@ export default function MuezzinYonetimi() {
  {/* Footer: Actions */}
  <div className="flex items-center justify-between gap-2 pt-2">
  <div className="flex items-center gap-2">
- <div className={`px-2 py-1 rounded-md text-[6px] font-bold tracking-[0.1em] border ${
+ <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide border ${
  m.aktif ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
- {m.aktif ? 'READY' : 'STANDBY'}
+ {m.aktif ? 'AKTİF' : 'PASİF'}
  </div>
  </div>
  
@@ -517,8 +567,8 @@ export default function MuezzinYonetimi() {
  onConfirm={executeToggleAktif}
  title={confirmToggle.data?.aktif ? "PASİFE AL" : "AKTİFLEŞTİR"}
  message={confirmToggle.data?.aktif 
- ? `${confirmToggle.data?.displayName} adlı personel dondurulacaktır. Görev listelerinden ve planlamalardan geçici olarak çıkarılır.`
- : `${confirmToggle.data?.displayName} adlı personel operasyona geri dahil edilecektir.`
+ ? `${confirmToggle.data?.displayName} adlı personel dondurulacaktır. Mevcut haftanın güvenli plan yenilemesi otomatik çalıştırılır; onay/ret geçmişi korunur.`
+ : `${confirmToggle.data?.displayName} adlı personel aktif kadroya geri dahil edilecektir. Mevcut hafta planı güvenli şekilde yeniden dengelenir.`
  }
  isDanger={confirmToggle.data?.aktif}
  confirmText="OPERASYONU ONAYLA"
@@ -529,7 +579,7 @@ export default function MuezzinYonetimi() {
   onClose={() => setConfirmRestore({ open: false, data: null })}
   onConfirm={executeRestore}
   title="PERSONELİ GERİ YÜKLE"
-  message={`${confirmRestore.data?.displayName} adlı personel arşivden çıkartılacak ve aktif operasyonel kadroya geri eklenecektir.`}
+  message={`${confirmRestore.data?.displayName} adlı personel arşivden çıkartılacak ve aktif kadroya geri eklenecektir.`}
   isDanger={false}
   confirmText="EVET, GERİ YÜKLE"
   />

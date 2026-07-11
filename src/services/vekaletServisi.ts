@@ -1,11 +1,23 @@
-import { doc, collection, addDoc, updateDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { doc, runTransaction, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { telemetryService } from './telemetryService';
+import { Bildirim, Vakit, VekaletTalebi } from '../types';
+
+function buildVekaletTalebiId(
+  haftaId: string,
+  tarih: string,
+  vakit: Vakit,
+  tip: 'asil' | 'yedek' | 'gorev_cagrisi',
+  aliciUid: string
+) {
+  return `${haftaId}_${tarih}_${vakit}_${tip}_${aliciUid}`;
+}
 
 export async function vekaletTeklifEt(
   bildirimId: string,
+  haftaId: string,
   tarih: string,
-  vakit: string,
+  vakit: Vakit,
   saat: string,
   tip: 'asil' | 'yedek' | 'gorev_cagrisi',
   aliciUid: string,
@@ -14,8 +26,11 @@ export async function vekaletTeklifEt(
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Oturum açmış bir kullanıcı bulunamadı.');
 
-  await addDoc(collection(db, 'vekalet_talepleri'), {
+  const talepId = buildVekaletTalebiId(haftaId, tarih, vakit, tip, aliciUid);
+
+  await setDoc(doc(db, 'vekalet_talepleri', talepId), {
     bildirimId,
+    haftaId,
     gonderenUid: currentUser.uid,
     gonderenIsim: currentUser.displayName || currentUser.email || 'Değerli Hocam',
     aliciUid,
@@ -32,50 +47,26 @@ export async function vekaletTeklifEt(
 export async function vekaletKabulEt(talepId: string): Promise<void> {
   const talepRef = doc(db, 'vekalet_talepleri', talepId);
 
-  // Audit log için transaction dışında tutulacak veriler (transaction içinde Firestore-dışı async çağrı yapılamaz)
   let auditDetails: { gonderenIsim: string; aliciIsim: string; tarih: string; vakit: string } | null = null;
 
   await runTransaction(db, async (transaction) => {
-    // 1. Vekalet Talebini Oku
     const talepDoc = await transaction.get(talepRef);
     if (!talepDoc.exists()) throw new Error('Vekalet talebi bulunamadı.');
 
-    const talep = talepDoc.data();
+    const talep = talepDoc.data() as VekaletTalebi;
     if (talep.durum !== 'beklemede') throw new Error('Bu talep zaten sonuçlandırılmış.');
+    if (talep.aliciUid !== auth.currentUser?.uid) throw new Error('Bu vekalet teklifi size ait değil.');
 
-    // 2. Orijinal Bildirimi Oku
     const bildirimRef = doc(db, 'bildirimler', talep.bildirimId);
     const bildirimDoc = await transaction.get(bildirimRef);
     if (!bildirimDoc.exists()) throw new Error('Orijinal görev bildirimi bulunamadı.');
 
-    const bildirim = bildirimDoc.data();
-    if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten ifa edilmiş veya mazeret bildirilmiş.');
+    const bildirim = bildirimDoc.data() as Bildirim;
+    if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
 
-    // 3. Hafta Planını Oku
-    const planRef = doc(db, 'haftaPlanlari', bildirim.haftaId);
-    const planDoc = await transaction.get(planRef);
-    if (!planDoc.exists()) throw new Error('Haftalık plan kaydı bulunamadı.');
-
-    const plan = planDoc.data();
-    const gunler = { ...plan.gunler };
-
-    // Gün ve vakit hücresinde güncelleme yap
-    if (gunler[talep.tarih] && gunler[talep.tarih][talep.vakit]) {
-      const cell = { ...gunler[talep.tarih][talep.vakit] };
-      if (talep.tip === 'asil') {
-        cell.asil = talep.aliciUid;
-      } else if (talep.tip === 'yedek') {
-        cell.yedek = talep.aliciUid;
-      }
-      gunler[talep.tarih][talep.vakit] = cell;
-    }
-
-    // 4. Güncellemeleri Atomic Olarak Uygula
     transaction.update(talepRef, { durum: 'kabul_edildi', sonGuncelleme: serverTimestamp() });
     transaction.update(bildirimRef, { uid: talep.aliciUid, sonGuncelleme: serverTimestamp() });
-    transaction.update(planRef, { gunler });
 
-    // Audit verisini dışarı aktar — transaction commit sonrası kullanılacak
     auditDetails = {
       gonderenIsim: talep.gonderenIsim,
       aliciIsim: talep.aliciIsim,
@@ -84,9 +75,13 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
     };
   });
 
-  // Denetim izi — Firestore transaction COMMIT'inden SONRA çağrılmalı
-  if (auditDetails) {
-    const { gonderenIsim, aliciIsim, tarih, vakit } = auditDetails;
+  // NOT: `as` ile açık tip ataması kasıtlı — auditDetails, kapsayan bir async
+  // closure içinde yeniden atanan bir `let` olduğundan TypeScript'in kontrol
+  // akışı analizi burada `vakit` alanını yanlışlıkla `never`'a daraltıyor
+  // (bilinen bir TS closure-narrowing sınırlaması). Açık cast bu zinciri kırar.
+  const finalAuditDetails = auditDetails as { gonderenIsim: string; aliciIsim: string; tarih: string; vakit: string } | null;
+  if (finalAuditDetails) {
+    const { gonderenIsim, aliciIsim, tarih, vakit } = finalAuditDetails;
     const details = `${gonderenIsim} görevi otonom vekalet ile ${aliciIsim} hocaya devretti.`;
     await telemetryService.logAudit(
       'Görev Vekaleti Devri',

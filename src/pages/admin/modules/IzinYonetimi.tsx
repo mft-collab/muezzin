@@ -12,15 +12,28 @@ export default function IzinYonetimi() {
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const [filter, setFilter] = useState<'all' | 'onay_bekliyor' | 'onaylandi' | 'reddedildi'>('all');
  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+ const [uiMessage, setUiMessage] = useState<string | null>(null);
+ const [processingIzinId, setProcessingIzinId] = useState<string | null>(null);
 
  const getMuezzinName = (uid: string) => {
  return muezzinler.find(m => m.id === uid)?.displayName || 'Bilinmiyor';
  };
 
- const filteredIzinler = izinler.filter(i => {
- if (filter === 'all') return true;
- return i.durum === filter;
- });
+  const filteredIzinler = izinler.filter(i => {
+  if (filter === 'all') return true;
+  return i.durum === filter;
+  });
+
+ const kararVer = async (id: string, durum: 'onaylandi' | 'reddedildi') => {
+ setProcessingIzinId(id);
+ try {
+ await izinGuncelle(id, durum);
+ } catch {
+ setUiMessage('İzin kararı işlenemedi. Bağlantı veya yetki durumunu kontrol edin.');
+ } finally {
+ setProcessingIzinId(null);
+ }
+ };
 
  if (loading) return (
  <div className="flex h-[500px] items-center justify-center">
@@ -35,7 +48,7 @@ export default function IzinYonetimi() {
  <div className="spatial-glass p-12 rounded-[32px] border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
  <AlertCircle className="text-rose-500 mb-6" size={40} />
  <p className="text-lg font-light text-rose-500 tracking-tight mb-2">Veri Senkronizasyon Hatası</p>
- <p className="authority-title !text-[7px] opacity-40 uppercase tracking-wide break-all whitespace-normal w-full max-w-full text-center select-all">{error}</p>
+ <p className="authority-title !text-[10px] opacity-55 uppercase tracking-wide break-all whitespace-normal w-full max-w-full text-center select-all">{error}</p>
  </div>
  );
 
@@ -45,7 +58,7 @@ export default function IzinYonetimi() {
  <div className="flex flex-col md:flex-row justify-between items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">İzin ve Mazeret Masası</h2>
- <p className="authority-title !text-[7px] opacity-30 font-medium tracking-wide">PERSONEL İSTİRAHAT VE GÖREV MUAFİYETLERİ</p>
+ <p className="authority-title !text-[10px] opacity-40 font-medium tracking-wide">PERSONEL İSTİRAHAT VE GÖREV MUAFİYETLERİ</p>
  </div>
 
  <div className="flex items-center gap-2 bg-[var(--surface-low)] p-1.5 rounded-[22px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0">
@@ -59,8 +72,11 @@ export default function IzinYonetimi() {
  key={btn.id}
  whileHover={{ scale: 1.05 }}
  whileTap={{ scale: 0.95 }}
- onClick={() => setFilter(btn.id as any)}
- className={`px-6 py-3 rounded-[18px] text-[8px] font-bold uppercase tracking-[0.15em] transition-all duration-500 shrink-0 ${
+ onClick={() => {
+ setFilter(btn.id as any);
+ setUiMessage(null);
+ }}
+ className={`px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all duration-500 shrink-0 ${
  filter === btn.id 
  ? 'bg-[var(--text-primary)] text-[var(--app-bg)] shadow-[var(--spatial-shadow)]' 
  : 'bg-transparent text-[var(--text-primary)]/30 hover:text-[var(--text-primary)] hover:bg-[var(--surface-medium)]'
@@ -72,6 +88,23 @@ export default function IzinYonetimi() {
  </div>
  </div>
 
+ <AnimatePresence>
+ {uiMessage && (
+ <motion.div
+ initial={{ opacity: 0, y: -8 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0, y: -8 }}
+ className="spatial-glass !bg-amber-500/10 border-amber-500/30 p-4 flex items-center gap-3 text-amber-500 text-[10px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
+ >
+ <AlertCircle size={18} className="shrink-0" />
+ <span className="leading-relaxed">{uiMessage}</span>
+ <button type="button" onClick={() => setUiMessage(null)} className="ml-auto text-amber-500/50 hover:text-amber-500 transition-colors">
+ <X size={14} />
+ </button>
+ </motion.div>
+ )}
+ </AnimatePresence>
+
  {/* REQUEST GRID: Spatial Decision Stream */}
  <div className="grid grid-cols-1 gap-5">
  <AnimatePresence mode="popLayout">
@@ -79,14 +112,15 @@ export default function IzinYonetimi() {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-20 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-white/10"
+ className="spatial-glass p-12 sm:p-16 rounded-3xl text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-white/10"
  >
  <Calendar className="text-white/5 mb-8" size={60} strokeWidth={1} />
- <p className="authority-title !text-[8px] opacity-40 uppercase tracking-wide">HİÇBİR İZİN TALEBİ KAYDI BULUNAMADI</p>
+ <p className="authority-title !text-[10px] opacity-45 uppercase tracking-wide">HİÇBİR İZİN TALEBİ KAYDI BULUNAMADI</p>
  </motion.div>
- ) : filteredIzinler.map((izin, idx) => {
- const statusColor = izin.durum === 'onay_bekliyor' ? 'amber' : 
- izin.durum === 'onaylandi' ? 'emerald' : 'rose';
+  ) : filteredIzinler.map((izin, idx) => {
+  const statusBarClass = izin.durum === 'onay_bekliyor' ? 'bg-amber-500/40' :
+  izin.durum === 'onaylandi' ? 'bg-emerald-500/40' : 'bg-rose-500/40';
+  const isProcessing = processingIzinId === izin.id;
  
  return (
  <motion.div
@@ -102,7 +136,7 @@ export default function IzinYonetimi() {
  }`}
  >
  {/* Status Indicator Bar */}
- <div className={`absolute top-0 left-0 bottom-0 w-1 bg-${statusColor}-500/40 shadow-[0_0_15px_rgba(255,255,255,0.1)]`} />
+ <div className={`absolute top-0 left-0 bottom-0 w-1 ${statusBarClass} shadow-[0_0_15px_rgba(255,255,255,0.1)]`} />
 
  {/* Personel Identity */}
  <div className="flex items-center gap-5 min-w-0 lg:min-w-[240px] w-full lg:w-auto">
@@ -115,7 +149,7 @@ export default function IzinYonetimi() {
  <div>
  <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight leading-none mb-2">{getMuezzinName(izin.uid)}</h3>
  <div className="flex items-center gap-2">
- <span className={`text-[7px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-white/5 ${
+ <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md border border-white/5 ${
  izin.durum === 'onay_bekliyor' ? 'text-amber-500/60' : 
  izin.durum === 'onaylandi' ? 'text-emerald-500/60' : 'text-rose-500/60'
  }`}>
@@ -129,20 +163,20 @@ export default function IzinYonetimi() {
  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 lg:px-8 lg:border-x lg:border-y-0 border-y border-white/5 py-3 lg:py-0 w-full lg:w-auto">
  <div className="flex items-center gap-4">
  <div className="flex flex-col">
- <span className="authority-title !text-[6px] opacity-20 uppercase tracking-wide mb-1">BAŞLANGIÇ</span>
- <span className="text-[11px] sm:text-[12px] font-bold text-[var(--text-primary)]/70 tracking-wide">{format(parseISO(izin.baslangic), 'd MMM yyyy', { locale: tr })}</span>
+ <span className="authority-title !text-[9px] opacity-35 uppercase tracking-wide mb-1">BAŞLANGIÇ</span>
+ <span className="text-[12px] sm:text-[13px] font-bold text-[var(--text-primary)]/75 tracking-wide">{format(parseISO(izin.baslangic), 'd MMM yyyy', { locale: tr })}</span>
  </div>
  <div className="w-8 h-px bg-[var(--glass-border)]" />
  <div className="flex flex-col">
- <span className="authority-title !text-[6px] opacity-20 uppercase tracking-wide mb-1">BİTİŞ</span>
- <span className="text-[11px] sm:text-[12px] font-bold text-[var(--text-primary)]/70 tracking-wide">{format(parseISO(izin.bitis), 'd MMM yyyy', { locale: tr })}</span>
+ <span className="authority-title !text-[9px] opacity-35 uppercase tracking-wide mb-1">BİTİŞ</span>
+ <span className="text-[12px] sm:text-[13px] font-bold text-[var(--text-primary)]/75 tracking-wide">{format(parseISO(izin.bitis), 'd MMM yyyy', { locale: tr })}</span>
  </div>
  </div>
  </div>
 
  {/* Reason Matrix */}
- <div className="flex-1 p-4 spatial-glass-elevated rounded-[16px] border border-[var(--glass-border)] bg-[var(--surface-low)]">
- <p className="text-[11px] sm:text-[12px] font-light text-[var(--text-primary)]/50 leading-relaxed italic">
+ <div className="flex-1 p-4 bg-[var(--surface-low)] rounded-2xl border border-[var(--glass-border)]">
+ <p className="text-[12px] sm:text-[13px] font-light text-[var(--text-primary)]/65 leading-relaxed italic">
  "{izin.sebep || 'Herhangi bir mazeret detayı belirtilmedi.'}"
  </p>
  </div>
@@ -161,28 +195,32 @@ export default function IzinYonetimi() {
  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
  if (d.getDay() === 5) { hasFriday = true; break; }
  }
- if (hasFriday) {
- alert("Cuma günü operasyonel gereklilikler nedeniyle izin onaylanamaz.");
- return;
- }
- izinGuncelle(izin.id!, 'onaylandi');
- }}
- className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 text-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/5 transition-colors"
- >
+  if (hasFriday) {
+  if (izin.tip !== 'mazeret') {
+  setUiMessage('Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri yönetici kararıyla işlenebilir.');
+  return;
+  }
+  }
+  kararVer(izin.id!, 'onaylandi');
+  }}
+  disabled={isProcessing}
+  className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 text-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/5 transition-colors"
+  >
  <Check className="w-5 h-5 sm:w-6 sm:h-6" />
  </motion.button>
  
- <motion.button
- whileHover={{ y: -4, scale: 1.05, backgroundColor: 'rgba(244,63,94,0.2)' }}
- whileTap={{ scale: 0.95 }}
- onClick={() => izinGuncelle(izin.id!, 'reddedildi')}
- className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-500/10 text-rose-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-lg shadow-rose-500/5 transition-colors"
+  <motion.button
+  whileHover={{ y: -4, scale: 1.05, backgroundColor: 'rgba(244,63,94,0.2)' }}
+  whileTap={{ scale: 0.95 }}
+  onClick={() => kararVer(izin.id!, 'reddedildi')}
+  disabled={isProcessing}
+  className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-500/10 text-rose-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-lg shadow-rose-500/5 transition-colors"
  >
  <X className="w-5 h-5 sm:w-6 sm:h-6" />
  </motion.button>
  </div>
  ) : (
- <div className={`px-4 sm:px-6 py-2 rounded-full text-[8px] font-bold uppercase tracking-wide border shadow-sm ${
+ <div className={`px-4 sm:px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm ${
  izin.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
  {izin.durum === 'onaylandi' ? 'SİSTEM TARAFINDAN ONAYLI' : 'TALEP REDDEDİLDİ'}

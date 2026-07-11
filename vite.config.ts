@@ -2,6 +2,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -13,6 +14,13 @@ export default defineConfig(({ mode }) => ({
   },
   esbuild: {
     drop: mode === 'production' ? ['console', 'debugger'] : [],
+  },
+  define: {
+    // package.json sürümü ve GERÇEK build zamanı, telemetride hata anının
+    // değil derleme anının bilgisini taşısın diye derleme zamanında gömülür
+    // (bkz. src/services/telemetryService.ts).
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
   },
   plugins: [
     react(),
@@ -26,7 +34,7 @@ export default defineConfig(({ mode }) => ({
         type: 'module',
         suppressWarnings: true
       },
-      includeAssets: ['favicon.svg', 'pwa-192x192.svg', 'pwa-512x512.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.svg', 'pwa-512x512.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: "Müezzin - Ezan Hizmetleri Düzenleme Dizgesi",
         short_name: "Müezzin Ezan",
@@ -57,6 +65,26 @@ export default defineConfig(({ mode }) => ({
             src: '/pwa-512x512.svg?v=3',
             sizes: '512x512',
             type: 'image/svg+xml',
+            purpose: 'maskable'
+          },
+          // PNG varyantları: bazı Android launcher'ları/OS entegrasyonları
+          // SVG manifest ikonlarını desteklemez.
+          {
+            src: '/pwa-192x192.png?v=3',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png?v=3',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png?v=3',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'maskable'
           }
         ]

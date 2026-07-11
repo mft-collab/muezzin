@@ -62,13 +62,13 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  variants={containerVariants}
  className="px-0"
  >
- <motion.div variants={itemVariants} className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-14">
+ <motion.div variants={itemVariants} className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-12">
  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[24px] bg-[var(--text-primary)]/[0.03] flex items-center justify-center border border-[var(--glass-border)] shadow-sm ${isFriday ? 'text-emerald-400' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'}`}>
  <Star size={24} className="sm:size-8" strokeWidth={1.2} />
  </div>
  <div>
- <h2 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none">Kişisel Görev Akışı</h2>
- <p className={`authority-title text-[7px] sm:text-[9px] mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-30'}`}>HİZMETTE KEMÂLÂT VE SADAKAT</p>
+ <h2 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none">Kişisel Görevlerim</h2>
+ <p className={`authority-title text-[10px] mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
  </div>
  </motion.div>
 
@@ -90,14 +90,14 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  whileHover={{ y: -4, scale: 1.005 }}
  whileTap={{ scale: 0.995 }}
  transition={{ type: 'spring', stiffness: 280, damping: 24 }}
- className="spatial-glass p-8 sm:p-20 rounded-[40px] text-center relative overflow-hidden group"
+ className="spatial-glass p-8 sm:p-14 rounded-[28px] text-center relative overflow-hidden group"
  >
  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/[0.03] via-transparent to-transparent" />
  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mx-auto mb-10 border border-emerald-500/20 animate-float shadow-lg shadow-emerald-500/10">
  <CheckCircle2 size={32} strokeWidth={1.2} />
  </div>
- <h3 className="text-2xl sm:text-4xl font-light mb-6 tracking-tight text-[var(--text-primary)]">Münferit Vakitler</h3>
- <p className="authority-title !text-[8px] max-w-sm mx-auto leading-relaxed mt-10 opacity-25">BUGÜNLÜK ATANMIŞ BİR HİZMETİNİZ BULUNMAMAKTADIR. VAKTİNİZİ HAYIRLA GEÇİREBİLİRSİNİZ.</p>
+ <h3 className="text-2xl sm:text-3xl font-light mb-5 tracking-tight text-[var(--text-primary)]">Bugün görev yok</h3>
+ <p className="authority-title !text-[10px] max-w-sm mx-auto leading-relaxed mt-8 opacity-35">BUGÜN İÇİN ATANMIŞ BİR GÖREVİNİZ BULUNMAMAKTADIR.</p>
  </motion.div>
  ) : (
  <div className="grid grid-cols-1 gap-8">

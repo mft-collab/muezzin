@@ -1,36 +1,7 @@
 import admin from 'firebase-admin';
 import { db, Timestamp, auth, FieldValue } from './lib/firebaseAdminInit.ts';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: 'SERVICE_ACCOUNT' // Admin SDK doesn't have a current user in the same way
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
+import { getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -51,14 +22,22 @@ async function main() {
     console.log("Debug bilgisi alınamadı.");
   }
 
-  const bugün = formatDateLocal(new Date());
+  // NOT: new Date() KULLANILMIYOR — bu script GitHub Actions üzerinde UTC
+  // saatiyle çalışır; cron saati kaydırılırsa (ör. DST/mevsimsel ayar) UTC
+  // gece yarısı sınırı ile Türkiye takvim günü uyuşmayabilir. getTurkeyNow()
+  // her zaman Türkiye (UTC+3) takvim gününü verir.
+  const bugün = formatDateLocal(getTurkeyNow());
 
   // ADIM 1: "Okudum" kontrolü
+  // NOT: pendingAck filtresi KULLANILMIYOR — kendi "Okudum" onayını veren
+  // müezzinlerin bildirimi gün içinde zaten durum:'onaylandi', pendingAck:false
+  // olarak işaretlenmiş oluyor (bkz. src/services/okudumServisi.ts). Puan
+  // hem bu şekilde erkenden onaylanmış görevlere hem de gün sonuna kadar
+  // hiç dokunulmamış (varsayılan tamamlanmış sayılan) görevlere veriliyor.
   let bildirimler;
   try {
     bildirimler = await db.collection('bildirimler')
       .where('tarih', '==', bugün)
-      .where('pendingAck', '==', true)
       .get();
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, 'bildirimler');
@@ -73,18 +52,28 @@ async function main() {
 
   bildirimler.docs.forEach(doc => {
     const data = doc.data();
-    
+
     if (data.tip === 'asil') {
-      // Asil kişi mazeret bildirmemişse görevi yapmış sayılır
-      batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
-      asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
+      if (data.durum === 'bekliyor') {
+        // Asil kişi mazeret bildirmemiş ve kendi de onaylamamış: görevi yapmış sayılır
+        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+        asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
+      } else if (data.durum === 'onaylandi') {
+        // Kendi "Okudum" onayını gün içinde vermiş
+        asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
+      }
+      // durum === 'reddedildi' (mazeret bildirildi) → kredi yok
     } else if (data.tip === 'gorev_cagrisi') {
-      // Görev yedeğe devredilmiş ama yedek onaylamamış!
-      batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
-      uyariUids.push(data.uid);
+      if (data.durum === 'bekliyor') {
+        // Görev yedeğe devredilmiş ama yedek onaylamamış!
+        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+        uyariUids.push(data.uid);
+      }
     } else if (data.tip === 'yedek') {
-      // Yedek kişi sadece yedekti, yapması gereken bir şey yoktu.
-      batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+      if (data.durum === 'bekliyor') {
+        // Yedek kişi sadece yedekti, yapması gereken bir şey yoktu.
+        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+      }
     }
   });
 
@@ -116,7 +105,7 @@ async function main() {
 
   // YENİ: Yarınki Görevliler İçin Kişiselleştirilmiş FCM Anlık Bildirimi Tetikle
   try {
-    const yarınTarih = new Date();
+    const yarınTarih = getTurkeyNow();
     yarınTarih.setDate(yarınTarih.getDate() + 1);
     const yarınStr = formatDateLocal(yarınTarih);
 
@@ -239,7 +228,7 @@ async function main() {
   }
 
   // ADIM 4: Aylık skor (örnek)
-  const yarın = new Date();
+  const yarın = getTurkeyNow();
   yarın.setDate(yarın.getDate() + 1);
   if (yarın.getDate() === 1) {
     const muezzins = await db.collection('muezzins').get();

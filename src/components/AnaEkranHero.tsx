@@ -123,7 +123,7 @@ export const AnaEkranHero = React.memo(({
  const ozelVakitDurumu = useOzelVakitMesaji(bugunVakitler, bugunDate, now, mevcutVakit);
 
  return (
- <div className="w-full flex flex-col items-center justify-center min-h-[calc(100dvh-144px-env(safe-area-inset-bottom,0px))] md:min-h-[740px] h-auto mt-2">
+ <div className="w-full flex flex-col items-center justify-center min-h-0 sm:min-h-[640px] lg:h-[calc(100dvh-128px)] lg:min-h-[680px] lg:max-h-[860px] h-auto mt-2">
  <AnimatePresence mode="popLayout">
  {isLoading ? (
  <motion.div
@@ -131,7 +131,7 @@ export const AnaEkranHero = React.memo(({
  initial={{ opacity: 0 }}
  animate={{ opacity: 1 }}
  exit={{ opacity: 0 }}
- className="w-full flex-1 min-h-[450px] sm:min-h-[500px] flex items-center justify-center bg-[var(--surface-medium)] rounded-[34px] border border-[var(--glass-border)]"
+ className="w-full flex-1 min-h-[520px] sm:min-h-[600px] lg:min-h-0 flex items-center justify-center bg-[var(--surface-medium)] rounded-[28px] border border-[var(--glass-border)]"
  >
  <div className="w-12 h-12 rounded-full border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
  </motion.div>
@@ -141,13 +141,13 @@ export const AnaEkranHero = React.memo(({
  key="content"
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full flex-1 flex flex-col justify-between min-h-[450px] sm:min-h-[500px] p-4 sm:p-8 bg-[var(--spatial-glass-bg)] backdrop-blur-xl rounded-[34px] border border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]"
+ className="w-full flex-1 flex flex-col justify-between min-h-[520px] sm:min-h-[600px] lg:min-h-0 p-4 sm:p-6 xl:p-8 bg-[var(--spatial-glass-bg)] backdrop-blur-xl rounded-[28px] border border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]"
  >
  {/* Top specular highlight */}
- <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none z-0 rounded-[34px]" />
+ <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none z-0 rounded-[28px]" />
  {/* Single deep sirkadiyen aura — subtle, non-competing */}
  <div
- className="absolute inset-0 rounded-[34px] pointer-events-none transition-all duration-1000"
+ className="absolute inset-0 rounded-[28px] pointer-events-none transition-all duration-1000"
  style={{
  background: `radial-gradient(ellipse 80% 50% at 50% 100%, color-mix(in srgb, ${auraColor} 12%, transparent), transparent)`,
  }}
@@ -180,7 +180,7 @@ export const AnaEkranHero = React.memo(({
   </div>
  
  {gpsEnabled && gpsCoords && (
- <span className="text-[8px] font-extrabold text-[var(--status-success)]/90 tracking-widest uppercase mt-0.5 flex items-center gap-1">
+ <span className="text-[10px] font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
  <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-success)] animate-ping" />
  GPS AKTİF ({gpsCoords.latitude.toFixed(4)}, {gpsCoords.longitude.toFixed(4)})
  </span>
@@ -197,7 +197,7 @@ export const AnaEkranHero = React.memo(({
  </div>
 
  {/* Countdown / Chronograph */}
- <div className="flex-1 flex items-center justify-center z-10 relative py-4 sm:py-8">
+ <div className="flex-1 flex items-center justify-center z-10 relative py-4 sm:py-6 lg:py-8">
  {sonraki && currentStatus && (
  <GeriSayim
  ezanSaati={sonraki.ezanSaati}
@@ -217,7 +217,7 @@ export const AnaEkranHero = React.memo(({
  {/* Vakit Matrix — 6-Column Responsive Grid */}
  <div className="w-full z-10 relative mt-4">
  {bugunVakitler && (
- <div className="grid grid-cols-6 gap-1 sm:gap-2">
+ <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
  {UI_VAKIT_LISTESI.map(({ key, label }, idx) => {
  const isActive = uiMevcutVakit === key;
  const isNext = sonraki?.vakit === key;
@@ -244,44 +244,44 @@ export const AnaEkranHero = React.memo(({
   switch (key as string) {
   case 'sabah':
    cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/25 border-[var(--dynamic-aura,var(--aura-indigo))]/65 shadow-[0_0_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-violet-700 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_45%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/25 border-[var(--dynamic-aura,var(--aura-indigo))]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_16%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-violet-700 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
    break;
   case 'gunes':
    cardStyle = isDark
-    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_30px_color-mix(in_srgb,var(--aura-amber)_15%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-amber)] to-orange-600 border-[var(--aura-amber)]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--aura-amber)_50%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--aura-amber)] to-orange-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--aura-amber)]' : 'bg-amber-200'}`} />;
    break;
   case 'ogle':
    cardStyle = isDark
-    ? 'bg-[var(--status-success)]/25 border-[var(--status-success)]/65 shadow-[0_0_30px_color-mix(in_srgb,var(--status-success)_15%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--status-success)] to-teal-600 border-[var(--status-success)]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--status-success)_50%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--status-success)]/25 border-[var(--status-success)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-success)_12%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--status-success)] to-teal-600 border-[var(--status-success)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-success)_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--status-success)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--status-success)]' : 'bg-emerald-200'}`} />;
    break;
   case 'ikindi':
    cardStyle = isDark
-    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_30px_color-mix(in_srgb,var(--aura-amber)_15%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-amber)] to-amber-600 border-[var(--aura-amber)]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--aura-amber)_50%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--aura-amber)] to-amber-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--aura-amber)]' : 'bg-amber-300'}`} />;
    break;
   case 'aksam':
    cardStyle = isDark
-    ? 'bg-[var(--status-danger)]/25 border-[var(--status-danger)]/65 shadow-[0_0_30px_color-mix(in_srgb,var(--status-danger)_15%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--status-danger)] to-purple-600 border-[var(--status-danger)]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--status-danger)_50%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--status-danger)]/25 border-[var(--status-danger)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-danger)_12%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--status-danger)] to-purple-600 border-[var(--status-danger)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-danger)_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--status-danger)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--status-danger)]' : 'bg-rose-200'}`} />;
    break;
   case 'yatsi':
    cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/30 border-[var(--dynamic-aura,var(--aura-indigo))]/70 shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] scale-[1.04] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-blue-900 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_12px_24px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_45%,transparent)] scale-[1.04] z-20';
+    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/30 border-[var(--dynamic-aura,var(--aura-indigo))]/70 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_12%,transparent)] scale-[1.02] z-20'
+    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-blue-900 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
    break;
   default:
    cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.04] z-20'
-    : 'bg-[var(--aura-indigo)] border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.04] z-20';
+    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20'
+    : 'bg-[var(--aura-indigo)] border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20';
    indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
   }
  } else if (isNext) {
@@ -311,7 +311,7 @@ export const AnaEkranHero = React.memo(({
         ? 'bg-[var(--status-danger)]/15 border-[var(--status-danger)]/20 text-[var(--status-danger)]' 
         : 'bg-[var(--status-success)]/15 border-[var(--status-success)]/20 text-[var(--status-success)]';
       offsetBadge = (
-        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-[7.5px] sm:text-[8px] font-extrabold tracking-tight scale-90 sm:scale-100 transition-all ${badgeColor}`}>
+        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-[10px] font-extrabold tracking-normal transition-all ${badgeColor}`}>
           {sign}{diff}dk
         </span>
       );
@@ -323,11 +323,11 @@ export const AnaEkranHero = React.memo(({
  key={key}
  whileHover={!isPast ? { y: -2 } : {}}
  whileTap={!isPast ? { scale: 0.98 } : {}}
- className={`relative flex flex-col items-center justify-center py-4 sm:py-6 px-0.5 sm:px-2 rounded-xl sm:rounded-3xl border transition-all duration-500 cursor-pointer overflow-visible ${cardStyle}`}
+ className={`relative flex flex-col items-center justify-center min-h-[72px] sm:min-h-[96px] py-3 sm:py-5 px-2 rounded-xl sm:rounded-2xl border transition-all duration-500 cursor-pointer overflow-visible ${cardStyle}`}
  >
  {indicatorDot}
 
- <span className={`text-[7.5px] sm:text-[9.5px] tracking-[0.06em] sm:tracking-[0.15em] font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
+ <span className={`text-[10px] sm:text-[11px] tracking-wide font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
  {label}
  </span>
  
@@ -348,7 +348,7 @@ export const AnaEkranHero = React.memo(({
  <OzelVakitBanner durum={ozelVakitDurumu} />
  
  {/* Ramazan Ayı Özel Hub Bileşeni */}
- <RamazanHub />
+ {isRamazan && <RamazanHub />}
  </>
  )}
  </AnimatePresence>

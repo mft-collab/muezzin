@@ -23,7 +23,7 @@ export default function SistemLoglari() {
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
  <div className="flex flex-col gap-1">
  <h3 className="text-lg font-light tracking-tight text-[var(--text-primary)]">Sistem Teşhis ve Hata Raporları</h3>
- <p className="premium-label !text-[8px] !opacity-35 tracking-wide">AKTİF KULLANIM DETAYLARI VE UYGULAMA SAĞLIĞI</p>
+ <p className="premium-label !text-[10px] !opacity-35 tracking-wide">AKTİF KULLANIM DETAYLARI VE UYGULAMA SAĞLIĞI</p>
  </div>
  </div>
 

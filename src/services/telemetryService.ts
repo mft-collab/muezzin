@@ -1,5 +1,6 @@
 import { db, auth } from '../lib/firebase';
 import { collection, addDoc, Timestamp, writeBatch, doc } from 'firebase/firestore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export interface TelemetryEvent {
   eventType: 'page_view' | 'click' | 'error' | 'performance';
@@ -121,27 +122,25 @@ async function captureStateSnapshot(): Promise<StateSnapshot> {
   let gpsEnabled = false;
   
   try {
-    const themeStoreRaw = localStorage.getItem('muezzin-theme');
+    const themeStoreRaw = localStorage.getItem('muezzin-theme-storage');
     if (themeStoreRaw) {
       theme = JSON.parse(themeStoreRaw).state?.theme || null;
     }
   } catch { /* yoksay */ }
   
   try {
-    const gpsStoreRaw = localStorage.getItem('muezzin-gps-vakit');
+    const gpsStoreRaw = localStorage.getItem('muezzin-gps-vakit-storage');
     if (gpsStoreRaw) {
       gpsEnabled = JSON.parse(gpsStoreRaw).state?.gpsEnabled || false;
     }
   } catch { /* yoksay */ }
 
-  // Firestore kurallarımıza uygun role bilgisini çek
-  let authRole: string | null = null;
-  try {
-    if (user) {
-      const tokenResult = await user.getIdTokenResult(false);
-      authRole = (tokenResult.claims['role'] as string) || null;
-    }
-  } catch { /* yoksay */ }
+  // NOT: Bu uygulama Firebase Auth custom claims KULLANMIYOR — rol bilgisi
+  // Firestore'daki muezzins/{uid}.role alanında tutuluyor ve useAuthStore
+  // tarafından oraya abone olunarak okunuyor. Önceki sürüm burada
+  // getIdTokenResult().claims['role'] okuyordu; bu alan hiçbir zaman
+  // set edilmediğinden authRole daima null geliyordu.
+  const authRole = useAuthStore.getState().role;
 
   return {
     authUid: user ? user.uid : null,
@@ -152,8 +151,8 @@ async function captureStateSnapshot(): Promise<StateSnapshot> {
     isOnline: navigator.onLine,
     swVersion: swInfo.version,
     swState: swInfo.state,
-    appVersion: '2.0.0',
-    buildTimestamp: new Date().toISOString(),
+    appVersion: __APP_VERSION__,
+    buildTimestamp: __BUILD_TIMESTAMP__,
     networkType: net.type,
     networkRtt: net.rtt,
     memoryUsedMb: getMemoryMb(),
@@ -310,6 +309,7 @@ class TelemetryService {
 
   private async flushEvents() {
     if (this.eventQueue.length === 0) return;
+    if (!auth.currentUser) return;
 
     if (this.flushTimeout) {
       clearTimeout(this.flushTimeout);
@@ -338,10 +338,12 @@ class TelemetryService {
     if (!this.isEnabled) return;
 
     const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
     const eventData = {
       eventType: event.eventType,
       eventName: event.eventName,
-      userId: currentUser ? currentUser.uid : 'guest',
+      userId: currentUser.uid,
       metadata: {
         ...event.metadata,
         device: this.getDeviceMetadata(),
@@ -364,6 +366,8 @@ class TelemetryService {
    */
   async logError(error: Error, componentStack?: string) {
     if (!this.isEnabled) return;
+    if (!auth.currentUser) return;
+
     try {
       const [stateSnapshot] = await Promise.all([captureStateSnapshot()]);
       const crumbs = getBreadcrumbs();
@@ -372,7 +376,7 @@ class TelemetryService {
         errorMessage: error.message,
         errorStack: error.stack || '',
         componentStack: componentStack || '',
-        userId: auth.currentUser ? auth.currentUser.uid : 'guest',
+        userId: auth.currentUser.uid,
         device: this.getDeviceMetadata(),
         breadcrumbs: crumbs,
         stateSnapshot,
@@ -389,6 +393,8 @@ class TelemetryService {
   async logAudit(actionType: string, targetName: string, details: string) {
     try {
       const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
       pushBreadcrumb({
         action: `Admin: ${actionType} — ${targetName}`,
         category: 'user_action',
@@ -398,10 +404,8 @@ class TelemetryService {
         actionType,
         targetName,
         details,
-        userId: currentUser ? currentUser.uid : 'system',
-        userDisplayName: currentUser
-          ? (currentUser.displayName || currentUser.email || 'Bilinmeyen Admin')
-          : 'Sistem',
+        userId: currentUser.uid,
+        userDisplayName: currentUser.displayName || currentUser.email || 'Bilinmeyen Admin',
         timestamp: Timestamp.now(),
       });
     } catch (err) {

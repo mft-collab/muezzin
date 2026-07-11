@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, CalendarDays, Users, Database, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, Home, Calendar, User, SlidersHorizontal } from 'lucide-react';
 import { hapticMedium } from '../../../lib/haptic';
 import { playClick } from '../../../lib/sounds';
 
@@ -9,9 +9,7 @@ interface MobileDockProps {
  setActiveTab: (tab: string) => void;
  pendingIzinler: number;
  cozulmamisSayisi: number;
- onLogout: () => void;
- theme: 'dark' | 'light';
- toggleTheme: (event?: any) => void;
+ onNavigateApp: (path: string) => void;
 }
 
 export const MobileDock = React.memo<MobileDockProps>(({ 
@@ -19,9 +17,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  setActiveTab,
  pendingIzinler,
  cozulmamisSayisi,
- onLogout,
- theme,
- toggleTheme
+ onNavigateApp
 }) => {
  const handlePointerAction = useCallback((
   event: React.PointerEvent<HTMLButtonElement>,
@@ -39,25 +35,49 @@ export const MobileDock = React.memo<MobileDockProps>(({
   }, []);
 
  const navItems = [
- { id: 'dashboard', icon: <LayoutDashboard size={22} />, badge: cozulmamisSayisi },
- { id: 'planlama', icon: <CalendarDays size={22} /> },
- { id: 'ekip', icon: <Users size={22} />, badge: pendingIzinler },
- { id: 'ayarlar', icon: <Database size={22} /> }
+ { id: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={22} />, badge: cozulmamisSayisi },
+ { id: 'planlama', label: 'Hizmet Cetveli', icon: <CalendarDays size={22} /> },
+ { id: 'ekip', label: 'Kadro Yönetimi', icon: <Users size={22} />, badge: pendingIzinler },
+ { id: 'ayarlar', label: 'Sistem Ayarları', icon: <Settings size={22} /> }
+ ];
+
+ const appLinks = [
+ { path: '/', label: 'Vakit', icon: <Home size={16} /> },
+ { path: '/takvim', label: 'Takvim', icon: <Calendar size={16} /> },
+ { path: '/profil', label: 'Profil', icon: <User size={16} /> },
+ { path: '/ayarlar', label: 'Ayarlar', icon: <SlidersHorizontal size={16} /> }
  ];
 
  return (
- <div className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] inset-x-4 z-[120] flex justify-center pointer-events-none max-w-full pb-0">
- <div className="apple-glass w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 rounded-[24px] sm:rounded-[32px] flex items-center justify-between sm:justify-center gap-1 sm:gap-1.5 pointer-events-auto touch-manipulation select-none max-w-full overflow-x-auto no-scrollbar">
+ <div className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] inset-x-4 z-[120] flex flex-col items-center gap-2 pointer-events-none max-w-full pb-0">
+ <nav aria-label="Müezzin menüsü" className="apple-glass px-2 py-1 rounded-[18px] grid grid-cols-4 gap-1 pointer-events-auto touch-manipulation select-none">
+ {appLinks.map((item) => (
+ <button
+ type="button"
+ key={item.path}
+ aria-label={`${item.label} sayfasına git`}
+ title={item.label}
+ onPointerDown={(event) => handlePointerAction(event, () => onNavigateApp(item.path))}
+ onClick={() => { playClick(); onNavigateApp(item.path); }}
+ className="min-w-[42px] h-[38px] px-2 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/45 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.04] transition-all touch-manipulation"
+ >
+ {React.cloneElement(item.icon as React.ReactElement, { strokeWidth: 1.7 })}
+ </button>
+ ))}
+ </nav>
+ <nav aria-label="Admin ana menü" className="apple-glass w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 rounded-[22px] sm:rounded-[28px] grid grid-cols-4 gap-1 sm:gap-1.5 pointer-events-auto touch-manipulation select-none max-w-full">
  {navItems.map((item) => {
  const isActive = activeTab === item.id;
  return (
  <button
  type="button"
  key={item.id}
- aria-label={item.id}
+ aria-label={item.label}
+ aria-current={isActive ? 'page' : undefined}
  onPointerDown={(event) => handlePointerAction(event, () => setActiveTab(item.id))}
  onClick={() => { playClick(); setActiveTab(item.id); }}
- className={`relative flex-1 sm:flex-none min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3.5 rounded-[18px] sm:rounded-[22px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
+ title={item.label}
+ className={`relative min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3 rounded-[16px] sm:rounded-[20px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
  isActive 
  ? 'text-[var(--dynamic-aura,var(--aura-indigo))] scale-110' 
  : 'text-[var(--text-primary)]/30 hover:text-[var(--text-primary)]/60'
@@ -69,7 +89,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  size: 20
  })}
  {item.badge > 0 && (
- <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-[6px]">
+ <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-[9px]">
  {item.badge}
  </div>
  )}
@@ -98,33 +118,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  </button>
  );
  })}
- 
- <div className="w-[1px] h-6 sm:h-8 bg-[var(--glass-border)] mx-0.5 sm:mx-2 shrink-0" />
- 
- <div className="flex items-center gap-0.5 sm:gap-1.5 pr-0.5 sm:pr-1.5 shrink-0">
- <motion.button
- type="button"
- aria-label={theme === 'dark' ? "Aydınlık temaya geç" : "Karanlık temaya geç"}
- whileTap={{ scale: 0.9 }}
- onPointerDown={(event) => handlePointerAction(event, () => toggleTheme(event))}
- onClick={(e) => { playClick(); toggleTheme(e); }}
- className="min-w-[44px] min-h-[44px] sm:min-w-[50px] sm:min-h-[50px] p-2 sm:p-3.5 rounded-[16px] sm:rounded-[22px] text-[var(--text-primary)]/20 hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--text-primary)]/[0.03] transition-all duration-150 touch-manipulation flex items-center justify-center"
- >
- {theme === 'dark' ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
- </motion.button>
-
- <motion.button
- type="button"
- aria-label="Oturumu kapat"
- whileTap={{ scale: 0.9 }}
- onPointerDown={(event) => handlePointerAction(event, onLogout, true)}
- onClick={() => { hapticMedium(); onLogout(); }}
- className="min-w-[44px] min-h-[44px] sm:min-w-[50px] sm:min-h-[50px] p-2 sm:p-3.5 rounded-[16px] sm:rounded-[22px] text-rose-500/40 hover:text-rose-500 hover:bg-rose-500/5 transition-all duration-150 touch-manipulation flex items-center justify-center"
- >
- <LogOut size={18} strokeWidth={1.5} />
- </motion.button>
- </div>
- </div>
+ </nav>
  </div>
  );
 });

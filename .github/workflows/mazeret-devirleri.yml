@@ -1,0 +1,27 @@
+name: Mazeret Devirlerini Uzlaştır
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mazeret bildirimi sonrası haftaPlanlari senkronu ve (yedek bulunamazsa)
+    # admin alarmı, istemcinin yapamadığı admin-SDK işlemlerdir; bu iş bunları
+    # kısa aralıklarla uzlaştırır. GitHub Actions cron'unun birkaç dakika
+    # gecikmesi normaldir.
+    - cron: '*/10 * * * *'
+
+jobs:
+  uzlastir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Mazeret devirlerini uzlaştır
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npm run process:mazeret-devirleri

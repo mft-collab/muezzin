@@ -5,6 +5,7 @@ import { Vakitler, GunlukVakit } from '../types';
 import { aylikVakitleriCek } from '../services/ezanVaktiServisi';
 import { getTurkeyNow, getTurkeyDateString } from '../lib/dateUtils';
 import { useSystemSettingsStore } from './useSystemSettingsStore';
+import { useAuthStore } from './useAuthStore';
 
 const isVakitEqual = (a: GunlukVakit | null, b: GunlukVakit | null) => {
   if (a === b) return true;
@@ -112,10 +113,16 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  const data = (await aylikVakitleriCek(yil, ay, settings.ilceId, settings.ilceAdi)) as unknown as Vakitler;
  set({ currentMonthData: data });
  get()._processData();
+ // Yalnızca admin bu önbelleği Firestore'a yazabilir (bkz. firestore.rules
+ // `vakitler` write kuralı) — diğer tüm kullanıcılarda bu deneme zaten
+ // permission-denied ile reddediliyordu; gereksiz yazma denemesi ve
+ // telemetri gürültüsü önlenir.
+ if (useAuthStore.getState().isAdmin) {
  const docId = `${settings.ilceId}_${yil}-${String(ay).padStart(2, '0')}`;
  setDoc(doc(db, 'vakitler', docId), data).catch((e) =>
  console.warn('Auto-cache failed:', e)
  );
+ }
  } catch (err) {
  console.error('VakitStore Fallback API Hatası:', err);
  set({ loading: false, initializing: false, initialized: true });

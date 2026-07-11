@@ -15,6 +15,61 @@ const RAMAZAN_LABELS = {
   teravihTakipcisi: 'Teravih Takipçisi',
 } as const;
 
+// Ay Fazı Görsel Temsili
+// Hicri günün (1-30) konumuna göre hilalin açısını ve büyüklüğünü taklit eder.
+// Modül düzeyinde tanımlı — bileşen içinde tanımlanırsa her render'da yeniden
+// oluşturulup React tarafından yeni bir component tipi olarak görülür.
+const MoonPhaseView: React.FC<{ day: number }> = ({ day }) => {
+  if (day <= 1 || day >= 29) {
+    // İnce Hilal (Yeni Ay / Son Ay)
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
+        <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M12 3a9 9 0 0 0 0 18 9 9 0 0 1 0-18Z" fill="currentColor" />
+      </svg>
+    );
+  } else if (day > 1 && day < 7) {
+    // Genişleyen Hilal
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
+        <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M12 3a9 9 0 0 0 5 18 9 9 0 0 1-5-18Z" fill="currentColor" />
+      </svg>
+    );
+  } else if (day >= 7 && day < 12) {
+    // İlk Dördün
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
+        <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" />
+      </svg>
+    );
+  } else if (day >= 12 && day < 18) {
+    // Şişkin Ay / Dolunay (14-15-16. Günler)
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300 filter drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]">
+        <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.9" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    );
+  } else if (day >= 18 && day < 23) {
+    // Son Dördün
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
+        <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M12 3a9 9 0 0 0 0 18V3Z" fill="currentColor" />
+      </svg>
+    );
+  } else {
+    // Küçülen Hilal
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
+        <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M12 21a9 9 0 0 1-5-18 9 9 0 0 0 5 18Z" fill="currentColor" />
+      </svg>
+    );
+  }
+};
+
 export const RamazanHub: React.FC = () => {
   const now = useTime();
   const { bugunVakitler, yarinVakitler, loading } = useEzanVakitleri();
@@ -153,60 +208,6 @@ export const RamazanHub: React.FC = () => {
     return time >= yatsiTime && time < geceYarisiTime;
   }, [now, bugunVakitler]);
 
-  // 5. Ay Fazı Görsel Temsili
-  // Hicri günün (1-30) konumuna göre hilalin açısını ve büyüklüğünü taklit eder
-  const MoonPhaseView = () => {
-    const day = hijriGunu.day;
-    if (day <= 1 || day >= 29) {
-      // İnce Hilal (Yeni Ay / Son Ay)
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
-          <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M12 3a9 9 0 0 0 0 18 9 9 0 0 1 0-18Z" fill="currentColor" />
-        </svg>
-      );
-    } else if (day > 1 && day < 7) {
-      // Genişleyen Hilal
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
-          <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M12 3a9 9 0 0 0 5 18 9 9 0 0 1-5-18Z" fill="currentColor" />
-        </svg>
-      );
-    } else if (day >= 7 && day < 12) {
-      // İlk Dördün
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
-          <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" />
-        </svg>
-      );
-    } else if (day >= 12 && day < 18) {
-      // Şişkin Ay / Dolunay (14-15-16. Günler)
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300 filter drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]">
-          <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.9" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      );
-    } else if (day >= 18 && day < 23) {
-      // Son Dördün
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
-          <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M12 3a9 9 0 0 0 0 18V3Z" fill="currentColor" />
-        </svg>
-      );
-    } else {
-      // Küçülen Hilal
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-amber-300">
-          <path d="M12 3a9 9 0 1 0 9 9 9.1 9.1 0 0 1-9-9Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M12 21a9 9 0 0 1-5-18 9 9 0 0 0 5 18Z" fill="currentColor" />
-        </svg>
-      );
-    }
-  };
-
   if (loading || !hijriGunu.isRamazan) return null;
 
   // Çember uzunluğu parametreleri (radius: 48, çevre: 2 * PI * r = 301.59)
@@ -237,7 +238,7 @@ export const RamazanHub: React.FC = () => {
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/[0.04] border border-amber-500/10">
           <span className="text-[8px] font-bold tracking-wider text-[var(--text-secondary)] uppercase">{ramazanGunuStr}</span>
           <div className="flex items-center justify-center">
-            <MoonPhaseView />
+            <MoonPhaseView day={hijriGunu.day} />
           </div>
         </div>
       </div>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ShieldAlert, Award } from 'lucide-react';
+import { Info, ShieldAlert } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 import { kibleAcisiHesapla, kibleMesafesiHesapla } from '../services/gpsVakitServisi';
-import { hapticMedium, hapticLight, hapticQiblaLock } from '../lib/haptic';
+import { hapticLight, hapticQiblaLock } from '../lib/haptic';
 
 interface KiblePusulasiModalProps {
   isOpen: boolean;
@@ -284,10 +284,10 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     // Dynamic self-healing: sensor works, set permission state to true
     setPermissionGranted(true);
 
-    let currentHeading = null;
-    // @ts-ignore
+    let currentHeading: number | null = null;
+    // @ts-expect-error webkitCompassHeading Safari/iOS'a özgü, lib.dom.d.ts'te yok
     if (e.webkitCompassHeading !== undefined) {
-      // @ts-ignore
+      // @ts-expect-error webkitCompassHeading Safari/iOS'a özgü, lib.dom.d.ts'te yok
       currentHeading = e.webkitCompassHeading;
     } else if (e.alpha !== null) {
       currentHeading = (360 - e.alpha) % 360;
@@ -303,10 +303,10 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
   const handleOrientationAbsolute = (e: DeviceOrientationEvent) => {
     setPermissionGranted(true);
 
-    let currentHeading = null;
-    // @ts-ignore
+    let currentHeading: number | null = null;
+    // @ts-expect-error webkitCompassHeading Safari/iOS'a özgü, lib.dom.d.ts'te yok
     if (e.webkitCompassHeading !== undefined) {
-      // @ts-ignore
+      // @ts-expect-error webkitCompassHeading Safari/iOS'a özgü, lib.dom.d.ts'te yok
       currentHeading = e.webkitCompassHeading;
     } else if (e.alpha !== null) {
       currentHeading = (360 - e.alpha) % 360;
@@ -323,21 +323,22 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     if (
       typeof window !== 'undefined' &&
       typeof DeviceOrientationEvent !== 'undefined' &&
-      // @ts-ignore
+      // @ts-expect-error requestPermission yalnızca iOS Safari'de mevcut, lib.dom.d.ts'te yok
       typeof DeviceOrientationEvent.requestPermission === 'function'
     ) {
       try {
-        // @ts-ignore
+        // @ts-expect-error requestPermission yalnızca iOS Safari'de mevcut, lib.dom.d.ts'te yok
         const state = await DeviceOrientationEvent.requestPermission();
         if (state === 'granted') {
           setPermissionGranted(true);
           window.addEventListener('deviceorientation', handleOrientation, true);
         } else {
           setPermissionGranted(false);
-          alert('Pusulanın dönmesi için hareket sensörü izni vermeniz gerekmektedir.');
         }
       } catch (err) {
-        console.error('iOS Sensor Permission Error:', err);
+        if (import.meta.env.DEV) {
+          console.error('iOS Sensor Permission Error:', err);
+        }
         setPermissionGranted(false);
       }
     } else {
@@ -359,7 +360,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     const isIOS =
       typeof window !== 'undefined' &&
       typeof DeviceOrientationEvent !== 'undefined' &&
-      // @ts-ignore
+      // @ts-expect-error requestPermission yalnızca iOS Safari'de mevcut, lib.dom.d.ts'te yok
       typeof DeviceOrientationEvent.requestPermission === 'function';
 
     if (!isIOS) {

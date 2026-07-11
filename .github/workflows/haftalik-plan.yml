@@ -21,3 +21,8 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: npx tsx scripts/haftalikPlanOlustur.ts
+      - name: Başarısızlığı admin paneline bildir
+        if: failure()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Haftalık Plan Oluştur"

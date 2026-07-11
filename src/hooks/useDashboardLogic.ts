@@ -8,12 +8,30 @@ import { useHaftaPlan } from './useHaftaPlan';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useAktifIzinler } from './useAktifIzinler';
-import { useDuyurular } from './useDuyurular';
+import { Duyuru, useDuyurular } from './useDuyurular';
 import { useVakitBildirimleri } from './useVakitBildirimleri';
 import { useThemeStore } from '../store/useThemeStore';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { getTurkeyDateString } from '../lib/dateUtils';
-import { Vakit } from '../types';
+import { getActiveAuraColor, getSecondaryAuraColor } from '../lib/auraTheme';
+import { Bildirim, Vakit } from '../types';
+
+function bildirimZamani(bildirim: Bildirim) {
+ const value = bildirim.sonGuncelleme as unknown as { toMillis?: () => number; seconds?: number } | undefined;
+ if (typeof value?.toMillis === 'function') return value.toMillis();
+ if (typeof value?.seconds === 'number') return value.seconds * 1000;
+ return 0;
+}
+
+function aktifBildirimSec(bildirimler: Bildirim[], tip: Bildirim['tip']) {
+ return bildirimler
+ .filter(b => b.tip === tip && b.durum !== 'reddedildi')
+ .sort((a, b) => {
+ const statusDiff = (a.durum === 'onaylandi' ? 0 : 1) - (b.durum === 'onaylandi' ? 0 : 1);
+ if (statusDiff !== 0) return statusDiff;
+ return bildirimZamani(b) - bildirimZamani(a);
+ })[0];
+}
 
 export function useDashboardLogic() {
   const { gorevler, loading: gorevLoading } = useBugunkuGorevlerim();
@@ -50,7 +68,9 @@ export function useDashboardLogic() {
  useEffect(() => {
    if (!planLoading && !plan && isAdmin && haftaId && !selfHealingFiredRef.current) {
      selfHealingFiredRef.current = true;
-     console.log(`[Self-Healing] Hafta planı bulunamadı (${haftaId}). Yönetici yetkisiyle otomatik oluşturuluyor...`);
+     if (import.meta.env.DEV) {
+       console.log(`[Self-Healing] Hafta planı bulunamadı (${haftaId}). Yönetici yetkisiyle otomatik oluşturuluyor...`);
+     }
      import('../services/planServisi').then(({ haftalikPlanOlustur }) => {
        haftalikPlanOlustur(haftaId).catch(err => {
          console.error('[Self-Healing] Otomatik plan oluşturma başarısız:', err);
@@ -68,10 +88,10 @@ export function useDashboardLogic() {
  const muezzinMap = useMuezzinStore(state => state.muezzinMap);
  const usersLoading = useMuezzinStore(state => state.loading);
  const { aktifIzinler } = useAktifIzinler();
- const { duyurular } = useDuyurular(1);
+ const { duyurular } = useDuyurular(3);
  const currentUser = useAuthStore(state => state.user);
 
- const [viewingDuyuru, setViewingDuyuru] = useState<any>(null);
+ const [viewingDuyuru, setViewingDuyuru] = useState<Duyuru | null>(null);
 
  const vakitKeyForPlan = (sonraki?.vakit || mevcutVakit || 'sabah') as Vakit;
  const { bildirimler: vakitBildirimleri, loading: vakitBildirimleriLoading } = useVakitBildirimleri(planDateStr, vakitKeyForPlan);
@@ -90,13 +110,17 @@ export function useDashboardLogic() {
  }, [muezzinMap, isAssignableUid]);
 
  const rawBugunPlan = plan?.gunler?.[planDateStr]?.[vakitKeyForPlan];
+ const liveAsilBildirim = useMemo(() => aktifBildirimSec(vakitBildirimleri, 'asil'), [vakitBildirimleri]);
+ const liveYedekBildirim = useMemo(() => aktifBildirimSec(vakitBildirimleri, 'yedek'), [vakitBildirimleri]);
  const bugunPlan = useMemo(() => {
  if (!rawBugunPlan) return rawBugunPlan;
+ const asilUid = liveAsilBildirim?.uid || rawBugunPlan.asil;
+ const yedekUid = liveYedekBildirim?.uid || rawBugunPlan.yedek;
  return {
- asil: isAssignableUid(rawBugunPlan.asil) ? rawBugunPlan.asil : 'Sistem',
- yedek: isAssignableUid(rawBugunPlan.yedek) ? rawBugunPlan.yedek : 'Sistem',
+ asil: isAssignableUid(asilUid) ? asilUid : 'Sistem',
+ yedek: isAssignableUid(yedekUid) ? yedekUid : 'Sistem',
  };
- }, [rawBugunPlan, isAssignableUid]);
+ }, [rawBugunPlan, liveAsilBildirim?.uid, liveYedekBildirim?.uid, isAssignableUid]);
  const asilIzinde = bugunPlan?.asil ? aktifIzinler.some(izin => izin.uid === bugunPlan.asil) : false;
  const yedekIzinde = bugunPlan?.yedek ? aktifIzinler.some(izin => izin.uid === bugunPlan.yedek) : false;
 
@@ -112,27 +136,8 @@ export function useDashboardLogic() {
  vakitBildirimleri.find(b => b.uid === bugunPlan?.yedek && b.tip === 'yedek')?.durum
  ), [vakitBildirimleri, bugunPlan?.yedek]);
 
- const auraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-rose)';
- case 'yatsi': return 'var(--aura-indigo)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-amber)';
- case 'sabah': return 'var(--aura-emerald)';
- default: return 'var(--aura-indigo)';
- }
- }, [mevcutVakit]);
-
- const secondaryAuraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-indigo)';
- case 'yatsi': return 'var(--aura-emerald)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-rose)';
- case 'sabah': return 'var(--aura-amber)';
- default: return 'var(--aura-emerald)';
- }
- }, [mevcutVakit]);
+ const auraColor = useMemo(() => getActiveAuraColor(mevcutVakit), [mevcutVakit]);
+ const secondaryAuraColor = useMemo(() => getSecondaryAuraColor(mevcutVakit), [mevcutVakit]);
 
  const isHeroLoading = (vakitLoading && !bugunVakitler);
  const isHademelerLoading = (planLoading && !plan) || vakitBildirimleriLoading || (usersLoading && Object.keys(muezzinMap).length === 0);

@@ -4,6 +4,12 @@ import { Save, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
 import { playSuccess, playWarning } from '../../../lib/sounds';
+import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
+
+type StatusMessage = {
+ type: 'success' | 'warning' | 'error';
+ text: string;
+} | null;
 
 export default function SistemAyarlari() {
  const { settings, loading, updateSettings } = useSystemSettingsStore();
@@ -11,7 +17,7 @@ export default function SistemAyarlari() {
  const [ilceAdi, setIlceAdi] = useState('');
  const [hicriDuzeltme, setHicriDuzeltme] = useState(0);
  const [saving, setSaving] = useState(false);
- const [success, setSuccess] = useState(false);
+ const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
 
  useEffect(() => {
  if (settings) {
@@ -24,137 +30,172 @@ export default function SistemAyarlari() {
  const handleSave = async (e: React.FormEvent) => {
  e.preventDefault();
  
- const cleanedIlceId = ilceId.trim();
- const cleanedIlceAdi = ilceAdi.trim();
- 
- if (!/^\d+$/.test(cleanedIlceId)) {
-   playWarning();
-   return;
- }
- 
- setSaving(true);
- setSuccess(false);
- try {
- await updateSettings({ 
-   ilceId: cleanedIlceId, 
-   ilceAdi: cleanedIlceAdi, 
-   hicriDuzeltme: Number(hicriDuzeltme) 
- });
- playSuccess();
- setSuccess(true);
- setTimeout(() => setSuccess(false), 3000);
- await telemetryService.logAudit('Sistem Ayarı Güncelleme', 'Sistem Lokasyonu', `Diyanet İlçe Kodu: ${cleanedIlceId}, İlçe Adı: ${cleanedIlceAdi}, Hicri Düzeltme: ${hicriDuzeltme}`);
- } catch (error) {
- console.error("Ayar kaydetme hatası:", error);
- playWarning();
- } finally {
- setSaving(false);
+  const cleanedIlceId = ilceId.trim();
+  const cleanedIlceAdi = ilceAdi.trim();
+  const normalizedHicriDuzeltme = Number(hicriDuzeltme);
+  
+  if (!/^\d+$/.test(cleanedIlceId)) {
+    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu yalnızca rakamlardan oluşmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (cleanedIlceId.length < 3 || cleanedIlceId.length > 8) {
+    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu geçerli uzunlukta olmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (cleanedIlceAdi.length < 2 || cleanedIlceAdi.length > 80) {
+    setStatusMessage({ type: 'error', text: 'İlçe tanımı 2-80 karakter arasında olmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (!Number.isInteger(normalizedHicriDuzeltme) || normalizedHicriDuzeltme < -2 || normalizedHicriDuzeltme > 2) {
+    setStatusMessage({ type: 'error', text: 'Hicri tarih düzeltmesi -2 ile +2 gün arasında olmalıdır.' });
+    playWarning();
+    return;
+  }
+  
+  setSaving(true);
+  setStatusMessage(null);
+  try {
+  const locationChanged = cleanedIlceId !== settings.ilceId || cleanedIlceAdi !== settings.ilceAdi;
+  await updateSettings({ 
+    ilceId: cleanedIlceId, 
+    ilceAdi: cleanedIlceAdi, 
+    hicriDuzeltme: normalizedHicriDuzeltme 
+  });
+
+  if (locationChanged) {
+    try {
+      await senkronizeGuncelVeGelecekAyCache({ ilceId: cleanedIlceId, ilceAdi: cleanedIlceAdi });
+      setStatusMessage({ type: 'success', text: 'Ayarlar kaydedildi ve vakit önbelleği güncellendi.' });
+    } catch (cacheError) {
+      console.error('Vakit önbelleği senkronizasyon hatası:', cacheError);
+      setStatusMessage({ type: 'warning', text: 'Ayarlar kaydedildi; vakit önbelleği daha sonra Ezan Önbelleği ekranından yenilenmelidir.' });
+    }
+  } else {
+    setStatusMessage({ type: 'success', text: 'Sistem ayarları kaydedildi.' });
+  }
+
+  playSuccess();
+  setTimeout(() => setStatusMessage(null), 5000);
+  await telemetryService.logAudit('Sistem Ayarı Güncelleme', 'Vakit Bölgesi', `Diyanet İlçe Kodu: ${cleanedIlceId}, İlçe Adı: ${cleanedIlceAdi}, Hicri Düzeltme: ${normalizedHicriDuzeltme}`);
+  } catch (error) {
+  console.error("Ayar kaydetme hatası:", error);
+  setStatusMessage({ type: 'error', text: 'Ayarlar kaydedilemedi. Yetki ve bağlantı durumunu kontrol edin.' });
+  playWarning();
+  } finally {
+  setSaving(false);
  }
  };
 
  if (loading) return null;
 
  return (
- <motion.div 
- initial={{ opacity: 0, y: 20 }} 
- animate={{ opacity: 1, y: 0 }} 
- className="p-1 sm:p-10 relative overflow-hidden rounded-[20px] sm:rounded-[40px] border-none sm:border border-[var(--glass-border)] sm:spatial-glass sm:shadow-[var(--spatial-shadow)] group bg-transparent"
- >
- {/* Living Aura */}
- <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
- 
- <div className="flex items-center gap-3 sm:gap-6 mb-6 sm:mb-12 relative z-10">
- <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-[16px] sm:rounded-[22px] bg-white/[0.03] flex items-center justify-center border border-white/10 shadow-[var(--spatial-shadow)] transition-transform duration-700">
- <MapPin className="text-[var(--dynamic-aura,var(--aura-indigo))] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.2} />
- </div>
- <div>
- <h3 className="text-lg sm:text-2xl font-light text-white tracking-tight leading-none mb-2">Sistem Lokasyonu</h3>
- <p className="authority-title !text-[7px] opacity-30 uppercase tracking-wide">OPERASYONEL API VE COĞRAFİ PARAMETRELER</p>
- </div>
- </div>
+  <motion.div 
+  initial={{ opacity: 0, y: 20 }} 
+  animate={{ opacity: 1, y: 0 }} 
+  className="p-1 sm:p-8 relative overflow-hidden rounded-[18px] sm:rounded-[24px] border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent"
+  >
+  <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8 relative z-10">
+  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] bg-[var(--surface-medium)] flex items-center justify-center border border-[var(--glass-border)]">
+  <MapPin className="text-[var(--dynamic-aura,var(--aura-indigo))] w-5 h-5" strokeWidth={1.6} />
+  </div>
+  <div>
+  <h3 className="text-lg sm:text-xl font-semibold text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
+  <p className="authority-title !text-[10px] opacity-45 uppercase tracking-wide">Diyanet ilçe kodu ve hicri tarih ayarı</p>
+  </div>
+  </div>
 
- <form onSubmit={handleSave} className="space-y-6 sm:space-y-10 relative z-10">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div className="space-y-4 group">
-        <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">DİYANET İLÇE KODU (ID)</label>
-        <div className="relative group/input">
-          <input 
-            type="text" 
-            value={ilceId}
-            onChange={(e) => setIlceId(e.target.value)}
-            className="w-full spatial-glass-elevated border border-white/5 rounded-[16px] sm:rounded-3xl px-4 py-3.5 sm:px-8 sm:py-6 text-white text-sm sm:text-lg font-light focus:bg-white/[0.05] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 outline-none transition-all duration-700 shadow-inner placeholder:text-white/5"
-            placeholder="Örn: 9148"
-            required
-          />
-          <div className="absolute bottom-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/0 to-transparent group-focus-within/input:via-[var(--dynamic-aura,var(--aura-indigo))]/40 transition-all duration-1000" />
-        </div>
-      </div>
-      
-      <div className="space-y-4 group">
-        <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YEDEK İLÇE TANIMI</label>
-        <div className="relative group/input">
-          <input 
-            type="text" 
-            value={ilceAdi}
-            onChange={(e) => setIlceAdi(e.target.value)}
-            className="w-full spatial-glass-elevated border border-white/5 rounded-[16px] sm:rounded-3xl px-4 py-3.5 sm:px-8 sm:py-6 text-white text-sm sm:text-lg font-light focus:bg-white/[0.05] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 outline-none transition-all duration-700 shadow-inner placeholder:text-white/5"
-            placeholder="Örn: Ceyhan"
-            required
-          />
-          <div className="absolute bottom-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/0 to-transparent group-focus-within/input:via-[var(--dynamic-aura,var(--aura-indigo))]/40 transition-all duration-1000" />
-        </div>
-      </div>
+  <form onSubmit={handleSave} className="space-y-6 sm:space-y-8 relative z-10">
+     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+       <div className="space-y-3">
+         <label className="authority-title !text-[10px] opacity-65 ml-1 tracking-wide">Diyanet İlçe Kodu</label>
+         <div className="relative">
+           <input 
+             type="text" 
+             value={ilceId}
+             onChange={(e) => setIlceId(e.target.value)}
+             inputMode="numeric"
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/35"
+             placeholder="9148"
+             required
+           />
+         </div>
+       </div>
+       
+       <div className="space-y-3">
+         <label className="authority-title !text-[10px] opacity-65 ml-1 tracking-wide">İlçe Tanımı</label>
+         <div className="relative">
+           <input 
+             type="text" 
+             value={ilceAdi}
+             onChange={(e) => setIlceAdi(e.target.value)}
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/35"
+             placeholder="Ceyhan"
+             required
+           />
+         </div>
+       </div>
 
-      <div className="space-y-4 group">
-        <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">HİCRİ TARİH DÜZELTMESİ (GÜN KAYDIRMA)</label>
-        <div className="relative group/input">
-          <select 
-            value={hicriDuzeltme}
-            onChange={(e) => setHicriDuzeltme(Number(e.target.value))}
-            className="w-full spatial-glass-elevated border border-white/5 rounded-[16px] sm:rounded-3xl px-4 py-3.5 sm:px-8 sm:py-6 text-white text-sm sm:text-lg font-light focus:bg-white/[0.05] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 outline-none transition-all duration-700 shadow-inner"
-            style={{ colorScheme: 'dark' }}
-          >
-            <option value={-2} className="bg-neutral-900 text-white">-2 Gün (Geriye Al)</option>
+       <div className="space-y-3">
+         <label className="authority-title !text-[10px] opacity-65 ml-1 tracking-wide">Hicri Tarih Düzeltmesi</label>
+         <div className="relative">
+           <select 
+             value={hicriDuzeltme}
+             onChange={(e) => setHicriDuzeltme(Number(e.target.value))}
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors"
+             style={{ colorScheme: 'dark' }}
+           >
+             <option value={-2} className="bg-neutral-900 text-white">-2 Gün (Geriye Al)</option>
             <option value={-1} className="bg-neutral-900 text-white">-1 Gün (Geriye Al)</option>
             <option value={0} className="bg-neutral-900 text-white">Normal (Diyanet Uyumlu)</option>
-            <option value={1} className="bg-neutral-900 text-white">+1 Gün (İleriye Al)</option>
-            <option value={2} className="bg-neutral-900 text-white">+2 Gün (İleriye Al)</option>
-          </select>
-          <div className="absolute bottom-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/0 to-transparent group-focus-within/input:via-[var(--dynamic-aura,var(--aura-indigo))]/40 transition-all duration-1000" />
-        </div>
-      </div>
-    </div>
+             <option value={1} className="bg-neutral-900 text-white">+1 Gün (İleriye Al)</option>
+             <option value={2} className="bg-neutral-900 text-white">+2 Gün (İleriye Al)</option>
+           </select>
+         </div>
+       </div>
+     </div>
 
- <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6 pt-10 border-t border-white/5">
- <div className="flex items-center justify-center sm:justify-start gap-4">
- <AnimatePresence>
- {success && (
- <motion.div 
- initial={{ opacity: 0, x: -20 }}
- animate={{ opacity: 1, x: 0 }}
- exit={{ opacity: 0, x: -20 }}
- className="flex items-center gap-3 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20"
- >
- <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
- <span className="text-[8px] font-bold uppercase tracking-wide text-emerald-400">PARAMETRELER GÜNCELLENDİ</span>
- </motion.div>
- )}
- </AnimatePresence>
+  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-5 pt-6 border-t border-[var(--glass-border)]">
+  <div className="flex items-center justify-center sm:justify-start gap-4">
+  <AnimatePresence>
+  {statusMessage && (
+  <motion.div 
+  initial={{ opacity: 0, x: -20 }}
+  animate={{ opacity: 1, x: 0 }}
+  exit={{ opacity: 0, x: -20 }}
+  className={`flex items-center gap-3 px-4 py-2.5 rounded-[14px] border ${
+    statusMessage.type === 'success'
+      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+      : statusMessage.type === 'warning'
+        ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+  }`}
+  >
+  <div className="w-1.5 h-1.5 rounded-full bg-current" />
+  <span className="text-[11px] font-semibold tracking-wide">{statusMessage.text}</span>
+  </motion.div>
+  )}
+  </AnimatePresence>
  </div>
 
  <motion.button 
  whileHover={{ y: -5, scale: 1.02, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}
  whileTap={{ scale: 0.98 }}
- type="submit" 
- disabled={saving}
- className="bg-white text-black w-full sm:w-auto px-6 py-3.5 sm:px-12 sm:py-5 rounded-[14px] sm:rounded-[22px] font-bold text-[9px] sm:text-[10px] uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-4 cursor-pointer"
- >
- {saving ? (
- <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin" />
- ) : <Save className="w-4 h-4" />}
- {saving ? 'İŞLENİYOR...' : 'AYARLARI UYGULA'}
- </motion.button>
- </div>
+  type="submit" 
+  disabled={saving}
+  className="bg-white text-black w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-[10px] uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
+  >
+  {saving ? (
+  <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin" />
+  ) : <Save className="w-4 h-4" />}
+  {saving ? 'İŞLENİYOR...' : 'AYARLARI KAYDET'}
+  </motion.button>
+  </div>
  </form>
  </motion.div>
  );

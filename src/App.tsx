@@ -15,6 +15,7 @@ import { initTimeSync } from './lib/timeSync';
 import MuezzinAnaEkran from './pages/MuezzinAnaEkran';
 const HaftalikTakvim = lazy(() => import('./pages/HaftalikTakvim'));
 const Profil = lazy(() => import('./pages/Profil'));
+const MuezzinAyarlari = lazy(() => import('./pages/MuezzinAyarlari'));
 
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
 
@@ -37,6 +38,7 @@ function Fallback({ error }: { error: Error }) {
  return () => clearTimeout(timer);
  }
  }
+ return undefined;
  }, [isChunkError]);
 
  if (isChunkError) {
@@ -130,6 +132,7 @@ export default function App() {
  <Route path="/" element={<MuezzinAnaEkran />} />
  <Route path="/takvim" element={<HaftalikTakvim />} />
  <Route path="/profil" element={<Profil />} />
+ <Route path="/ayarlar" element={<MuezzinAyarlari />} />
  <Route path="/admin" element={<AdminPanel />} />
  </Routes>
  </Suspense>

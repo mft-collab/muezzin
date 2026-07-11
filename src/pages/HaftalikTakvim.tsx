@@ -10,6 +10,7 @@ import { Vakit } from '../types';
 import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
+import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
 
 const getWeekString = (date: Date) => {
  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
@@ -38,6 +39,7 @@ export default function HaftalikTakvim() {
  const [currentDate, setCurrentDate] = useState(new Date());
  const haftaId = getWeekString(currentDate);
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
+ const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  const usersLoading = useMuezzinStore(s => s.loading);
@@ -68,7 +70,7 @@ export default function HaftalikTakvim() {
  }
  }, [mevcutVakit]);
 
- const loading = planLoading || usersLoading;
+ const loading = planLoading || usersLoading || bildirimLoading;
 
  const currentWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
  const weekLabel = `${format(currentWeekStart, 'd MMMM', { locale: tr })}`;
@@ -96,11 +98,20 @@ export default function HaftalikTakvim() {
       const gunAdi = format(parsedDate, 'EEEE', { locale: tr });
       const gunAyi = format(parsedDate, 'MMMM', { locale: tr });
 
+      const getLiveUid = (vakit: Vakit, tip: 'asil' | 'yedek', fallbackUid: string | undefined) => {
+        return haftaBildirimleri.find(b =>
+          b.tarih === tarih &&
+          b.vakit === vakit &&
+          b.tip === tip &&
+          b.durum !== 'reddedildi'
+        )?.uid || fallbackUid;
+      };
+
       const asilGunlukListe = VAKIT_LISTESI
-        .map(v => gunObj[v]?.asil)
+        .map(v => getLiveUid(v, 'asil', gunObj[v]?.asil))
         .filter((uid): uid is string => !!uid && isAssignableUid(uid));
       const yedekGunlukListe = VAKIT_LISTESI
-        .map(v => gunObj[v]?.yedek)
+        .map(v => getLiveUid(v, 'yedek', gunObj[v]?.yedek))
         .filter((uid): uid is string => !!uid && isAssignableUid(uid));
       const asilCanonical = pickCanonicalUid(asilGunlukListe);
       const yedekCanonical = pickCanonicalUid(yedekGunlukListe);
@@ -119,7 +130,7 @@ export default function HaftalikTakvim() {
         isPersonalDuty,
       };
     });
-  }, [plan, currentWeekStart, currentUser, muezzinMap]);
+  }, [plan, currentWeekStart, currentUser, muezzinMap, haftaBildirimleri]);
 
  return (
  <div className="w-full min-h-screen bg-[var(--app-bg)] relative overflow-hidden transition-colors duration-[3000ms]">

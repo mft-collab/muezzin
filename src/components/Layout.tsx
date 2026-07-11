@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { memo, useMemo } from 'react';
-import { Home, Calendar, LayoutDashboard, Download, Share, X } from 'lucide-react';
+import { Home, Calendar, LayoutDashboard, Download, Share, X, User, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFcmToken } from '../hooks/useFcmToken';
@@ -17,6 +17,8 @@ import { telemetryService } from '../services/telemetryService';
 const ALL_NAV_ITEMS = [
  { path: '/', label: 'Vakit', icon: Home, adminOnly: false, component: undefined },
  { path: '/takvim', label: 'Takvim', icon: Calendar, adminOnly: false, component: () => import('../pages/HaftalikTakvim') },
+ { path: '/profil', label: 'Profil', icon: User, adminOnly: false, component: () => import('../pages/Profil') },
+ { path: '/ayarlar', label: 'Ayarlar', icon: Settings, adminOnly: false, component: () => import('../pages/MuezzinAyarlari') },
  { path: '/admin', label: 'Yönetim', icon: LayoutDashboard, adminOnly: true, component: () => import('../pages/admin/AdminPanel') },
 ];
 

@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  DocumentData,
+  DocumentSnapshot,
   doc,
   getDoc,
   getDocs,
@@ -55,6 +57,25 @@ async function dinamikGorevKontrolMekanizmasi(tarih: string, vakit: string, hari
  }
 }
 
+/**
+ * Mazeret bildirimi, tek bir Firestore transaction'ı içinde şu iki adımı atomik
+ * olarak yapar:
+ *  1. Asil görevlinin kendi bildirimini 'reddedildi' yapar (kurallarda her zaman
+ *     izinli olan bir self-update).
+ *  2. Uygun bir yedek varsa, YALNIZCA O YEDEĞİN kendi bildirim belgesini
+ *     'asil' rolüne terfi ettirir.
+ *
+ * Bu ikinci yazım normalde "başka birinin belgesini güncelleme" olduğu için
+ * kurallarca reddedilir; ancak bildirim ID'leri deterministik olduğundan
+ * (haftaId_tarih_vakit_tip), firestore.rules'daki `isBackupPromotionFromMazeret`
+ * fonksiyonu getAfter() ile aynı transaction içindeki asil belgesinin gerçekten
+ * 'reddedildi' durumuna geçtiğini doğrulayıp bu terfiye izin verir.
+ *
+ * haftaPlanlari senkronu ve (yedek bulunamazsa) admin alarmı, bu belge
+ * çiftinin "devirSonucu" alanına bakan scripts/mazeretDevirleriniIsle.ts
+ * uzlaştırma (reconciliation) işi tarafından ayrıca işlenir — o yazımlar
+ * admin SDK gerektirir ve Spark planında istemciden yapılamaz.
+ */
 export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanSaati?: string): Promise<void> {
   const bildirimRef = doc(db, 'bildirimler', bildirimId);
 
@@ -76,7 +97,7 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
       throw new Error('Sadece bekleyen görevler için mazeret bildirilebilir.');
     }
 
-    const ezanVakti = ezanSaati 
+    const ezanVakti = ezanSaati
       ? parseVakitToDate(mevcutBildirim.tarih, ezanSaati)
       : await getEzanVakti(mevcutBildirim.tarih, mevcutBildirim.vakit);
 
@@ -87,92 +108,46 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
       }
     }
 
-    const { tarih, vakit, uid } = mevcutBildirim;
+    const { haftaId, tarih, vakit, uid } = mevcutBildirim;
+    const yedekRef = doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`);
 
-    // 1. Query backup outside the transaction
-    const yedekQuery = query(
-      collection(db, 'bildirimler'),
-      where('tarih', '==', tarih),
-      where('vakit', '==', vakit),
-      where('tip', '==', 'yedek')
-    );
-    const yedekSnap = await getDocs(yedekQuery);
-    const yedekDoc = yedekSnap.docs[0];
-
-    // 2. Query existing alarms to prevent duplicates
-    const alarmSorgu = query(
-      collection(db, 'adminUyarilari'),
-      where('tarih', '==', tarih),
-      where('vakit', '==', vakit),
-      where('cozuldu', '==', false)
-    );
-    const alarmSnap = await getDocs(alarmSorgu);
-    const alarmAlreadyExists = !alarmSnap.empty;
-
-    // Prepare a reference for a new alarm doc if we need to write it
-    const newAlarmRef = doc(collection(db, 'adminUyarilari'));
-
-    // Execute atomic transaction
     await runTransaction(db, async (transaction) => {
-      // Re-read primary to ensure consistency
+      // Firestore transaction kuralı: tüm okumalar, tüm yazımlardan önce yapılmalı.
       const asilSnap = await transaction.get(bildirimRef);
       if (!asilSnap.exists()) throw new Error('Asil bildirim bulunamadı.');
       const asilData = asilSnap.data() as Bildirim;
       if (asilData.durum !== 'bekliyor') throw new Error('Bu görev için mazeret bildirilemez.');
 
-      // Update primary to rejected
+      const yedekSnap = await transaction.get(yedekRef);
+      const yedekData = yedekSnap.exists() ? (yedekSnap.data() as Bildirim) : null;
+
+      let yedekUserSnap: DocumentSnapshot<DocumentData> | null = null;
+      if (yedekData && yedekData.durum !== 'reddedildi' && yedekData.uid !== uid) {
+        yedekUserSnap = await transaction.get(doc(db, 'muezzins', yedekData.uid));
+      }
+
+      const yedekUygun = !!(
+        yedekData &&
+        yedekUserSnap?.exists() &&
+        yedekUserSnap.data()?.role === 'muezzin' &&
+        yedekUserSnap.data()?.aktif === true
+      );
+
       transaction.update(bildirimRef, {
         durum: 'reddedildi',
         retSebebi,
         pendingAck: false,
+        devirSonucu: yedekUygun ? 'yedek_atandi' : 'alarm_bekliyor',
         sonGuncelleme: serverTimestamp()
       });
 
-      let backupPromoted = false;
-
-      if (yedekDoc) {
-        const yedekRef = doc(db, 'bildirimler', yedekDoc.id);
-        const yedekSnapInTx = await transaction.get(yedekRef);
-        if (yedekSnapInTx.exists()) {
-          const yedekData = yedekSnapInTx.data() as Bildirim;
-          
-          if (yedekData.durum !== 'reddedildi' && yedekData.uid !== uid) {
-            // Read backup's user profile to verify active status
-            const userRef = doc(db, 'muezzins', yedekData.uid);
-            const userSnap = await transaction.get(userRef);
-            const userData = userSnap.data() as { role?: string; aktif?: boolean } | undefined;
-
-            if (userSnap.exists() && userData?.role === 'muezzin' && userData?.aktif === true) {
-              // Promote backup
-              transaction.update(yedekRef, {
-                tip: 'asil',
-                durum: 'bekliyor',
-                pendingAck: true,
-                sonGuncelleme: serverTimestamp()
-              });
-
-              const haftaId = getHaftaIdFromDate(tarih);
-              transaction.update(doc(db, 'haftaPlanlari', haftaId), {
-                [`gunler.${tarih}.${vakit}.asil`]: yedekData.uid
-              });
-
-              backupPromoted = true;
-            }
-          }
-        }
-      }
-
-      // If no backup promoted and alarm doesn't exist, create it in this transaction
-      if (!backupPromoted && !alarmAlreadyExists) {
-        transaction.set(newAlarmRef, {
-          tip: 'zincirTukendi',
-          mesaj: yedekDoc 
-            ? 'Mazeret sonrası yedek görevi devralamadı. Kural gereği ek görevli atanamaz; admin müdahalesi gerekir.'
-            : 'Kritik Hata: Veri zinciri tükendi ve yedek görevli de uygun değil.',
-          tarih,
-          vakit,
-          cozuldu: false,
-          olusturmaTarihi: serverTimestamp()
+      if (yedekUygun) {
+        transaction.update(yedekRef, {
+          tip: 'asil',
+          durum: 'bekliyor',
+          pendingAck: true,
+          asilMazeretUid: currentUid,
+          sonGuncelleme: serverTimestamp()
         });
       }
     });

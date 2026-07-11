@@ -1,25 +1,48 @@
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { SplashLoader } from '../../../components/SplashLoader';
+import { useSearchParams } from 'react-router-dom';
 
 const EzanOnbellegi = lazy(() => import('./EzanOnbellegi'));
 const SistemAyarlari = lazy(() => import('./SistemAyarlari'));
 const SistemLoglari = lazy(() => import('./SistemLoglari'));
 
 export default function AyarlarHub() {
-  const [activeTab, setActiveTabState] = useState('ayarlar');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSubtab = searchParams.get('subtab');
+  const [activeTab, setActiveTabState] = useState(
+    initialSubtab === 'onbellek' || initialSubtab === 'loglar' ? initialSubtab : 'ayarlar'
+  );
   const [isPending, startTransition] = useTransition();
 
   const setActiveTab = (tab: string) => {
     startTransition(() => {
       setActiveTabState(tab);
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        if (tab === 'ayarlar') {
+          next.delete('subtab');
+        } else {
+          next.set('subtab', tab);
+        }
+        return next;
+      });
     });
   };
 
+  useEffect(() => {
+    const subtab = searchParams.get('subtab');
+    if ((subtab === 'onbellek' || subtab === 'loglar') && subtab !== activeTab) {
+      setActiveTabState(subtab);
+    }
+    if (!subtab && activeTab !== 'ayarlar') {
+      setActiveTabState('ayarlar');
+    }
+  }, [searchParams, activeTab]);
+
   const navItems = [
     { id: 'ayarlar', label: 'Sistem Ayarları' },
-    { id: 'onbellek', label: 'Ezan Önizleme & Bellek' },
+    { id: 'onbellek', label: 'Ezan Önbelleği' },
     { id: 'loglar', label: 'Sistem Logları' }
   ];
 

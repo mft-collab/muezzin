@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 
-const VAPID_KEY =
- 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB22m3G_Q-6TpH8p-81mD0XN8';
+// NOT: Bu değer Firebase Console → Proje Ayarları → Cloud Messaging →
+// Web push sertifikaları'ndan alınan GERÇEK VAPID public key olmalı.
+// Daha önce burada web-push codelab'lerinde dolaşan herkese açık ÖRNEK bir
+// anahtar sabitlenmişti — bu, tarayıcının kayıtlı olduğu push aboneliğinin
+// projenin gerçek gönderen kimliğiyle eşleşmemesine (SenderIdMismatch) ve
+// admin SDK'nın bu token'lara bildirim göndermesinin sessizce başarısız
+// olmasına yol açar.
+const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
 
 async function saveTokenToFirestore(uid: string, token: string) {
-  const now = new Date().toISOString();
   await setDoc(
     doc(db, 'muezzins', uid),
     {
       fcmToken: token,
       fcmTokens: {
-        [token]: now
+        [token]: serverTimestamp()
       }
     },
     { merge: true }
@@ -33,6 +38,11 @@ export async function registerFcmToken(requestPermission = false): Promise<{
  : Notification.permission;
 
  if (permission !== 'granted') {
+ return { token: null, permission };
+ }
+
+ if (!VAPID_KEY) {
+ console.warn('VITE_FCM_VAPID_KEY tanımlı değil; push bildirimleri devre dışı.');
  return { token: null, permission };
  }
 

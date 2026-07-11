@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import * as firestore from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, signInWithCustomToken } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const app = initializeApp(firebaseConfig);
@@ -15,30 +14,16 @@ export const db = initializeFirestore(app, {
 
 export const auth = getAuth(app);
 
-// Track active listeners globally at runtime
-try {
-  const originalOnSnapshot = firestore.onSnapshot;
-  (window as any).__activeFirestoreListeners = 0;
-  
-  Object.defineProperty(firestore, 'onSnapshot', {
-    value: function(...args: any[]) {
-      (window as any).__activeFirestoreListeners = ((window as any).__activeFirestoreListeners || 0) + 1;
-      if ((window as any).__onFirestoreListenersChange) {
-        (window as any).__onFirestoreListenersChange((window as any).__activeFirestoreListeners);
-      }
-      
-      const unsubscribe = originalOnSnapshot.apply(this, args as any);
-      return () => {
-        unsubscribe();
-        (window as any).__activeFirestoreListeners = Math.max(0, ((window as any).__activeFirestoreListeners || 0) - 1);
-        if ((window as any).__onFirestoreListenersChange) {
-          (window as any).__onFirestoreListenersChange((window as any).__activeFirestoreListeners);
-        }
-      };
-    },
-    writable: true,
-    configurable: true
-  });
-} catch (e) {
-  console.warn("Could not patch onSnapshot for telemetry:", e);
+// E2E/yerel test modu: gerçek projeye değil, `firebase emulators:start`ile
+// açılan yerel Firestore/Auth emülatörlerine bağlan. VITE_USE_EMULATOR=1
+// olmadan bu blok hiç çalışmaz — production build'de etkisizdir.
+if (import.meta.env.VITE_USE_EMULATOR === '1') {
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  // Playwright testlerinin gerçek bir Firebase Auth oturumu açabilmesi için
+  // (bkz. tests/e2e/mazeret-flow.spec.ts) — yalnızca emülatör modunda. Bir
+  // fonksiyon olarak dışa açılıyor çünkü page.evaluate() içine enjekte
+  // edilen kod, uygulamanın kendi modül grafiğindeki bare import'ları
+  // (ör. 'firebase/auth') çözemez.
+  (window as any).__testSignIn = (token: string) => signInWithCustomToken(auth, token);
 }

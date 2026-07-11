@@ -55,7 +55,7 @@ export const HademelerListesi = React.memo(({
  className="w-full"
  >
  {/* ── Başlık ── */}
- <div className="flex items-center gap-4 sm:gap-10 mb-8 sm:mb-16">
+ <div className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-12">
  <div
  className={`w-14 h-14 sm:w-20 sm:h-20 rounded-[28px] bg-white/[0.03] flex items-center justify-center border border-white/5 shadow-[var(--spatial-shadow)] relative group ${
  isFriday ? 'text-emerald-400' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'
@@ -78,14 +78,14 @@ export const HademelerListesi = React.memo(({
  isFriday ? 'bg-emerald-400 text-emerald-400' : 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--dynamic-aura,var(--aura-indigo))]'
  }`}
  />
- <p className="authority-title text-[7px] sm:text-[9px] opacity-30 tracking-wide font-bold uppercase">
- {isFriday ? 'CUMA NAMAZI KOORDİNASYON MASASI' : 'PERSONEL KOORDİNASYON MASASI'}
+ <p className="authority-title text-[10px] opacity-40 tracking-wide font-bold uppercase">
+ {isFriday ? 'CUMA NAMAZI GÖREV DAĞILIMI' : 'VAKİT HİZMET GÖREVLİLERİ'}
  </p>
  </div>
- <h2 className="text-3xl sm:text-5xl font-light text-[var(--text-primary)] tracking-tight leading-none">
- {isFriday ? 'Makam' : 'Vakit'}{' '}
+ <h2 className="text-3xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none">
+ {isFriday ? 'Cuma' : 'Vakit'}{' '}
  <span className={`${isFriday ? 'text-emerald-400' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'} italic`}>
- {isFriday ? 'Muhafızları' : 'Görevlileri'}
+ {isFriday ? 'Görevlileri' : 'Görevlileri'}
  </span>
  </h2>
  </div>
@@ -127,7 +127,7 @@ export const HademelerListesi = React.memo(({
  />
  </motion.div>
  ) : (
- <div className="p-16 sm:p-24 spatial-glass text-center flex flex-col items-center justify-center gap-6 relative overflow-hidden">
+ <div className="p-10 sm:p-16 spatial-glass text-center flex flex-col items-center justify-center gap-6 relative overflow-hidden">
  <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/[0.02] via-transparent to-transparent pointer-events-none" />
  <div className="w-20 h-20 rounded-[32px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center shadow-inner animate-float">
  <AlertCircle

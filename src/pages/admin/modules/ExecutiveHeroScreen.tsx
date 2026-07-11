@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, Megaphone } from 'lucide-react';
+import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck } from 'lucide-react';
 import { useKrizAlarmlari } from '../../../hooks/admin/useKrizAlarmlari';
 import { useAdminIzinler } from '../../../hooks/admin/useAdminIzinler';
-import { useDuyurular } from '../../../hooks/useDuyurular';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
+import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
+import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
+import { getHaftaIdFromDate, getTurkeyDateString } from '../../../lib/dateUtils';
 
 
 
@@ -31,7 +33,19 @@ export default function ExecutiveHeroScreen({
  const [expandedId, setExpandedId] = useState<string | null>(null);
  const { alarmlar } = useKrizAlarmlari();
  const { izinler, izinGuncelle } = useAdminIzinler();
- const { duyurular } = useDuyurular(50);
+ const haftaId = useMemo(() => getHaftaIdFromDate(getTurkeyDateString()), []);
+ const { plan, loading: planLoading } = useHaftaPlan(haftaId);
+ const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
+ const planHazir = Boolean(plan);
+ const bekleyenOnaySayisi = haftaBildirimleri.filter(b => b.durum === 'bekliyor').length;
+ const haftalikGorevSayisi = haftaBildirimleri.length;
+ const planStatusLabel = planLoading || bildirimLoading
+  ? 'Yükleniyor'
+  : planHazir
+    ? bekleyenOnaySayisi > 0
+      ? 'Onay bekliyor'
+      : 'Yayında'
+    : 'Plan yok';
 
  const combinedOperations = [
  ...alarmlar.slice(0, 5).map(a => ({
@@ -52,7 +66,7 @@ export default function ExecutiveHeroScreen({
  originalData: i
  }))
  ].sort((a, b) => {
- // Alarms have higher weight than permissions
+ // Nöbet uyarıları izin taleplerinden önce görünür.
  const weight = { alarm: 0, izin: 1 };
  return weight[a.type as keyof typeof weight] - weight[b.type as keyof typeof weight];
  });
@@ -68,7 +82,7 @@ export default function ExecutiveHeroScreen({
  <div className="flex flex-col gap-4">
  <div className="flex items-center gap-3">
  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
- <span className="authority-title !text-[8px] !text-emerald-500 font-medium">CANLI SİSTEM DURUMU</span>
+ <span className="authority-title !text-[10px] !text-emerald-500 font-medium">CANLI SİSTEM DURUMU</span>
  </div>
  <h1 className="text-3xl lg:text-5xl font-light text-[var(--text-primary)] tracking-tight leading-none max-w-2xl group-hover:font-medium transition-all duration-1000">
  Yönetim <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Senkronize</span> ve <span className="font-normal group-hover:font-bold transition-all duration-1000">Aktif.</span>
@@ -78,7 +92,7 @@ export default function ExecutiveHeroScreen({
  <div className="flex items-center gap-10 px-8 py-4 spatial-glass border border-[var(--glass-border)]">
  <div className="flex flex-col items-end">
  <LiveClock className="text-2xl font-light text-[var(--text-primary)] tracking-tighter leading-none" />
- <span className="authority-title !text-[7px] opacity-30 mt-2">YEREL ZAMAN</span>
+ <span className="authority-title !text-[9px] opacity-30 mt-2">YEREL ZAMAN</span>
  </div>
  </div>
  </motion.header>
@@ -86,7 +100,7 @@ export default function ExecutiveHeroScreen({
  {/* BENTO GRID: Immersive Layout */}
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
  
- {/* Large Tile: Operasyonel Durum */}
+ {/* Large Tile: Kadro Durumu */}
  <motion.div
  whileHover={{ y: -5, scale: 1.005 }}
  whileTap={{ scale: 0.995 }}
@@ -102,7 +116,7 @@ export default function ExecutiveHeroScreen({
   <div className="w-12 h-12 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-lg">
   <Activity size={24} strokeWidth={1.5} />
   </div>
-  <span className="authority-title !text-[8px] opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-700">OPERASYONEL KAPASİTE</span>
+  <span className="authority-title !text-[10px] opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-700">HİZMET KADROSU</span>
   </div>
 
   {/* Personnel Count — large number */}
@@ -110,7 +124,7 @@ export default function ExecutiveHeroScreen({
   <div className="text-6xl lg:text-8xl font-extralight text-[var(--text-primary)] tracking-tighter leading-none tabular-nums mb-2">
   {muezzinlerSayisi}
   </div>
-  <span className="authority-title !text-[7px] opacity-25 tracking-widest">TOPLAM AKTİF PERSONEL</span>
+  <span className="authority-title !text-[9px] opacity-25 tracking-widest">AKTİF MÜEZZİN KADROSU</span>
 
   {/* Status bars */}
   <div className="mt-8 flex flex-col gap-3">
@@ -119,52 +133,38 @@ export default function ExecutiveHeroScreen({
   <div className="flex-1 h-[2px] rounded-full bg-[var(--glass-border)] overflow-hidden">
   <div className="h-full bg-emerald-500/60 rounded-full" style={{ width: '100%' }} />
   </div>
-  <span className="authority-title !text-[7px] opacity-30 w-16 text-right">AKTİF</span>
+  <span className="authority-title !text-[9px] opacity-30 w-16 text-right">AKTİF</span>
   </div>
   <div className="flex items-center gap-4">
   <div className={`w-2 h-2 rounded-full ${cozulmamisSayisi > 0 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'bg-[var(--glass-border)]'}`} />
   <div className="flex-1 h-[2px] rounded-full bg-[var(--glass-border)] overflow-hidden">
   <div className={`h-full rounded-full transition-all duration-1000 ${cozulmamisSayisi > 0 ? 'bg-rose-500/60' : 'bg-[var(--glass-border)]'}`}
-  style={{ width: cozulmamisSayisi > 0 ? `${Math.min((cozulmamisSayisi / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
+  style={{ width: cozulmamisSayisi > 0 && muezzinlerSayisi > 0 ? `${Math.min((cozulmamisSayisi / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
   </div>
-  <span className="authority-title !text-[7px] opacity-30 w-16 text-right">ALARM</span>
+  <span className="authority-title !text-[9px] opacity-30 w-16 text-right">UYARI</span>
   </div>
   <div className="flex items-center gap-4">
   <div className={`w-2 h-2 rounded-full ${pendingIzinler > 0 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-[var(--glass-border)]'}`} />
   <div className="flex-1 h-[2px] rounded-full bg-[var(--glass-border)] overflow-hidden">
   <div className={`h-full rounded-full transition-all duration-1000 ${pendingIzinler > 0 ? 'bg-amber-500/60' : 'bg-[var(--glass-border)]'}`}
-  style={{ width: pendingIzinler > 0 ? `${Math.min((pendingIzinler / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
+  style={{ width: pendingIzinler > 0 && muezzinlerSayisi > 0 ? `${Math.min((pendingIzinler / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
   </div>
-  <span className="authority-title !text-[7px] opacity-30 w-16 text-right">BEKLEYEN</span>
+  <span className="authority-title !text-[9px] opacity-30 w-16 text-right">BEKLEYEN</span>
   </div>
   </div>
   </div>
 
-  {/* Personnel avatars */}
-  <div className="relative z-10 flex items-center gap-6 mt-6 pt-4 border-t border-[var(--glass-border)]">
-  <div className="flex -space-x-3">
-  {Array.from({ length: Math.min(muezzinlerSayisi, 5) }).map((_, i) => (
-  <div key={i} className="w-8 h-8 rounded-full border-2 border-[var(--app-bg)] bg-[var(--surface-medium)] flex items-center justify-center text-[9px] font-bold shadow-[var(--spatial-shadow)] relative overflow-hidden backdrop-blur-md">
-  <div className="absolute inset-0 bg-gradient-to-br from-[var(--text-primary)]/10 to-transparent" />
-  <span className="relative z-10 text-[var(--text-primary)]">{String.fromCharCode(65 + i)}</span>
-  <div className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-[var(--app-bg)] z-20" />
-  </div>
-  ))}
-  {muezzinlerSayisi > 5 && (
-  <div className="w-8 h-8 rounded-full border-2 border-[var(--app-bg)] bg-[var(--text-primary)] text-[var(--app-bg)] flex items-center justify-center text-[9px] font-bold shadow-[var(--spatial-shadow)]">
-  +{muezzinlerSayisi - 5}
-  </div>
-  )}
-  </div>
-  <p className="authority-title !text-[7px] opacity-25 font-medium tracking-wide">
-  {muezzinlerSayisi} kişi senkronize
+  <div className="relative z-10 flex items-center justify-between gap-4 mt-6 pt-4 border-t border-[var(--glass-border)]">
+  <p className="authority-title !text-[9px] opacity-35 font-medium tracking-wide">
+  Nöbet alabilir aktif müezzin kadrosu
   </p>
+  <ChevronRight size={18} className="text-[var(--text-primary)]/25 group-hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-colors" />
   </div>
   </motion.div>
 
  {/* Side Stack */}
  <div className="col-span-1 md:col-span-1 lg:col-span-5 flex flex-col gap-8">
- {/* Kriz Tile */}
+ {/* Uyarı Tile */}
  <motion.div 
  whileHover={{ y: -4, scale: 1.01 }}
  whileTap={{ scale: 0.99 }}
@@ -181,12 +181,12 @@ export default function ExecutiveHeroScreen({
  <div className={`text-4xl font-light tracking-tighter leading-none ${cozulmamisSayisi > 0 ? 'text-rose-500' : 'text-[var(--text-primary)]'}`}>
  {cozulmamisSayisi}
  </div>
- <span className="authority-title !text-[7px] opacity-40 mt-2 font-medium tracking-wide">KRİZ ALARMLARI</span>
+ <span className="authority-title !text-[9px] opacity-40 mt-2 font-medium tracking-wide">NÖBET UYARILARI</span>
  </div>
  </div>
  {cozulmamisSayisi > 0 && (
  <div className="mt-4 pt-4 border-t border-rose-500/10 relative z-10">
- <p className="text-[8px] font-bold text-rose-400 uppercase tracking-wide truncate">
+ <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wide truncate">
  SON: {alarmlar[0]?.mesaj || 'Tespit Edilemedi'}
  </p>
  </div>
@@ -211,11 +211,11 @@ export default function ExecutiveHeroScreen({
  <div className="text-3xl font-light text-[var(--text-primary)] tracking-tighter leading-none tabular-nums">
  {pendingIzinler}
  </div>
- <span className="authority-title !text-[7px] opacity-40 mt-2 font-medium tracking-wide">BEKLEYEN İZİN</span>
+ <span className="authority-title !text-[9px] opacity-40 mt-2 font-medium tracking-wide">BEKLEYEN İZİN</span>
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-[7px] font-bold text-amber-500/60 uppercase tracking-wide">AKTİF TALEPLER</p>
+  <p className="text-[9px] font-bold text-amber-500/60 uppercase tracking-wide">AKTİF TALEPLER</p>
   </div>
  </motion.div>
 
@@ -223,23 +223,27 @@ export default function ExecutiveHeroScreen({
  whileHover={{ y: -4, scale: 1.02 }}
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
- onClick={() => onOpenDrawer('duyurular')}
+ onClick={() => setActiveTab('planlama')}
  className="flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
  <div className="w-10 h-10 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-lg flex items-center justify-center">
- <Megaphone size={18} strokeWidth={1.5} />
+ <ClipboardCheck size={18} strokeWidth={1.5} />
  </div>
  <div className="text-right">
- <div className="text-3xl font-light text-[var(--text-primary)] tracking-tighter leading-none tabular-nums">
- {duyurular.length > 0 ? duyurular.length : <span className="italic opacity-20">—</span>}
+ <div className={`text-2xl font-light tracking-tight leading-none tabular-nums ${
+  !planHazir ? 'text-rose-500' : bekleyenOnaySayisi > 0 ? 'text-amber-500' : 'text-[var(--text-primary)]'
+ }`}>
+ {planStatusLabel}
  </div>
- <span className="authority-title !text-[7px] opacity-40 mt-2 font-medium tracking-wide">DUYURU</span>
+ <span className="authority-title !text-[9px] opacity-40 mt-2 font-medium tracking-wide">HAFTALIK PLAN</span>
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-[7px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">MESAJ YAYINLA</p>
+  <p className="text-[9px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
+  {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
+  </p>
   </div>
  </motion.div>
  </div>
@@ -256,11 +260,11 @@ export default function ExecutiveHeroScreen({
  <div className="flex items-center justify-between px-4">
  <div className="flex items-center gap-4">
  <div className="w-1 h-3 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full shadow-[0_0_10px_rgb(99,102,241)]" />
- <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)] uppercase tracking-[0.1em]">Canlı Akış</h2>
+ <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)] uppercase tracking-wide">Hizmet Akışı</h2>
  </div>
   <button
   onClick={() => setActiveTab('ekip')}
-  className="authority-title !text-[8px] !text-[var(--dynamic-aura,var(--aura-indigo))] cursor-pointer hover:text-[var(--text-primary)] transition-all flex items-center gap-2 group tracking-wide font-medium"
+  className="authority-title !text-[10px] !text-[var(--dynamic-aura,var(--aura-indigo))] cursor-pointer hover:text-[var(--text-primary)] transition-all flex items-center gap-2 group tracking-wide font-medium"
   >
   TÜMÜNÜ GÖR <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
   </button>
@@ -287,7 +291,7 @@ export default function ExecutiveHeroScreen({
 
  <motion.div layout className="flex items-center justify-between relative z-10">
  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
- <div className="w-20 authority-title !text-[7px] opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
+ <div className="w-20 authority-title !text-[9px] opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
  <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
  {record.title}
  </div>
@@ -307,11 +311,11 @@ export default function ExecutiveHeroScreen({
  record.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgb(245,158,11)]' : 
  'bg-emerald-500 shadow-[0_0_8px_rgb(16,185,129)]'
  }`} />
- <span className={`authority-title !text-[6px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
+ <span className={`authority-title !text-[9px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
  record.status === 'active' ? 'text-rose-500' : 
  record.status === 'pending' ? 'text-amber-500' : 
  'text-emerald-500'
- }`}>{record.status === 'active' ? 'KRİTİK' : record.status === 'pending' ? 'BEKLEYEN' : 'ÇÖZÜLDÜ'}</span>
+ }`}>{record.status === 'active' ? 'UYARI' : record.status === 'pending' ? 'BEKLEYEN' : 'ÇÖZÜLDÜ'}</span>
  </div>
  
  <motion.div
@@ -333,17 +337,17 @@ export default function ExecutiveHeroScreen({
  >
  <div className="pt-10 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-10">
  <div className="flex flex-col gap-3">
- <span className="authority-title !text-[7px] opacity-30 tracking-wide">KAYIT KİMLİĞİ</span>
+ <span className="authority-title !text-[9px] opacity-30 tracking-wide">KAYIT KİMLİĞİ</span>
  <span className="text-[var(--text-primary)] font-mono text-xs tracking-wide opacity-80">#{record.id.substring(0, 10).toUpperCase()}</span>
  </div>
  <div className="flex flex-col gap-3">
- <span className="authority-title !text-[7px] opacity-30 tracking-wide">KATEGORİZASYON</span>
- <span className={`text-xs font-medium uppercase tracking-[0.1em] ${record.type === 'alarm' ? 'text-rose-500' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'}`}>
- {record.type === 'alarm' ? 'Sistem Alarmı' : 'Personel Talebi'}
+ <span className="authority-title !text-[9px] opacity-30 tracking-wide">KATEGORİZASYON</span>
+ <span className={`text-xs font-medium uppercase tracking-wide ${record.type === 'alarm' ? 'text-rose-500' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'}`}>
+ {record.type === 'alarm' ? 'Nöbet Uyarısı' : 'İzin Talebi'}
  </span>
  </div>
  <div className="flex flex-col gap-3 col-span-2">
- <span className="authority-title !text-[7px] opacity-30 tracking-wide">HIZLI OPERASYONLAR</span>
+ <span className="authority-title !text-[9px] opacity-30 tracking-wide">HIZLI İŞLEMLER</span>
  <div className="flex flex-wrap gap-3">
  {record.type === 'izin' && record.status === 'pending' ? (
  <>
@@ -368,7 +372,14 @@ export default function ExecutiveHeroScreen({
  <motion.button 
  whileHover={{ y: -2, backgroundColor: 'rgba(255,255,255,0.05)' }}
  whileTap={{ scale: 0.98 }}
- onClick={(e) => { e.stopPropagation(); }}
+ onClick={(e) => {
+  e.stopPropagation();
+  if (record.type === 'alarm') {
+   onOpenDrawer('alarmlar');
+  } else {
+   setActiveTab('ekip', 'mazeretler');
+  }
+ }}
  className="px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[var(--text-primary)] text-[9px] uppercase tracking-wide font-bold shadow-lg"
  >
  DETAYLARI İNCELE
@@ -388,7 +399,7 @@ export default function ExecutiveHeroScreen({
  <div className="w-14 h-14 rounded-[24px] bg-white/[0.03] border border-white/[0.06] flex items-center justify-center animate-float">
  <Activity size={24} strokeWidth={1} className="text-white/15" />
  </div>
- <p className="authority-title !text-[8px] opacity-20 tracking-wide">ŞU AN AKTİF BİR OPERASYONEL KAYIT BULUNMUYOR</p>
+ <p className="authority-title !text-[10px] opacity-20 tracking-wide">ŞU AN AKTİF BİR HİZMET KAYDI BULUNMUYOR</p>
  </div>
  )}
  </AnimatePresence>

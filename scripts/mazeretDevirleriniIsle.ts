@@ -7,11 +7,25 @@ type BildirimData = {
   uid: string;
   tip: 'asil' | 'yedek' | 'gorev_cagrisi';
   durum: string;
-  pendingAck?: boolean;
-  devirIslendi?: boolean;
+  devirSonucu?: 'yedek_atandi' | 'alarm_bekliyor' | 'alarm_uretildi';
+  planSenkronEdildi?: boolean;
 };
 
-// const dryRun = process.argv.includes('--dry-run');
+/**
+ * Bu iş, src/services/mazeretServisi.ts'deki `mazeretBildir` istemci
+ * transaction'ının GERÇEK ZAMANLI olarak yapamadığı (admin SDK gerektiren)
+ * iki yan etkiyi uzlaştırır (reconcile eder):
+ *
+ *  - devirSonucu === 'yedek_atandi': istemci zaten yedeği 'asil' rolüne
+ *    terfi ettirdi (bkz. firestore.rules `isBackupPromotionFromMazeret`).
+ *    Bu iş yalnızca haftaPlanlari önbelleğini bu değişikliği yansıtacak
+ *    şekilde günceller.
+ *  - devirSonucu === 'alarm_bekliyor': istemci uygun bir yedek bulamadı.
+ *    Bu iş admin'i uyaran bir adminUyarilari kaydı oluşturur.
+ *
+ * Her iki durumda da işlenen belge `planSenkronEdildi: true` ile işaretlenir
+ * ki bu iş tekrar tekrar aynı kaydı işlemesin (idempotent).
+ */
 
 async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
   const alarmSnap = await db.collection('adminUyarilari')
@@ -24,118 +38,99 @@ async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
   return !alarmSnap.empty;
 }
 
-async function yedekAktifMuezzinMi(uid: string): Promise<boolean> {
-  const personelDoc = await db.collection('muezzins').doc(uid).get();
-  const personel = personelDoc.data();
-  return personelDoc.exists && personel?.aktif === true && personel?.role === 'muezzin';
-}
-
 export async function processMazeretDevirleri(dryRun = false) {
-  console.log(`Mazeret devirleri isleniyor${dryRun ? ' (dry-run)' : ''}...`);
+  console.log(`Mazeret devirleri uzlaştırılıyor${dryRun ? ' (dry-run)' : ''}...`);
 
   const mazeretSnap = await db.collection('bildirimler')
     .where('tip', '==', 'asil')
     .where('durum', '==', 'reddedildi')
     .get();
 
-  const bekleyenMazeretler = mazeretSnap.docs.filter((docSnap) => {
+  const islenecekler = mazeretSnap.docs.filter((docSnap) => {
     const data = docSnap.data() as BildirimData;
-    return data.devirIslendi !== true;
+    return data.planSenkronEdildi !== true && !!data.devirSonucu;
   });
 
-  let yedekAtandi = 0;
+  let planSenkronlandi = 0;
   let alarmUretildi = 0;
   let atlandi = 0;
 
-  for (const mazeretDoc of bekleyenMazeretler) {
+  for (const mazeretDoc of islenecekler) {
     const mazeret = mazeretDoc.data() as BildirimData;
 
-    const yedekSnap = await db.collection('bildirimler')
-      .where('haftaId', '==', mazeret.haftaId)
-      .where('tarih', '==', mazeret.tarih)
-      .where('vakit', '==', mazeret.vakit)
-      .where('tip', '==', 'yedek')
-      .limit(1)
-      .get();
+    if (mazeret.devirSonucu === 'yedek_atandi') {
+      const promotedRef = db.collection('bildirimler').doc(`${mazeret.haftaId}_${mazeret.tarih}_${mazeret.vakit}_yedek`);
 
-    const yedekDoc = yedekSnap.docs[0];
-    const yedek = yedekDoc?.data() as BildirimData | undefined;
-    const yedekUygun =
-      !!yedekDoc &&
-      !!yedek &&
-      yedek.durum !== 'reddedildi' &&
-      yedek.uid !== mazeret.uid &&
-      await yedekAktifMuezzinMi(yedek.uid);
-
-    if (yedekUygun) {
-      console.log(`${mazeret.tarih} ${mazeret.vakit}: ${mazeret.uid} -> ${yedek.uid}`);
-      yedekAtandi++;
+      console.log(`${mazeret.tarih} ${mazeret.vakit}: haftaPlanlari senkronize ediliyor (${mazeret.uid} -> yedek terfisi).`);
+      planSenkronlandi++;
 
       if (!dryRun) {
         await db.runTransaction(async (transaction) => {
           const freshMazeret = await transaction.get(mazeretDoc.ref);
-          const freshYedek = await transaction.get(yedekDoc.ref);
-          if (!freshMazeret.exists || !freshYedek.exists) return;
+          const freshPromoted = await transaction.get(promotedRef);
+          if (!freshMazeret.exists || !freshPromoted.exists) return;
 
           const freshMazeretData = freshMazeret.data() as BildirimData;
-          const freshYedekData = freshYedek.data() as BildirimData;
-          if (freshMazeretData.devirIslendi === true) return;
-          if (freshYedekData.durum === 'reddedildi') return;
+          if (freshMazeretData.planSenkronEdildi === true) return;
 
-          transaction.update(yedekDoc.ref, {
-            tip: 'asil',
-            durum: 'bekliyor',
-            pendingAck: true,
-            sonGuncelleme: Timestamp.now(),
-            devirKaynakBildirimId: mazeretDoc.id
-          });
+          const promotedData = freshPromoted.data() as BildirimData;
+          if (promotedData.tip !== 'asil') return; // istemci terfisi henüz/hiç gerçekleşmemiş
 
           transaction.update(db.collection('haftaPlanlari').doc(mazeret.haftaId), {
-            [`gunler.${mazeret.tarih}.${mazeret.vakit}.asil`]: yedek.uid,
+            [`gunler.${mazeret.tarih}.${mazeret.vakit}.asil`]: promotedData.uid,
             [`gunler.${mazeret.tarih}.${mazeret.vakit}.yedek`]: 'Sistem'
           });
 
           transaction.update(mazeretDoc.ref, {
-            devirIslendi: true,
-            devirSonucu: 'yedek_atandi',
+            planSenkronEdildi: true,
             sonGuncelleme: Timestamp.now()
           });
         });
       }
-
       continue;
     }
 
-    const alarmZatenVar = await alarmVarMi(mazeret.tarih, mazeret.vakit);
-    if (alarmZatenVar) {
-      console.log(`${mazeret.tarih} ${mazeret.vakit}: aktif alarm zaten var, atlandi.`);
-      atlandi++;
+    if (mazeret.devirSonucu === 'alarm_bekliyor') {
+      const alarmZatenVar = await alarmVarMi(mazeret.tarih, mazeret.vakit);
+      if (alarmZatenVar) {
+        console.log(`${mazeret.tarih} ${mazeret.vakit}: aktif alarm zaten var, atlandi.`);
+        atlandi++;
+        if (!dryRun) {
+          await mazeretDoc.ref.update({ planSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
+        }
+        continue;
+      }
+
+      console.log(`${mazeret.tarih} ${mazeret.vakit}: uygun yedek yok, admin alarmi olusturuluyor.`);
+      alarmUretildi++;
+
+      if (!dryRun) {
+        const batch = db.batch();
+        batch.set(db.collection('adminUyarilari').doc(), {
+          tip: 'zincirTukendi',
+          mesaj: 'Mazeret sonrasi gorevi devralacak uygun yedek bulunamadi. Admin mudahalesi gerekir.',
+          tarih: mazeret.tarih,
+          vakit: mazeret.vakit,
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+        batch.update(mazeretDoc.ref, {
+          devirSonucu: 'alarm_uretildi',
+          planSenkronEdildi: true,
+          sonGuncelleme: Timestamp.now()
+        });
+        await batch.commit();
+      }
       continue;
     }
 
-    console.log(`${mazeret.tarih} ${mazeret.vakit}: uygun yedek yok, admin alarmi olusturulacak.`);
-    alarmUretildi++;
-
+    // devirSonucu === 'alarm_uretildi' (önceki bir çalıştırmada zaten işlenmiş): sadece işaretle.
     if (!dryRun) {
-      const batch = db.batch();
-      batch.set(db.collection('adminUyarilari').doc(), {
-        tip: 'zincirTukendi',
-        mesaj: 'Mazeret sonrasi gorevi devralacak uygun yedek bulunamadi. Admin mudahalesi gerekir.',
-        tarih: mazeret.tarih,
-        vakit: mazeret.vakit,
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
-      batch.update(mazeretDoc.ref, {
-        devirIslendi: true,
-        devirSonucu: 'alarm_uretildi',
-        sonGuncelleme: Timestamp.now()
-      });
-      await batch.commit();
+      await mazeretDoc.ref.update({ planSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
     }
   }
 
-  console.log(`Tamamlandi. yedekAtandi=${yedekAtandi}, alarmUretildi=${alarmUretildi}, atlandi=${atlandi}`);
+  console.log(`Tamamlandi. planSenkronlandi=${planSenkronlandi}, alarmUretildi=${alarmUretildi}, atlandi=${atlandi}`);
 }
 
 import { fileURLToPath } from 'url';

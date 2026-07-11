@@ -56,7 +56,7 @@ function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
           </div>
           <div className="flex-1 pb-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-widest ${categoryColors[crumb.category]}`}>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-widest ${categoryColors[crumb.category]}`}>
                 {categoryLabels[crumb.category]}
               </span>
               <span className="text-[10px] text-[var(--text-primary)]/80 font-light leading-tight truncate">
@@ -65,11 +65,11 @@ function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <Clock size={8} className="text-[var(--text-secondary)]/30 flex-shrink-0" />
-              <span className="text-[8px] font-mono text-[var(--text-secondary)]/30">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]/30">
                 {crumb.wallTime ? new Date(crumb.wallTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }) : `+${crumb.timestamp}ms`}
               </span>
               {crumb.data && Object.keys(crumb.data).length > 0 && (
-                <span className="text-[7px] font-mono text-[var(--text-secondary)]/20 truncate">
+                <span className="text-[9px] font-mono text-[var(--text-secondary)]/20 truncate">
                   {JSON.stringify(crumb.data).slice(0, 60)}
                 </span>
               )}
@@ -110,7 +110,7 @@ function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnap
         <div key={label} className="px-3 py-2 rounded-xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] flex items-start gap-2">
           <Icon size={10} className="text-[var(--text-secondary)]/30 flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[7px] text-[var(--text-secondary)]/40 uppercase tracking-wider leading-none mb-0.5">{label}</p>
+            <p className="text-[9px] text-[var(--text-secondary)]/40 uppercase tracking-wider leading-none mb-0.5">{label}</p>
             <p className="text-[10px] text-[var(--text-primary)]/80 font-medium truncate">{value}</p>
           </div>
         </div>
@@ -136,9 +136,15 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   const executeClearErrors = async () => {
     try {
       const snap = await getDocs(collection(db, 'error_logs'));
-      const batch = writeBatch(db);
-      snap.docs.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
+      // Firestore batch'leri en fazla 500 işlem alır; büyük koleksiyonlarda
+      // tek batch'e sığdırmaya çalışmak commit'in tamamen başarısız olmasına
+      // (ve hiçbir kaydın silinmemesine) yol açar. 400'lük parçalara bölünür.
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < snap.docs.length; i += CHUNK_SIZE) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + CHUNK_SIZE).forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
       setConfirmClearOpen(false);
     } catch (err) {
       console.error('Hatalar temizlenemedi:', err);
@@ -171,7 +177,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
               <CheckCircle size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Mükemmel Durum!</p>
-            <p className="premium-label !text-[8px] !opacity-30 mt-1">SİSTEMDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR.</p>
+            <p className="premium-label !text-[10px] !opacity-30 mt-1">SİSTEMDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR.</p>
           </div>
         ) : (
           errorLogs.map((log) => {
@@ -204,15 +210,15 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                         <span className="px-2.5 py-1 bg-[var(--text-primary)]/[0.03] text-[9px] font-sans font-light rounded-lg border border-[var(--glass-border)] text-[var(--text-secondary)]">Tarayıcı: {log.device?.browser}</span>
                         <span className="px-2.5 py-1 bg-[var(--text-primary)]/[0.03] text-[9px] font-sans font-light rounded-lg border border-[var(--glass-border)] text-[var(--text-secondary)]">Ekran: {log.device?.screenSize}</span>
                         {log.device?.pwaMode && (
-                          <span className="px-2.5 py-1 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[8px] font-bold tracking-wider rounded-lg uppercase">PWA YÜKLÜ</span>
+                          <span className="px-2.5 py-1 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[10px] font-bold tracking-wider rounded-lg uppercase">PWA YÜKLÜ</span>
                         )}
                         {breadcrumbCount > 0 && (
-                          <span className="px-2.5 py-1 bg-sky-400/10 text-sky-400 border border-sky-400/20 text-[8px] font-bold tracking-wider rounded-lg uppercase">
+                          <span className="px-2.5 py-1 bg-sky-400/10 text-sky-400 border border-sky-400/20 text-[10px] font-bold tracking-wider rounded-lg uppercase">
                             {breadcrumbCount} KIRINIK
                           </span>
                         )}
                         {hasSnapshot && (
-                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold tracking-wider rounded-lg uppercase">
+                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold tracking-wider rounded-lg uppercase">
                             DURUM FOTOĞRAFI
                           </span>
                         )}
@@ -222,7 +228,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
 
                   <div className="text-right sm:flex-shrink-0 flex flex-col items-end gap-2">
                     <span className="text-[10px] text-[var(--text-secondary)]/50 font-bold block">{formatDate(log.timestamp)}</span>
-                    <span className="text-[8px] text-[var(--text-secondary)]/30 font-mono block">ID: {log.id}</span>
+                    <span className="text-[10px] text-[var(--text-secondary)]/30 font-mono block">ID: {log.id}</span>
                     <div className="text-[var(--text-secondary)]/30">
                       {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </div>
@@ -270,14 +276,14 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                           className="space-y-4"
                         >
                           <div>
-                            <span className="premium-label !text-[8px] !opacity-30 block mb-2">HATA ÇAĞRI YIĞINI (STACK TRACE)</span>
+                            <span className="premium-label !text-[10px] !opacity-30 block mb-2">HATA ÇAĞRI YIĞINI (STACK TRACE)</span>
                             <pre className="text-[10px] font-mono p-4 rounded-2xl bg-[var(--text-primary)]/[0.03] text-rose-400/70 overflow-x-auto max-h-48 leading-relaxed">
                               {log.errorStack || 'Stack trace mevcut değil.'}
                             </pre>
                           </div>
                           {log.componentStack && (
                             <div>
-                              <span className="premium-label !text-[8px] !opacity-30 block mb-2">BİLEŞEN YAPISI (COMPONENT TREE)</span>
+                              <span className="premium-label !text-[10px] !opacity-30 block mb-2">BİLEŞEN YAPISI (COMPONENT TREE)</span>
                               <pre className="text-[10px] font-mono p-4 rounded-2xl bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/60 overflow-x-auto max-h-48 leading-relaxed">
                                 {log.componentStack}
                               </pre>
@@ -289,7 +295,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                       {/* ─── Breadcrumb Kullanıcı İzleri ─── */}
                       {activePanel === 'breadcrumbs' && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                          <span className="premium-label !text-[8px] !opacity-30 block mb-4">
+                          <span className="premium-label !text-[10px] !opacity-30 block mb-4">
                             KULLANICI EYLEM KRİNTI İZLERİ — HATADAN ÖNCEKİ {breadcrumbCount} ADIM
                           </span>
                           <BreadcrumbTrail breadcrumbs={log.breadcrumbs || []} />
@@ -299,7 +305,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                       {/* ─── Durum Fotoğrafı ─── */}
                       {activePanel === 'snapshot' && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                          <span className="premium-label !text-[8px] !opacity-30 block mb-4">
+                          <span className="premium-label !text-[10px] !opacity-30 block mb-4">
                             HATA ANINDAKİ UYGULAMA DURUM FOTOĞRAFI
                           </span>
                           <StateSnapshotCard snapshot={log.stateSnapshot} />

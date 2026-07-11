@@ -97,7 +97,7 @@ async function main() {
       const validAsilCandidates = asilVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin');
       const validYedekCandidates = yedekVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin');
 
-      let asil = pickMostFrequent(validAsilCandidates) || aktifMuezzinler[0];
+      const asil = pickMostFrequent(validAsilCandidates) || aktifMuezzinler[0];
       let yedek = pickMostFrequent(validYedekCandidates, new Set([asil])) || aktifMuezzinler.find((uid) => uid !== asil) || aktifMuezzinler[1];
       if (yedek === asil) {
         const fallback = aktifMuezzinler.find((uid) => uid !== asil);
@@ -142,8 +142,8 @@ async function main() {
           olusturmaTarihi: Timestamp.now(),
           sonGuncelleme: Timestamp.now(),
         };
-        batch.set(db.collection('bildirimler').doc(), { ...base, uid: asil, tip: 'asil' });
-        batch.set(db.collection('bildirimler').doc(), { ...base, uid: yedek, tip: 'yedek' });
+        batch.set(db.collection('bildirimler').doc(`${planDoc.id}_${tarih}_${vakit}_asil`), { ...base, uid: asil, tip: 'asil' });
+        batch.set(db.collection('bildirimler').doc(`${planDoc.id}_${tarih}_${vakit}_yedek`), { ...base, uid: yedek, tip: 'yedek' });
         hasBatchWork = true;
       }
 

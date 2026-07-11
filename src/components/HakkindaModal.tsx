@@ -77,7 +77,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                 <Sparkles size={10} className="text-[var(--aura-indigo)]" />
                 <span className="text-[9px] font-bold tracking-widest text-white/80 uppercase">
-                  Sürüm 2.1.0 (Build 842)
+                  Sürüm 2.2.0 (Build 860)
                 </span>
               </div>
             </motion.div>
@@ -105,7 +105,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
                 <div className="w-6 h-6 rounded-lg bg-[var(--aura-indigo)]/10 flex items-center justify-center">
                   <Cpu size={12} className="text-[var(--aura-indigo)]" />
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">Kuantum Motoru</span>
+                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">Planlama Motoru</span>
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/5">
                 <div className="w-6 h-6 rounded-lg bg-[var(--status-success)]/10 flex items-center justify-center">

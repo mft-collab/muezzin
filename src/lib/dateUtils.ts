@@ -114,13 +114,13 @@ export function getHijriDate(date: Date): string {
   const jd = localDays + 2440588;
   
   let l = jd - 1948440 + 10632;
-  let n = Math.floor((l - 1) / 10631);
+  const n = Math.floor((l - 1) / 10631);
   l = l - 10631 * n + 354;
-  let j = (Math.floor((10985 - l) / 5316)) * (Math.floor((50 * l) / 17719)) + (Math.floor(l / 5670)) * (Math.floor((43 * l) / 15238));
+  const j = (Math.floor((10985 - l) / 5316)) * (Math.floor((50 * l) / 17719)) + (Math.floor(l / 5670)) * (Math.floor((43 * l) / 15238));
   l = l - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50)) - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29;
-  let m = Math.floor((24 * l) / 709);
-  let d = l - Math.floor((709 * m) / 24);
-  let y = 30 * n + j - 30;
+  const m = Math.floor((24 * l) / 709);
+  const d = l - Math.floor((709 * m) / 24);
+  const y = 30 * n + j - 30;
   const months = ["Muharrem", "Safer", "Rebiülevvel", "Rebiülahir", "Cemaziyelevvel", "Cemaziyelahir", "Recep", "Şaban", "Ramazan", "Şevval", "Zilkade", "Zilhicce"];
   return `${d} ${months[m - 1]} ${y}`;
 }

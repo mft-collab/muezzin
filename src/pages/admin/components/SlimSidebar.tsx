@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, CalendarDays, Users, Database, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, LogOut, Sun, Moon, Home, Calendar, User, SlidersHorizontal } from 'lucide-react';
 import { Logo } from '../../../components/ui/Logo';
 
 interface SlimSidebarProps {
@@ -12,6 +12,7 @@ interface SlimSidebarProps {
  onPrefetch?: (tab: string) => void;
  theme: 'dark' | 'light';
  toggleTheme: (event?: any) => void;
+ onNavigateApp: (path: string) => void;
 }
 
 export const SlimSidebar = React.memo<SlimSidebarProps>(({ 
@@ -22,33 +23,50 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  cozulmamisSayisi,
  onPrefetch,
  theme,
- toggleTheme
+ toggleTheme,
+ onNavigateApp
 }) => {
  const navItems = [
- { id: 'dashboard', label: 'Özet', icon: <LayoutDashboard size={18} />, badge: cozulmamisSayisi },
- { id: 'planlama', label: 'Nöbet', icon: <CalendarDays size={18} /> },
- { id: 'ekip', label: 'Ekip', icon: <Users size={18} />, badge: pendingIzinler },
- { id: 'ayarlar', label: 'Sistem', icon: <Database size={18} /> }
+ { id: 'dashboard', label: 'Özet', ariaLabel: 'Genel bakış', icon: <LayoutDashboard size={18} />, badge: cozulmamisSayisi },
+ { id: 'planlama', label: 'Cetvel', ariaLabel: 'Hizmet cetveli', icon: <CalendarDays size={18} /> },
+ { id: 'ekip', label: 'Kadro', ariaLabel: 'Kadro yönetimi', icon: <Users size={18} />, badge: pendingIzinler },
+ { id: 'ayarlar', label: 'Sistem', ariaLabel: 'Sistem ayarları', icon: <Settings size={18} /> }
+ ];
+
+ const appLinks = [
+ { path: '/', label: 'Vakit', icon: <Home size={16} /> },
+ { path: '/takvim', label: 'Takvim', icon: <Calendar size={16} /> },
+ { path: '/profil', label: 'Profil', icon: <User size={16} /> },
+ { path: '/ayarlar', label: 'Ayarlar', icon: <SlidersHorizontal size={16} /> }
  ];
 
  return (
- <aside className="w-[88px] flex-shrink-0 flex flex-col items-center py-12 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[80px] saturate-[200%] shadow-[var(--spatial-shadow)]">
+ <aside className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)]">
  {/* Brand & Authority */}
- <div className="w-14 h-14 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[22px] flex items-center justify-center text-[var(--text-primary)] mb-16 shadow-[var(--spatial-shadow)] group cursor-pointer transition-all duration-700 relative overflow-hidden">
+ <button
+ type="button"
+ onClick={() => onNavigateApp('/')}
+ aria-label="Müezzin vakit ekranına git"
+ title="Vakit ekranı"
+ className="w-12 h-12 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[18px] flex items-center justify-center text-[var(--text-primary)] mb-12 shadow-[var(--spatial-shadow)] group cursor-pointer transition-all duration-500 relative overflow-hidden"
+ >
  <div className="absolute inset-0 bg-gradient-to-tr from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
- <Logo size={28} variant="dynamic" className="text-[var(--dynamic-aura,var(--aura-indigo))] group-hover:rotate-12 transition-transform duration-700" />
- </div>
+ <Logo size={24} variant="dynamic" className="text-[var(--dynamic-aura,var(--aura-indigo))] group-hover:rotate-12 transition-transform duration-700" />
+ </button>
 
  {/* Nav Items Ecosystem */}
- <div className="flex flex-col gap-6 w-full px-4">
+ <nav aria-label="Admin ana menü" className="flex flex-col gap-3 w-full px-3">
  {navItems.map((item) => {
  const isActive = activeTab === item.id;
  return (
  <button
  key={item.id}
+ aria-label={item.ariaLabel}
+ aria-current={isActive ? 'page' : undefined}
+ title={item.ariaLabel}
  onClick={() => setActiveTab(item.id)}
  onMouseEnter={() => onPrefetch?.(item.id)}
- className={`relative flex flex-col items-center justify-center gap-2.5 w-full h-[84px] rounded-[28px] transition-all duration-700 group z-10 ${
+ className={`relative flex flex-col items-center justify-center gap-2 w-full h-[72px] rounded-[20px] transition-all duration-300 group z-10 ${
  isActive 
  ? 'text-[var(--text-primary)] shadow-inner' 
  : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/60 hover:bg-[var(--text-primary)]/[0.02]'
@@ -61,7 +79,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  className: isActive ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : ''
  })}
  </div>
- <span className={`authority-title !text-[6px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
+ <span className={`authority-title !text-[9px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
  {item.label.toUpperCase()}
  </span>
 
@@ -75,7 +93,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  <>
  <motion.div 
  layoutId="active-slim-pill"
- className="absolute inset-0 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[28px] -z-10 shadow-lg"
+ className="absolute inset-0 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[20px] -z-10 shadow-lg"
  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
  />
  <motion.div 
@@ -92,13 +110,36 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  </button>
  );
  })}
- </div>
+ </nav>
+
+ <nav aria-label="Müezzin menüsü" className="mt-5 flex flex-col gap-2 w-full px-4">
+ {appLinks.map((item) => (
+ <button
+ key={item.path}
+ type="button"
+ aria-label={`${item.label} sayfasına git`}
+ title={item.label}
+ onClick={() => onNavigateApp(item.path)}
+ className="relative w-full h-10 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/22 hover:text-[var(--text-primary)]/70 hover:bg-[var(--text-primary)]/[0.025] border border-transparent hover:border-[var(--glass-border)] transition-all group"
+ >
+ {React.cloneElement(item.icon as React.ReactElement, {
+ strokeWidth: 1.6,
+ size: 18
+ })}
+ <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-[10px] font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
+ {item.label}
+ </span>
+ </button>
+ ))}
+ </nav>
 
  {/* Global Actions Stack */}
- <div className="mt-auto flex flex-col gap-6 pb-12">
+ <div className="mt-auto flex flex-col gap-3 pb-8">
  <button 
  onClick={toggleTheme}
- className="w-14 h-14 flex items-center justify-center rounded-[22px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
+ aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+ title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+ className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
  >
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
  {theme === 'dark' ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
@@ -106,7 +147,9 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
 
  <button 
  onClick={onLogout}
- className="w-14 h-14 flex items-center justify-center rounded-[22px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
+ aria-label="Oturumu kapat"
+ title="Oturumu kapat"
+ className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
  >
  <LogOut size={20} strokeWidth={1.5} />
  </button>

@@ -88,10 +88,10 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  className="relative z-10"
  >
  <h1 className="text-4xl lg:text-5xl font-light mb-3 text-[var(--text-primary)] tracking-tighter leading-none apple-thin">
- Hizmet <span className="text-[var(--aura-indigo)] font-light">Koordinasyon</span>
+ Müezzin <span className="text-[var(--aura-indigo)] font-light">Hizmet Takibi</span>
  </h1>
  <p className="text-[var(--text-secondary)]/40 mb-14 font-bold tracking-wide uppercase text-[9px]">
- CAMİ VE DİN GÖREVLİLERİ BİLGİ SİSTEMİ
+ CAMİ VE DİN GÖREVLİLERİ HİZMET PLANLAMA SİSTEMİ
  </p>
  </motion.div>
  
@@ -149,14 +149,14 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  <div className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--glass-border)]" />
  </div>
  <p className="text-[7px] text-[var(--text-secondary)]/20 font-bold uppercase tracking-[0.1em]">
- Hizmette Kemâlat • Güvenli Makâm Erişimi
+ Güvenli Giriş • Yetkili Hizmet Erişimi
  </p>
  </motion.div>
  </motion.div>
 
  {/* Footer Decoration */}
  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 opacity-10">
- <span className="text-[8px] tracking-wide font-bold uppercase">HİZMET KOORDİNASYON SİSTEMİ v2.0</span>
+ <span className="text-[8px] tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP SİSTEMİ v2.2</span>
  </div>
  </div>
  );

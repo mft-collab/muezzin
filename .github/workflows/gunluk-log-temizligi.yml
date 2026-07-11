@@ -1,12 +1,16 @@
-name: Günlük Yatsı Sonu İşlemleri
+name: Günlük Kayıtlarını Temizle
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 20 * * *'
+    # Haftada bir: error_logs ve telemetry_logs'daki 30 günden eski
+    # kayıtları siler (bkz. scripts/temizleGunlukler.ts). Bu, native
+    # Firestore TTL policy'nin yerini tutan bir uygulama-seviyesi eşdeğerdir
+    # — TTL policy Firebase Console/gcloud CLI'dan ayrıca yapılandırılabilir.
+    - cron: '0 3 * * 1'
 
 jobs:
-  yatsi:
+  temizle:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -17,12 +21,12 @@ jobs:
           cache: 'npm'
       - name: Paketleri kur
         run: npm ci
-      - name: Yatsı sonrası işlemleri çalıştır
+      - name: Eski günlük kayıtlarını temizle
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
-        run: npx tsx scripts/yatsiSonuIslemleri.ts
+        run: npm run temizle:gunlukler
       - name: Başarısızlığı admin paneline bildir
         if: failure()
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
-        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Günlük Yatsı Sonu İşlemleri"
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Günlük Kayıtlarını Temizle"

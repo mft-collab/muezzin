@@ -167,9 +167,9 @@ export const VeriSagligiSekmesi = React.memo(() => {
  details: `${gun} ${vakit.toUpperCase()} vakti asil görevlisi (UID: ${asil}) sistemde kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
  });
- } else if (asilUser.aktif === false) {
+ } else if (asilUser.aktif === false || asilUser.role !== 'muezzin') {
  auditErrors.push({
- id: `s-asil-active-${plan.id}-${gun}-${vakit}`,
+ id: `s-asil-duty-role-${plan.id}-${gun}-${vakit}`,
  category: 'schedule',
  severity: 'warning',
  message: `Nöbette pasif asil görevli tespit edildi!`,
@@ -190,9 +190,9 @@ export const VeriSagligiSekmesi = React.memo(() => {
  details: `${gun} ${vakit.toUpperCase()} vakti yedek görevlisi (UID: ${yedek}) sistemde kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
  });
- } else if (yedekUser.aktif === false) {
+ } else if (yedekUser.aktif === false || yedekUser.role !== 'muezzin') {
  auditErrors.push({
- id: `s-yedek-active-${plan.id}-${gun}-${vakit}`,
+ id: `s-yedek-duty-role-${plan.id}-${gun}-${vakit}`,
  category: 'schedule',
  severity: 'warning',
  message: `Nöbette pasif yedek görevli tespit edildi!`,
@@ -305,7 +305,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  {/* Overview Cards */}
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[8px] !opacity-30 block mb-1">SAĞLIK DURUMU</span>
+  <span className="premium-label !text-[10px] !opacity-30 block mb-1">SAĞLIK DURUMU</span>
   <div className="flex items-center gap-2">
   {errors.length === 0 ? (
   <>
@@ -322,17 +322,17 @@ export const VeriSagligiSekmesi = React.memo(() => {
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[8px] !opacity-30 block mb-1">MÜEZZİN KADROSU</span>
+  <span className="premium-label !text-[10px] !opacity-30 block mb-1">MÜEZZİN KADROSU</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPersonnel} Aktif</span>
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[8px] !opacity-30 block mb-1">ONAYLI İZİNLER</span>
+  <span className="premium-label !text-[10px] !opacity-30 block mb-1">ONAYLI İZİNLER</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalVacations} Kayıt</span>
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[8px] !opacity-30 block mb-1">PLANLAMA ARŞİVİ</span>
+  <span className="premium-label !text-[10px] !opacity-30 block mb-1">PLANLAMA ARŞİVİ</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPlans} Plan</span>
   </div>
   </div>
@@ -347,7 +347,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <HeartPulse size={18} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
  Veritabanı Uyuşmazlık Tarayıcısı
  </h4>
- <p className="premium-label !text-[8px] !opacity-30 mt-1 uppercase tracking-wider">VERİ BÜTÜNLÜĞÜ, YETİM KAYITLAR VE OTOMATİK DÜZELTME</p>
+ <p className="premium-label !text-[10px] !opacity-30 mt-1 uppercase tracking-wider">VERİ BÜTÜNLÜĞÜ, YETİM KAYITLAR VE OTOMATİK DÜZELTME</p>
  </div>
 
  <div className="flex items-center gap-3">
@@ -419,12 +419,12 @@ export const VeriSagligiSekmesi = React.memo(() => {
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2.5">
- <span className={`text-[8px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
+ <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
  err.severity === 'critical' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
  }`}>
  {err.severity === 'critical' ? 'Kritik Hata' : 'Uyarı'}
  </span>
- <span className="text-[8px] font-bold text-[var(--text-secondary)]/30 tracking-wide uppercase">
+ <span className="text-[10px] font-bold text-[var(--text-secondary)]/30 tracking-wide uppercase">
  Kategori: {err.category}
  </span>
  </div>

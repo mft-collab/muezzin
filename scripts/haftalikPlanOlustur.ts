@@ -1,38 +1,9 @@
 import admin from 'firebase-admin';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
-import { tieBreakerSirala } from './lib/tieBreaker.ts';
+import { haftalikPlanUret, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: 'SERVICE_ACCOUNT'
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -65,7 +36,7 @@ async function main() {
     await db.collection('adminUyarilari').add({
       tip: 'zincirTukendi',
       mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 2 gerekli).',
-      tarih: formatDateLocal(new Date()),
+      tarih: formatDateLocal(getTurkeyNow()),
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });
@@ -78,8 +49,8 @@ async function main() {
     .get();
   const onayliIzinler = izinSnapshot.docs.map(doc => doc.data());
 
-  // 3. Dinamik Tarih Hesaplama
-  const simdi = new Date();
+  // 3. Dinamik Tarih Hesaplama (Türkiye takvim gününe göre — runner UTC'de çalışır)
+  const simdi = getTurkeyNow();
   const bugunDay = simdi.getDay(); 
   // Pazartesiye git (0: Pazar ise -6 gün, 1: Pzt ise 0 gün...)
   const diff = bugunDay === 0 ? -6 : 1 - bugunDay;
@@ -112,55 +83,39 @@ async function main() {
 
     console.log(`${haftaId} haftası için otomatik plan oluşturuluyor...`);
 
-    const buHaftakiYukler: Record<string, number> = {};
-    muezzinler.forEach(m => buHaftakiYukler[m.id] = 0);
-
-    const vakitler = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-    const gunPlan: any = {};
     const batch = db.batch();
 
-    let oncekiVakitUidler: string[] = [];
+    // Tek, paylaşılan atama çekirdeği (bkz. src/lib/planlamaCekirdegi.ts) —
+    // src/services/planServisi.ts'deki istemci "self-healing" akışıyla
+    // AYNI kuralları kullanır: onaylı izindeki veya sabit haftalık izin
+    // gününde olan personel asla atanmaz.
+    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler);
 
     for (const gun of gunler) {
-      gunPlan[gun] = {};
-      
-      const [gY, gM, gD] = gun.split('-').map(Number);
-      const currentGunDate = new Date(gY, gM - 1, gD);
-      const isFriday = currentGunDate.getDay() === 5;
+      for (const vakit of VAKITLER) {
+        const atama = gunPlan[gun][vakit];
 
-      // Bugün izinli olanları filtrele
-      const bugunIzinliUidler = onayliIzinler
-        .filter(izin => gun >= izin.baslangic && gun <= izin.bitis)
-        .map(izin => izin.uid);
-      
-      const musaitMuezzinler = muezzinler.filter(m => !bugunIzinliUidler.includes(m.id));
+        // Bildirim ID'leri kasıtlı olarak deterministiktir (haftaId_tarih_vakit_tip).
+        // Bu, mazeret/vekalet akışlarının Firestore güvenlik kurallarında
+        // getAfter() ile "asil" ve "yedek" belgelerini çapraz doğrulamasını
+        // sağlar (bkz. firestore.rules `isBackupPromotionFromMazeret`).
+        if (atama.asil !== 'Sistem') {
+          const bAsil = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_asil`);
+          batch.set(bAsil, {
+            haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
+            durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+            sonGuncelleme: Timestamp.now()
+          });
+        }
 
-      // Eğer o gün kimse müsait değilse (nadiren), tüm aktifleri kullan
-      const adaylar = musaitMuezzinler.length >= 2 ? musaitMuezzinler : muezzinler;
-      const isFridayOgle = isFriday;
-      const sirali = tieBreakerSirala(adaylar, buHaftakiYukler, oncekiVakitUidler, isFridayOgle);
-      const asil = sirali[0];
-      const yedek = sirali[1];
-      buHaftakiYukler[asil.id] = (buHaftakiYukler[asil.id] || 0) + vakitler.length;
-      // Bir sonraki gün için dinlenme listesini güncelle
-      oncekiVakitUidler = [asil.id, yedek.id];
-
-      for (const vakit of vakitler) {
-        gunPlan[gun][vakit] = { asil: asil.id, yedek: yedek.id };
-
-        const bAsil = db.collection('bildirimler').doc();
-        batch.set(bAsil, {
-          haftaId, tarih: gun, vakit, uid: asil.id, tip: 'asil',
-          durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
-          sonGuncelleme: Timestamp.now()
-        });
-
-        const bYedek = db.collection('bildirimler').doc();
-        batch.set(bYedek, {
-          haftaId, tarih: gun, vakit, uid: yedek.id, tip: 'yedek',
-          durum: 'bekliyor', pendingAck: true, olusturmaTarihi: Timestamp.now(),
-          sonGuncelleme: Timestamp.now()
-        });
+        if (atama.yedek !== 'Sistem') {
+          const bYedek = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_yedek`);
+          batch.set(bYedek, {
+            haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
+            durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+            sonGuncelleme: Timestamp.now()
+          });
+        }
       }
     }
 

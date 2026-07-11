@@ -83,7 +83,7 @@ const processSpeechQueue = () => {
  );
  };
 
- let trVoice = findTrVoice();
+ const trVoice = findTrVoice();
  if (trVoice) {
  utterance.voice = trVoice;
  } else {

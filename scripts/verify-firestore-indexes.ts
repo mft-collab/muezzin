@@ -77,6 +77,11 @@ const requiredIndexes: RequiredIndex[] = [
     collectionGroup: 'adminUyarilari',
     fields: ['tarih', 'vakit', 'cozuldu'],
     reason: 'tekrar eden alarm uretimini engelleme'
+  },
+  {
+    collectionGroup: 'vekalet_talepleri',
+    fields: ['aliciUid', 'durum'],
+    reason: 'muezzinin bekleyen vekalet tekliflerini listeleme'
   }
 ];
 

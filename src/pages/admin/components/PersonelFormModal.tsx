@@ -7,6 +7,9 @@ import { ChevronRight, AlertCircle } from 'lucide-react';
 import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
 import { telemetryService } from '../../../services/telemetryService';
+import { useMuezzinStore } from '../../../store/useMuezzinStore';
+import { getHaftaIdFromDate, getTurkeyDateString } from '../../../lib/dateUtils';
+import { haftalikPlanOlustur } from '../../../services/planServisi';
 
 interface Props {
  isOpen: boolean;
@@ -15,6 +18,7 @@ interface Props {
 }
 
 export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: Props) => {
+ const muezzinler = useMuezzinStore(state => state.muezzinler);
  const [formData, setFormData] = useState({
  email: '', ad: '', soyad: '', role: 'muezzin' as 'muezzin'|'admin'|'gozlemci', haftalikIzinGunu: 0
  });
@@ -47,11 +51,23 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
       setErrorStatus(null);
       const fullName = `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim();
       if (editingUser) {
+        const activeAdmins = muezzinler.filter(user => user.role === 'admin' && user.aktif === true && user.arsivlendi !== true);
+        const isLastActiveAdminRoleChange = editingUser.role === 'admin' && editingUser.aktif === true && formData.role !== 'admin' && activeAdmins.length <= 1;
+        if (isLastActiveAdminRoleChange) {
+          setErrorStatus('Son aktif yöneticinin yetki seviyesi değiştirilemez.');
+          setIsSubmitting(false);
+          return;
+        }
+        const impactsDutyPlan = editingUser.role === 'muezzin' || formData.role === 'muezzin' || editingUser.haftalikIzinGunu !== formData.haftalikIzinGunu;
         await updateDoc(doc(db, 'muezzins', editingUser.id), {
           displayName: fullName,
           role: formData.role,
           haftalikIzinGunu: formData.haftalikIzinGunu > 0 ? formData.haftalikIzinGunu : deleteField()
         });
+        if (impactsDutyPlan) {
+          const haftaId = getHaftaIdFromDate(getTurkeyDateString());
+          await haftalikPlanOlustur(haftaId);
+        }
         await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${formData.role.toUpperCase()}, İzin günü: ${formData.haftalikIzinGunu > 0 ? formData.haftalikIzinGunu : 'Yok'}`);
       } else {
         const mail = formData.email.trim().toLowerCase();
@@ -87,7 +103,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <div className="space-y-4 group">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
+ <label className="authority-title !text-[10px] opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
  <input 
  type="email" 
  required 
@@ -101,7 +117,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="space-y-3">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide">PERSONEL ADI</label>
+ <label className="authority-title !text-[10px] opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
  <input 
  type="text" 
  required 
@@ -113,7 +129,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  />
  </div>
  <div className="space-y-3">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide">SOYADI</label>
+ <label className="authority-title !text-[10px] opacity-50 ml-1 tracking-wide">SOYADI</label>
  <input 
  type="text" 
  required 
@@ -128,7 +144,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="col-span-2 md:col-span-1 space-y-4 group">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
+ <label className="authority-title !text-[10px] opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
  <div className="grid grid-cols-3 gap-2.5">
  {[
  { value: 'muezzin', label: 'MÜEZZİN', desc: 'Görevli Kadro' },
@@ -146,15 +162,15 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  : 'bg-white/[0.02] text-white/20 border-white/5 hover:border-white/10 focus:border-white/10'
  }`}
  >
- <span className="text-[8px] font-black uppercase tracking-wider">{role.label}</span>
- <span className="text-[6px] mt-1 opacity-45 block leading-normal">{role.desc}</span>
+ <span className="text-[10px] font-black uppercase tracking-wide">{role.label}</span>
+ <span className="text-[9px] mt-1 opacity-55 block leading-normal">{role.desc}</span>
  </button>
  ))}
  </div>
  </div>
 
  <div className="col-span-2 md:col-span-1 space-y-4">
- <label className="authority-title !text-[7px] opacity-40 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</label>
+ <label className="authority-title !text-[10px] opacity-50 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</label>
  <div className="flex flex-wrap gap-2">
  {[
  { value: 0, label: 'İZİNSİZ' },
@@ -173,7 +189,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  type="button"
  disabled={day.disabled || isSubmitting}
  onClick={() => setFormData({ ...formData, haftalikIzinGunu: day.value })}
- className={`px-3 py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-wide transition-all border outline-none ${
+ className={`px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all border outline-none ${
  day.disabled
  ? 'opacity-10 cursor-not-allowed border-transparent bg-transparent'
  : isSelected
