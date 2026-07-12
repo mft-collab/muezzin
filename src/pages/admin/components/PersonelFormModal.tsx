@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { deleteField, doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { Modal } from '../../../components/ui/Modal';
-import { ChevronRight, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
 import { telemetryService } from '../../../services/telemetryService';

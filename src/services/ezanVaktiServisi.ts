@@ -1,5 +1,5 @@
 import { GunlukVakit, Vakit, Vakitler, VakitKaydi } from '../types';
-import { getTurkeyNow, getTurkeyDateString, parseVakitToDate } from '../lib/dateUtils';
+import { getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
 import { Timestamp } from 'firebase/firestore';
 
 const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
@@ -59,8 +59,11 @@ export async function aylikVakitleriCek(
  const response = await fetch(aladhanUrl);
  
  if (!response.ok) throw new Error('Ezan vakti servislerine erişilemiyor.');
- 
+
  const result = await response.json();
+ if (!Array.isArray(result?.data)) {
+   throw new Error('Ezan vakti servisi beklenmeyen bir yanıt döndü.');
+ }
  return parseAladhanResponse(result.data, ilceId);
  }
 }
@@ -149,7 +152,12 @@ export function sonrakiVaktiHesapla(bugunVakitler: GunlukVakit, yarinVakitler?: 
 function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
  data.forEach((gun: any) => {
- let dateKey = gun.MiladiTarihKisa;
+ const rawDate = gun?.MiladiTarihKisa;
+ if (typeof rawDate !== 'string' || !rawDate) {
+ console.warn('Diyanet API: gün verisi eksik/bozuk, atlandı:', gun);
+ return;
+ }
+ let dateKey = rawDate;
  if (dateKey.includes('.')) {
  const [d, m, y] = dateKey.split('.');
  dateKey = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
@@ -174,17 +182,24 @@ function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
 function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
  data.forEach((gun: any) => {
- const tarih = gun.date.gregorian.date; // 20-04-2026
+ const tarih = gun?.date?.gregorian?.date; // 20-04-2026
+ const timings = gun?.timings;
+ if (typeof tarih !== 'string' || !timings) {
+ console.warn('Aladhan API: gün verisi eksik/bozuk, atlandı:', gun);
+ return;
+ }
  const [d, m, y] = tarih.split('-');
  const formattedDate = `${y}-${m}-${d}`;
+ const vaktiAyikla = (key: string): string | undefined =>
+ typeof timings[key] === 'string' ? timings[key].split(' ')[0] : undefined;
  gunler[formattedDate] = {
- sabah: gun.timings.Fajr.split(' ')[0],
- gunes: gun.timings.Sunrise.split(' ')[0],
- ogle: gun.timings.Dhuhr.split(' ')[0],
- ikindi: gun.timings.Asr.split(' ')[0],
- aksam: gun.timings.Maghrib.split(' ')[0],
- yatsi: gun.timings.Isha.split(' ')[0]
- };
+ sabah: vaktiAyikla('Fajr'),
+ gunes: vaktiAyikla('Sunrise'),
+ ogle: vaktiAyikla('Dhuhr'),
+ ikindi: vaktiAyikla('Asr'),
+ aksam: vaktiAyikla('Maghrib'),
+ yatsi: vaktiAyikla('Isha')
+ } as VakitKaydi;
  });
  return {
  ilceId,

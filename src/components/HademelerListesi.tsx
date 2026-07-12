@@ -1,9 +1,9 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Users, AlertCircle } from 'lucide-react';
 import { parseISO } from 'date-fns';
-import { useVakitStore } from '../store/useVakitStore';
 import { GorevliKarti } from './GorevliKarti';
+import { useOneShotAnimation } from '../hooks/useOneShotAnimation';
 
 interface Props {
  asilIsim?: string;
@@ -18,8 +18,11 @@ interface Props {
  asilSabitIzinde?: boolean;
  yedekSabitIzinde?: boolean;
  loading?: boolean;
+ /** Gösterilen atamanın ait olduğu tarih (YYYY-MM-DD) — "sonraki vakit" gece yarısını
+  * aşıp yarına sarktığında bugünün tarihinden farklı olabilir, bu yüzden Cuma etiketi
+  * bu tarihe göre hesaplanır. */
+ planTarih: string;
 }
-let globalHasAnimatedHademeler = false;
 
 export const HademelerListesi = React.memo(({
  asilIsim,
@@ -34,18 +37,14 @@ export const HademelerListesi = React.memo(({
  asilSabitIzinde,
  yedekSabitIzinde,
  loading,
+ planTarih,
 }: Props) => {
- const shouldAnimate = useRef(!globalHasAnimatedHademeler).current;
- const dateKey = useVakitStore(s => s.dateKey);
- const isFriday = useMemo(() => parseISO(dateKey).getDay() === 5, [dateKey]);
+ const shouldAnimate = useOneShotAnimation('hademeler-listesi');
+ const isFriday = useMemo(() => parseISO(planTarih).getDay() === 5, [planTarih]);
 
  const motionInitial = { opacity: 0, y: 16 };
  const motionAnimate = { opacity: 1, y: 0 };
  const motionTransition = { duration: shouldAnimate ? 0.4 : 0, ease: 'easeOut' as const };
- 
- React.useEffect(() => {
- globalHasAnimatedHademeler = true;
- }, []);
 
  return (
  <motion.section
@@ -140,7 +139,7 @@ export const HademelerListesi = React.memo(({
  <p className="authority-title !text-[9px] opacity-20 tracking-wide mb-3 uppercase">
  Veri Akışı Kesildi
  </p>
- <p className="text-lg font-extralight text-[var(--text-secondary)]/35 italic leading-relaxed">
+ <p className="text-lg font-extralight text-[var(--text-secondary)]/75 italic leading-relaxed">
  Bu periyot için henüz bir operasyonel görevlendirme yapılmamıştır.
  </p>
  </div>

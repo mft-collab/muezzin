@@ -3,6 +3,7 @@
  * Kerahat, Teheccüd, Bayram ve Teşrik vakitlerinin tespiti için
  */
 
+import { addDays } from 'date-fns';
 import { getHijriDate } from './dateUtils';
 
 export interface HijriDateParts {
@@ -71,7 +72,7 @@ export function isSonTesrikGunu(date: Date): boolean {
 /** Bir gün öncesi için Hicri tarih kontrolü */
 export function isRamazanBayramArife(date: Date): boolean {
   // Bir sonraki gün Ramazan Bayramı mı? → 30 Ramazan (9. ay, 30. gün) veya doğrudan hesap
-  const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  const nextDay = addDays(date, 1);
   return isRamazanBayram(nextDay);
 }
 
@@ -83,7 +84,7 @@ export function isKurbanBayramArife(date: Date): boolean {
 /** Arefe gününden 1 gün öncesi kontrolü (Arefe hazırlığı) */
 export function isRamazanArifeOncesi(date: Date): boolean {
   // Bir sonraki gün Ramazan Bayramı Arefesi mi?
-  const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  const nextDay = addDays(date, 1);
   return isRamazanBayramArife(nextDay);
 }
 
@@ -101,7 +102,7 @@ export function isRamazan(date: Date): boolean {
 
 /** Ramazan'dan 1 gün öncesi tespiti (İlk Sahur & Teravih gecesi) */
 export function isRamazanBaslangiciOncesi(date: Date): boolean {
-  const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  const nextDay = addDays(date, 1);
   const { day, month } = parseHijriDate(nextDay);
   return month === 9 && day === 1;
 }

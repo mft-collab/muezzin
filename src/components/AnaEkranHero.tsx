@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './ui/Logo';
 import { LiveClock } from './LiveClock';
 import { GeriSayim } from './GeriSayim';
-import { parseVakitToDate, getHijriDate } from '../lib/dateUtils';
+import { parseVakitToDate, getHijriDate, getMinutesDiff } from '../lib/dateUtils';
 import { GunlukVakit, Vakit } from '../types';
 import { useTime } from '../hooks/useTime';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
@@ -50,13 +50,6 @@ const UI_VAKIT_LISTESI = [
  { key: 'aksam', label: 'AKŞAM' },
  { key: 'yatsi', label: 'YATSI' }
 ] as const;
-
-function getMinutesDiff(time1: string | undefined, time2: string | undefined): number {
-  if (!time1 || !time2) return 0;
-  const [h1, m1] = time1.split(':').map(Number);
-  const [h2, m2] = time2.split(':').map(Number);
-  return (h2 * 60 + m2) - (h1 * 60 + m1);
-}
 
 export const AnaEkranHero = React.memo(({
  isLoading,
@@ -103,7 +96,6 @@ export const AnaEkranHero = React.memo(({
  return mevcutVakit;
  }, [mevcutVakit, bugunVakitler, currentStatus, now]);
 
- const isFriday = bugunDate.getDay() === 5;
  const hijriDate = useMemo(() => getHijriDate(bugunDate), [bugunDate, settings.hicriDuzeltme]);
  const isRamazan = useMemo(() => hijriDate.includes('Ramazan'), [hijriDate]);
 
@@ -198,7 +190,7 @@ export const AnaEkranHero = React.memo(({
 
  {/* Countdown / Chronograph */}
  <div className="flex-1 flex items-center justify-center z-10 relative py-4 sm:py-6 lg:py-8">
- {sonraki && currentStatus && (
+ {sonraki && currentStatus ? (
  <GeriSayim
  ezanSaati={sonraki.ezanSaati}
  baslangicZamani={currentStatus.baslangicZamani}
@@ -211,6 +203,15 @@ export const AnaEkranHero = React.memo(({
  aksamSaati={currentStatus.aksamSaati}
  isRamazan={isRamazan}
  />
+ ) : (
+ // Ay sonu geçişi gibi geçici veri boşluklarında geri sayım alanının
+ // sessizce boş kalması yerine kullanıcıya durum bildirilir.
+ <div className="flex flex-col items-center gap-3 text-center px-6">
+ <div className="w-8 h-8 rounded-full border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
+ <span className="text-xs text-[var(--text-secondary)]/60 font-medium">
+ Vakitler güncelleniyor, lütfen bekleyin…
+ </span>
+ </div>
  )}
  </div>
 

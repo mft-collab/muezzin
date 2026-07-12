@@ -34,6 +34,7 @@ export default function MuezzinAnaEkran() {
  sonraki,
  mevcutVakit,
  bugunDate,
+ planDateStr,
  bugunPlan,
  asilDurum,
  yedekDurum,
@@ -63,7 +64,10 @@ export default function MuezzinAnaEkran() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const showNotification = useNotificationStore(s => s.showNotification);
-  const isHandlingNotificationRef = useRef(false);
+  // Son işlenen bildirimId'yi tutar (boolean kilit değil) — böylece aynı
+  // SPA oturumunda farklı bir push bildirimine tıklanırsa o da işlenebilir,
+  // yalnızca aynı bildirimin tekrar işlenmesi engellenir.
+  const handledNotificationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (gorevLoading || !currentUser) return;
@@ -71,8 +75,8 @@ export default function MuezzinAnaEkran() {
     const action = searchParams.get('notificationAction');
     const bildirimId = searchParams.get('bildirimId');
 
-    if (!action || !bildirimId || isHandlingNotificationRef.current) return;
-    isHandlingNotificationRef.current = true;
+    if (!action || !bildirimId || handledNotificationIdRef.current === bildirimId) return;
+    handledNotificationIdRef.current = bildirimId;
 
     const processAction = async () => {
       // Clear URL params immediately to prevent double-execution
@@ -370,12 +374,13 @@ export default function MuezzinAnaEkran() {
  </div>
  {duyurular.length > 1 && (
  <div className="flex items-center gap-1.5 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] p-1 rounded-xl backdrop-blur-md relative z-20">
- <button 
+ <button
  disabled={activeDuyuruIdx === 0}
  onClick={(e) => {
  e.stopPropagation();
  setActiveDuyuruIdx(prev => Math.max(0, prev - 1));
  }}
+ aria-label="Önceki duyuru"
  className={`p-1 rounded-[8px] hover:bg-white/5 transition-all flex items-center justify-center ${activeDuyuruIdx === 0 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
  >
  <ChevronLeft size={10} strokeWidth={2.5} />
@@ -383,12 +388,13 @@ export default function MuezzinAnaEkran() {
  <span className="text-[10px] font-bold text-[var(--text-secondary)]/65 px-1.5 tabular-nums">
  {activeDuyuruIdx + 1} / {duyurular.length}
  </span>
- <button 
+ <button
  disabled={activeDuyuruIdx === duyurular.length - 1}
  onClick={(e) => {
  e.stopPropagation();
  setActiveDuyuruIdx(prev => Math.min(duyurular.length - 1, prev + 1));
  }}
+ aria-label="Sonraki duyuru"
  className={`p-1 rounded-[8px] hover:bg-white/5 transition-all flex items-center justify-center ${activeDuyuruIdx === duyurular.length - 1 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
  >
  <ChevronRight size={10} strokeWidth={2.5} />
@@ -453,9 +459,10 @@ export default function MuezzinAnaEkran() {
  planVarMi={!!bugunPlan} 
  isAsilSizMisiniz={currentUser?.uid === bugunPlan?.asil} 
  isYedekSizMisiniz={currentUser?.uid === bugunPlan?.yedek} 
- asilIzinde={asilIzinde} 
- yedekIzinde={yedekIzinde} 
+ asilIzinde={asilIzinde}
+ yedekIzinde={yedekIzinde}
  loading={isHademelerLoading}
+ planTarih={planDateStr}
  />
  </motion.div>
 

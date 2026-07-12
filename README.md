@@ -1,4 +1,4 @@
-# Müezzin Takip - Ceyhan Ezân Nöbet Yönetim Sistemi
+# Müezzin Dizgesi — Cami Personeli Nöbet ve Görev Yönetimi
 
 PWA tabanlı, tamamen ücretsiz (Firebase Spark plan) çalışan ezan nöbet yönetim sistemi.
 

@@ -108,7 +108,7 @@ export default function MuezzinAyarlari() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[var(--text-primary)]">Hakkında</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]/45 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]/75 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
                 </div>
               </div>
               <span className="premium-label !text-[9px] !opacity-35">v2.2.0</span>
@@ -125,7 +125,7 @@ export default function MuezzinAyarlari() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-rose-500/85">Oturumu Kapat</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]/45 mt-1">Bu cihazdaki aktif oturumu sonlandırır</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]/75 mt-1">Bu cihazdaki aktif oturumu sonlandırır</p>
                 </div>
               </div>
               <ShieldCheck size={16} className="text-[var(--text-secondary)]/25" />

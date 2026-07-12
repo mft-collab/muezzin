@@ -331,7 +331,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           </div>
         ) : talepler.length === 0 ? (
           <div className="p-8 text-center spatial-glass rounded-[32px] border-dashed border-white/5">
-            <p className="text-[11px] text-[var(--text-secondary)]/30 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
+            <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5">
@@ -391,6 +391,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                             : 'border-white/5 text-[var(--text-secondary)]/35 hover:text-[var(--status-danger)] hover:border-[var(--status-danger)]/25'
                         }`}
                         title={pendingDeleteId === talep.id ? 'Onaylamak için tekrar tıklayın' : 'İptale tıklayın'}
+                        aria-label={pendingDeleteId === talep.id ? 'Onaylamak için tekrar tıklayın' : 'İzin talebini iptal et'}
                       >
                         <Trash2 size={13} />
                       </motion.button>

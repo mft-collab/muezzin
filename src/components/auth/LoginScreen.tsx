@@ -88,9 +88,9 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  className="relative z-10"
  >
  <h1 className="text-4xl lg:text-5xl font-light mb-3 text-[var(--text-primary)] tracking-tighter leading-none apple-thin">
- Müezzin <span className="text-[var(--aura-indigo)] font-light">Hizmet Takibi</span>
+ Müezzin <span className="text-[var(--aura-indigo)] font-light">Hizmet Dizgesi</span>
  </h1>
- <p className="text-[var(--text-secondary)]/40 mb-14 font-bold tracking-wide uppercase text-[9px]">
+ <p className="text-[var(--text-secondary)]/75 mb-14 font-bold tracking-wide uppercase text-[9px]">
  CAMİ VE DİN GÖREVLİLERİ HİZMET PLANLAMA SİSTEMİ
  </p>
  </motion.div>
@@ -132,7 +132,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  )}
  </motion.button>
 
- <p className="text-[9px] text-[var(--text-secondary)]/30 font-medium uppercase tracking-wide px-4">
+ <p className="text-[9px] text-[var(--text-secondary)]/75 font-medium uppercase tracking-wide px-4">
  KURUMSAL KİMLİK DOĞRULAMA GEREKİR
  </p>
  </motion.div>

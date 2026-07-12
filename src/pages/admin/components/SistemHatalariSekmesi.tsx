@@ -31,7 +31,7 @@ const categoryLabels: Record<Breadcrumb['category'], string> = {
 function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   if (!breadcrumbs || breadcrumbs.length === 0) {
     return (
-      <p className="text-[10px] text-[var(--text-secondary)]/30 italic font-light">
+      <p className="text-[10px] text-[var(--text-secondary)]/75 italic font-light">
         Bu hata için breadcrumb verisi bulunmuyor.
       </p>
     );
@@ -84,7 +84,7 @@ function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
 function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnapshot'] }) {
   if (!snapshot) {
     return (
-      <p className="text-[10px] text-[var(--text-secondary)]/30 italic font-light">
+      <p className="text-[10px] text-[var(--text-secondary)]/75 italic font-light">
         Bu hata için durum fotoğrafı bulunmuyor.
       </p>
     );
@@ -110,7 +110,7 @@ function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnap
         <div key={label} className="px-3 py-2 rounded-xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] flex items-start gap-2">
           <Icon size={10} className="text-[var(--text-secondary)]/30 flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[9px] text-[var(--text-secondary)]/40 uppercase tracking-wider leading-none mb-0.5">{label}</p>
+            <p className="text-[9px] text-[var(--text-secondary)]/75 uppercase tracking-wider leading-none mb-0.5">{label}</p>
             <p className="text-[10px] text-[var(--text-primary)]/80 font-medium truncate">{value}</p>
           </div>
         </div>
@@ -247,7 +247,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* Panel Sekme Seçici */}
-                      <div className="flex gap-1 mb-5 p-1 bg-[var(--text-primary)]/[0.03] rounded-2xl border border-[var(--glass-border)] w-full sm:w-fit overflow-x-auto no-scrollbar">
+                      <div role="tablist" aria-label="Hata detay sekmeleri" className="flex gap-1 mb-5 p-1 bg-[var(--text-primary)]/[0.03] rounded-2xl border border-[var(--glass-border)] w-full sm:w-fit overflow-x-auto no-scrollbar">
                         {[
                           { key: 'stack', label: 'Stack Trace', icon: AlertTriangle },
                           { key: 'breadcrumbs', label: `Kullanıcı İzleri (${breadcrumbCount})`, icon: Activity },
@@ -255,6 +255,11 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                         ].map(({ key, label, icon: Icon }) => (
                           <button
                             key={key}
+                            role="tab"
+                            id={`error-tab-${key}`}
+                            aria-selected={activePanel === key}
+                            aria-controls={`error-panel-${key}`}
+                            tabIndex={activePanel === key ? 0 : -1}
                             onClick={() => setActivePanel(key as any)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wide transition-all ${
                               activePanel === key
@@ -273,6 +278,9 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
+                          role="tabpanel"
+                          id="error-panel-stack"
+                          aria-labelledby="error-tab-stack"
                           className="space-y-4"
                         >
                           <div>
@@ -294,7 +302,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
 
                       {/* ─── Breadcrumb Kullanıcı İzleri ─── */}
                       {activePanel === 'breadcrumbs' && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="tabpanel" id="error-panel-breadcrumbs" aria-labelledby="error-tab-breadcrumbs">
                           <span className="premium-label !text-[10px] !opacity-30 block mb-4">
                             KULLANICI EYLEM KRİNTI İZLERİ — HATADAN ÖNCEKİ {breadcrumbCount} ADIM
                           </span>
@@ -304,7 +312,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
 
                       {/* ─── Durum Fotoğrafı ─── */}
                       {activePanel === 'snapshot' && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="tabpanel" id="error-panel-snapshot" aria-labelledby="error-tab-snapshot">
                           <span className="premium-label !text-[10px] !opacity-30 block mb-4">
                             HATA ANINDAKİ UYGULAMA DURUM FOTOĞRAFI
                           </span>

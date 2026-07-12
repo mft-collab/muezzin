@@ -46,7 +46,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
       return;
     }
     if (Notification.permission === 'granted') {
-      new Notification('Ezan Vakti Takip Sistemi', {
+      new Notification('Müezzin Hizmet Dizgesi', {
         body: 'Bu bir sistem tanı test bildirimidir. Bağlantınız başarıyla sağlandı!',
         icon: '/favicon.ico'
       });
@@ -97,7 +97,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
       {uiMessage && (
         <div className="mb-4 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium leading-relaxed flex justify-between items-start gap-3">
           <span>{uiMessage}</span>
-          <button onClick={() => setUiMessage(null)} className="shrink-0 opacity-50 hover:opacity-100 text-xs">✕</button>
+          <button onClick={() => setUiMessage(null)} aria-label="Kapat" className="shrink-0 opacity-50 hover:opacity-100 text-xs">✕</button>
         </div>
       )}
 
@@ -185,10 +185,13 @@ export default function NotificationSettings({ userData, user }: NotificationSet
             <div key={setting.key} className="flex items-center justify-between gap-6 py-2">
               <div className="space-y-1">
                 <h5 className="text-xs font-semibold text-[var(--text-primary)]">{setting.title}</h5>
-                <p className="text-[9px] text-[var(--text-secondary)]/40 leading-normal max-w-[280px] font-light">{setting.desc}</p>
+                <p className="text-[9px] text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">{setting.desc}</p>
               </div>
-              <button 
+              <button
                 onClick={() => handleToggleSetting(setting.key as any)}
+                role="switch"
+                aria-checked={isChecked}
+                aria-label={setting.title}
                 className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
                   isChecked ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
                 }`}
@@ -211,12 +214,15 @@ export default function NotificationSettings({ userData, user }: NotificationSet
         <div className="flex items-center justify-between gap-6 py-2 border-t border-[var(--glass-border)] pt-5 mt-5">
           <div className="space-y-1">
             <h5 className="text-xs font-semibold text-[var(--text-primary)]">Koyu Tema (Karanlık Mod)</h5>
-            <p className="text-[9px] text-[var(--text-secondary)]/40 leading-normal max-w-[280px] font-light">
+            <p className="text-[9px] text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">
               Uygulamanın görsel temasını el ile ayarlar. Açık olduğunda Koyu (Dark) modu etkinleştirir.
             </p>
           </div>
-          <button 
+          <button
             onClick={(e) => toggleTheme(e)}
+            role="switch"
+            aria-checked={theme === 'dark'}
+            aria-label="Koyu Tema"
             className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
               theme === 'dark' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
             }`}

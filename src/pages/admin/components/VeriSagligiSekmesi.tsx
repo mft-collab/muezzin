@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../lib/firebase';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDoc, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeartPulse, CheckCircle2, AlertOctagon, RefreshCw, ShieldCheck, Terminal } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
@@ -223,7 +223,6 @@ export const VeriSagligiSekmesi = React.memo(() => {
  setRepairing(true);
  setShowLogs(true);
  const logs: string[] = [];
- const batch = writeBatch(db);
 
  const logMessage = (msg: string) => {
  const time = new Date().toLocaleTimeString('tr-TR');
@@ -237,6 +236,12 @@ export const VeriSagligiSekmesi = React.memo(() => {
 
  // Temporary local object to collect schedule edits in memory to batch update documents properly
  const scheduleEdits: Record<string, any> = {};
+ // Tüm yazma/silme işlemleri önce burada toplanır, ardından Firestore'un
+ // 500 işlemlik batch sınırını aşmamak için 400'lük parçalar halinde
+ // commit edilir (bkz. SistemHatalariSekmesi.executeClearErrors) — tek
+ // dev bir batch, 500+ hata olduğunda commit'in komple başarısız olup
+ // hiçbir kaydın onarılmamasına yol açardı.
+ const operations: Array<{ ref: ReturnType<typeof doc>; type: 'update' | 'delete'; data?: Record<string, any> }> = [];
 
  for (const err of errors) {
  if (!err.repairData) continue;
@@ -244,30 +249,23 @@ export const VeriSagligiSekmesi = React.memo(() => {
  const data = err.repairData;
  if (data.type === 'personnel_field') {
  logMessage(`ONARILIYOR: Personel ${data.docId} için '${data.field}' alanı '${data.value}' yapılıyor.`);
- const ref = doc(db, 'muezzins', data.docId);
- batch.update(ref, { [data.field]: data.value });
- } 
+ operations.push({ ref: doc(db, 'muezzins', data.docId), type: 'update', data: { [data.field]: data.value } });
+ }
  else if (data.type === 'vacation_date') {
  logMessage(`ONARILIYOR: İzin ${data.docId} için tarih düzeltmesi uygulanıyor.`);
- const ref = doc(db, 'izinler', data.docId);
- batch.update(ref, { baslangic: data.start, bitis: data.end });
- } 
+ operations.push({ ref: doc(db, 'izinler', data.docId), type: 'update', data: { baslangic: data.start, bitis: data.end } });
+ }
  else if (data.type === 'delete_doc') {
  logMessage(`TEMİZLENİYOR: Yetim/Geçersiz belge (${data.collectionName}/${data.docId}) siliniyor.`);
- const ref = doc(db, data.collectionName, data.docId);
- batch.delete(ref);
+ operations.push({ ref: doc(db, data.collectionName, data.docId), type: 'delete' });
  }
  else if (data.type === 'schedule_reset') {
  logMessage(`DÜZELTİLİYOR: Plan ${data.planId} -> ${data.gun} -> ${data.vakit} -> ${data.field} sistem olarak sıfırlanıyor.`);
  if (!scheduleEdits[data.planId]) {
- // Fetch latest plan content first (it is already in our list)
- const freshPlan = await getDocs(collection(db, 'haftaPlanlari'));
- const matchedPlan = freshPlan.docs.find(d => d.id === data.planId)?.data();
- if (matchedPlan) {
- scheduleEdits[data.planId] = JSON.parse(JSON.stringify(matchedPlan.gunler || {}));
- } else {
- scheduleEdits[data.planId] = {};
- }
+ // Yalnızca ilgili plan dokümanı çekilir — tüm koleksiyonu indirmek
+ // yerine tek bir getDoc yeterli.
+ const planSnap = await getDoc(doc(db, 'haftaPlanlari', data.planId));
+ scheduleEdits[data.planId] = planSnap.exists() ? JSON.parse(JSON.stringify(planSnap.data().gunler || {})) : {};
  }
  if (scheduleEdits[data.planId][data.gun] && scheduleEdits[data.planId][data.gun][data.vakit]) {
  scheduleEdits[data.planId][data.gun][data.vakit][data.field] = data.value;
@@ -277,14 +275,21 @@ export const VeriSagligiSekmesi = React.memo(() => {
 
  // Add accumulated schedule batch updates
  for (const planId of Object.keys(scheduleEdits)) {
- const ref = doc(db, 'haftaPlanlari', planId);
- batch.update(ref, { gunler: scheduleEdits[planId] });
+ operations.push({ ref: doc(db, 'haftaPlanlari', planId), type: 'update', data: { gunler: scheduleEdits[planId] } });
  }
 
  logMessage(`Değişiklikler Firebase Firestore veritabanına işleniyor...`);
+ const CHUNK_SIZE = 400;
+ for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
+ const batch = writeBatch(db);
+ operations.slice(i, i + CHUNK_SIZE).forEach((op) => {
+ if (op.type === 'update') batch.update(op.ref, op.data!);
+ else batch.delete(op.ref);
+ });
  await batch.commit();
+ }
  logMessage(`Tebrikler! Tüm veri uyuşmazlıkları başarıyla giderildi ve onarıldı.`);
- 
+
  // Refresh audit list
  setTimeout(() => {
  runAudit();
@@ -398,7 +403,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <CheckCircle2 size={18} />
  </div>
  <h5 className="text-xs font-semibold text-emerald-400">Veritabanı Tamamen Sağlıklı!</h5>
- <p className="text-[10px] text-[var(--text-secondary)]/40 mt-1">Personeller, izinler and nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
+ <p className="text-[10px] text-[var(--text-secondary)]/75 mt-1">Personeller, izinler and nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
  </div>
  ) : (
  errors.map((err) => (

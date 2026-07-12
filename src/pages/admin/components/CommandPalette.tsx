@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Command, LayoutDashboard, CalendarDays, Users, Database, ShieldAlert, Bell, Settings, X, ChevronRight } from 'lucide-react';
+import { Search, Command, LayoutDashboard, CalendarDays, Users, Database, ShieldAlert, Bell, Settings, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CommandItem {
@@ -50,15 +50,10 @@ export const CommandPalette: React.FC = () => {
  icon: <Bell size={18} />, category: 'İşlemler', 
  action: () => navigate('/admin?tab=dashboard&sub=duyurular') 
  },
- { 
- id: 'cache', title: 'Ezan Önbelleği', description: 'Vakit cache durumunu görüntüle ve senkronize et', 
- icon: <Database size={18} />, category: 'Sistem', 
- action: () => {
- sessionStorage.removeItem('admin_pendingIzinler');
- sessionStorage.removeItem('admin_activeDuyurular');
- sessionStorage.removeItem('admin_counts_time');
- navigate('/admin?tab=ayarlar&subtab=onbellek');
- } 
+ {
+ id: 'cache', title: 'Ezan Önbelleği', description: 'Vakit cache durumunu görüntüle ve senkronize et',
+ icon: <Database size={18} />, category: 'Sistem',
+ action: () => navigate('/admin?tab=ayarlar&subtab=onbellek')
  },
  ];
 

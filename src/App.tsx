@@ -55,7 +55,7 @@ function Fallback({ error }: { error: Error }) {
  </div>
  <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">Yeni Güncelleme Uygulanıyor</h1>
  <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed mb-8">
- Müezzin Takip Pro'nun en son sürümü yayınlandı. Arayüzünüz ve veri akışınızın kesintisiz çalışması için uygulama otomatik olarak yenileniyor...
+ Müezzin Hizmet Dizgesi'nin en son sürümü yayınlandı. Arayüzünüz ve veri akışınızın kesintisiz çalışması için uygulama otomatik olarak yenileniyor...
  </p>
  <div className="flex flex-col gap-2">
  <span className="premium-label !text-[8px] !opacity-30">OTOMATİK YENİLEME BAŞLATILDI</span>

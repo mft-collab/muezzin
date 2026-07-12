@@ -32,12 +32,17 @@ export default function PersonelHub() {
  
  {/* Sub-Page Navigation - Spatial Glass Pill */}
  <div className="sticky top-0 z-40 py-2">
- <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
+ <div role="tablist" aria-label="Personel yönetimi sekmeleri" className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
  {navItems.map(item => {
  const isActive = activeTab === item.id;
  return (
  <motion.button
  key={item.id}
+ role="tab"
+ id={`personel-tab-${item.id}`}
+ aria-selected={isActive}
+ aria-controls={`personel-panel-${item.id}`}
+ tabIndex={isActive ? 0 : -1}
  whileHover={{ scale: 1.02, y: -1 }}
  whileTap={{ scale: 0.97 }}
  onClick={() => setActiveTab(item.id)}
@@ -68,7 +73,13 @@ export default function PersonelHub() {
  </div>
 
  {/* Module Transition Area */}
- <div className={`relative transition-all duration-1000 ease-[0.25, 1, 0.5, 1] ${isPending ? 'opacity-20 blur-xl scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}>
+ <div
+ role="tabpanel"
+ id={`personel-panel-${activeTab}`}
+ aria-labelledby={`personel-tab-${activeTab}`}
+ tabIndex={0}
+ className={`relative transition-all duration-1000 ease-[0.25, 1, 0.5, 1] ${isPending ? 'opacity-20 blur-xl scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}
+ >
  <AnimatePresence mode="wait">
  <motion.div
  key={activeTab}

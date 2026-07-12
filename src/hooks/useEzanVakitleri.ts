@@ -3,14 +3,8 @@ import { parseISO } from 'date-fns';
 import { useVakitStore } from '../store/useVakitStore';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { isRamazan } from '../lib/islamicCalendar';
+import { getMinutesDiff, getTurkeyDateString } from '../lib/dateUtils';
 import { GunlukVakit } from '../types';
-
-function getMinutesDiff(time1: string | undefined, time2: string | undefined): number {
-  if (!time1 || !time2) return 0;
-  const [h1, m1] = time1.split(':').map(Number);
-  const [h2, m2] = time2.split(':').map(Number);
-  return (h2 * 60 + m2) - (h1 * 60 + m1);
-}
 
 function adjustVakitWithOffset(officialVakit: string | undefined, offsetMinutes: number): string {
   if (!officialVakit) return '';
@@ -54,12 +48,20 @@ export function useEzanVakitleri() {
   const { gpsEnabled, gpsVakitler } = useGpsVakitStore();
 
   const rawBugunVakitler = useMemo(() => {
-    if (gpsEnabled && gpsVakitler) return gpsVakitler;
+    // GPS verisi yalnızca bugünün tarihine aitse güvenilir. Gece yarısını
+    // geçtikten sonra periyodik yenileme henüz tamamlanmadıysa dünün GPS
+    // vaktini "bugün" diye göstermek yerine resmi vakitlere düşülür.
+    if (gpsEnabled && gpsVakitler && gpsVakitler.tarih === getTurkeyDateString()) {
+      return gpsVakitler;
+    }
     return officialBugun;
   }, [gpsEnabled, gpsVakitler, officialBugun]);
 
   const rawYarinVakitler = useMemo(() => {
-    if (!gpsEnabled || !gpsVakitler || !officialYarin || !officialBugun) {
+    // Aynı bayatlık kontrolü: GPS verisi bugüne ait değilse, bugünkü resmi
+    // vakitle karşılaştırıp yanlış bir offset türetmek yerine yarın için de
+    // düz resmi vakitlere düşülür.
+    if (!gpsEnabled || !gpsVakitler || !officialYarin || !officialBugun || gpsVakitler.tarih !== getTurkeyDateString()) {
       return officialYarin;
     }
     const sabahOffset = getMinutesDiff(officialBugun.sabah, gpsVakitler.sabah);

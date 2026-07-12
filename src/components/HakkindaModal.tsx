@@ -15,9 +15,8 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
     onClose();
   };
 
-  const handleLinkClick = (e: React.MouseEvent) => {
+  const handleLinkClick = () => {
     playSuccess();
-    // In a real app, this might open a URL or perform an action
   };
 
   return (
@@ -46,6 +45,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
             {/* Close Button */}
             <button
               onClick={handleClose}
+              aria-label="Kapat"
               className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-colors"
             >
               <X size={16} className="text-white/60 hover:text-white" />

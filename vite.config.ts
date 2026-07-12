@@ -36,8 +36,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ['favicon.svg', 'pwa-192x192.svg', 'pwa-512x512.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: "Müezzin - Ezan Hizmetleri Düzenleme Dizgesi",
-        short_name: "Müezzin Ezan",
+        name: "Müezzin - Hizmet Dizgesi",
+        short_name: "Müezzin Dizgesi",
         description: "Cami ve Din Görevlileri Hizmet Planlama Sistemi",
         theme_color: "#F5F5F7",
         background_color: "#F5F5F7",

@@ -11,11 +11,7 @@ import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
-
-const getWeekString = (date: Date) => {
- const weekStart = startOfWeek(date, { weekStartsOn: 1 });
- return `W${format(weekStart, 'yyyy-MM-dd')}`;
-};
+import { getHaftaIdFromDate } from '../lib/dateUtils';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
@@ -37,10 +33,9 @@ function pickCanonicalUid(values: string[]): string | null {
 
 export default function HaftalikTakvim() {
  const [currentDate, setCurrentDate] = useState(new Date());
- const haftaId = getWeekString(currentDate);
+ const haftaId = getHaftaIdFromDate(format(currentDate, 'yyyy-MM-dd'));
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
- const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  const usersLoading = useMuezzinStore(s => s.loading);
  const currentUser = auth.currentUser;
@@ -184,9 +179,10 @@ export default function HaftalikTakvim() {
  transition={{ delay: 0.2 }}
  className="flex items-center bg-[var(--text-primary)]/[0.03] p-1.5 rounded-[20px] border border-[var(--glass-border)] backdrop-blur-3xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] self-start"
  >
- <motion.button 
+ <motion.button
  whileTap={{ scale: 0.9 }}
- onClick={() => setCurrentDate(subWeeks(currentDate, 1))} 
+ onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+ aria-label="Önceki hafta"
  className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
  >
  <ChevronLeft size={18} />
@@ -194,9 +190,10 @@ export default function HaftalikTakvim() {
  <div className="px-6 py-2 text-[9px] font-bold tracking-wide text-[var(--text-secondary)] uppercase min-w-[180px] text-center">
  {weekLabel} – {format(addWeeks(currentWeekStart, 1), 'd MMMM', { locale: tr })}
  </div>
- <motion.button 
- whileTap={{ scale: 0.9 }} 
- onClick={() => setCurrentDate(addWeeks(currentDate, 1))} 
+ <motion.button
+ whileTap={{ scale: 0.9 }}
+ onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+ aria-label="Sonraki hafta"
  className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
  >
  <ChevronRight size={18} />
@@ -248,7 +245,7 @@ export default function HaftalikTakvim() {
  <Info size={40} className="text-[var(--text-secondary)] opacity-20" />
  </div>
  <h3 className="text-4xl font-light text-[var(--text-primary)] mb-6 tracking-tight apple-thin">Plan Henüz Hazır Değil</h3>
- <p className="text-[var(--text-secondary)]/40 text-sm font-light leading-relaxed max-w-sm mx-auto mb-12">
+ <p className="text-[var(--text-secondary)]/75 text-sm font-light leading-relaxed max-w-sm mx-auto mb-12">
  Seçilen haftaya ait görev dağılımı henüz onaylanmamış veya sisteme girilmemiş olabilir.
  </p>
  <motion.button 

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck } from 'lucide-react';
-import { useKrizAlarmlari } from '../../../hooks/admin/useKrizAlarmlari';
-import { useAdminIzinler } from '../../../hooks/admin/useAdminIzinler';
+import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
+import { useAdminIzinlerStore } from '../../../store/useAdminIzinlerStore';
+import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
@@ -31,8 +32,10 @@ export default function ExecutiveHeroScreen({
  onOpenDrawer
 }: HeroScreenProps) {
  const [expandedId, setExpandedId] = useState<string | null>(null);
- const { alarmlar } = useKrizAlarmlari();
- const { izinler, izinGuncelle } = useAdminIzinler();
+ const alarmlar = useKrizAlarmlariStore(s => s.alarmlar);
+ const izinler = useAdminIzinlerStore(s => s.izinler);
+ const izinGuncelle = useAdminIzinlerStore(s => s.izinGuncelle);
+ const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  const haftaId = useMemo(() => getHaftaIdFromDate(getTurkeyDateString()), []);
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
@@ -53,17 +56,14 @@ export default function ExecutiveHeroScreen({
  title: a.mesaj,
  status: a.cozuldu ? 'completed' : 'active',
  time: a.olusturmaTarihi ? formatDistanceToNow(a.olusturmaTarihi.toDate(), { addSuffix: true, locale: tr }) : 'Az önce',
- priority: 'high',
  type: 'alarm'
  })),
  ...izinler.filter(i => i.durum === 'onay_bekliyor').slice(0, 5).map(i => ({
  id: i.id,
- title: `${i.displayName} - İzin Talebi`,
+ title: `${muezzinMap[i.uid]?.displayName || 'Bilinmiyor'} - İzin Talebi`,
  status: 'pending',
  time: i.olusturmaTarihi ? formatDistanceToNow(i.olusturmaTarihi.toDate(), { addSuffix: true, locale: tr }) : 'Az önce',
- priority: 'medium',
- type: 'izin',
- originalData: i
+ type: 'izin'
  }))
  ].sort((a, b) => {
  // Nöbet uyarıları izin taleplerinden önce görünür.

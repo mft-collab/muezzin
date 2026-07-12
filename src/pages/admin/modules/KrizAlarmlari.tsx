@@ -1,19 +1,19 @@
 import React from 'react';
-import { useKrizAlarmlari } from '../../../hooks/admin/useKrizAlarmlari';
+import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
 import { db } from '../../../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { AlertTriangle, ServerCrash, CalendarX, CheckCircle, RefreshCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../../../lib/dateUtils';
+import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
 import { Vakit, AdminUyarisi } from '../../../types';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { kriziBaslat } from '../../../services/mazeretServisi';
 import { telemetryService } from '../../../services/telemetryService';
 
 export default function KrizAlarmlari() {
- const { alarmlar, loading } = useKrizAlarmlari();
+ const { alarmlar, loading } = useKrizAlarmlariStore();
  const [showResolved, setShowResolved] = React.useState(false);
  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
  const [confirmData, setConfirmData] = React.useState<{ open: boolean, alarm: (AdminUyarisi & { id: string }) | null }>({ open: false, alarm: null });

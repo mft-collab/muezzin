@@ -3,10 +3,9 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Moon, Search, Sun, X } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { auth } from '../../lib/firebase';
-import { useKrizAlarmlari } from '../../hooks/admin/useKrizAlarmlari';
+import { useKrizAlarmlariStore } from '../../store/useKrizAlarmlariStore';
+import { useAdminIzinlerStore } from '../../store/useAdminIzinlerStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useMuezzinStore } from '../../store/useMuezzinStore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -109,8 +108,17 @@ export default function AdminPanel() {
  
  // Stats & States
  const muezzinlerLength = useMuezzinStore(s => s.muezzinler.filter(m => m.role === 'muezzin' && m.aktif === true && m.arsivlendi !== true).length);
- const { cozulmamisSayisi } = useKrizAlarmlari();
- const [pendingIzinler, setPendingIzinler] = useState(0);
+ const cozulmamisSayisi = useKrizAlarmlariStore(s => s.cozulmamisSayisi);
+ const pendingIzinler = useAdminIzinlerStore(s => s.izinler.filter(i => i.durum === 'onay_bekliyor').length);
+
+ // Admin paneline özgü, tüm alt sekmeler arasında paylaşılan tek abonelikler.
+ // StoreInitializer'daki global store'larla aynı yaklaşım: dönen unsubscribe
+ // kasıtlı olarak çağrılmaz, `initialized` bayrağı yalnızca aynı oturumda
+ // (StrictMode çift-mount dahil) tekrar abone olunmasını engeller.
+ useEffect(() => {
+ useKrizAlarmlariStore.getState().init();
+ useAdminIzinlerStore.getState().init();
+ }, []);
 
  // Sirkadiyen Aura Entegrasyonu
  const { bugunVakitler } = useEzanVakitleri();
@@ -139,20 +147,6 @@ export default function AdminPanel() {
 
 
  useEffect(() => {
- const izinQuery = query(collection(db, 'izinler'), where('durum', '==', 'onay_bekliyor'));
- const unsubscribe = onSnapshot(izinQuery, (snap) => {
- setPendingIzinler(snap.size);
- sessionStorage.removeItem('admin_pendingIzinler');
- sessionStorage.removeItem('admin_activeDuyurular');
- sessionStorage.removeItem('admin_counts_time');
- }, (err) => {
- console.error("Count listener error:", err);
- });
-
- return () => unsubscribe();
- }, []);
-
- useEffect(() => {
  if (!authLoading && isAdmin === false) {
  navigate('/');
  }
@@ -176,7 +170,7 @@ export default function AdminPanel() {
  transition={{ delay: 0.4 }}
  >
   <Suspense fallback={<div className="h-[280px] w-full fluid-skeleton" />}>
-    <SistemAnalitigi onInceleClick={() => setActiveTab('planlama')} />
+    <SistemAnalitigi />
   </Suspense>
  </motion.div>
  </div>
@@ -382,8 +376,9 @@ export default function AdminPanel() {
                   {drawerContent === 'alarmlar' ? 'Nöbet Uyarıları' : 'Duyuru Paneli'}
                 </h2>
               </div>
-              <button 
-                onClick={closeDrawer} 
+              <button
+                onClick={closeDrawer}
+                aria-label="Kapat"
                 className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] hover:text-rose-500 rounded-[20px] border border-[var(--glass-border)] transition-all text-[var(--text-primary)]"
               >
                 <X size={20} strokeWidth={1} />

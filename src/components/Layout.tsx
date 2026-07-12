@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFcmToken } from '../hooks/useFcmToken';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { useThemeStore } from '../store/useThemeStore';
 import { unlockAudioContext } from '../store/useNotificationStore';
 import { GlobalNotifications } from './GlobalNotifications';
 import { OfflineBanner } from './ui/OfflineBanner';
@@ -233,8 +232,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
             className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-[350px] z-[99] pointer-events-auto bg-[var(--app-bg)]/95 backdrop-blur-xl border border-[var(--glass-border)] p-4 rounded-2xl shadow-[var(--spatial-shadow)] flex flex-col gap-3"
           >
-            <button 
+            <button
               onClick={dismissIosPrompt}
+              aria-label="Kapat"
               className="absolute top-2 right-2 p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full"
             >
               <X size={16} />

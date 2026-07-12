@@ -504,7 +504,7 @@ export const GorevKarti = React.memo(({
 
       {eligiblePeers.length === 0 ? (
         <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl">
-          <p className="text-[11px] text-[var(--text-secondary)]/30 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
+          <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
         </div>
       ) : (
         <div className="max-h-[35vh] overflow-y-auto space-y-2 pr-1 no-scrollbar mb-6">

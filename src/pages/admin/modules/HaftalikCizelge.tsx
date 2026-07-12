@@ -12,25 +12,83 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { Vakit, VakitAtama } from '../../../types';
+import { Muezzin, Vakit, VakitAtama } from '../../../types';
 import { AlertCircle, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import { telemetryService } from '../../../services/telemetryService';
+import { getHaftaIdFromDate } from '../../../lib/dateUtils';
+import { exportCsv } from '../../../lib/csvExport';
+import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
 const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-const getWeekString = (date: Date) => {
- const weekStart = startOfWeek(date, { weekStartsOn: 1 });
- return `W${format(weekStart, 'yyyy-MM-dd')}`;
-};
-let globalHasAnimatedCizelge = false;
+
+interface PersonelSeciciProps {
+  label: string;
+  systemSubLabel: string;
+  roleSubLabel: string;
+  value: string;
+  onSelect: (uid: string) => void;
+  muezzinler: (Muezzin & { id: string })[];
+}
+
+function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, muezzinler }: PersonelSeciciProps) {
+  return (
+    <div className="space-y-4 mt-2 first:mt-0">
+      <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">{label}</label>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => onSelect('Sistem')}
+          className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
+            value === 'Sistem'
+              ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+              : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
+          }`}
+        >
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${
+            value === 'Sistem' ? 'bg-white/20' : 'bg-white/5 text-white/50'
+          }`}>
+            🤖
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] font-black uppercase tracking-wider block">Sistem Otomatik</span>
+            <span className="text-[9px] opacity-60 block leading-tight">{systemSubLabel}</span>
+          </div>
+        </button>
+        {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
+          const isSelected = value === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onSelect(m.id)}
+              className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
+                isSelected
+                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+                  : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                isSelected ? 'bg-white/20' : 'bg-white/5 text-white/50'
+              }`}>
+                {(m.displayName || 'M').charAt(0)}
+              </div>
+              <div className="text-left truncate">
+                <span className="text-[10px] font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
+                <span className="text-[9px] opacity-60 block leading-tight">{roleSubLabel}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function HaftalikCizelge() {
- const shouldAnimate = React.useRef(!globalHasAnimatedCizelge).current;
- useEffect(() => {
- globalHasAnimatedCizelge = true;
- }, []);
+ const shouldAnimate = useOneShotAnimation('haftalik-cizelge');
 
  const [currentDate, setCurrentDate] = useState(new Date());
- const haftaId = getWeekString(currentDate);
+ const haftaId = getHaftaIdFromDate(format(currentDate, 'yyyy-MM-dd'));
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
@@ -47,7 +105,6 @@ export default function HaftalikCizelge() {
   asil: '',
   yedek: ''
   });
- const [errorStatus, setErrorStatus] = useState<string | null>(null);
  const [generating, setGenerating] = useState(false);
  const [confirmPlanRefreshOpen, setConfirmPlanRefreshOpen] = useState(false);
 
@@ -60,13 +117,11 @@ export default function HaftalikCizelge() {
   const handlePlanOlustur = async () => {
     try {
       setGenerating(true);
-      setErrorStatus(null);
       await haftalikPlanOlustur(haftaId);
       showNotification('Plan Oluşturuldu', `${haftaId} haftası için plan başarıyla oluşturuldu.`, 'success');
       await telemetryService.logAudit('Otomatik Plan Oluşturma', haftaId, 'Haftalık görev planı otonom motor tarafından oluşturuldu.');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Plan oluşturulurken bir hata oluştu.";
-      setErrorStatus(errorMessage);
       showNotification('Hata', errorMessage, 'error');
     } finally {
       setGenerating(false);
@@ -102,17 +157,8 @@ export default function HaftalikCizelge() {
       });
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(","), ...rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(","))].join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `haftalik-nobet-plani-${plan.id}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    exportCsv(headers, rows, `haftalik-nobet-plani-${plan.id}.csv`);
+
     telemetryService.logAudit('Plan Çıktısı Alma', plan.id, 'Haftalık nöbet çizelgesi CSV formatında dışa aktarıldı.');
   };
 
@@ -120,7 +166,6 @@ export default function HaftalikCizelge() {
   e.preventDefault();
   if (!editingCell || !plan) return;
   if (!editFormData.asil || !editFormData.yedek) {
-  setErrorStatus('Asil ve yedek alanları boş bırakılamaz. Otomatik atama için Sistem seçin.');
   showNotification('Eksik Atama', 'Asil ve yedek alanları boş bırakılamaz.', 'warning');
   return;
   }
@@ -130,18 +175,15 @@ export default function HaftalikCizelge() {
  editFormData.asil !== 'Sistem' &&
  editFormData.asil === editFormData.yedek
  ) {
- setErrorStatus('Asil ve yedek görevli aynı kişi olamaz.');
  showNotification('Hata', 'Asil ve yedek görevli aynı kişi olamaz.', 'error');
  return;
  }
  if (!isAssignableMuezzin(editFormData.asil) || !isAssignableMuezzin(editFormData.yedek)) {
- setErrorStatus('Sadece aktif müezzinler görevlendirilebilir. Admin ve gözlemci atanamaz.');
  showNotification('Hata', 'Sadece aktif müezzinler görevlendirilebilir. Admin ve gözlemci atanamaz.', 'error');
  return;
  }
 
  try {
- setErrorStatus(null);
  const gunKey = Object.keys(plan.gunler).find(k => k === editingCell.tarih);
  if (gunKey) {
  const batch = writeBatch(db);
@@ -160,7 +202,6 @@ export default function HaftalikCizelge() {
 
  if (isProtectedVakit) {
  const msg = 'Bu vakitte onay/ret veya görev çağrısı geçmişi var. Güvenli güncelleme yapılamadı.';
- setErrorStatus(msg);
  showNotification('Güncelleme Engellendi', msg, 'warning');
  return;
  }
@@ -213,8 +254,7 @@ export default function HaftalikCizelge() {
  showNotification('Güncelleme Başarılı', 'Seçili vakit için asil ve yedek ataması güncellendi.', 'success');
  await telemetryService.logAudit('Manuel Görev Atama', editingCell.tarih, `${editingCell.vakit.toUpperCase()} vakti için asil: ${getMuezzinName(editFormData.asil)}, yedek: ${getMuezzinName(editFormData.yedek)} ataması yapıldı.`);
  }
- } catch (err) {
- setErrorStatus("Güncelleme sırasında bir hata oluştu.");
+ } catch {
  showNotification('Hata', 'Güncelleme sırasında bir hata oluştu.', 'error');
  }
  };
@@ -465,109 +505,26 @@ export default function HaftalikCizelge() {
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_var(--dynamic-aura,var(--aura-indigo))]" />
           <span className="text-sm font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wide">{editingCell?.vakit}</span>
         </div>
-        <p className="text-[10px] text-[var(--text-secondary)]/40 mt-2 font-medium tracking-wide">{editingCell?.tarih}</p>
+        <p className="text-[10px] text-[var(--text-secondary)]/75 mt-2 font-medium tracking-wide">{editingCell?.tarih}</p>
       </div>
 
       <div className="flex flex-col gap-6">
-        <div className="space-y-4">
-          <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">ASİL GÖREVLİ ATAMASI</label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => setEditFormData({ ...editFormData, asil: 'Sistem' })}
-              className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
-                editFormData.asil === 'Sistem'
-                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                  : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${
-                editFormData.asil === 'Sistem' ? 'bg-white/20' : 'bg-white/5 text-white/50'
-              }`}>
-                🤖
-              </div>
-              <div className="text-left">
-                <span className="text-[10px] font-black uppercase tracking-wider block">Sistem Otomatik</span>
-                <span className="text-[9px] opacity-60 block leading-tight">Otomatik Planla</span>
-              </div>
-            </button>
-            {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
-              const isSelected = editFormData.asil === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setEditFormData({ ...editFormData, asil: m.id })}
-                  className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
-                    isSelected
-                      ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                      : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                    isSelected ? 'bg-white/20' : 'bg-white/5 text-white/50'
-                  }`}>
-                    {(m.displayName || 'M').charAt(0)}
-                  </div>
-                  <div className="text-left truncate">
-                    <span className="text-[10px] font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
-                    <span className="text-[9px] opacity-60 block leading-tight">Görevli Kadro</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="space-y-4 mt-2">
-          <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">YEDEK PERSONEL ATAMASI</label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => setEditFormData({ ...editFormData, yedek: 'Sistem' })}
-              className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
-                editFormData.yedek === 'Sistem'
-                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                  : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${
-                editFormData.yedek === 'Sistem' ? 'bg-white/20' : 'bg-white/5 text-white/50'
-              }`}>
-                🤖
-              </div>
-              <div className="text-left">
-                <span className="text-[10px] font-black uppercase tracking-wider block">Sistem Otomatik</span>
-                <span className="text-[9px] opacity-60 block leading-tight">Yedek Planla</span>
-              </div>
-            </button>
-            {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
-              const isSelected = editFormData.yedek === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setEditFormData({ ...editFormData, yedek: m.id })}
-                  className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
-                    isSelected
-                      ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                      : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                    isSelected ? 'bg-white/20' : 'bg-white/5 text-white/50'
-                  }`}>
-                    {(m.displayName || 'M').charAt(0)}
-                  </div>
-                  <div className="text-left truncate">
-                    <span className="text-[10px] font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
-                    <span className="text-[9px] opacity-60 block leading-tight">Yedek Görevli</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <PersonelSecici
+          label="ASİL GÖREVLİ ATAMASI"
+          systemSubLabel="Otomatik Planla"
+          roleSubLabel="Görevli Kadro"
+          value={editFormData.asil}
+          onSelect={(uid) => setEditFormData({ ...editFormData, asil: uid })}
+          muezzinler={muezzinler}
+        />
+        <PersonelSecici
+          label="YEDEK PERSONEL ATAMASI"
+          systemSubLabel="Yedek Planla"
+          roleSubLabel="Yedek Görevli"
+          value={editFormData.yedek}
+          onSelect={(uid) => setEditFormData({ ...editFormData, yedek: uid })}
+          muezzinler={muezzinler}
+        />
       </div>
 
       <div className="pt-6 sm:pt-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6">

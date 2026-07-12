@@ -1,10 +1,11 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Star, CheckCircle2 } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { GorevKarti } from './GorevKarti';
 import { Bildirim, GunlukVakit } from '../types';
 import { getTurkeyNow } from '../lib/dateUtils';
+import { useOneShotAnimation } from '../hooks/useOneShotAnimation';
 
 interface Props {
  loading: boolean;
@@ -13,20 +14,15 @@ interface Props {
  autoOpenMazeretId?: string | null;
  onMazeretHandled?: () => void;
 }
-let globalHasAnimatedGorev = false;
 
-export const KisiselGorevAkisi: React.FC<Props> = ({ 
- loading, 
- gorevler, 
+export const KisiselGorevAkisi: React.FC<Props> = ({
+ loading,
+ gorevler,
  bugunVakitler,
  autoOpenMazeretId,
  onMazeretHandled
 }) => {
- const shouldAnimate = React.useRef(!globalHasAnimatedGorev).current;
-
- useEffect(() => {
- globalHasAnimatedGorev = true;
- }, []);
+ const shouldAnimate = useOneShotAnimation('kisisel-gorev-akisi');
 
  const isFriday = useMemo(() => {
  if (bugunVakitler?.tarih) {

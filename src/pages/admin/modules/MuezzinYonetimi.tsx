@@ -19,13 +19,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getHaftaIdFromDate, getTurkeyDateString, GUNLER_TR } from '../../../lib/dateUtils';
 import { telemetryService } from '../../../services/telemetryService';
 import { haftalikPlanOlustur } from '../../../services/planServisi';
-let globalHasAnimatedPersonel = false;
+import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
 export default function MuezzinYonetimi() {
- const shouldAnimate = React.useRef(!globalHasAnimatedPersonel).current;
- useEffect(() => {
- globalHasAnimatedPersonel = true;
- }, []);
+ const shouldAnimate = useOneShotAnimation('muezzin-yonetimi');
 
  // ATOMIC ZUSTAND SELECTORS - (Engeller gereksiz renderları)
  const muezzinler = useMuezzinStore(state => state.muezzinler);
@@ -97,7 +94,7 @@ export default function MuezzinYonetimi() {
  await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmToggle({ open: false, data: null });
  await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'AKTİF' : 'PASİF'} yapıldı.`);
- } catch (err) {
+ } catch {
  setErrorStatus('Personel durumu güncellenemedi.');
  setConfirmToggle({ open: false, data: null });
  }
@@ -114,7 +111,7 @@ export default function MuezzinYonetimi() {
  }
  await refreshCurrentWeekPlanIfNeeded(m);
  await telemetryService.logAudit('Personel Onaylama', m.displayName, 'Sisteme katılım talebi onaylandı ve aktif kadroya dahil edildi.');
- } catch (err) {
+ } catch {
  setErrorStatus('Onay işlemi sırasında bir hata oluştu.');
  }
  };
@@ -132,7 +129,7 @@ export default function MuezzinYonetimi() {
  await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmRestore({ open: false, data: null });
  await telemetryService.logAudit('Personel Geri Yükleme', m.displayName, 'Arşivlenmiş personel aktif kadroya geri yüklendi.');
- } catch (err) {
+ } catch {
  setErrorStatus('Personel geri yüklenemedi.');
  setConfirmRestore({ open: false, data: null });
  }
@@ -156,7 +153,7 @@ export default function MuezzinYonetimi() {
  await refreshCurrentWeekPlanIfNeeded(m);
  setConfirmDelete({ open: false, data: null });
  await telemetryService.logAudit('Personel Arşivleme', m.displayName, 'Personel aktif kadrodan çıkarılarak arşiv kategorisine alındı.');
- } catch (err) {
+ } catch {
  setErrorStatus('Kullanıcı kaydı arşivlenemedi.');
  setConfirmDelete({ open: false, data: null });
  }
@@ -166,7 +163,7 @@ export default function MuezzinYonetimi() {
  try {
  await deleteDoc(doc(db, 'invites', inviteEmail));
  await telemetryService.logAudit('Davetiye İptal', inviteEmail, 'Gönderilmiş sistem katılım davetiyesi iptal edildi ve silindi.');
- } catch (err) {
+ } catch {
  setErrorStatus('Davet silinemedi.');
  }
  };
@@ -268,7 +265,7 @@ export default function MuezzinYonetimi() {
  {/* PENDING ACTIONS: Spatial Context Alert */}
   {pendingUsers.length > 0 && (
   <motion.section 
-  initial={globalHasAnimatedPersonel ? false : { opacity: 0, y: 20 }}
+  initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
   animate={{ opacity: 1, y: 0 }}
   className="spatial-glass p-4 sm:p-8 !bg-rose-500/[0.03] border-rose-500/20 relative overflow-hidden !rounded-[20px] sm:!rounded-[32px]"
   >
@@ -309,6 +306,7 @@ export default function MuezzinYonetimi() {
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(16,185,129,0.15)' }}
  whileTap={{ scale: 0.9 }}
  onClick={() => handleApprove(m)}
+ aria-label="Personeli onayla"
  className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 shadow-sm"
  >
  <CheckCircle2 size={16} />
@@ -318,10 +316,11 @@ export default function MuezzinYonetimi() {
  <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-55">DAVETLİ</span>
  </div>
  )}
- <motion.button 
+ <motion.button
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.15)' }}
  whileTap={{ scale: 0.9 }}
  onClick={() => (m as any).isInvite ? executeDeleteInvite(m.id) : setConfirmDelete({ open: true, data: m })}
+ aria-label="Sil"
  className="p-3 bg-white/5 text-[var(--text-secondary)]/30 rounded-xl border border-white/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
  >
  <Trash2 size={16} />
@@ -351,10 +350,10 @@ export default function MuezzinYonetimi() {
 
  return (
  <motion.div 
- initial={globalHasAnimatedPersonel ? false : { opacity: 0, y: 20 }}
+ initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
  animate={{ opacity: 1, y: 0 }}
- transition={{ delay: globalHasAnimatedPersonel ? 0 : idx * 0.05 }}
- key={m.id} 
+ transition={{ delay: shouldAnimate ? idx * 0.05 : 0 }}
+ key={m.id}
  className="group relative p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-3xl overflow-hidden transition-all duration-700 hover:shadow-[var(--spatial-shadow)]"
  >
  {/* Left Status Pillar */}
@@ -480,38 +479,42 @@ export default function MuezzinYonetimi() {
  
  <div className="flex items-center gap-1.5 sm:gap-2">
   {showArchived ? (
-    <motion.button 
+    <motion.button
       whileHover={{ scale: 1.1, backgroundColor: 'rgba(16,185,129,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmRestore({ open: true, data: m })} 
+      onClick={() => setConfirmRestore({ open: true, data: m })}
+      aria-label="Arşivden geri yükle"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-emerald-400 hover:text-emerald-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all shadow-lg cursor-pointer"
     >
       <RotateCcw className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
     </motion.button>
   ) : (
     <>
-      <motion.button 
+      <motion.button
       whileHover={{ scale: 1.1, backgroundColor: 'var(--surface-medium)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => openEdit(m)} 
+      onClick={() => openEdit(m)}
+      aria-label="Personeli düzenle"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer"
       >
       <Edit2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>
-      <motion.button 
+      <motion.button
       whileHover={{ scale: 1.1, backgroundColor: m.aktif ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmToggle({ open: true, data: m })} 
+      onClick={() => setConfirmToggle({ open: true, data: m })}
+      aria-label={m.aktif ? 'Personeli pasife al' : 'Personeli aktife al'}
       className={`p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer ${
       m.aktif ? 'text-rose-400 hover:border-rose-400/30' : 'text-emerald-400 hover:border-emerald-400/30'
       }`}
       >
       <Power className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>
-      <motion.button 
+      <motion.button
       whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmDelete({ open: true, data: m })} 
+      onClick={() => setConfirmDelete({ open: true, data: m })}
+      aria-label="Personeli sil"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
       >
       <Trash2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />

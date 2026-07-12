@@ -83,7 +83,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  : 'text-[var(--text-primary)]/30 hover:text-[var(--text-primary)]/60'
  }`}
  >
- <div className="relative z-10 transition-transform duration-500 group-">
+ <div className="relative z-10 transition-transform duration-500">
  {React.cloneElement(item.icon as React.ReactElement, { 
  strokeWidth: isActive ? 2 : 1.5,
  size: 20

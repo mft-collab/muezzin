@@ -10,17 +10,13 @@ import {
   senkronizeGuncelVeGelecekAyCache,
   VakitCacheKaydi,
 } from '../../../services/vakitCacheServisi';
+import { toJsDate } from '../../../lib/dateUtils';
 
 type UiMessage = { type: 'success' | 'error'; text: string } | null;
 
-function formatCacheDate(value: any) {
-  if (!value) return 'Sistem kaydı yok';
-
-  const date =
-    typeof value?.toDate === 'function'
-      ? value.toDate()
-      : new Date(value?.seconds ? value.seconds * 1000 : value);
-
+function formatCacheDate(value: unknown) {
+  const date = toJsDate(value);
+  if (!date) return 'Sistem kaydı yok';
   return format(date, 'dd MMMM yyyy - HH:mm', { locale: tr });
 }
 

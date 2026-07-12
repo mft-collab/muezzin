@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, auth, FieldValue } from './lib/firebaseAdminInit.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
@@ -184,7 +184,7 @@ async function main() {
 
       if (messages.length > 0) {
         console.log(`Yarın için ${messages.length} müezzine günlük hatırlatma bildirimleri gönderiliyor...`);
-        const response = await admin.messaging().sendEach(messages);
+        const response = await getMessaging().sendEach(messages);
         console.log(`Günlük FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
         
         // Clean up invalid tokens

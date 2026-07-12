@@ -1,6 +1,19 @@
 import { startOfWeek, format, parseISO } from 'date-fns';
 import { Vakit } from '../types';
 
+/**
+ * Firestore'dan gelen bir zaman değerini (Timestamp, {seconds}, ISO string
+ * veya Date) güvenli şekilde bir JS Date'e çevirir. Değer yoksa null döner.
+ */
+export function toJsDate(value: unknown): Date | null {
+  if (!value) return null;
+  const v = value as { toDate?: () => Date; seconds?: number };
+  if (typeof v.toDate === 'function') return v.toDate();
+  if (typeof v.seconds === 'number') return new Date(v.seconds * 1000);
+  const date = new Date(value as string | number | Date);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 export const VAKIT_GORA_ISIMLERI: Record<Vakit, string> = {
  sabah: "Sabah",
  ogle: "Öğle",
@@ -49,6 +62,22 @@ export function getTurkeyDateString(date?: Date): string {
  const month = String(d.getMonth() + 1).padStart(2, '0');
  const day = String(d.getDate()).padStart(2, '0');
  return `${year}-${month}-${day}`;
+}
+
+/**
+ * İki "HH:mm" saati arasındaki farkı dakika cinsinden döner (time2 - time1).
+ * Gece yarısını çevreleyen saatlerde (örn. 23:58 → 00:02) sonucu en kısa
+ * yöne sararak normalize eder — aksi halde -1436 gibi anlamsız bir fark
+ * çıkar, oysa gerçek fark +4 dakikadır.
+ */
+export function getMinutesDiff(time1: string | undefined, time2: string | undefined): number {
+ if (!time1 || !time2) return 0;
+ const [h1, m1] = time1.split(':').map(Number);
+ const [h2, m2] = time2.split(':').map(Number);
+ let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+ if (diff > 720) diff -= 1440;
+ if (diff < -720) diff += 1440;
+ return diff;
 }
 
 export function parseVakitToDate(tarih: string, vakitSaati: string): Date | null {

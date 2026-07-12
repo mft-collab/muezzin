@@ -6,7 +6,7 @@ import { db } from '../../../lib/firebase';
 import { format, subDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-export default function SistemAnalitigi({ onInceleClick }: { onInceleClick?: () => void }) {
+export default function SistemAnalitigi() {
   const [healthScore, setHealthScore] = useState(0);
   const [weeklyData, setWeeklyData] = useState<{ day: string; value: number; completed: number; total: number }[]>([]);
   const [loading, setLoading] = useState(true);

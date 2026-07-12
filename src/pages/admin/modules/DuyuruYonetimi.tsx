@@ -12,22 +12,20 @@ import {
 import { db } from '../../../lib/firebase';
 import { Duyuru } from '../../../hooks/useDuyurular';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
- Megaphone, 
- Plus, 
- Trash2, 
- AlertCircle, 
- Info, 
- Bell,
- X,
- Sparkles,
- Wand2,
- RefreshCw
+import {
+ Megaphone,
+ Plus,
+ Trash2,
+ AlertCircle,
+ Info,
+ LayoutTemplate
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from '../../../components/ui/Modal';
+import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { telemetryService } from '../../../services/telemetryService';
+import { toJsDate } from '../../../lib/dateUtils';
 
 export const DuyuruYonetimi: React.FC = () => {
  const [duyurular, setDuyurular] = useState<Duyuru[]>([]);
@@ -38,29 +36,29 @@ export const DuyuruYonetimi: React.FC = () => {
  icerik: '',
  tip: 'duyuru' as Duyuru['tip']
  });
+ const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+ const [deletingId, setDeletingId] = useState<string | null>(null);
 
- // AI Announcement/Sermon Assistant States
- const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
- const [aiTone, setAiTone] = useState<'resmi' | 'hitabet' | 'kisa'>('resmi');
- const [aiGenerating, setAiGenerating] = useState(false);
- const [aiResult, setAiResult] = useState('');
- const [aiError, setAiError] = useState<string | null>(null);
+ // Hazır duyuru şablonu önerici — anahtar kelime eşleştirmesiyle çalışan
+ // basit bir şablon seçicidir, yapay zeka içermez.
+ const [templatesOpen, setTemplatesOpen] = useState(false);
+ const [templateTone, setTemplateTone] = useState<'resmi' | 'hitabet' | 'kisa'>('resmi');
+ const [suggestedTemplate, setSuggestedTemplate] = useState('');
+ const [templateError, setTemplateError] = useState<string | null>(null);
 
- const handleAiOptimize = () => {
+ const handleSuggestTemplate = () => {
  if (!formData.icerik.trim()) {
- setAiError("Lütfen önce içerik detayı alanına kısa bir taslak veya anahtar kelimeler yazın.");
+ setTemplateError("Lütfen önce içerik detayı alanına kısa bir taslak veya anahtar kelimeler yazın.");
  return;
  }
- setAiError(null);
- setAiGenerating(true);
- setTimeout(() => {
+ setTemplateError(null);
  const rawText = formData.icerik.trim();
  let generated = '';
- 
+
  const isWater = rawText.toLowerCase().includes('su') || rawText.toLowerCase().includes('kesint');
  const isFriday = rawText.toLowerCase().includes('cuma') || rawText.toLowerCase().includes('vaaz') || rawText.toLowerCase().includes('yardım');
- 
- if (aiTone === 'resmi') {
+
+ if (templateTone === 'resmi') {
  if (isWater) {
  generated = `Değerli Cemaatimiz,\n\nCamimizin altyapı iyileştirme çalışmaları kapsamında belediye ekipleri tarafından yapılacak olan su kesintisi nedeniyle, şadırvan ve lavabolarımız geçici olarak hizmet veremeyecektir. Mağduriyet yaşanmaması adına gerekli tedbirlerin alınmasını rica eder, anlayışınız için teşekkür ederiz.\n\nSaygılarımızla,\nCami Yönetimi`;
  } else if (isFriday) {
@@ -68,7 +66,7 @@ export const DuyuruYonetimi: React.FC = () => {
  } else {
  generated = `Değerli Cemaatimiz,\n\nSizlere daha huzurlu ve temiz bir ibadet ortamı sunabilmek amacıyla ilettiğiniz konuyla ilgili gerekli planlamalar yapılmıştır: "${rawText}". Gelişmeler ve takvim hakkında sizleri bilgilendirmeye devam edeceğiz.\n\nSaygılarımızla,\nCami İdaresi`;
  }
- } else if (aiTone === 'hitabet') {
+ } else if (templateTone === 'hitabet') {
  if (isWater) {
  generated = `Muhterem Müslümanlar,\n\nCamimizde gerçekleştirilecek olan zorunlu temizlik ve altyapı bakım faaliyetleri sebebiyle şadırvanlarımızda kısa süreli su kesintisi yaşanacaktır. Maddi ve manevi temizliğin nişanesi olan ibadethanemizi daha güzel yarınlara hazırlamak için göstereceğiniz anlayış ve sabır için şimdiden teşekkür ederiz. Rabbim niyetlerinizi kabul eylesin.`;
  } else if (isFriday) {
@@ -85,21 +83,19 @@ export const DuyuruYonetimi: React.FC = () => {
  generated = `Duyuru: "${rawText}" hakkında gerekli idari ve teknik planlama başlatılmıştır. Bilgilerinize sunulur.`;
  }
  }
- 
- setAiResult(generated);
- setAiGenerating(false);
- }, 1200);
+
+ setSuggestedTemplate(generated);
  };
 
- const applyAiText = () => {
- if (aiResult) {
+ const applyTemplate = () => {
+ if (suggestedTemplate) {
  setFormData(prev => ({
  ...prev,
- icerik: aiResult,
- baslik: prev.baslik || (aiTone === 'kisa' ? 'Önemli Bilgilendirme' : 'Cemaatimize Duyuru')
+ icerik: suggestedTemplate,
+ baslik: prev.baslik || (templateTone === 'kisa' ? 'Önemli Bilgilendirme' : 'Cemaatimize Duyuru')
  }));
- setAiResult('');
- setAiAssistantOpen(false);
+ setSuggestedTemplate('');
+ setTemplatesOpen(false);
  }
  };
 
@@ -127,8 +123,6 @@ export const DuyuruYonetimi: React.FC = () => {
         ...formData,
         tarih: Timestamp.now()
       });
-      sessionStorage.removeItem('admin_activeDuyurular');
-      sessionStorage.removeItem('admin_counts_time');
       await telemetryService.logAudit('Duyuru Yayınlama', formData.baslik, `Yeni duyuru panoda paylaşıldı. Kategori: ${formData.tip.toUpperCase()}`);
       setModalOpen(false);
       setFormData({ baslik: '', icerik: '', tip: 'duyuru' });
@@ -137,16 +131,21 @@ export const DuyuruYonetimi: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const executeDelete = async () => {
+    const id = confirmDelete.id;
+    if (!id) return;
     try {
+      setDeletingId(id);
       const match = duyurular.find(d => d.id === id);
       const title = match ? match.baslik : 'Bilinmeyen Duyuru';
       await deleteDoc(doc(db, 'duyurular', id));
-      sessionStorage.removeItem('admin_activeDuyurular');
-      sessionStorage.removeItem('admin_counts_time');
       await telemetryService.logAudit('Duyuru Silme', title, 'Yayınlanmış olan duyuru panodan kaldırıldı ve kalıcı olarak silindi.');
+      setConfirmDelete({ open: false, id: null });
     } catch (error) {
       console.error('Duyuru silinemedi:', error);
+      setConfirmDelete({ open: false, id: null });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -207,11 +206,13 @@ export const DuyuruYonetimi: React.FC = () => {
  duyuru.tip === 'bilgi' ? <Info size={20} /> : <Megaphone size={20} />}
  </div>
  
- <motion.button 
+ <motion.button
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
  whileTap={{ scale: 0.9 }}
- onClick={() => handleDelete(duyuru.id)}
- className="p-3 text-[var(--text-primary)]/10 hover:text-rose-500 transition-all rounded-xl border border-transparent hover:border-rose-500/20"
+ onClick={() => setConfirmDelete({ open: true, id: duyuru.id })}
+ disabled={deletingId === duyuru.id}
+ aria-label="Duyuruyu sil"
+ className="p-3 text-[var(--text-primary)]/10 hover:text-rose-500 transition-all rounded-xl border border-transparent hover:border-rose-500/20 disabled:opacity-40"
  >
  <Trash2 size={16} />
  </motion.button>
@@ -230,12 +231,8 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex flex-col gap-0.5">
  <span className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
  <span className="text-[9px] font-medium text-[var(--text-primary)]/40 uppercase tracking-wide">
- {duyuru.tarih 
- ? format(
- typeof duyuru.tarih?.toDate === 'function' ? duyuru.tarih.toDate() : new Date(duyuru.tarih?.seconds ? duyuru.tarih.seconds * 1000 : duyuru.tarih), 
- 'd MMMM yyyy', 
- { locale: tr }
- ) 
+ {toJsDate(duyuru.tarih)
+ ? format(toJsDate(duyuru.tarih)!, 'd MMMM yyyy', { locale: tr })
  : '—'}
  </span>
  </div>
@@ -291,24 +288,24 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
  </div>
 
- {/* Yapay Zeka Vaaz ve Duyuru Asistanı */}
+ {/* Hazır Duyuru Şablonları — anahtar kelimeye göre şablon önerir, yapay zeka değildir */}
  <div className="spatial-glass border border-[var(--dynamic-aura,var(--aura-indigo))]/15 p-5 rounded-2xl space-y-4 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))]/[0.01] to-purple-500/[0.01]">
  <div className="flex justify-between items-center">
  <div className="flex items-center gap-2">
- <Sparkles size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
- <span className="text-[10px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">AI Duyuru ve Vaaz Asistanı</span>
+ <LayoutTemplate size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
+ <span className="text-[10px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">Hazır Duyuru Şablonları</span>
  </div>
  <button
  type="button"
- onClick={() => setAiAssistantOpen(!aiAssistantOpen)}
+ onClick={() => setTemplatesOpen(!templatesOpen)}
  className="text-[9px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-all px-3 py-1.5 rounded-lg border border-white/5 bg-white/[0.01]"
  >
- {aiAssistantOpen ? 'Asistanı Kapat' : 'Asistanı Aç'}
+ {templatesOpen ? 'Şablonları Gizle' : 'Şablonları Göster'}
  </button>
  </div>
 
- {aiAssistantOpen && (
- <motion.div 
+ {templatesOpen && (
+ <motion.div
  initial={{ opacity: 0, height: 0 }}
  animate={{ opacity: 1, height: 'auto' }}
  className="space-y-4 overflow-hidden pt-2 border-t border-white/5"
@@ -324,10 +321,10 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  key={tone.key}
  type="button"
- onClick={() => setAiTone(tone.key as any)}
+ onClick={() => setTemplateTone(tone.key as any)}
  className={`py-2 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
- aiTone === tone.key 
- ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
+ templateTone === tone.key
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/30'
  : 'bg-white/[0.01] text-white/30 border-white/5 hover:border-white/10'
  }`}
  >
@@ -340,58 +337,48 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex gap-4 items-center">
  <button
  type="button"
- onClick={handleAiOptimize}
- disabled={aiGenerating}
+ onClick={handleSuggestTemplate}
  className="flex-1 py-3 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-purple-500/60 text-white rounded-xl text-[9px] font-bold uppercase tracking-wide shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 hover:opacity-90 transition-all flex items-center justify-center gap-2"
  >
- {aiGenerating ? (
- <>
- <RefreshCw size={10} className="animate-spin" />
- AI METNİ DÜZENLİYOR...
- </>
- ) : (
- <>
- <Wand2 size={10} />
- Taslağımı AI ile Zenginleştir
- </>
- )}
+ <LayoutTemplate size={10} />
+ Uygun Şablonu Öner
  </button>
  </div>
 
- {aiError && (
+ {templateError && (
  <motion.div
  initial={{ opacity: 0, y: -6 }}
  animate={{ opacity: 1, y: 0 }}
  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold leading-relaxed"
  >
- {aiError}
+ {templateError}
  </motion.div>
  )}
 
- {aiResult && (
- <motion.div 
+ {suggestedTemplate && (
+ <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
  className="space-y-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl"
  >
  <div className="flex justify-between items-center border-b border-white/5 pb-2">
- <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">AI TARAFINDAN ÖNERİLEN METİN:</span>
- <span className="text-[9px] text-white/30 uppercase tracking-wide">({aiTone} üslup)</span>
+ <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">ÖNERİLEN ŞABLON METNİ:</span>
+ <span className="text-[9px] text-white/30 uppercase tracking-wide">({templateTone} üslup)</span>
  </div>
  <p className="text-xs text-white/80 leading-relaxed font-light whitespace-pre-wrap">
- {aiResult}
+ {suggestedTemplate}
  </p>
  <div className="flex gap-3 pt-2">
  <button
  type="button"
- onClick={applyAiText}
+ onClick={applyTemplate}
  className="flex-1 py-2.5 bg-white text-black rounded-lg text-[10px] font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
  >
- Öneriyi Metne Uygula
+ Şablonu Metne Uygula
  </button>
  <button
  type="button"
- onClick={() => setAiResult('')}
+ onClick={() => setSuggestedTemplate('')}
  className="px-4 py-2.5 bg-white/5 text-white/50 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:text-white transition-all"
  >
  Temizle
@@ -450,6 +437,16 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
  </form>
  </Modal>
+
+ <ConfirmModal
+ isOpen={confirmDelete.open}
+ onClose={() => setConfirmDelete({ open: false, id: null })}
+ onConfirm={executeDelete}
+ title="DUYURUYU SİL"
+ message="Bu duyuru panodan ve tüm kullanıcıların ekranından kalıcı olarak kaldırılacaktır. Bu işlem geri alınamaz."
+ isDanger={true}
+ confirmText="EVET, KALICI OLARAK SİL"
+ />
  </div>
  );
 };

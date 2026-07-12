@@ -8,6 +8,23 @@ export interface GpsVakitResult {
   konumAdi: string;
 }
 
+interface AladhanTimings {
+  Imsak: string;
+  Sunrise: string;
+  Dhuhr: string;
+  Asr: string;
+  Maghrib: string;
+  Isha: string;
+}
+
+const ALADHAN_TIMING_KEYS: (keyof AladhanTimings)[] = ['Imsak', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+function isValidAladhanTimings(value: unknown): value is AladhanTimings {
+  if (!value || typeof value !== 'object') return false;
+  const t = value as Record<string, unknown>;
+  return ALADHAN_TIMING_KEYS.every((key) => typeof t[key] === 'string' && t[key].length > 0);
+}
+
 /**
  * GPS COORDINATE PRAYER SERVICE
  * Fetches high-resolution location based prayer times using T.C. Diyanet method (method=13)
@@ -17,8 +34,12 @@ export async function konumVakitleriniCek(
   longitude: number
 ): Promise<GpsVakitResult> {
   const simdi = getTurkeyNow();
-  const timestamp = Math.floor(simdi.getTime() / 1000);
   const dateStr = getTurkeyDateString(simdi);
+  // Dikkat: getTurkeyNow() uygulama içi gösterim için gerçek olmayan (Türkiye saatine
+  // kaydırılmış) bir epoch üretir — dış API'ye ham "şu an" epoch'u olarak gönderilirse
+  // cihaz Türkiye dışında bir saat diliminde olduğunda yanlış takvim gününün vakitleri
+  // dönebilir. Aladhan'a her zaman gerçek Unix zaman damgasını gönderiyoruz.
+  const timestamp = Math.floor(Date.now() / 1000);
 
   // Fetch timings and geocoding in parallel to minimize network latency
   const timingsPromise = (async () => {
@@ -28,7 +49,11 @@ export async function konumVakitleriniCek(
       throw new Error('Konum bazlı ezan vakitlerine erişilemiyor.');
     }
     const result = await response.json();
-    return result.data.timings;
+    const timings = result?.data?.timings;
+    if (!isValidAladhanTimings(timings)) {
+      throw new Error('Ezan vakti servisi beklenmeyen bir yanıt döndü.');
+    }
+    return timings;
   })();
 
   const cacheKey = `gps_geo_${latitude.toFixed(3)}_${longitude.toFixed(3)}`;
@@ -38,7 +63,7 @@ export async function konumVakitleriniCek(
     if (cachedVal) {
       try {
         return JSON.parse(cachedVal);
-      } catch (e) {}
+      } catch {}
     }
     try {
       const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=tr`;

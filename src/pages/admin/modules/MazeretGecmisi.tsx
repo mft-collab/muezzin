@@ -4,10 +4,11 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileDown, Filter, User, Trash2 } from 'lucide-react';
+import { FileDown, Filter, Trash2 } from 'lucide-react';
 import { db } from '../../../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { exportCsv } from '../../../lib/csvExport';
 
 export default function MazeretGecmisi() {
  const { gecmis, loading } = useMazeretGecmisi();
@@ -47,22 +48,13 @@ export default function MazeretGecmisi() {
  const exportCSV = () => {
  const headers = ['Tarih', 'Vakit', 'Müezzin', 'Mazeret Sebebi'];
  const rows = filtered.map(g => [
- g.tarih, 
- g.vakit, 
- getMuezzinName(g.uid), 
+ g.tarih,
+ g.vakit,
+ getMuezzinName(g.uid),
  g.retSebebi || 'Belirtilmedi'
  ]);
- 
- const csvContent = "data:text/csv;charset=utf-8," 
- + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
- 
- const encodedUri = encodeURI(csvContent);
- const link = document.createElement("a");
- link.setAttribute("href", encodedUri);
- link.setAttribute("download", `mazeret-gecmisi-${format(new Date(), 'yyyy-MM-dd')}.csv`);
- document.body.appendChild(link);
- link.click();
- document.body.removeChild(link);
+
+ exportCsv(headers, rows, `mazeret-gecmisi-${format(new Date(), 'yyyy-MM-dd')}.csv`);
  };
 
  if (loading) return (
@@ -196,6 +188,7 @@ export default function MazeretGecmisi() {
       whileTap={{ scale: 0.9 }}
       onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, id: g.id }); }}
       disabled={deletingId === g.id}
+      aria-label="Kaydı sil"
       className="p-2.5 rounded-xl text-rose-500/40 hover:text-rose-500 border border-transparent hover:border-rose-500/20 transition-all flex items-center justify-center shrink-0 disabled:opacity-20 disabled:cursor-not-allowed"
     >
       <Trash2 size={14} />
@@ -244,6 +237,7 @@ export default function MazeretGecmisi() {
               type="button"
               onClick={() => setConfirmDelete({ open: true, id: g.id })}
               disabled={deletingId === g.id}
+              aria-label="Kaydı sil"
               className="text-rose-500/40 hover:text-rose-500 transition-colors p-1 disabled:opacity-20"
             >
               <Trash2 size={13} />

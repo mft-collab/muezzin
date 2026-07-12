@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAdminIzinler } from '../../../hooks/admin/useAdminIzinler';
+import { useAdminIzinlerStore } from '../../../store/useAdminIzinlerStore';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -8,7 +8,7 @@ import { Check, X, Calendar, User, Trash2, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 
 export default function IzinYonetimi() {
- const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinler();
+ const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinlerStore();
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const [filter, setFilter] = useState<'all' | 'onay_bekliyor' | 'onaylandi' | 'reddedildi'>('all');
  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -98,7 +98,7 @@ export default function IzinYonetimi() {
  >
  <AlertCircle size={18} className="shrink-0" />
  <span className="leading-relaxed">{uiMessage}</span>
- <button type="button" onClick={() => setUiMessage(null)} className="ml-auto text-amber-500/50 hover:text-amber-500 transition-colors">
+ <button type="button" onClick={() => setUiMessage(null)} aria-label="Kapat" className="ml-auto text-amber-500/50 hover:text-amber-500 transition-colors">
  <X size={14} />
  </button>
  </motion.div>
@@ -204,16 +204,18 @@ export default function IzinYonetimi() {
   kararVer(izin.id!, 'onaylandi');
   }}
   disabled={isProcessing}
+  aria-label="İzni onayla"
   className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 text-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/5 transition-colors"
   >
  <Check className="w-5 h-5 sm:w-6 sm:h-6" />
  </motion.button>
- 
+
   <motion.button
   whileHover={{ y: -4, scale: 1.05, backgroundColor: 'rgba(244,63,94,0.2)' }}
   whileTap={{ scale: 0.95 }}
   onClick={() => kararVer(izin.id!, 'reddedildi')}
   disabled={isProcessing}
+  aria-label="İzni reddet"
   className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-500/10 text-rose-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-lg shadow-rose-500/5 transition-colors"
  >
  <X className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -231,6 +233,7 @@ export default function IzinYonetimi() {
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
  whileTap={{ scale: 0.9 }}
  onClick={() => setDeleteConfirm({ open: true, id: izin.id! })}
+ aria-label="Kaydı sil"
  className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-[var(--text-secondary)]/30 rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-lg"
  >
  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />

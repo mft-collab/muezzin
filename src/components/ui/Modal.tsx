@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,16 +13,32 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, className = '', contentClassName = '' }: ModalProps) {
+ const titleId = useId();
+ const dialogRef = useRef<HTMLDivElement>(null);
+ const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
  useEffect(() => {
  if (isOpen) {
  document.body.style.overflow = 'hidden';
+ previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+ dialogRef.current?.focus();
  } else {
  document.body.style.overflow = 'unset';
+ previouslyFocusedRef.current?.focus();
  }
  return () => {
  document.body.style.overflow = 'unset';
  };
  }, [isOpen]);
+
+ useEffect(() => {
+ if (!isOpen) return;
+ const handleKeyDown = (e: KeyboardEvent) => {
+ if (e.key === 'Escape') onClose();
+ };
+ window.addEventListener('keydown', handleKeyDown);
+ return () => window.removeEventListener('keydown', handleKeyDown);
+ }, [isOpen, onClose]);
 
  return createPortal(
  <AnimatePresence>
@@ -42,7 +58,12 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       />
     </motion.div>
     
-    <motion.div 
+    <motion.div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
       drag="y"
       dragConstraints={{ top: 0 }}
       dragElastic={{ top: 0.02, bottom: 0.85 }}
@@ -55,7 +76,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 150 }}
       transition={{ type: "spring", stiffness: 320, damping: 28, mass: 1 }}
-      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-[38px] rounded-b-none sm:rounded-[38px] ${contentClassName}`}
+      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-[38px] rounded-b-none sm:rounded-[38px] outline-none ${contentClassName}`}
     >
       {/* Drag Handle Indicator for Mobile */}
       <div className="w-12 h-1 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-full mx-auto mb-4 sm:hidden shrink-0 pointer-events-none transition-colors" />
@@ -63,10 +84,11 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       <div className="flex justify-between items-start mb-6 sm:mb-10 shrink-0">
         <div>
           <p className="premium-label !text-[7px] opacity-25 dark:opacity-20 mb-2 uppercase">SİSTEM BİLGİ KATMANI</p>
-          <h2 className="text-2xl sm:text-4xl font-light tracking-tight text-[var(--text-primary)] apple-thin">{title}</h2>
+          <h2 id={titleId} className="text-2xl sm:text-4xl font-light tracking-tight text-[var(--text-primary)] apple-thin">{title}</h2>
         </div>
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
+          aria-label="Kapat"
           className="w-11 h-11 sm:w-12 sm:h-12 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:border-[var(--dynamic-aura,var(--aura-indigo))]/40 hover:shadow-[0_0_15px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] rounded-[18px] sm:rounded-[20px] flex items-center justify-center border border-[var(--glass-border)] transition-all text-[var(--text-primary)]"
         >
           <X size={18} className="sm:hidden" strokeWidth={1.5} />

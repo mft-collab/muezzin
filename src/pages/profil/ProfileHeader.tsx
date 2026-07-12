@@ -147,10 +147,11 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  <h3 className="text-3xl md:text-5xl font-light text-[var(--text-primary)] tracking-tight apple-thin hover:font-normal transition-all duration-700 cursor-default">
  {userData?.displayName}
  </h3>
- <motion.button 
+ <motion.button
  whileHover={{ scale: 1.1, backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.9 }}
  onClick={() => setEditMode(true)}
+ aria-label="İsmi düzenle"
  className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl transition-all shadow-lg"
  >
  <Edit3 size={18} className="text-[var(--text-secondary)]/40" />

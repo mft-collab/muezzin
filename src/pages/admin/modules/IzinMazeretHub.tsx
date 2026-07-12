@@ -15,13 +15,18 @@ export default function IzinMazeretHub() {
  return (
  <div className="flex flex-col gap-10">
  {/* INTERNAL SUB-NAV: Luminous Segmented Control */}
- <div className="flex items-center gap-1.5 bg-[var(--surface-low)] p-1 rounded-[20px] sm:rounded-[24px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] w-full sm:w-auto">
+ <div role="tablist" aria-label="İzin ve mazeret sekmeleri" className="flex items-center gap-1.5 bg-[var(--surface-low)] p-1 rounded-[20px] sm:rounded-[24px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] w-full sm:w-auto">
  {tabs.map(tab => {
  const Icon = tab.icon;
  const isActive = activeSubTab === tab.id;
  return (
  <button
  key={tab.id}
+ role="tab"
+ id={`izin-tab-${tab.id}`}
+ aria-selected={isActive}
+ aria-controls={`izin-panel-${tab.id}`}
+ tabIndex={isActive ? 0 : -1}
  onClick={() => setActiveSubTab(tab.id as any)}
  className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-8 py-3 sm:py-4 rounded-[16px] sm:rounded-[20px] transition-all duration-700 relative group overflow-hidden ${
  isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]/25 hover:text-[var(--text-primary)]/55'
@@ -57,7 +62,13 @@ export default function IzinMazeretHub() {
  </div>
 
  {/* CONTENT: Spatial Context Stream */}
- <div className="relative">
+ <div
+ className="relative"
+ role="tabpanel"
+ id={`izin-panel-${activeSubTab}`}
+ aria-labelledby={`izin-tab-${activeSubTab}`}
+ tabIndex={0}
+ >
  <AnimatePresence mode="wait">
  <motion.div
  key={activeSubTab}

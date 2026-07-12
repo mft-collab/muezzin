@@ -15,6 +15,7 @@ import {
   calculateLastThirdOfNight,
   calculateVakitProgress,
   getHaftaIdFromDate,
+  getMinutesDiff,
   parseVakitToDate,
   toTurkishUpperCase
 } from '../src/lib/dateUtils';
@@ -22,7 +23,7 @@ import { tieBreakerSirala } from '../src/utils/tieBreaker';
 import { haftalikPlanUret } from '../src/lib/planlamaCekirdegi';
 import { mevcutVaktiHesapla, sonrakiVaktiHesapla } from '../src/services/ezanVaktiServisi';
 import { Muezzin } from '../src/types';
-import { isRamazanArifeOncesi, isKurbanArifeOncesi, isRamazanBaslangiciOncesi } from '../src/lib/islamicCalendar';
+import { isKurbanArifeOncesi, isRamazanBaslangiciOncesi } from '../src/lib/islamicCalendar';
 
 type TestCase = {
   name: string;
@@ -267,10 +268,48 @@ const tests: TestCase[] = [
       // Dolayısıyla 2026-02-17 tarihi Ramazan'dan 1 gün öncesidir (Şaban ayının son günü)
       const ramazanOncesiDate = new Date(2026, 1, 17, 12, 0, 0); // 17 Şubat 2026
       const ramazanBaslangicDate = new Date(2026, 1, 18, 12, 0, 0); // 18 Şubat 2026
-      
+
       assert.ok(isRamazanBaslangiciOncesi(ramazanOncesiDate));
       assert.ok(!isRamazanBaslangiciOncesi(ramazanBaslangicDate));
     }
+  },
+  {
+    name: 'getMinutesDiff ayni gun icinde duz fark doner',
+    run: () => {
+      assert.equal(getMinutesDiff('12:00', '12:05'), 5);
+      assert.equal(getMinutesDiff('12:05', '12:00'), -5);
+      assert.equal(getMinutesDiff(undefined, '12:00'), 0);
+      assert.equal(getMinutesDiff('12:00', undefined), 0);
+    }
+  },
+  {
+    name: 'getMinutesDiff gece yarisini en kisa yone sararak hesaplar',
+    run: () => {
+      // Düz fark (00:02 - 23:58) 24 saat kadar sarmadan hesaplanırsa -1436
+      // çıkardı; gerçekte iki saat arası yalnızca 4 dakikadır.
+      assert.equal(getMinutesDiff('23:58', '00:02'), 4);
+      assert.equal(getMinutesDiff('00:02', '23:58'), -4);
+    }
+  },
+  {
+    name: 'gunun tum vakitleri gecti ve yarin verisi yoksa sonraki vakit null doner',
+    run: () => withFakeNow('2026-05-22T22:00:00.000Z', () => {
+      // Ay sonu gecisinde bir sonraki ayin verisi henuz gelmemis olabilir
+      // (bkz. useVakitStore) — bu durumda sonrakiVaktiHesapla'nin null
+      // dondugu, AnaEkranHero'daki "veriler guncelleniyor" fallback'inin
+      // dayandigi sozlesmedir.
+      const bugun = {
+        tarih: '2026-05-22',
+        sabah: '05:00',
+        gunes: '06:30',
+        ogle: '13:00',
+        ikindi: '17:00',
+        aksam: '20:00',
+        yatsi: '21:30'
+      };
+
+      assert.equal(sonrakiVaktiHesapla(bugun), null);
+    })
   }
 ];
 

@@ -1,6 +1,6 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
-import { db, Timestamp } from '../../scripts/lib/firebaseAdminInit.ts';
+import { db } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processMazeretDevirleri } from '../../scripts/mazeretDevirleriniIsle.ts';
 
 type TestCase = {
@@ -47,8 +47,14 @@ const tests: TestCase[] = [
         }
       });
 
-      // Seed Notifications
-      const mazeretRef = db.collection('bildirimler').doc('bildirim_asil');
+      // Seed Notifications — istemci tarafı (mazeretServisi.ts'deki transaction)
+      // bu iş çalışmadan ÖNCE zaten yedeği 'asil' rolüne terfi ettirmiş ve
+      // asil bildirimine devirSonucu='yedek_atandi' yazmış olarak kabul edilir;
+      // bu script yalnızca haftaPlanlari önbelleğini bununla senkronize eder.
+      // ID'ler deterministiktir: {haftaId}_{tarih}_{vakit}_{asil|yedek}
+      // (bkz. README) — mazeretDevirleriniIsle.ts, yedek dokümanını tam
+      // olarak bu şemayla türetip arıyor.
+      const mazeretRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_asil');
       await mazeretRef.set({
         haftaId: 'W2026-05-18',
         tarih: '2026-05-22',
@@ -56,16 +62,17 @@ const tests: TestCase[] = [
         uid: 'muezzin_asil',
         tip: 'asil',
         durum: 'reddedildi', // Mazeret bildirilmis
-        devirIslendi: false
+        devirSonucu: 'yedek_atandi',
+        planSenkronEdildi: false
       });
 
-      const yedekRef = db.collection('bildirimler').doc('bildirim_yedek');
+      const yedekRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_yedek');
       await yedekRef.set({
         haftaId: 'W2026-05-18',
         tarih: '2026-05-22',
         vakit: 'sabah',
         uid: 'muezzin_yedek',
-        tip: 'yedek',
+        tip: 'asil', // istemci tarafından zaten terfi ettirilmiş
         durum: 'bekliyor'
       });
 
@@ -74,13 +81,8 @@ const tests: TestCase[] = [
 
       // Assert
       const mazeretDoc = await mazeretRef.get();
-      assert.equal(mazeretDoc.data()?.devirIslendi, true);
+      assert.equal(mazeretDoc.data()?.planSenkronEdildi, true);
       assert.equal(mazeretDoc.data()?.devirSonucu, 'yedek_atandi');
-
-      const yedekDoc = await yedekRef.get();
-      assert.equal(yedekDoc.data()?.tip, 'asil');
-      assert.equal(yedekDoc.data()?.durum, 'bekliyor');
-      assert.equal(yedekDoc.data()?.pendingAck, true);
 
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
       assert.equal(haftaDoc.data()?.gunler['2026-05-22'].sabah.asil, 'muezzin_yedek');
@@ -100,7 +102,8 @@ const tests: TestCase[] = [
       });
       // No active yedek
 
-      // Seed Notifications
+      // Seed Notifications — istemci uygun bir yedek bulamadigi icin
+      // devirSonucu='alarm_bekliyor' yazmis olarak kabul edilir.
       const mazeretRef = db.collection('bildirimler').doc('bildirim_asil_2');
       await mazeretRef.set({
         haftaId: 'W2026-05-18',
@@ -109,7 +112,8 @@ const tests: TestCase[] = [
         uid: 'muezzin_asil',
         tip: 'asil',
         durum: 'reddedildi', // Mazeret
-        devirIslendi: false
+        devirSonucu: 'alarm_bekliyor',
+        planSenkronEdildi: false
       });
 
       // Act
@@ -117,7 +121,7 @@ const tests: TestCase[] = [
 
       // Assert
       const mazeretDoc = await mazeretRef.get();
-      assert.equal(mazeretDoc.data()?.devirIslendi, true);
+      assert.equal(mazeretDoc.data()?.planSenkronEdildi, true);
       assert.equal(mazeretDoc.data()?.devirSonucu, 'alarm_uretildi');
 
       const alarmSnap = await db.collection('adminUyarilari').get();

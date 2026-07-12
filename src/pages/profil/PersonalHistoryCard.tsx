@@ -82,7 +82,7 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
       ) : history.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-white/5 rounded-3xl">
           <BookOpen className="text-white/5 mx-auto mb-4" size={32} strokeWidth={1.5} />
-          <p className="text-[11px] text-[var(--text-secondary)]/30 font-light">Son 30 gün içinde onaylanmış veya mazeret bildirilmiş bir göreviniz bulunmamaktadır.</p>
+          <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Son 30 gün içinde onaylanmış veya mazeret bildirilmiş bir göreviniz bulunmamaktadır.</p>
         </div>
       ) : (
         <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[1px] before:bg-[var(--glass-border)]">

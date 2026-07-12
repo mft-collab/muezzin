@@ -40,9 +40,16 @@ export function useDashboardLogic() {
   const { gpsEnabled, refreshGpsVakitler } = useGpsVakitStore();
 
   useEffect(() => {
-    if (gpsEnabled) {
+    if (!gpsEnabled) return;
+    // Mount / GPS açılışında hemen dene; ardından gece yarısı geçişini
+    // yakalamak için periyodik olarak kontrol et (store içindeki
+    // lastFetchDate kilidi sayesinde günde bir kereden fazla API çağrısı
+    // yapılmaz — bkz. useGpsVakitStore.refreshGpsVakitler).
+    refreshGpsVakitler();
+    const interval = setInterval(() => {
       refreshGpsVakitler();
-    }
+    }, 60_000);
+    return () => clearInterval(interval);
   }, [gpsEnabled, refreshGpsVakitler]);
 
   const sonraki = useSonrakiVakit(bugunVakitler, yarinVakitler);
