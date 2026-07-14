@@ -64,18 +64,18 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  </div>
  <div>
  <h2 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none">Kişisel Görevlerim</h2>
- <p className={`authority-title text-[10px] mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
+ <p className={`authority-title text-[11px] mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
  </div>
  </motion.div>
 
  {loading ? (
  <div className="grid grid-cols-1 gap-6">
  {[1, 2].map(i => (
- <div key={i} className="skeleton-shimmer h-36 rounded-[32px] flex items-center px-8 gap-6 border border-white/[0.04] relative overflow-hidden">
- <div className="w-12 h-12 rounded-2xl bg-white/5" />
+ <div key={i} className="skeleton-shimmer h-36 rounded-[32px] flex items-center px-8 gap-6 border border-[var(--text-primary)]/[0.04] relative overflow-hidden">
+ <div className="w-12 h-12 rounded-2xl bg-[var(--text-primary)]/5" />
  <div className="flex-1 space-y-3">
- <div className="w-1/3 h-2 bg-white/5 rounded-full" />
- <div className="w-1/2 h-3 bg-white/5 rounded-full opacity-50" />
+ <div className="w-1/3 h-2 bg-[var(--text-primary)]/5 rounded-full" />
+ <div className="w-1/2 h-3 bg-[var(--text-primary)]/5 rounded-full opacity-50" />
  </div>
  </div>
  ))}
@@ -93,7 +93,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  <CheckCircle2 size={32} strokeWidth={1.2} />
  </div>
  <h3 className="text-2xl sm:text-3xl font-light mb-5 tracking-tight text-[var(--text-primary)]">Bugün görev yok</h3>
- <p className="authority-title !text-[10px] max-w-sm mx-auto leading-relaxed mt-8 opacity-35">BUGÜN İÇİN ATANMIŞ BİR GÖREVİNİZ BULUNMAMAKTADIR.</p>
+ <p className="authority-title !text-[11px] max-w-sm mx-auto leading-relaxed mt-8 opacity-35">BUGÜN İÇİN ATANMIŞ BİR GÖREVİNİZ BULUNMAMAKTADIR.</p>
  </motion.div>
  ) : (
  <div className="grid grid-cols-1 gap-8">

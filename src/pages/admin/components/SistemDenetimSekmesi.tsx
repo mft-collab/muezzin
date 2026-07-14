@@ -40,7 +40,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
           <ClipboardList size={16} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
           Yönetici Denetim İzleri (Audit Logs)
         </h4>
-        <span className="premium-label !text-[9px] !opacity-20">{logs.length} SON İŞLEM LİSTELENDİ</span>
+        <span className="premium-label !text-[11px] !opacity-20">{logs.length} SON İŞLEM LİSTELENDİ</span>
       </div>
 
       <div className="space-y-4">
@@ -50,7 +50,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
               <Shield size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Kayıt Bulunmuyor</p>
-            <p className="premium-label !text-[10px] !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
+            <p className="premium-label !text-[11px] !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
           </div>
         ) : (
           logs.map((log) => (
@@ -61,7 +61,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
             >
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-[14px] bg-white/[0.03] border border-white/5 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] flex-shrink-0 shadow-lg">
+                  <div className="w-10 h-10 rounded-[14px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/5 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] flex-shrink-0 shadow-lg">
                     <User size={18} />
                   </div>
                   <div>
@@ -69,20 +69,20 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                       <span className="text-sm font-medium text-[var(--text-primary)] tracking-tight">
                         {log.userDisplayName}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
                         {log.actionType}
                       </span>
                     </div>
                     <p className="text-xs text-[var(--text-secondary)]/70 mt-1 font-light leading-relaxed">
-                      <span className="font-semibold text-white/50">{log.targetName}:</span> {log.details}
+                      <span className="font-semibold text-[var(--text-secondary)]">{log.targetName}:</span> {log.details}
                     </p>
                   </div>
                 </div>
                 <div className="text-right sm:flex-shrink-0">
-                  <span className="text-[10px] text-[var(--text-secondary)]/50 font-bold block">
+                  <span className="text-[11px] text-[var(--text-secondary)]/50 font-bold block">
                     {formatDate(log.timestamp)}
                   </span>
-                  <span className="text-[10px] text-[var(--text-secondary)]/20 font-mono block mt-1">
+                  <span className="text-[11px] text-[var(--text-secondary)]/20 font-mono block mt-1">
                     LOG ID: {log.id}
                   </span>
                 </div>

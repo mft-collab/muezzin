@@ -87,7 +87,7 @@ export default function EzanOnbellegi() {
   <div className="flex h-[500px] items-center justify-center">
    <div className="flex flex-col items-center gap-6">
     <div className="w-12 h-12 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin" />
-    <p className="authority-title !text-[10px] opacity-35 tracking-wide uppercase">Önbellek kayıtları okunuyor</p>
+    <p className="authority-title !text-[11px] opacity-35 tracking-wide uppercase">Önbellek kayıtları okunuyor</p>
    </div>
   </div>
  );
@@ -97,14 +97,14 @@ export default function EzanOnbellegi() {
    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div className="flex flex-col gap-1.5">
      <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Ezan Önbelleği</h2>
-     <p className="authority-title !text-[10px] opacity-45 font-medium tracking-wide uppercase">
+     <p className="authority-title !text-[11px] opacity-45 font-medium tracking-wide uppercase">
       Diyanet öncelikli, Aladhan yedekli vakit verisi
      </p>
     </div>
 
     <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--surface-low)] rounded-[14px] border border-[var(--glass-border)]">
      <div className="w-2 h-2 rounded-full bg-emerald-500" />
-     <span className="authority-title !text-[10px] font-bold tracking-wide uppercase text-emerald-500">Servis hazır</span>
+     <span className="authority-title !text-[11px] font-bold tracking-wide uppercase text-emerald-500">Servis hazır</span>
     </div>
    </div>
 
@@ -145,7 +145,7 @@ export default function EzanOnbellegi() {
       whileTap={{ scale: 0.98 }}
       onClick={handleSenkronizeEt}
       disabled={syncing}
-      className="w-full sm:w-auto px-6 py-3.5 bg-white text-black rounded-[14px] uppercase tracking-wide text-[10px] flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
+      className="w-full sm:w-auto px-6 py-3.5 bg-white text-black rounded-[14px] uppercase tracking-wide text-[11px] flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
      >
       <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
       <span>{syncing ? 'Senkronize ediliyor' : 'Verileri senkronize et'}</span>
@@ -155,7 +155,7 @@ export default function EzanOnbellegi() {
     <div className="hidden md:block rounded-[18px] overflow-hidden border border-[var(--glass-border)] bg-[var(--surface-medium)]">
      <table className="w-full text-left">
       <thead>
-       <tr className="authority-title !text-[10px] opacity-55 uppercase tracking-wide border-b border-[var(--glass-border)]">
+       <tr className="authority-title !text-[11px] opacity-55 uppercase tracking-wide border-b border-[var(--glass-border)]">
         <th className="px-6 py-4 font-bold">Zaman Referansı</th>
         <th className="px-6 py-4 font-bold">Sağlayıcı</th>
         <th className="px-6 py-4 font-bold">Son Güncelleme</th>
@@ -166,7 +166,7 @@ export default function EzanOnbellegi() {
        {onbellekler.length === 0 ? (
         <tr>
          <td colSpan={4} className="px-6 py-16 text-center">
-          <p className="authority-title !text-[10px] opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
+          <p className="authority-title !text-[11px] opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
          </td>
         </tr>
        ) : (
@@ -182,7 +182,7 @@ export default function EzanOnbellegi() {
            <span className="text-sm font-semibold text-[var(--text-primary)] tracking-tight">{o.id.toUpperCase()}</span>
           </td>
           <td className="px-6 py-4">
-           <span className="px-3 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] uppercase">
+           <span className="px-3 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-[11px] font-bold text-[var(--text-secondary)] uppercase">
             {o.kaynakApi?.toUpperCase() || 'OTONOM'}
            </span>
           </td>
@@ -191,7 +191,7 @@ export default function EzanOnbellegi() {
           </td>
           <td className="px-6 py-4 text-right">
            <div className="flex items-center justify-end gap-2 text-emerald-400">
-            <span className="authority-title !text-[10px] font-bold uppercase tracking-wide">Hazır</span>
+            <span className="authority-title !text-[11px] font-bold uppercase tracking-wide">Hazır</span>
             <CheckCircle2 size={15} strokeWidth={1.8} />
            </div>
           </td>
@@ -205,7 +205,7 @@ export default function EzanOnbellegi() {
     <div className="md:hidden flex flex-col gap-3">
      {onbellekler.length === 0 ? (
       <div className="bg-[var(--surface-medium)] p-6 text-center rounded-[18px] border border-[var(--glass-border)]">
-       <p className="authority-title !text-[10px] opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
+       <p className="authority-title !text-[11px] opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
       </div>
      ) : (
       onbellekler.map((o, idx) => (
@@ -218,17 +218,17 @@ export default function EzanOnbellegi() {
        >
         <div className="flex justify-between items-center gap-3">
          <h4 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight">{o.id.toUpperCase()}</h4>
-         <span className="px-2.5 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] tracking-wide uppercase">
+         <span className="px-2.5 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-[11px] font-bold text-[var(--text-secondary)] tracking-wide uppercase">
           {o.kaynakApi?.toUpperCase() || 'OTONOM'}
          </span>
         </div>
         <div className="flex flex-col gap-1 text-xs">
-         <span className="authority-title !text-[10px] opacity-45 uppercase tracking-wide">Son senkronizasyon</span>
+         <span className="authority-title !text-[11px] opacity-45 uppercase tracking-wide">Son senkronizasyon</span>
          <span className="text-[12px] font-medium text-[var(--text-secondary)]/90">{formatCacheDate(o.guncellenmeTarihi)}</span>
         </div>
         <div className="flex items-center gap-2 pt-2 border-t border-[var(--glass-border)] text-emerald-400">
          <CheckCircle2 size={14} strokeWidth={1.8} />
-         <span className="authority-title !text-[10px] font-bold uppercase tracking-wide">Hazır</span>
+         <span className="authority-title !text-[11px] font-bold uppercase tracking-wide">Hazır</span>
         </div>
        </motion.div>
       ))
@@ -241,7 +241,7 @@ export default function EzanOnbellegi() {
      <Info className="w-5 h-5" strokeWidth={1.7} />
     </div>
     <div className="flex flex-col gap-1">
-     <p className="authority-title !text-[10px] font-bold text-[var(--text-primary)] tracking-wide uppercase opacity-70">Senkronizasyon protokolü</p>
+     <p className="authority-title !text-[11px] font-bold text-[var(--text-primary)] tracking-wide uppercase opacity-70">Senkronizasyon protokolü</p>
      <p className="text-[12px] font-medium text-[var(--text-secondary)]/85 leading-relaxed max-w-3xl">
       Sistem önce Diyanet kaynağını kullanır; erişim sorunu olursa Aladhan yedek kaynağına geçer. Manuel işlem mevcut ve gelecek ay kayıtlarını birlikte günceller.
      </p>

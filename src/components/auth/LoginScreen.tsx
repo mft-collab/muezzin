@@ -68,7 +68,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  >
  <div className="w-28 h-28 bg-[var(--text-primary)]/[0.03] backdrop-blur-2xl rounded-[36px] flex items-center justify-center mx-auto shadow-[var(--spatial-shadow)] ring-1 ring-[var(--glass-border)] relative group/logo">
  <div className="absolute inset-0 rounded-[36px] bg-gradient-to-br from-[var(--aura-indigo)]/15 via-transparent to-[var(--aura-ruby)]/10" />
- <div className="absolute inset-0 rounded-[36px] bg-white/[0.05] opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+ <div className="absolute inset-0 rounded-[36px] bg-[var(--text-primary)]/[0.05] opacity-0 group-hover/logo:opacity-100 transition-opacity" />
  <Logo size={72} variant="gold" />
  </div>
  
@@ -76,7 +76,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-12">
  <div className="px-4 py-1.5 rounded-full bg-[var(--app-bg)]/80 backdrop-blur-md border border-[var(--glass-border)] flex items-center gap-2 shadow-[var(--spatial-shadow)]">
  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_var(--status-success)]" />
- <span className="text-[7px] font-bold tracking-wide uppercase text-[var(--text-secondary)]">SİSTEM ÇEVRİMİÇİ</span>
+ <span className="text-[11px] font-bold tracking-wide uppercase text-[var(--text-secondary)]">SİSTEM ÇEVRİMİÇİ</span>
  </div>
  </div>
  </motion.div>
@@ -90,7 +90,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  <h1 className="text-4xl lg:text-5xl font-light mb-3 text-[var(--text-primary)] tracking-tighter leading-none apple-thin">
  Müezzin <span className="text-[var(--aura-indigo)] font-light">Hizmet Dizgesi</span>
  </h1>
- <p className="text-[var(--text-secondary)]/75 mb-14 font-bold tracking-wide uppercase text-[9px]">
+ <p className="text-[var(--text-secondary)]/75 mb-14 font-bold tracking-wide uppercase text-[11px]">
  CAMİ VE DİN GÖREVLİLERİ HİZMET PLANLAMA SİSTEMİ
  </p>
  </motion.div>
@@ -114,11 +114,11 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  {isLoginInProgress ? (
  <div className="flex items-center gap-4">
  <Loader2 className="w-5 h-5 animate-spin" />
- <span className="text-[10px] tracking-wide font-bold uppercase">Kimlik Doğrulanıyor...</span>
+ <span className="text-[11px] tracking-wide font-bold uppercase">Kimlik Doğrulanıyor...</span>
  </div>
  ) : (
  <>
- <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover/btn:rotate-[360deg] transition-transform duration-1000">
+ <div className="w-8 h-8 rounded-full bg-[var(--text-primary)]/10 flex items-center justify-center group-hover/btn:rotate-[360deg] transition-transform duration-1000">
  <img 
  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
  className="w-5 h-5 grayscale-0" 
@@ -127,12 +127,12 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
  />
  </div>
- <span className="text-[10px] tracking-wide font-bold uppercase">Google ile Giriş Yap</span>
+ <span className="text-[11px] tracking-wide font-bold uppercase">Google ile Giriş Yap</span>
  </>
  )}
  </motion.button>
 
- <p className="text-[9px] text-[var(--text-secondary)]/75 font-medium uppercase tracking-wide px-4">
+ <p className="text-[11px] text-[var(--text-secondary)]/75 font-medium uppercase tracking-wide px-4">
  KURUMSAL KİMLİK DOĞRULAMA GEREKİR
  </p>
  </motion.div>
@@ -145,10 +145,10 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  >
  <div className="flex items-center justify-center gap-6 mb-4">
  <div className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--glass-border)]" />
- <span className="text-[8px] font-bold text-[var(--text-secondary)]/15 uppercase tracking-wide">T.C. DİYANET İŞLERİ BAŞKANLIĞI</span>
+ <span className="text-[11px] font-bold text-[var(--text-secondary)]/15 uppercase tracking-wide">T.C. DİYANET İŞLERİ BAŞKANLIĞI</span>
  <div className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--glass-border)]" />
  </div>
- <p className="text-[7px] text-[var(--text-secondary)]/20 font-bold uppercase tracking-[0.1em]">
+ <p className="text-[11px] text-[var(--text-secondary)]/20 font-bold uppercase tracking-[0.1em]">
  Güvenli Giriş • Yetkili Hizmet Erişimi
  </p>
  </motion.div>
@@ -156,7 +156,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
 
  {/* Footer Decoration */}
  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 opacity-10">
- <span className="text-[8px] tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP SİSTEMİ v2.2</span>
+ <span className="text-[11px] tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP SİSTEMİ v2.2</span>
  </div>
  </div>
  );

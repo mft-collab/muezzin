@@ -310,7 +310,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  {/* Overview Cards */}
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[10px] !opacity-30 block mb-1">SAĞLIK DURUMU</span>
+  <span className="premium-label !text-[11px] !opacity-30 block mb-1">SAĞLIK DURUMU</span>
   <div className="flex items-center gap-2">
   {errors.length === 0 ? (
   <>
@@ -327,17 +327,17 @@ export const VeriSagligiSekmesi = React.memo(() => {
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[10px] !opacity-30 block mb-1">MÜEZZİN KADROSU</span>
+  <span className="premium-label !text-[11px] !opacity-30 block mb-1">MÜEZZİN KADROSU</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPersonnel} Aktif</span>
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[10px] !opacity-30 block mb-1">ONAYLI İZİNLER</span>
+  <span className="premium-label !text-[11px] !opacity-30 block mb-1">ONAYLI İZİNLER</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalVacations} Kayıt</span>
   </div>
 
   <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
-  <span className="premium-label !text-[10px] !opacity-30 block mb-1">PLANLAMA ARŞİVİ</span>
+  <span className="premium-label !text-[11px] !opacity-30 block mb-1">PLANLAMA ARŞİVİ</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPlans} Plan</span>
   </div>
   </div>
@@ -352,7 +352,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <HeartPulse size={18} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
  Veritabanı Uyuşmazlık Tarayıcısı
  </h4>
- <p className="premium-label !text-[10px] !opacity-30 mt-1 uppercase tracking-wider">VERİ BÜTÜNLÜĞÜ, YETİM KAYITLAR VE OTOMATİK DÜZELTME</p>
+ <p className="premium-label !text-[11px] !opacity-30 mt-1 uppercase tracking-wider">VERİ BÜTÜNLÜĞÜ, YETİM KAYITLAR VE OTOMATİK DÜZELTME</p>
  </div>
 
  <div className="flex items-center gap-3">
@@ -361,7 +361,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  whileTap={{ scale: 0.98 }}
  onClick={runAudit}
  disabled={loading || repairing}
- className="px-4 py-2.5 bg-white/5 border border-[var(--glass-border)] text-[var(--text-primary)]/80 hover:bg-white/10 rounded-xl text-[9px] font-bold uppercase tracking-wide shadow-lg disabled:opacity-30 flex items-center gap-2"
+ className="px-4 py-2.5 bg-[var(--text-primary)]/5 border border-[var(--glass-border)] text-[var(--text-primary)]/80 hover:bg-[var(--text-primary)]/10 rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-lg disabled:opacity-30 flex items-center gap-2"
  >
  <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> YENİDEN TARA
  </motion.button>
@@ -371,7 +371,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  whileTap={{ scale: 0.98 }}
  onClick={() => setConfirmRepairOpen(true)}
  disabled={errors.length === 0 || repairing || loading}
- className="px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-white border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl text-[9px] font-bold uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
+ className="px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
  >
  <ShieldCheck size={12} /> OTOMATİK ONAR
  </motion.button>
@@ -390,10 +390,10 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <AlertOctagon size={18} />
  </div>
  <h5 className="text-xs font-semibold text-rose-400">Veri Tarama Hatası Oluştu</h5>
- <pre className="text-[10px] font-mono bg-black/40 p-4 rounded-xl text-rose-300 max-h-24 overflow-y-auto border border-rose-500/10 max-w-lg mx-auto text-left leading-relaxed">
+ <pre className="text-[11px] font-mono bg-black/40 p-4 rounded-xl text-rose-300 max-h-24 overflow-y-auto border border-rose-500/10 max-w-lg mx-auto text-left leading-relaxed">
  {auditError}
  </pre>
- <p className="text-[9px] text-[var(--text-secondary)]/50 leading-relaxed max-w-sm mx-auto">
+ <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed max-w-sm mx-auto">
  Bu hata genellikle yetki sınırlarından (Missing or insufficient permissions) veya internet bağlantı uyuşmazlıklarından kaynaklanır. Firebase Firestore kurallarında bu koleksiyonları listeleme izniniz olduğundan emin olun.
  </p>
  </div>
@@ -403,7 +403,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <CheckCircle2 size={18} />
  </div>
  <h5 className="text-xs font-semibold text-emerald-400">Veritabanı Tamamen Sağlıklı!</h5>
- <p className="text-[10px] text-[var(--text-secondary)]/75 mt-1">Personeller, izinler and nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
+ <p className="text-[11px] text-[var(--text-secondary)]/75 mt-1">Personeller, izinler and nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
  </div>
  ) : (
  errors.map((err) => (
@@ -424,17 +424,17 @@ export const VeriSagligiSekmesi = React.memo(() => {
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2.5">
- <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
+ <span className={`text-[11px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
  err.severity === 'critical' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'
  }`}>
  {err.severity === 'critical' ? 'Kritik Hata' : 'Uyarı'}
  </span>
- <span className="text-[10px] font-bold text-[var(--text-secondary)]/30 tracking-wide uppercase">
+ <span className="text-[11px] font-bold text-[var(--text-secondary)]/30 tracking-wide uppercase">
  Kategori: {err.category}
  </span>
  </div>
  <h5 className="text-xs font-medium text-[var(--text-primary)] mt-1.5 leading-tight">{err.message}</h5>
- <p className="text-[10px] text-[var(--text-secondary)]/60 mt-1 font-sans font-light leading-relaxed">{err.details}</p>
+ <p className="text-[11px] text-[var(--text-secondary)]/60 mt-1 font-sans font-light leading-relaxed">{err.details}</p>
  </div>
  </div>
  ))
@@ -452,19 +452,19 @@ export const VeriSagligiSekmesi = React.memo(() => {
  className="spatial-glass border border-[var(--glass-border)] p-6 rounded-[28px] bg-black/40 overflow-hidden"
  >
  <div className="flex justify-between items-center mb-4">
- <span className="text-[9px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] tracking-wide flex items-center gap-2 uppercase">
+ <span className="text-[11px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] tracking-wide flex items-center gap-2 uppercase">
  <Terminal size={12} /> Onarım Konsol Çıktısı (Live logs)
  </span>
  <button 
  onClick={() => setShowLogs(false)} 
- className="text-[9px] text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-colors uppercase tracking-wide font-bold"
+ className="text-[11px] text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-colors uppercase tracking-wide font-bold"
  >
  GİZLE
  </button>
  </div>
- <pre className="text-[9px] font-mono text-emerald-400/90 leading-relaxed overflow-x-auto max-h-48 p-4 rounded-xl bg-black/60 border border-white/5 space-y-1">
+ <pre className="text-[11px] font-mono text-emerald-400/90 leading-relaxed overflow-x-auto max-h-48 p-4 rounded-xl bg-black/60 border border-[var(--text-primary)]/5 space-y-1">
  {repairLogs.length === 0 ? (
- <span className="text-white/30 italic">Onarım başlatılması bekleniyor...</span>
+ <span className="text-[var(--text-secondary)] italic">Onarım başlatılması bekleniyor...</span>
  ) : (
  repairLogs.map((log, idx) => <div key={idx}>{log}</div>)
  )}

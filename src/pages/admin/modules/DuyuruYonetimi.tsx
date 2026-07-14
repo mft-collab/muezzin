@@ -153,7 +153,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex h-96 items-center justify-center">
  <div className="flex flex-col items-center gap-6">
  <div className="w-12 h-12 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-lg" />
- <p className="authority-title !text-[9px] opacity-30 tracking-wide">DUYURU HAVUZU SENKRONİZE EDİLİYOR</p>
+ <p className="authority-title !text-[11px] opacity-30 tracking-wide">DUYURU HAVUZU SENKRONİZE EDİLİYOR</p>
  </div>
  </div>
  );
@@ -164,14 +164,14 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Duyuru Panosu</h2>
- <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
+ <p className="authority-title !text-[11px] opacity-30 font-medium tracking-wide">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
  </div>
  
  <motion.button 
  whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setModalOpen(true)}
- className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-[9px] font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
+ className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-[11px] font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
  >
  <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
  YENİ DUYURU YAYINLA
@@ -229,15 +229,15 @@ export const DuyuruYonetimi: React.FC = () => {
  
  <div className="flex items-center justify-between pt-6 mt-6 border-t border-[var(--glass-border)]">
  <div className="flex flex-col gap-0.5">
- <span className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
- <span className="text-[9px] font-medium text-[var(--text-primary)]/40 uppercase tracking-wide">
+ <span className="authority-title !text-[11px] opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
+ <span className="text-[11px] font-medium text-[var(--text-primary)]/40 uppercase tracking-wide">
  {toJsDate(duyuru.tarih)
  ? format(toJsDate(duyuru.tarih)!, 'd MMMM yyyy', { locale: tr })
  : '—'}
  </span>
  </div>
  
- <div className={`px-4 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide shadow-sm ${
+ <div className={`px-4 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wide shadow-sm ${
  duyuru.tip === 'onemli' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-rose-500/5' :
  duyuru.tip === 'bilgi' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20 shadow-sky-500/5' : 'bg-[var(--surface-low)] text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--glass-border)] shadow-[var(--spatial-shadow)]'
  }`}>
@@ -257,25 +257,25 @@ export const DuyuruYonetimi: React.FC = () => {
  className="items-start pt-24 sm:pt-32"
  >
  <div className="flex flex-col gap-1.5 mb-10">
- <p className="authority-title !text-[9px] opacity-30 uppercase tracking-wide">OPERASYONEL BİLGİLENDİRME PARAMETRELERİ</p>
+ <p className="authority-title !text-[11px] opacity-30 uppercase tracking-wide">OPERASYONEL BİLGİLENDİRME PARAMETRELERİ</p>
  </div>
 
  <form onSubmit={handleCreate} className="space-y-8 pb-4">
  <div className="space-y-3 group">
- <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
+ <label className="authority-title !text-[11px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
  <div className="relative">
  <input 
  required 
  placeholder="Duyuru başlığını giriniz..."
  value={formData.baslik} 
  onChange={e => setFormData({...formData, baslik: e.target.value})} 
- className="w-full spatial-glass bg-white/[0.01] p-5 rounded-2xl text-base font-light text-white border border-white/5 outline-none focus:bg-white/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 placeholder:text-white/10" 
+ className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 placeholder:text-[var(--text-secondary)]" 
  />
  </div>
  </div>
  
  <div className="space-y-3 group">
- <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
+ <label className="authority-title !text-[11px] opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
  <div className="relative">
  <textarea 
  required 
@@ -283,7 +283,7 @@ export const DuyuruYonetimi: React.FC = () => {
  placeholder="İçerik metnini buraya yazınız..."
  value={formData.icerik} 
  onChange={e => setFormData({...formData, icerik: e.target.value})} 
- className="w-full spatial-glass bg-white/[0.01] p-5 rounded-2xl text-base font-light text-white border border-white/5 outline-none focus:bg-white/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 resize-none placeholder:text-white/10" 
+ className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 resize-none placeholder:text-[var(--text-secondary)]" 
  />
  </div>
  </div>
@@ -293,12 +293,12 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex justify-between items-center">
  <div className="flex items-center gap-2">
  <LayoutTemplate size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
- <span className="text-[10px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">Hazır Duyuru Şablonları</span>
+ <span className="text-[11px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">Hazır Duyuru Şablonları</span>
  </div>
  <button
  type="button"
  onClick={() => setTemplatesOpen(!templatesOpen)}
- className="text-[9px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-all px-3 py-1.5 rounded-lg border border-white/5 bg-white/[0.01]"
+ className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all px-3 py-1.5 rounded-lg border border-[var(--text-primary)]/5 bg-[var(--text-primary)]/[0.01]"
  >
  {templatesOpen ? 'Şablonları Gizle' : 'Şablonları Göster'}
  </button>
@@ -308,10 +308,10 @@ export const DuyuruYonetimi: React.FC = () => {
  <motion.div
  initial={{ opacity: 0, height: 0 }}
  animate={{ opacity: 1, height: 'auto' }}
- className="space-y-4 overflow-hidden pt-2 border-t border-white/5"
+ className="space-y-4 overflow-hidden pt-2 border-t border-[var(--text-primary)]/5"
  >
  <div className="space-y-2">
- <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider block">Üslup ve Ton Seçimi</span>
+ <span className="text-[11px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block">Üslup ve Ton Seçimi</span>
  <div className="grid grid-cols-3 gap-2">
  {[
  { key: 'resmi', label: 'Resmi / Kurumsal' },
@@ -322,10 +322,10 @@ export const DuyuruYonetimi: React.FC = () => {
  key={tone.key}
  type="button"
  onClick={() => setTemplateTone(tone.key as any)}
- className={`py-2 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+ className={`py-2 px-1 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border ${
  templateTone === tone.key
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/30'
- : 'bg-white/[0.01] text-white/30 border-white/5 hover:border-white/10'
+ : 'bg-[var(--text-primary)]/[0.01] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
  }`}
  >
  {tone.label}
@@ -338,7 +338,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={handleSuggestTemplate}
- className="flex-1 py-3 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-purple-500/60 text-white rounded-xl text-[9px] font-bold uppercase tracking-wide shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 hover:opacity-90 transition-all flex items-center justify-center gap-2"
+ className="flex-1 py-3 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-purple-500/60 text-[var(--text-primary)] rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 hover:opacity-90 transition-all flex items-center justify-center gap-2"
  >
  <LayoutTemplate size={10} />
  Uygun Şablonu Öner
@@ -349,7 +349,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <motion.div
  initial={{ opacity: 0, y: -6 }}
  animate={{ opacity: 1, y: 0 }}
- className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold leading-relaxed"
+ className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-semibold leading-relaxed"
  >
  {templateError}
  </motion.div>
@@ -359,27 +359,27 @@ export const DuyuruYonetimi: React.FC = () => {
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="space-y-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl"
+ className="space-y-3 p-4 bg-[var(--text-primary)]/[0.02] border border-[var(--text-primary)]/5 rounded-xl"
  >
- <div className="flex justify-between items-center border-b border-white/5 pb-2">
- <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">ÖNERİLEN ŞABLON METNİ:</span>
- <span className="text-[9px] text-white/30 uppercase tracking-wide">({templateTone} üslup)</span>
+ <div className="flex justify-between items-center border-b border-[var(--text-primary)]/5 pb-2">
+ <span className="text-[11px] text-purple-400 font-bold uppercase tracking-wider">ÖNERİLEN ŞABLON METNİ:</span>
+ <span className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wide">({templateTone} üslup)</span>
  </div>
- <p className="text-xs text-white/80 leading-relaxed font-light whitespace-pre-wrap">
+ <p className="text-xs text-[var(--text-primary)]/80 leading-relaxed font-light whitespace-pre-wrap">
  {suggestedTemplate}
  </p>
  <div className="flex gap-3 pt-2">
  <button
  type="button"
  onClick={applyTemplate}
- className="flex-1 py-2.5 bg-white text-black rounded-lg text-[10px] font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
+ className="flex-1 py-2.5 bg-white text-black rounded-lg text-[11px] font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
  >
  Şablonu Metne Uygula
  </button>
  <button
  type="button"
  onClick={() => setSuggestedTemplate('')}
- className="px-4 py-2.5 bg-white/5 text-white/50 rounded-lg text-[10px] font-bold uppercase tracking-wide hover:text-white transition-all"
+ className="px-4 py-2.5 bg-[var(--text-primary)]/5 text-[var(--text-secondary)] rounded-lg text-[11px] font-bold uppercase tracking-wide hover:text-[var(--text-primary)] transition-all"
  >
  Temizle
  </button>
@@ -391,24 +391,24 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
 
  <div className="space-y-4">
- <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
+ <label className="authority-title !text-[11px] opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
  <div className="grid grid-cols-3 gap-3">
  {['onemli', 'bilgi', 'duyuru'].map((type) => {
  const isSelected = formData.tip === type;
  let activeStyle = '';
  if (isSelected) {
- if (type === 'onemli') activeStyle = 'bg-rose-500 text-white border-rose-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-danger,red)_25%,transparent)]';
- else if (type === 'bilgi') activeStyle = 'bg-sky-500 text-white border-sky-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-info,sky)_25%,transparent)]';
- else activeStyle = 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]';
+ if (type === 'onemli') activeStyle = 'bg-rose-500 text-[var(--text-primary)] border-rose-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-danger,red)_25%,transparent)]';
+ else if (type === 'bilgi') activeStyle = 'bg-sky-500 text-[var(--text-primary)] border-sky-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-info,sky)_25%,transparent)]';
+ else activeStyle = 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]';
  } else {
- activeStyle = 'bg-white/[0.02] text-white/30 border-white/5 hover:border-white/10';
+ activeStyle = 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10';
  }
  return (
  <button
  key={type}
  type="button"
  onClick={() => setFormData({...formData, tip: type as any})}
- className={`py-3.5 rounded-2xl text-[9px] font-bold uppercase tracking-wide transition-all border outline-none ${activeStyle}`}
+ className={`py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wide transition-all border outline-none ${activeStyle}`}
  >
  {type === 'onemli' ? 'ÖNEMLİ' : type === 'bilgi' ? 'BİLGİ' : 'DUYURU'}
  </button>
@@ -422,7 +422,7 @@ export const DuyuruYonetimi: React.FC = () => {
  whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)' }}
  whileTap={{ scale: 0.98 }}
  type="submit" 
- className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-[10px] font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center"
+ className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-[11px] font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center"
  >
  DUYURUYU ŞİMDİ YAYINLA
  </motion.button>
@@ -430,7 +430,7 @@ export const DuyuruYonetimi: React.FC = () => {
  whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
  type="button" 
  onClick={() => setModalOpen(false)} 
- className="px-10 py-5 text-[10px] font-bold uppercase tracking-wide text-white/25 hover:text-white transition-all border border-white/5 rounded-2xl text-center justify-center flex items-center"
+ className="px-10 py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all border border-[var(--text-primary)]/5 rounded-2xl text-center justify-center flex items-center"
  >
  İPTAL
  </motion.button>

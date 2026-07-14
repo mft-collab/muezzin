@@ -172,7 +172,7 @@ export const AnaEkranHero = React.memo(({
   </div>
  
  {gpsEnabled && gpsCoords && (
- <span className="text-[10px] font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
+ <span className="text-[11px] font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
  <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-success)] animate-ping" />
  GPS AKTİF ({gpsCoords.latitude.toFixed(4)}, {gpsCoords.longitude.toFixed(4)})
  </span>
@@ -182,7 +182,7 @@ export const AnaEkranHero = React.memo(({
  {/* Sağ: Canlı Saat + Gün adı */}
  <div className="flex flex-col items-end gap-0.5">
  <LiveClock />
- <span className="text-[10px] text-[var(--text-secondary)]/70 tracking-widest uppercase font-medium">
+ <span className="text-[11px] text-[var(--text-secondary)]/70 tracking-widest uppercase font-medium">
  {format(bugunDate, 'EEEE', { locale: tr })}
  </span>
  </div>
@@ -237,10 +237,10 @@ export const AnaEkranHero = React.memo(({
  if (isActive) {
   // Koyu modda: saydam glow gradyan (ince, sinema etkisi)
   // Acık modda: daha düz, hafif opasiteli kart
-  labelColor = isDark ? 'text-white font-bold opacity-90' : 'text-white font-bold';
+  labelColor = isDark ? 'text-[var(--text-primary)] font-bold opacity-90' : 'text-[var(--text-primary)] font-bold';
   timeColor = isDark
-    ? 'text-white font-semibold drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]'
-    : 'text-white font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]';
+    ? 'text-[var(--text-primary)] font-semibold drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]'
+    : 'text-[var(--text-primary)] font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]';
   
   switch (key as string) {
   case 'sabah':
@@ -312,7 +312,7 @@ export const AnaEkranHero = React.memo(({
         ? 'bg-[var(--status-danger)]/15 border-[var(--status-danger)]/20 text-[var(--status-danger)]' 
         : 'bg-[var(--status-success)]/15 border-[var(--status-success)]/20 text-[var(--status-success)]';
       offsetBadge = (
-        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-[10px] font-extrabold tracking-normal transition-all ${badgeColor}`}>
+        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-[11px] font-extrabold tracking-normal transition-all ${badgeColor}`}>
           {sign}{diff}dk
         </span>
       );
@@ -328,7 +328,7 @@ export const AnaEkranHero = React.memo(({
  >
  {indicatorDot}
 
- <span className={`text-[10px] sm:text-[11px] tracking-wide font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
+ <span className={`text-[11px] sm:text-[11px] tracking-wide font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
  {label}
  </span>
  

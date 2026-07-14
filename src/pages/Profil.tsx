@@ -32,7 +32,7 @@ export interface UserData {
 /** Hafif bir inline yükleme iskeleti */
 function SectionSkeleton() {
   return (
-    <div className="skeleton-shimmer h-40 rounded-[40px] border border-white/[0.04]" />
+    <div className="skeleton-shimmer h-40 rounded-[40px] border border-[var(--text-primary)]/[0.04]" />
   );
 }
 
@@ -119,7 +119,7 @@ export default function Profil() {
             <div className="w-16 h-16 border border-[var(--glass-border)] rounded-full flex items-center justify-center">
               <div className="w-8 h-8 border-t-2 border-[var(--aura-indigo)] rounded-full animate-spin" />
             </div>
-            <p className="premium-label !text-[10px] !opacity-55 animate-pulse">VERİLER SENKRONİZE EDİLİYOR</p>
+            <p className="premium-label !text-[11px] !opacity-55 animate-pulse">VERİLER SENKRONİZE EDİLİYOR</p>
           </div>
         ) : (
           <div className="space-y-10">
@@ -135,9 +135,9 @@ export default function Profil() {
               <div className="flex justify-between items-center mb-6 relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-[var(--aura-rose)] animate-pulse" />
-                  <h4 className="premium-label !text-[9px] !opacity-70 tracking-wide uppercase">HİZMET VE SADAKAT ROZETLERİ</h4>
+                  <h4 className="premium-label !text-[11px] !opacity-70 tracking-wide uppercase">HİZMET VE SADAKAT ROZETLERİ</h4>
                 </div>
-                <span className="text-[8px] font-bold text-[var(--aura-rose)] bg-[var(--aura-rose)]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+                <span className="text-[11px] font-bold text-[var(--aura-rose)] bg-[var(--aura-rose)]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
                   BAŞARI NİŞANLARI
                 </span>
               </div>
@@ -183,8 +183,8 @@ export default function Profil() {
                         {badge.icon}
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[10px] font-bold text-[var(--text-primary)] leading-none">{badge.label}</p>
-                        <p className="text-[7.5px] text-[var(--text-secondary)]/50 leading-tight mt-1">{badge.desc}</p>
+                        <p className="text-[11px] font-bold text-[var(--text-primary)] leading-none">{badge.label}</p>
+                        <p className="text-[11px] text-[var(--text-secondary)]/50 leading-tight mt-1">{badge.desc}</p>
                       </div>
                     </div>
                   );

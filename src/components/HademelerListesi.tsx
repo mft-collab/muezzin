@@ -56,7 +56,7 @@ export const HademelerListesi = React.memo(({
  {/* ── Başlık ── */}
  <div className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-12">
  <div
- className={`w-14 h-14 sm:w-20 sm:h-20 rounded-[28px] bg-white/[0.03] flex items-center justify-center border border-white/5 shadow-[var(--spatial-shadow)] relative group ${
+ className={`w-14 h-14 sm:w-20 sm:h-20 rounded-[28px] bg-[var(--text-primary)]/[0.03] flex items-center justify-center border border-[var(--text-primary)]/5 shadow-[var(--spatial-shadow)] relative group ${
  isFriday ? 'text-emerald-400' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'
  }`}
  >
@@ -77,7 +77,7 @@ export const HademelerListesi = React.memo(({
  isFriday ? 'bg-emerald-400 text-emerald-400' : 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--dynamic-aura,var(--aura-indigo))]'
  }`}
  />
- <p className="authority-title text-[10px] opacity-40 tracking-wide font-bold uppercase">
+ <p className="authority-title text-[11px] opacity-40 tracking-wide font-bold uppercase">
  {isFriday ? 'CUMA NAMAZI GÖREV DAĞILIMI' : 'VAKİT HİZMET GÖREVLİLERİ'}
  </p>
  </div>
@@ -96,12 +96,12 @@ export const HademelerListesi = React.memo(({
  {[1, 2].map((i) => (
  <div
  key={i}
- className="skeleton-shimmer h-[9.5rem] flex items-center px-8 gap-6 !rounded-[40px] border border-white/[0.04]"
+ className="skeleton-shimmer h-[9.5rem] flex items-center px-8 gap-6 !rounded-[40px] border border-[var(--text-primary)]/[0.04]"
  >
- <div className="w-16 h-16 rounded-[24px] bg-white/5 shrink-0" />
+ <div className="w-16 h-16 rounded-[24px] bg-[var(--text-primary)]/5 shrink-0" />
  <div className="flex-1 space-y-4">
- <div className="w-1/3 h-2 bg-white/5 rounded-full" />
- <div className="w-2/3 h-5 bg-white/5 rounded-full" />
+ <div className="w-1/3 h-2 bg-[var(--text-primary)]/5 rounded-full" />
+ <div className="w-2/3 h-5 bg-[var(--text-primary)]/5 rounded-full" />
  </div>
  </div>
  ))}
@@ -136,7 +136,7 @@ export const HademelerListesi = React.memo(({
  />
  </div>
  <div className="max-w-md relative z-10">
- <p className="authority-title !text-[9px] opacity-20 tracking-wide mb-3 uppercase">
+ <p className="authority-title !text-[11px] opacity-20 tracking-wide mb-3 uppercase">
  Veri Akışı Kesildi
  </p>
  <p className="text-lg font-extralight text-[var(--text-secondary)]/75 italic leading-relaxed">

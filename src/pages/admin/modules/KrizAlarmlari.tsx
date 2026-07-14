@@ -84,7 +84,7 @@ export default function KrizAlarmlari() {
  <div className="flex h-[500px] items-center justify-center">
  <div className="flex flex-col items-center gap-6">
  <div className="w-14 h-14 border-4 border-rose-500/10 border-t-rose-500 rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
- <p className="authority-title !text-[9px] opacity-20 tracking-wide uppercase">Nöbet Uyarıları Yükleniyor</p>
+ <p className="authority-title !text-[11px] opacity-20 tracking-wide uppercase">Nöbet Uyarıları Yükleniyor</p>
  </div>
  </div>
  );
@@ -145,7 +145,7 @@ export default function KrizAlarmlari() {
  <div className="flex justify-between items-center">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Nöbet Uyarıları</h2>
- <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">NÖBET VE VAKİT AKIŞI TAKİBİ</p>
+ <p className="authority-title !text-[11px] opacity-30 font-medium tracking-wide">NÖBET VE VAKİT AKIŞI TAKİBİ</p>
  </div>
 
  <motion.button 
@@ -155,11 +155,11 @@ export default function KrizAlarmlari() {
  className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 ${
  showResolved 
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
- : 'bg-white/[0.03] border-white/5 text-white/20'
+ : 'bg-[var(--text-primary)]/[0.03] border-[var(--text-primary)]/5 text-[var(--text-secondary)]'
  }`}
  >
- <span className="authority-title !text-[10px] font-bold tracking-wide uppercase">ARŞİVLENMİŞ UYARILAR</span>
- <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-white/10'}`}>
+ <span className="authority-title !text-[11px] font-bold tracking-wide uppercase">ARŞİVLENMİŞ UYARILAR</span>
+ <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-[var(--text-primary)]/10'}`}>
  <motion.div 
  animate={{ x: showResolved ? 22 : 2 }}
  className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm" 
@@ -172,13 +172,13 @@ export default function KrizAlarmlari() {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-20 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-white/10"
+ className="spatial-glass p-20 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
  >
  <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border border-emerald-500/20">
  <CheckCircle size={36} strokeWidth={1.2} />
  </div>
  <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Uyarı Bulunmuyor</h3>
- <p className="authority-title !text-[10px] opacity-40 uppercase tracking-wide leading-relaxed mb-12">
+ <p className="authority-title !text-[11px] opacity-40 uppercase tracking-wide leading-relaxed mb-12">
  ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR NÖBET UYARISI BULUNMUYOR.
  </p>
  </motion.div>
@@ -201,7 +201,7 @@ export default function KrizAlarmlari() {
  transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
  className={`relative overflow-hidden p-6 rounded-[32px] border transition-all duration-700 group ${
  alarm.cozuldu 
- ? 'spatial-glass opacity-30 border-white/5' 
+ ? 'spatial-glass opacity-30 border-[var(--text-primary)]/5' 
  : `${styles.bg} ${styles.border} shadow-[var(--spatial-shadow)] ${styles.bgHover}`
  }`}
  >
@@ -216,7 +216,7 @@ export default function KrizAlarmlari() {
  <div className="relative z-10 flex flex-col lg:flex-row items-stretch lg:items-center gap-8">
  {/* Icon Identity */}
  <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shrink-0 shadow-lg border ${
- alarm.cozuldu ? 'bg-white/5 text-white/10 border-white/5' : `${styles.iconBg} ${styles.iconText} ${styles.iconBorder} ${styles.iconShadow}`
+ alarm.cozuldu ? 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)] border-[var(--text-primary)]/5' : `${styles.iconBg} ${styles.iconText} ${styles.iconBorder} ${styles.iconShadow}`
  }`}>
  {getIcon(alarm.tip)}
  </div>
@@ -224,13 +224,13 @@ export default function KrizAlarmlari() {
  {/* Content Matrix */}
  <div className="flex-1 flex flex-col gap-2">
  <div className="flex items-center gap-4">
- <span className={`authority-title !text-[9px] font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
+ <span className={`authority-title !text-[11px] font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
  {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' : 
  alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' : 
  alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' : 'NÖBET UYARISI'}
  </span>
  {!alarm.cozuldu && (
- <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-[9px] font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
+ <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-[11px] font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
  ACİL MÜDAHALE
  </div>
  )}
@@ -238,7 +238,7 @@ export default function KrizAlarmlari() {
  
  <div className="flex items-center gap-4 mt-1">
  <div className="flex items-center gap-2">
- <span className="authority-title !text-[9px] opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
+ <span className="authority-title !text-[11px] opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
  <span className={`text-[11px] font-bold tracking-wide ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : 'text-[var(--text-secondary)]/60'}`}>
  {alarm.tarih ? format(new Date(alarm.tarih), 'dd MMMM yyyy', { locale: tr }) : '--'}
  {alarm.vakit ? ` • ${VAKIT_GORA_ISIMLERI[alarm.vakit as Vakit]}` : ''}
@@ -260,7 +260,7 @@ export default function KrizAlarmlari() {
  whileTap={{ scale: 0.98 }}
  disabled={isRetrying === alarm.id}
  onClick={() => handleRetry(alarm)}
- className={`${styles.buttonBg} text-white px-8 py-5 rounded-2xl text-[9px] font-bold uppercase tracking-wide shadow-lg flex items-center gap-4 disabled:opacity-50`}
+ className={`${styles.buttonBg} text-[var(--text-primary)] px-8 py-5 rounded-2xl text-[11px] font-bold uppercase tracking-wide shadow-lg flex items-center gap-4 disabled:opacity-50`}
  >
  <RefreshCcw size={16} className={isRetrying === alarm.id ? 'animate-spin' : ''} />
  {isRetrying === alarm.id ? 'ONARILIYOR...' : 'SİSTEMİ ONAR'}
@@ -272,7 +272,7 @@ export default function KrizAlarmlari() {
  whileTap={{ scale: 0.98 }}
  disabled={resolvingId === alarm.id}
  onClick={() => handleResolveRequest(alarm)}
- className="px-8 py-5 text-[9px] font-bold uppercase tracking-wide text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] transition-all border border-[var(--glass-border)] rounded-2xl"
+ className="px-8 py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] transition-all border border-[var(--glass-border)] rounded-2xl"
  >
  {resolvingId === alarm.id ? 'İŞLENİYOR...' : 'ÇÖZÜLDÜ OLARAK İŞARETLE'}
  </motion.button>

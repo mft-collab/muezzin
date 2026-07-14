@@ -35,7 +35,7 @@ export function GpsHelpModal({ isOpen, onClose, onRetry }: GpsHelpModalProps) {
             <span className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
             <div className="flex-1 bg-[var(--text-primary)]/5 rounded-md h-5 flex items-center px-2 gap-1.5 ml-2">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              <span className="text-[8px] font-mono opacity-50 truncate">muezzin.pro/anaekran</span>
+              <span className="text-[11px] font-mono opacity-50 truncate">muezzin.pro/anaekran</span>
             </div>
           </div>
           <ol className="text-[11px] sm:text-xs text-[var(--text-secondary)]/85 space-y-2 list-decimal list-inside leading-relaxed">
@@ -51,7 +51,7 @@ export function GpsHelpModal({ isOpen, onClose, onRetry }: GpsHelpModalProps) {
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => { hapticMedium(); onRetry(); }}
-            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-amber-500 to-orange-600 hover:to-orange-500 text-white font-bold tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-amber-500 to-orange-600 hover:to-orange-500 text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
           >
             <RefreshCw size={15} />
             <span>AYARLARI YAPTIM, TEKRAR DENE</span>

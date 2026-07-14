@@ -41,7 +41,7 @@ export function GpsConsentModal({ isOpen, onClose, onConfirm, isLoading }: GpsCo
         {/* Privacy Note */}
         <div className="w-full max-w-md p-4 rounded-2xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] mb-8 flex items-center gap-3 text-left">
           <Navigation size={18} className="text-[var(--dynamic-aura,var(--aura-indigo))] shrink-0" strokeWidth={1.5} />
-          <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]/75 leading-tight">
+          <span className="text-[11px] sm:text-[11px] text-[var(--text-secondary)]/75 leading-tight">
             Konum verileriniz hiçbir sunucuya kaydedilmez, tamamen cihazınızda (lokal) işlenir.
           </span>
         </div>
@@ -53,11 +53,11 @@ export function GpsConsentModal({ isOpen, onClose, onConfirm, isLoading }: GpsCo
             whileTap={{ scale: 0.98 }}
             onClick={() => { hapticMedium(); onConfirm(); }}
             disabled={isLoading}
-            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-indigo-600 hover:to-indigo-500 text-white font-bold tracking-wider cursor-pointer shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center gap-2"
+            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-indigo-600 hover:to-indigo-500 text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                <div className="w-4 h-4 rounded-full border-2 border-[var(--text-primary)]/20 border-t-white animate-spin" />
                 <span>SENKRONİZE EDİLİYOR...</span>
               </>
             ) : (

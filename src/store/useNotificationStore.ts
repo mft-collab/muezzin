@@ -1,18 +1,45 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { NotificationType } from '../components/ui/NotificationToast';
 import { playSuccess, playWarning } from '../lib/sounds';
+
+interface NotificationAction {
+ label: string;
+ onClick: () => void;
+}
 
 interface Notification {
  id: string;
  title: string;
  message: string;
  type: NotificationType;
+ action?: NotificationAction;
+ durationMs?: number;
 }
+
+export interface NotificationHistoryEntry {
+ id: string;
+ title: string;
+ message: string;
+ type: NotificationType;
+ timestamp: number;
+}
+
+interface ShowNotificationOptions {
+ action?: NotificationAction;
+ durationMs?: number;
+}
+
+const NOTIFICATION_HISTORY_LIMIT = 50;
 
 interface NotificationState {
  notifications: Notification[];
- showNotification: (title: string, message: string, type?: NotificationType) => void;
+ history: NotificationHistoryEntry[];
+ ttsEnabled: boolean;
+ showNotification: (title: string, message: string, type?: NotificationType, options?: ShowNotificationOptions) => void;
  removeNotification: (id: string) => void;
+ setTtsEnabled: (enabled: boolean) => void;
+ clearHistory: () => void;
 }
 
 const VALID_NOTIFICATION_TYPES: NotificationType[] = ['info', 'success', 'warning', 'error'];
@@ -174,15 +201,21 @@ const playNotificationSound = async () => {
  }
 };
 
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create<NotificationState>()(
+ persist(
+ (set, get) => ({
  notifications: [],
- showNotification: (title, message, type = 'info') => {
+ history: [],
+ ttsEnabled: false,
+ showNotification: (title, message, type = 'info', options) => {
  const id = Math.random().toString(36).substring(2, 9);
  const safeType = normalizeNotificationType(type);
+ const timestamp = Date.now();
  set((state) => ({
- notifications: [...state.notifications, { id, title, message, type: safeType }],
+ notifications: [...state.notifications, { id, title, message, type: safeType, action: options?.action, durationMs: options?.durationMs }],
+ history: [{ id, title, message, type: safeType, timestamp }, ...state.history].slice(0, NOTIFICATION_HISTORY_LIMIT),
  }));
- 
+
  // Play dynamic localized feedback sounds based on type
  if (safeType === 'success') {
    playSuccess();
@@ -192,13 +225,23 @@ export const useNotificationStore = create<NotificationState>((set) => ({
    playNotificationSound();
  }
 
- // Voice announcement (Text-To-Speech) for fully free, premium accessible alerts
- const speakableText = `${title}. ${message}`;
- speakNotification(speakableText);
+ // Voice announcement (Text-To-Speech) — kullanıcı tercihine göre, varsayılan kapalı
+ if (get().ttsEnabled) {
+   const speakableText = `${title}. ${message}`;
+   speakNotification(speakableText);
+ }
  },
  removeNotification: (id) => {
  set((state) => ({
  notifications: state.notifications.filter((n) => n.id !== id),
  }));
  },
-}));
+ setTtsEnabled: (enabled) => set({ ttsEnabled: enabled }),
+ clearHistory: () => set({ history: [] }),
+ }),
+ {
+ name: 'muezzin-notification-preferences',
+ partialize: (state) => ({ ttsEnabled: state.ttsEnabled, history: state.history }),
+ }
+ )
+);

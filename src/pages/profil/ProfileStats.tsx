@@ -59,14 +59,14 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  <Award size={28} strokeWidth={1.5} />
  </div>
  <div className="text-left space-y-1">
- <p className="premium-label !text-[10px] !opacity-65 tracking-wide">AYLIK İSTATİSTİK</p>
+ <p className="premium-label !text-[11px] !opacity-65 tracking-wide">AYLIK İSTATİSTİK</p>
  <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight">Hizmet Edilen Vakit</h3>
  </div>
  </div>
  
  <div className="flex items-baseline gap-1">
  <span className="text-4xl font-light text-[var(--text-primary)] tracking-tight tabular-nums">{userData?.aylikVakitSayisi || 0}</span>
- <span className="text-[10px] font-bold text-[var(--text-primary)]/40 tracking-wide uppercase"> Vakit</span>
+ <span className="text-[11px] font-bold text-[var(--text-primary)]/40 tracking-wide uppercase"> Vakit</span>
  </div>
  </div>
  
@@ -85,7 +85,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  {React.cloneElement(item.icon as React.ReactElement, { size: 20, strokeWidth: 1.5 })}
  </div>
  <div>
- <p className="premium-label !text-[10px] !opacity-55 mb-1.5 leading-tight tracking-wide">{item.label}</p>
+ <p className="premium-label !text-[11px] !opacity-55 mb-1.5 leading-tight tracking-wide">{item.label}</p>
  <p className="text-lg font-light text-[var(--text-primary)] tracking-tight leading-tight transition-all duration-500">{item.value}</p>
  </div>
  </div>

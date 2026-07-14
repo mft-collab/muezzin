@@ -9,10 +9,18 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
+    // Süper-admin e-postaları config/bootstrap dokümanında tutulur (kaynak kodda
+    // gömülü değildir). Doküman yoksa veya alan eksikse boş liste varsayılır.
+    function isSuperAdminEmail(email) {
+      return email != null &&
+        exists(/databases/$(database)/documents/config/bootstrap) &&
+        email in get(/databases/$(database)/documents/config/bootstrap).data.get('superAdminEmails', []);
+    }
+
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'muftum@gmail.com' ||
-        (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) && 
+        isSuperAdminEmail(request.auth.token.email) ||
+        (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'admin')
       );
     }

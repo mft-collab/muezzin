@@ -83,7 +83,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
 
       <div className="flex justify-between items-start mb-6 sm:mb-10 shrink-0">
         <div>
-          <p className="premium-label !text-[7px] opacity-25 dark:opacity-20 mb-2 uppercase">SİSTEM BİLGİ KATMANI</p>
+          <p className="premium-label !text-[11px] opacity-25 dark:opacity-20 mb-2 uppercase">SİSTEM BİLGİ KATMANI</p>
           <h2 id={titleId} className="text-2xl sm:text-4xl font-light tracking-tight text-[var(--text-primary)] apple-thin">{title}</h2>
         </div>
         <button

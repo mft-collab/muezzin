@@ -105,7 +105,7 @@ const NavItem = memo(({ item, isActive }: { item: typeof ALL_NAV_ITEMS[0], isAct
  >
  {content}
 
- <div className="hidden sm:block absolute -top-14 left-1/2 -translate-x-1/2 px-4 py-2 bg-[var(--app-bg)] text-[var(--text-primary)] text-[10px] font-sans font-extralight tracking-wide rounded-[14px] opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none -translate-y-2 group-hover:translate-y-0 scale-90 shadow-[var(--spatial-shadow)] border border-[var(--glass-border)] backdrop-blur-xl">
+ <div className="hidden sm:block absolute -top-14 left-1/2 -translate-x-1/2 px-4 py-2 bg-[var(--app-bg)] text-[var(--text-primary)] text-[11px] font-sans font-extralight tracking-wide rounded-[14px] opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none -translate-y-2 group-hover:translate-y-0 scale-90 shadow-[var(--spatial-shadow)] border border-[var(--glass-border)] backdrop-blur-xl">
  {item.label}
  <div className="absolute bottom-[-5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[var(--app-bg)] rotate-45 border-r border-b border-[var(--glass-border)]" />
  </div>

@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, CalendarDays, Users, Settings, Home, Calendar, User, SlidersHorizontal } from 'lucide-react';
 import { hapticMedium } from '../../../lib/haptic';
 import { playClick } from '../../../lib/sounds';
+import { getAdminNavItems, APP_LINKS } from '../config/navConfig';
 
 interface MobileDockProps {
  activeTab: string;
@@ -34,19 +34,8 @@ export const MobileDock = React.memo<MobileDockProps>(({
   action();
   }, []);
 
- const navItems = [
- { id: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={22} />, badge: cozulmamisSayisi },
- { id: 'planlama', label: 'Hizmet Cetveli', icon: <CalendarDays size={22} /> },
- { id: 'ekip', label: 'Kadro Yönetimi', icon: <Users size={22} />, badge: pendingIzinler },
- { id: 'ayarlar', label: 'Sistem Ayarları', icon: <Settings size={22} /> }
- ];
-
- const appLinks = [
- { path: '/', label: 'Vakit', icon: <Home size={16} /> },
- { path: '/takvim', label: 'Takvim', icon: <Calendar size={16} /> },
- { path: '/profil', label: 'Profil', icon: <User size={16} /> },
- { path: '/ayarlar', label: 'Ayarlar', icon: <SlidersHorizontal size={16} /> }
- ];
+ const navItems = getAdminNavItems({ cozulmamisSayisi, pendingIzinler });
+ const appLinks = APP_LINKS;
 
  return (
  <div className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] inset-x-4 z-[120] flex flex-col items-center gap-2 pointer-events-none max-w-full pb-0">
@@ -61,7 +50,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  onClick={() => { playClick(); onNavigateApp(item.path); }}
  className="min-w-[42px] h-[38px] px-2 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/45 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.04] transition-all touch-manipulation"
  >
- {React.cloneElement(item.icon as React.ReactElement, { strokeWidth: 1.7 })}
+ <item.icon size={16} strokeWidth={1.7} />
  </button>
  ))}
  </nav>
@@ -72,11 +61,11 @@ export const MobileDock = React.memo<MobileDockProps>(({
  <button
  type="button"
  key={item.id}
- aria-label={item.label}
+ aria-label={item.fullLabel}
  aria-current={isActive ? 'page' : undefined}
  onPointerDown={(event) => handlePointerAction(event, () => setActiveTab(item.id))}
  onClick={() => { playClick(); setActiveTab(item.id); }}
- title={item.label}
+ title={item.fullLabel}
  className={`relative min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3 rounded-[16px] sm:rounded-[20px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
  isActive 
  ? 'text-[var(--dynamic-aura,var(--aura-indigo))] scale-110' 
@@ -84,12 +73,9 @@ export const MobileDock = React.memo<MobileDockProps>(({
  }`}
  >
  <div className="relative z-10 transition-transform duration-500">
- {React.cloneElement(item.icon as React.ReactElement, { 
- strokeWidth: isActive ? 2 : 1.5,
- size: 20
- })}
+ <item.icon strokeWidth={isActive ? 2 : 1.5} size={20} />
  {item.badge > 0 && (
- <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-[9px]">
+ <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-[11px]">
  {item.badge}
  </div>
  )}

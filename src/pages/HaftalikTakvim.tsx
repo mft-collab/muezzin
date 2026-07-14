@@ -159,7 +159,7 @@ export default function HaftalikTakvim() {
  className="flex items-center gap-2 mb-3"
  >
  <div className="w-1 h-1 rounded-full bg-[var(--aura-indigo)] animate-pulse" />
- <span className="premium-label !text-[7px] !opacity-40 uppercase tracking-wide">
+ <span className="premium-label !text-[11px] !opacity-40 uppercase tracking-wide">
  GÖREV TAKVİMİ
  </span>
  </motion.div>
@@ -187,7 +187,7 @@ export default function HaftalikTakvim() {
  >
  <ChevronLeft size={18} />
  </motion.button>
- <div className="px-6 py-2 text-[9px] font-bold tracking-wide text-[var(--text-secondary)] uppercase min-w-[180px] text-center">
+ <div className="px-6 py-2 text-[11px] font-bold tracking-wide text-[var(--text-secondary)] uppercase min-w-[180px] text-center">
  {weekLabel} – {format(addWeeks(currentWeekStart, 1), 'd MMMM', { locale: tr })}
  </div>
  <motion.button
@@ -214,20 +214,20 @@ export default function HaftalikTakvim() {
   {Array.from({ length: 3 }).map((_, i) => (
   <div key={i} className="spatial-glass p-6 md:p-8 rounded-[32px] border-[var(--glass-border)] flex flex-col md:flex-row gap-8 opacity-50">
   <div className="flex gap-6 items-center">
-  <div className="w-16 h-16 rounded-2xl bg-white/5 animate-pulse" />
+  <div className="w-16 h-16 rounded-2xl bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
-  <div className="w-32 h-6 bg-white/5 rounded-full animate-pulse" />
-  <div className="w-20 h-3 bg-white/5 rounded-full animate-pulse" />
+  <div className="w-32 h-6 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-20 h-3 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
   </div>
   </div>
   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8">
   <div className="space-y-4">
-  <div className="w-24 h-2 bg-white/5 rounded-full animate-pulse" />
-  <div className="w-full h-10 bg-white/5 rounded-xl animate-pulse" />
+  <div className="w-24 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-full h-10 bg-[var(--text-primary)]/5 rounded-xl animate-pulse" />
   </div>
   <div className="space-y-4">
-  <div className="w-24 h-2 bg-white/5 rounded-full animate-pulse" />
-  <div className="w-full h-10 bg-white/5 rounded-xl animate-pulse" />
+  <div className="w-24 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-full h-10 bg-[var(--text-primary)]/5 rounded-xl animate-pulse" />
   </div>
   </div>
   </div>
@@ -252,7 +252,7 @@ export default function HaftalikTakvim() {
  whileHover={{ scale: 1.02 }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setCurrentDate(new Date())}
- className="px-10 py-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-2xl text-[10px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)]"
+ className="px-10 py-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-2xl text-[11px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)]"
  >
  GÜNCEL HAFTAYA DÖN
  </motion.button>
@@ -297,7 +297,7 @@ export default function HaftalikTakvim() {
  : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
  }`}>
  <span className="text-2xl font-sans font-light leading-none">{format(parsedDate, 'd')}</span>
- <span className="text-[9px] font-bold uppercase tracking-wider mt-1">{gunAyi?.substring(0, 3)?.toUpperCase()}</span>
+ <span className="text-[11px] font-bold uppercase tracking-wider mt-1">{gunAyi?.substring(0, 3)?.toUpperCase()}</span>
  </div>
  <div>
  <h4 className={`text-xl font-light tracking-tight apple-thin ${isToday ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
@@ -306,13 +306,13 @@ export default function HaftalikTakvim() {
  {isToday && (
  <div className="flex items-center gap-2 mt-1">
  <div className="w-1 h-1 rounded-full bg-[var(--status-info)] shadow-[0_0_8px_var(--status-info)]" />
- <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--status-info)]">BUGÜN</span>
+ <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--status-info)]">BUGÜN</span>
  </div>
  )}
  {isPersonalDuty && !isToday && (
  <div className="flex items-center gap-2 mt-1">
  <div className="w-1 h-1 rounded-full bg-[var(--status-warning)] shadow-[0_0_8px_var(--status-warning)]" />
- <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--status-warning)]">GÖREVİNİZ VAR</span>
+ <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--status-warning)]">GÖREVİNİZ VAR</span>
  </div>
  )}
  </div>
@@ -322,7 +322,7 @@ export default function HaftalikTakvim() {
  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8 w-full md:pl-10 border-[var(--glass-border)] md:border-l">
  {/* Asil Görevliler */}
  <div className="space-y-4">
- <span className="premium-label !text-[8px] !opacity-20">ASİL GÖREVLİLER</span>
+ <span className="premium-label !text-[11px] !opacity-20">ASİL GÖREVLİLER</span>
  <div className="flex flex-wrap gap-2">
  {asiller.length > 0 ? (asiller as string[]).map((uid) => (
  <div 
@@ -343,7 +343,7 @@ export default function HaftalikTakvim() {
 
  {/* Yedek Görevliler */}
  <div className="space-y-4">
- <span className="premium-label !text-[8px] !opacity-20">YEDEK GÖREVLİLER</span>
+ <span className="premium-label !text-[11px] !opacity-20">YEDEK GÖREVLİLER</span>
  <div className="flex flex-wrap gap-2">
  {yedekler.length > 0 ? (yedekler as string[]).map((uid) => (
  <div 

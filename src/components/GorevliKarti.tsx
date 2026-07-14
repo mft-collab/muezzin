@@ -17,7 +17,7 @@ const PersonaAvatar = React.memo(({ name, colorClass, isUser }: { name: string; 
  return (
  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] sm:rounded-[28px] flex items-center justify-center relative overflow-hidden border border-[var(--glass-border)] shadow-lg transition-all duration-500 ${colorClass} ${isUser ? 'animate-heartbeat' : ''}`}>
  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-30" />
- <span className={`text-lg sm:text-xl font-semibold tracking-tight relative z-10 ${isUser ? 'text-white' : 'text-[var(--text-primary)]/70'}`}>
+ <span className={`text-lg sm:text-xl font-semibold tracking-tight relative z-10 ${isUser ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]/70'}`}>
  {initials}
  </span>
  {isUser && (
@@ -45,7 +45,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
       : 'spatial-glass-elevated !bg-amber-500/[0.015] border-amber-500/25 shadow-amber-500/5'
     : isUnassigned
     ? 'bg-transparent border-dashed animate-pulse'
-    : 'spatial-glass hover:bg-white/[0.015]';
+    : 'spatial-glass hover:bg-[var(--text-primary)]/[0.015]';
 
   // Dynamic border color
   const unassignedBorderStyle = isUnassigned
@@ -80,14 +80,14 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
     ? isFriday ? 'bg-emerald-400 shadow-[0_0_10px_rgb(52,211,153)]' : isAsil ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-amber-400'
     : isUnassigned
     ? 'bg-[var(--dynamic-aura,rgba(255,255,255,0.2))] animate-ping'
-    : 'bg-white/20';
+    : 'bg-[var(--text-primary)]/20';
 
   const avatarColorClass = isUser
     ? isFriday
-      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg border-emerald-400/30'
+      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-[var(--text-primary)] shadow-lg border-emerald-400/30'
       : isAsil 
-      ? 'bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))] via-[var(--dynamic-aura,var(--aura-indigo))] to-violet-700 text-white shadow-lg border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
-      : 'bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-white shadow-lg border-amber-400/30'
+      ? 'bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))] via-[var(--dynamic-aura,var(--aura-indigo))] to-violet-700 text-[var(--text-primary)] shadow-lg border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
+      : 'bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-[var(--text-primary)] shadow-lg border-amber-400/30'
     : isUnassigned
     ? 'bg-[var(--text-primary)]/[0.01] text-[var(--text-primary)]/20 border-[var(--text-primary)]/[0.03] border-dashed'
     : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/40 border-[var(--text-primary)]/[0.06]';
@@ -120,7 +120,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
             <div>
               <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
-                <span className={`authority-title !text-[10px] tracking-wide font-semibold ${titleColorClass}`}>
+                <span className={`authority-title !text-[11px] tracking-wide font-semibold ${titleColorClass}`}>
                   {titleText}
                 </span>
               </div>
@@ -142,7 +142,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
             {durum === 'onaylandi' && (
               <div className={`flex items-center gap-2 px-4 py-1.5 rounded-[14px] border transition-all duration-500 ${isFriday ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
                 <CheckCircle2 size={11} className="text-emerald-400 shadow-sm" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">AKTİF</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">AKTİF</span>
               </div>
             )}
             {durum === 'bekliyor' && (
@@ -151,13 +151,13 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
                 className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-amber-500/10 border border-amber-500/20 shadow-sm cursor-pointer hover:bg-amber-500/15 transition-all"
               >
                 <Hourglass size={11} className="text-amber-400 animate-spin" style={{ animationDuration: '4s' }} />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400">BEKLEYİŞTE</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-amber-400">BEKLEYİŞTE</span>
               </motion.div>
             )}
             {izinde && (
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-rose-500/10 border border-rose-500/20 shadow-sm">
                 <Compass size={11} className="text-rose-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wide text-rose-400">MEŞRU MAZERET</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-rose-400">MEŞRU MAZERET</span>
               </div>
             )}
           </div>

@@ -953,6 +953,40 @@ const tests: TestCase[] = [
         sonGuncelleme: Timestamp.now()
       }));
     }
+  },
+  {
+    name: 'config/bootstrap listesindeki e-posta ile admin yetkisi kazanilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'config/bootstrap'), {
+          superAdminEmails: ['superadmin@example.test']
+        });
+      });
+
+      const db = testUser(env, 'superadmin').firestore();
+      await assertSucceeds(setDoc(doc(db, 'duyurular/bootstrapNotice'), {
+        baslik: 'Test',
+        mesaj: 'Bootstrap admin testi'
+      }));
+    }
+  },
+  {
+    name: 'config/bootstrap listesinde olmayan e-posta admin yetkisi kazanamaz',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'config/bootstrap'), {
+          superAdminEmails: ['superadmin@example.test']
+        });
+      });
+
+      const db = testUser(env, 'digerkullanici').firestore();
+      await assertFails(setDoc(doc(db, 'duyurular/unauthorizedNotice'), {
+        baslik: 'Test',
+        mesaj: 'Yetkisiz deneme'
+      }));
+    }
   }
 ];
 

@@ -91,39 +91,13 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globDirectory: 'dist',
-        globPatterns: ['**/*.{js,css,html,png,svg}'],
+        // Fontlar artık self-host (bkz. src/index.css @fontsource import'ları) — woff2/woff
+        // build çıktısına dahil olduğundan burada da precache edilmesi gerekiyor. Google
+        // Fonts CDN runtimeCaching kuralları bu nedenle kaldırıldı (artık hiçbir istek
+        // fonts.googleapis.com/fonts.gstatic.com'a gitmiyor).
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2,woff}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        importScripts: ['/firebase-messaging-sw.js'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'gstatic-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+        importScripts: ['/firebase-messaging-sw.js']
       }
     })
   ],

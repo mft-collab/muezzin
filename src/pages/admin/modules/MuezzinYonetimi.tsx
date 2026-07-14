@@ -220,13 +220,13 @@ export default function MuezzinYonetimi() {
   {Array.from({ length: 6 }).map((_, i) => (
   <div key={i} className="p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-[36px] opacity-50 flex flex-col gap-6">
   <div className="flex items-center gap-5">
-  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-white/5 animate-pulse" />
+  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
-  <div className="w-32 h-4 bg-white/5 rounded-full animate-pulse" />
-  <div className="w-20 h-2 bg-white/5 rounded-full animate-pulse" />
+  <div className="w-32 h-4 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-20 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
   </div>
   </div>
-  <div className="w-full h-16 bg-white/5 rounded-[20px] animate-pulse" />
+  <div className="w-full h-16 bg-[var(--text-primary)]/5 rounded-[20px] animate-pulse" />
   </div>
   ))}
   </div>
@@ -239,14 +239,14 @@ export default function MuezzinYonetimi() {
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
   <div className="flex flex-col gap-2">
   <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Kadro Yönetimi</h2>
-  <p className="authority-title !text-[10px] opacity-40 font-medium tracking-wide">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
+  <p className="authority-title !text-[11px] opacity-40 font-medium tracking-wide">{muezzinler.length} TOPLAM PERSONEL TANIMLI</p>
   </div>
   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
      <motion.button 
        whileHover={{ y: -3, scale: 1.02 }}
        whileTap={{ scale: 0.98 }}
        onClick={() => setShowArchived(!showArchived)} 
-       className={`flex-1 sm:flex-initial px-6 py-3 sm:py-4 rounded-xl text-[10px] font-bold uppercase tracking-wide border transition-all ${showArchived ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-white/[0.03] border-white/5 text-[var(--text-secondary)]/55 hover:text-[var(--text-primary)]'}`}
+       className={`flex-1 sm:flex-initial px-6 py-3 sm:py-4 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition-all ${showArchived ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-[var(--text-primary)]/[0.03] border-[var(--text-primary)]/5 text-[var(--text-secondary)]/55 hover:text-[var(--text-primary)]'}`}
      >
        {showArchived ? 'KADROYU GÖSTER' : 'ARŞİVİ GÖSTER'}
      </motion.button>
@@ -254,7 +254,7 @@ export default function MuezzinYonetimi() {
        whileHover={{ y: -3, scale: 1.02 }}
        whileTap={{ scale: 0.98 }}
        onClick={openNew} 
-       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-white rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-[0_12px_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_18%,transparent)] flex items-center justify-center gap-4 group"
+       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-[0_12px_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_18%,transparent)] flex items-center justify-center gap-4 group"
      >
        <UserPlus size={16} className="group-hover:rotate-12 transition-transform" /> 
        YENİ PERSONEL TANIMLA
@@ -277,7 +277,7 @@ export default function MuezzinYonetimi() {
  </div>
  <div>
  <h3 className="text-sm font-medium text-rose-500/80 tracking-tight">Bekleyen Onaylar & Davetler</h3>
- <p className="authority-title !text-[10px] opacity-45 mt-1 font-medium tracking-wide">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
+ <p className="authority-title !text-[11px] opacity-45 mt-1 font-medium tracking-wide">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
  </div>
  </div>
 
@@ -289,7 +289,7 @@ export default function MuezzinYonetimi() {
  animate={{ opacity: 1, x: 0 }}
  transition={{ delay: shouldAnimate ? idx * 0.1 : 0 }}
  key={m.id} 
- className="spatial-glass-elevated p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 group hover:bg-white/[0.04] transition-all duration-500"
+ className="spatial-glass-elevated p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 group hover:bg-[var(--text-primary)]/[0.04] transition-all duration-500"
  >
   <div className="flex items-center gap-4 min-w-0 flex-1">
   <div className="w-10 h-10 shrink-0 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))]/5 border border-[var(--dynamic-aura,var(--aura-indigo))]/10 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] font-light text-lg">
@@ -297,7 +297,7 @@ export default function MuezzinYonetimi() {
   </div>
   <div className="min-w-0 flex-1">
   <p className="text-sm font-light text-[var(--text-primary)] tracking-tight truncate">{m.displayName}</p>
-  <p className="text-[10px] text-[var(--text-secondary)]/60 font-bold uppercase tracking-wide mt-1 break-all">{(m as any).email}</p>
+  <p className="text-[11px] text-[var(--text-secondary)]/60 font-bold uppercase tracking-wide mt-1 break-all">{(m as any).email}</p>
   </div>
   </div>
  <div className="flex items-center gap-3">
@@ -313,7 +313,7 @@ export default function MuezzinYonetimi() {
  </motion.button>
  ) : (
  <div className="px-3 py-1 bg-[var(--surface-medium)] rounded-xl border border-[var(--glass-border)]">
- <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-55">DAVETLİ</span>
+ <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-55">DAVETLİ</span>
  </div>
  )}
  <motion.button
@@ -321,7 +321,7 @@ export default function MuezzinYonetimi() {
  whileTap={{ scale: 0.9 }}
  onClick={() => (m as any).isInvite ? executeDeleteInvite(m.id) : setConfirmDelete({ open: true, data: m })}
  aria-label="Sil"
- className="p-3 bg-white/5 text-[var(--text-secondary)]/30 rounded-xl border border-white/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
+ className="p-3 bg-[var(--text-primary)]/5 text-[var(--text-secondary)]/30 rounded-xl border border-[var(--text-primary)]/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
  >
  <Trash2 size={16} />
  </motion.button>
@@ -339,7 +339,7 @@ export default function MuezzinYonetimi() {
  <div className="w-1.5 h-6 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full" />
  <h2 className="text-lg font-light tracking-tight text-[var(--text-primary)]">{showArchived ? 'Arşivlenmiş Kadro' : 'Aktif Kadro'}</h2>
  </div>
- <span className="premium-label !text-[9px] !opacity-20">{displayedUsers.length} PERSONEL LİSTELENDİ</span>
+ <span className="premium-label !text-[11px] !opacity-20">{displayedUsers.length} PERSONEL LİSTELENDİ</span>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -389,7 +389,7 @@ export default function MuezzinYonetimi() {
  )}
  <span className={`relative inline-flex rounded-full h-2 w-2 ${m.fcmToken ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-[var(--text-primary)]/10'}`} />
  </div>
- <span className={`text-[10px] font-bold tracking-wide uppercase transition-colors duration-500 ${
+ <span className={`text-[11px] font-bold tracking-wide uppercase transition-colors duration-500 ${
  m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-[var(--text-secondary)]/35'
  }`}>
  {m.fcmToken ? 'Bildirim Aktif' : 'Bildirim Kapalı'}
@@ -400,26 +400,26 @@ export default function MuezzinYonetimi() {
  
  <div className="flex flex-row flex-wrap items-center sm:flex-col sm:items-end gap-1.5 w-full sm:w-auto mt-2 sm:mt-0">
  {rank === 1 && !showArchived && (
- <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+ <span className="px-2.5 py-1 rounded-md text-[11px] font-black tracking-wide bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
  LİDER
  </span>
  )}
  {rank === 2 && !showArchived && (
- <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-slate-400/10 text-slate-400 border border-slate-400/20">
+ <span className="px-2.5 py-1 rounded-md text-[11px] font-black tracking-wide bg-slate-400/10 text-slate-400 border border-slate-400/20">
  2. SIRADA
  </span>
  )}
  {rank === 3 && !showArchived && (
- <span className="px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide bg-amber-700/10 text-amber-700 border border-amber-700/20">
+ <span className="px-2.5 py-1 rounded-md text-[11px] font-black tracking-wide bg-amber-700/10 text-amber-700 border border-amber-700/20">
  3. SIRADA
  </span>
  )}
  {rank > 3 && !showArchived && (
- <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/45 border border-[var(--glass-border)]">
+ <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/45 border border-[var(--glass-border)]">
  #{rank} SIRALAMA
  </span>
  )}
- <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border shadow-sm ${
+ <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase border shadow-sm ${
  m.role === 'admin' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20' : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)]/50 border-[var(--glass-border)]'
  }`}>
  {m.role === 'admin' ? 'YÖNETİCİ' : m.role === 'gozlemci' ? 'GÖZLEMCİ' : 'MÜEZZİN'}
@@ -430,13 +430,13 @@ export default function MuezzinYonetimi() {
  {/* Body: Stats Bento Grid */}
  <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-5 bg-[var(--text-primary)]/[0.02] rounded-[20px] sm:rounded-[28px] border border-[var(--glass-border)]">
  <div className="space-y-1.5">
- <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">İZİN GÜNÜ</p>
+ <p className="premium-label !text-[11px] !opacity-35 uppercase tracking-wide">İZİN GÜNÜ</p>
  <p className="text-xs font-light text-[var(--text-primary)] tracking-wide">
  {m.haftalikIzinGunu && m.haftalikIzinGunu > 0 ? GUNLER_TR[m.haftalikIzinGunu] : 'BELİRTİLMEMİŞ'}
  </p>
  </div>
  <div className="space-y-1.5">
- <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">GÖREV YÜKÜ</p>
+ <p className="premium-label !text-[11px] !opacity-35 uppercase tracking-wide">GÖREV YÜKÜ</p>
  <p className="text-xs font-medium text-[var(--dynamic-aura,var(--aura-indigo))] tabular-nums">
  {isOperationalMuezzin ? `${m.aylikVakitSayisi || 0} Vakit` : 'Yönetim'}
  </p>
@@ -445,8 +445,8 @@ export default function MuezzinYonetimi() {
  {/* Full-width Relative Efficiency */}
  <div className="col-span-2 space-y-2 border-t border-[var(--glass-border)] pt-3 mt-1">
  <div className="flex justify-between items-center">
- <p className="premium-label !text-[10px] !opacity-35 uppercase tracking-wide">HİZMET VERİMİ</p>
- <span className={`text-[9px] font-bold tabular-nums ${
+ <p className="premium-label !text-[11px] !opacity-35 uppercase tracking-wide">HİZMET VERİMİ</p>
+ <span className={`text-[11px] font-bold tabular-nums ${
  efficiency > 80 ? 'text-amber-500' : efficiency > 40 ? 'text-emerald-500' : 'text-[var(--text-secondary)]/40'
  }`}>
  {isOperationalMuezzin ? `%${Math.round(efficiency)}` : 'Kadro dışı'}
@@ -470,7 +470,7 @@ export default function MuezzinYonetimi() {
  {/* Footer: Actions */}
  <div className="flex items-center justify-between gap-2 pt-2">
  <div className="flex items-center gap-2">
- <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide border ${
+ <div className={`px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide border ${
  m.aktif ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
  {m.aktif ? 'AKTİF' : 'PASİF'}
@@ -540,10 +540,10 @@ export default function MuezzinYonetimi() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-[10px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] w-full max-w-full overflow-hidden"
+      className="spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-[11px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] w-full max-w-full overflow-hidden"
     >
       <AlertCircle size={20} className="shrink-0" />
-      <p className="break-all whitespace-normal flex-1 font-mono text-[9px] tracking-normal lowercase select-all">{errorStatus}</p>
+      <p className="break-all whitespace-normal flex-1 font-mono text-[11px] tracking-normal lowercase select-all">{errorStatus}</p>
     </motion.div>
   )}
  </AnimatePresence>

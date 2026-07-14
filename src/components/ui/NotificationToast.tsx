@@ -20,6 +20,8 @@ interface NotificationToastProps {
  title: string;
  message: string;
  type?: NotificationType;
+ action?: { label: string; onClick: () => void };
+ durationMs?: number;
  onClose: (id: string) => void;
 }
 
@@ -35,12 +37,14 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  title,
  message,
  type = 'info',
+ action,
+ durationMs = 5500,
  onClose,
 }) => {
  useEffect(() => {
- const timer = setTimeout(() => onClose(id), 5500);
+ const timer = setTimeout(() => onClose(id), durationMs);
  return () => clearTimeout(timer);
- }, [id, onClose]);
+ }, [id, onClose, durationMs]);
 
  const cfg = TYPE_CONFIG[type] ?? TYPE_CONFIG.info;
 
@@ -60,7 +64,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  <div className="flex items-start gap-3 p-4">
  {/* Icon */}
  <div
- className="flex-shrink-0 mt-0.5 flex items-center justify-center w-7 h-7 rounded-xl bg-[var(--text-primary)]/[0.03] border border-white/5"
+ className="flex-shrink-0 mt-0.5 flex items-center justify-center w-7 h-7 rounded-xl bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/5"
  >
  {cfg.icon}
  </div>
@@ -70,9 +74,17 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  <h4 className="text-xs font-medium text-[var(--text-primary)] mb-1 leading-none">
  {title}
  </h4>
- <p className="text-[10px] font-light text-[var(--text-secondary)]/60 leading-relaxed">
+ <p className="text-[11px] font-light text-[var(--text-secondary)]/60 leading-relaxed">
  {message}
  </p>
+ {action && (
+ <button
+ onClick={() => { action.onClick(); onClose(id); }}
+ className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--status-info)] hover:opacity-70 transition-opacity"
+ >
+ {action.label}
+ </button>
+ )}
  </div>
 
  {/* Close */}

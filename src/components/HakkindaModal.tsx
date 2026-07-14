@@ -39,16 +39,16 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 1 }}
-            className="relative w-full max-w-[420px] spatial-glass border border-white/10 rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col items-center p-8 sm:p-10"
+            className="relative w-full max-w-[420px] spatial-glass border border-[var(--text-primary)]/10 rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col items-center p-8 sm:p-10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               onClick={handleClose}
               aria-label="Kapat"
-              className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/5 transition-colors"
+              className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/10 border border-[var(--text-primary)]/5 transition-colors"
             >
-              <X size={16} className="text-white/60 hover:text-white" />
+              <X size={16} className="text-[var(--text-primary)]/60 hover:text-[var(--text-primary)]" />
             </button>
 
             {/* Glowing Aura Background */}
@@ -61,7 +61,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               transition={{ delay: 0.1, duration: 0.8, ease: "easeOut" }}
               className="relative z-10 mb-6"
             >
-              <Logo size={72} variant="dynamic" className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" glowColor="rgba(255,255,255,0.6)" />
+              <Logo size={72} variant="dynamic" className="text-[var(--text-primary)] drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]" glowColor="rgba(255,255,255,0.6)" />
             </motion.div>
 
             {/* App Name & Version */}
@@ -74,9 +74,9 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               <h2 className="text-3xl font-light tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 mb-2">
                 Müezzin Pro
               </h2>
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/10">
                 <Sparkles size={10} className="text-[var(--aura-indigo)]" />
-                <span className="text-[9px] font-bold tracking-widest text-white/80 uppercase">
+                <span className="text-[11px] font-bold tracking-widest text-[var(--text-primary)]/80 uppercase">
                   Sürüm 2.2.0 (Build 860)
                 </span>
               </div>
@@ -89,7 +89,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               transition={{ delay: 0.3, duration: 0.8, ease: "easeOut" }}
               className="text-center mb-10 relative z-10"
             >
-              <p className="text-sm font-light text-white/60 leading-relaxed max-w-[280px]">
+              <p className="text-sm font-light text-[var(--text-primary)]/60 leading-relaxed max-w-[280px]">
                 "Vakitlerin emanetçileri için kusursuz hassasiyetle tasarlandı."
               </p>
             </motion.div>
@@ -101,29 +101,29 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               transition={{ delay: 0.4, duration: 0.8, ease: "easeOut" }}
               className="grid grid-cols-2 gap-3 w-full mb-8 relative z-10"
             >
-              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/5">
                 <div className="w-6 h-6 rounded-lg bg-[var(--aura-indigo)]/10 flex items-center justify-center">
                   <Cpu size={12} className="text-[var(--aura-indigo)]" />
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">Planlama Motoru</span>
+                <span className="text-[11px] font-bold tracking-wide text-[var(--text-primary)]/70 uppercase">Planlama Motoru</span>
               </div>
-              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/5">
                 <div className="w-6 h-6 rounded-lg bg-[var(--status-success)]/10 flex items-center justify-center">
                   <Globe size={12} className="text-[var(--status-success)]" />
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">Offline İlk</span>
+                <span className="text-[11px] font-bold tracking-wide text-[var(--text-primary)]/70 uppercase">Offline İlk</span>
               </div>
-              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/5">
                 <div className="w-6 h-6 rounded-lg bg-[var(--aura-amber)]/10 flex items-center justify-center">
                   <Code size={12} className="text-[var(--aura-amber)]" />
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">React Mimarisi</span>
+                <span className="text-[11px] font-bold tracking-wide text-[var(--text-primary)]/70 uppercase">React Mimarisi</span>
               </div>
-              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/5">
                 <div className="w-6 h-6 rounded-lg bg-[var(--aura-rose)]/10 flex items-center justify-center">
                   <CheckCircle2 size={12} className="text-[var(--aura-rose)]" />
                 </div>
-                <span className="text-[10px] font-bold tracking-wide text-white/70 uppercase">Apple HIG</span>
+                <span className="text-[11px] font-bold tracking-wide text-[var(--text-primary)]/70 uppercase">Apple HIG</span>
               </div>
             </motion.div>
 
@@ -132,14 +132,14 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               initial={{ opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="w-full pt-6 border-t border-white/10 flex flex-col items-center justify-center gap-1 relative z-10"
+              className="w-full pt-6 border-t border-[var(--text-primary)]/10 flex flex-col items-center justify-center gap-1 relative z-10"
             >
-              <span className="text-[8px] font-extrabold tracking-[0.2em] text-white/30 uppercase">
+              <span className="text-[11px] font-extrabold tracking-[0.2em] text-[var(--text-secondary)] uppercase">
                 Tasarım ve Geliştirme
               </span>
               <button 
                 onClick={handleLinkClick}
-                className="text-[10px] font-bold tracking-wide text-white/80 hover:text-white transition-colors"
+                className="text-[11px] font-bold tracking-wide text-[var(--text-primary)]/80 hover:text-[var(--text-primary)] transition-colors"
               >
                 Google DeepMind Advanced Agentic Coding
               </button>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useTransition } from 'react';
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
+import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
 
 const EzanOnbellegi = lazy(() => import('./EzanOnbellegi'));
 const SistemAyarlari = lazy(() => import('./SistemAyarlari'));
@@ -50,45 +51,14 @@ export default function AyarlarHub() {
     <div className="flex flex-col gap-10 relative min-h-[70vh] min-w-0 w-full max-w-full">
       {/* Sub-Page Navigation - Spatial Glass Pill */}
       <div className="sticky top-0 z-40 py-2">
-        <div role="tablist" aria-label="Sistem ayarları sekmeleri" className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
-          {navItems.map(item => {
-            const isActive = activeTab === item.id;
-            return (
-              <motion.button
-                key={item.id}
-                type="button"
-                role="tab"
-                id={`ayarlar-tab-${item.id}`}
-                aria-selected={isActive}
-                aria-controls={`ayarlar-panel-${item.id}`}
-                tabIndex={isActive ? 0 : -1}
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setActiveTab(item.id)}
-                className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide relative group ${
-                  isActive 
-                    ? 'text-[var(--text-primary)]' 
-                    : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/50 hover:bg-white/[0.02]'
-                }`}
-              >
-                <span className="relative z-10">{item.label}</span>
-                {isActive && (
-                  <motion.div 
-                    layoutId="active-settings-tab-pill"
-                    className="absolute inset-0 bg-white/[0.03] border border-white/[0.05] rounded-[20px] -z-0 shadow-lg"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
-                {isActive && (
-                  <motion.div 
-                    layoutId="active-settings-tab-indicator"
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)]"
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
+        <SegmentedTabs
+          items={navItems}
+          activeId={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Sistem ayarları sekmeleri"
+          idPrefix="ayarlar"
+          variant="pill"
+        />
       </div>
 
       {/* Module Transition Area */}

@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, CalendarDays, Users, Settings, LogOut, Sun, Moon, Home, Calendar, User, SlidersHorizontal } from 'lucide-react';
+import { LogOut, Sun, Moon } from 'lucide-react';
 import { Logo } from '../../../components/ui/Logo';
+import { getAdminNavItems, APP_LINKS } from '../config/navConfig';
 
 interface SlimSidebarProps {
  activeTab: string;
@@ -26,19 +27,8 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  toggleTheme,
  onNavigateApp
 }) => {
- const navItems = [
- { id: 'dashboard', label: 'Özet', ariaLabel: 'Genel bakış', icon: <LayoutDashboard size={18} />, badge: cozulmamisSayisi },
- { id: 'planlama', label: 'Cetvel', ariaLabel: 'Hizmet cetveli', icon: <CalendarDays size={18} /> },
- { id: 'ekip', label: 'Kadro', ariaLabel: 'Kadro yönetimi', icon: <Users size={18} />, badge: pendingIzinler },
- { id: 'ayarlar', label: 'Sistem', ariaLabel: 'Sistem ayarları', icon: <Settings size={18} /> }
- ];
-
- const appLinks = [
- { path: '/', label: 'Vakit', icon: <Home size={16} /> },
- { path: '/takvim', label: 'Takvim', icon: <Calendar size={16} /> },
- { path: '/profil', label: 'Profil', icon: <User size={16} /> },
- { path: '/ayarlar', label: 'Ayarlar', icon: <SlidersHorizontal size={16} /> }
- ];
+ const navItems = getAdminNavItems({ cozulmamisSayisi, pendingIzinler });
+ const appLinks = APP_LINKS;
 
  return (
  <aside className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)]">
@@ -61,26 +51,26 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  return (
  <button
  key={item.id}
- aria-label={item.ariaLabel}
+ aria-label={item.fullLabel}
  aria-current={isActive ? 'page' : undefined}
- title={item.ariaLabel}
+ title={item.fullLabel}
  onClick={() => setActiveTab(item.id)}
  onMouseEnter={() => onPrefetch?.(item.id)}
  className={`relative flex flex-col items-center justify-center gap-2 w-full h-[72px] rounded-[20px] transition-all duration-300 group z-10 ${
- isActive 
- ? 'text-[var(--text-primary)] shadow-inner' 
+ isActive
+ ? 'text-[var(--text-primary)] shadow-inner'
  : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/60 hover:bg-[var(--text-primary)]/[0.02]'
  }`}
  >
  <div className={`transition-all duration-700 relative z-10 ${isActive ? 'scale-110' : ''}`}>
- {React.cloneElement(item.icon as React.ReactElement, { 
- strokeWidth: isActive ? 2 : 1.5, 
- size: 22,
- className: isActive ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : ''
- })}
+ <item.icon
+ strokeWidth={isActive ? 2 : 1.5}
+ size={22}
+ className={isActive ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : ''}
+ />
  </div>
- <span className={`authority-title !text-[9px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
- {item.label.toUpperCase()}
+ <span className={`authority-title !text-[11px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
+ {item.shortLabel.toUpperCase()}
  </span>
 
  {item.badge > 0 && (
@@ -122,11 +112,8 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  onClick={() => onNavigateApp(item.path)}
  className="relative w-full h-10 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/22 hover:text-[var(--text-primary)]/70 hover:bg-[var(--text-primary)]/[0.025] border border-transparent hover:border-[var(--glass-border)] transition-all group"
  >
- {React.cloneElement(item.icon as React.ReactElement, {
- strokeWidth: 1.6,
- size: 18
- })}
- <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-[10px] font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
+ <item.icon strokeWidth={1.6} size={18} />
+ <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-[11px] font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
  {item.label}
  </span>
  </button>

@@ -2,6 +2,7 @@ import React, { useTransition } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
 
 const MuezzinYonetimi = lazy(() => import('./MuezzinYonetimi'));
 const IzinMazeretHub = lazy(() => import('./IzinMazeretHub'));
@@ -32,44 +33,14 @@ export default function PersonelHub() {
  
  {/* Sub-Page Navigation - Spatial Glass Pill */}
  <div className="sticky top-0 z-40 py-2">
- <div role="tablist" aria-label="Personel yönetimi sekmeleri" className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
- {navItems.map(item => {
- const isActive = activeTab === item.id;
- return (
- <motion.button
- key={item.id}
- role="tab"
- id={`personel-tab-${item.id}`}
- aria-selected={isActive}
- aria-controls={`personel-panel-${item.id}`}
- tabIndex={isActive ? 0 : -1}
- whileHover={{ scale: 1.02, y: -1 }}
- whileTap={{ scale: 0.97 }}
- onClick={() => setActiveTab(item.id)}
- className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide relative group ${
- isActive 
- ? 'text-[var(--text-primary)]' 
- : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/50 hover:bg-white/[0.02]'
- }`}
- >
- <span className="relative z-10">{item.label}</span>
- {isActive && (
- <motion.div 
- layoutId="active-subtab-pill"
- className="absolute inset-0 bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[20px] -z-0 shadow-lg"
- transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+ <SegmentedTabs
+ items={navItems}
+ activeId={activeTab}
+ onChange={setActiveTab}
+ ariaLabel="Personel yönetimi sekmeleri"
+ idPrefix="personel"
+ variant="pill"
  />
- )}
- {isActive && (
- <motion.div 
- layoutId="active-subtab-indicator"
- className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)]"
- />
- )}
- </motion.button>
- );
- })}
- </div>
  </div>
 
  {/* Module Transition Area */}

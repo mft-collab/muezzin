@@ -144,13 +144,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 <div className="flex flex-col gap-2">
                   <button 
                     onClick={() => window.location.reload()} 
-                    className="text-[10px] uppercase tracking-wide text-[var(--dynamic-aura,var(--aura-indigo))] font-bold hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-colors cursor-pointer border-none bg-transparent"
+                    className="text-[11px] uppercase tracking-wide text-[var(--dynamic-aura,var(--aura-indigo))] font-bold hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-colors cursor-pointer border-none bg-transparent"
                   >
                     SAYFAYI YENİLE
                   </button>
                   <button 
                     onClick={() => { setLoading(false); setLoadingTimeout(false); }} 
-                    className="text-[10px] uppercase tracking-wide text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer border-none bg-transparent"
+                    className="text-[11px] uppercase tracking-wide text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer border-none bg-transparent"
                   >
                     Giriş Ekranına Devam Et
                   </button>

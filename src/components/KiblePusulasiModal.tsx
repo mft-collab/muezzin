@@ -6,6 +6,7 @@ import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 import { kibleAcisiHesapla, kibleMesafesiHesapla } from '../services/gpsVakitServisi';
 import { hapticLight, hapticQiblaLock } from '../lib/haptic';
+import { playQiblaLock } from '../lib/sounds';
 
 interface KiblePusulasiModalProps {
   isOpen: boolean;
@@ -19,34 +20,6 @@ const FALLBACK_KOORDINATLAR: Record<string, { lat: number; lng: number }> = {
   "ankara": { lat: 39.9334, lng: 32.8597 },
   "istanbul": { lat: 41.0082, lng: 28.9784 },
   "izmir": { lat: 38.4192, lng: 27.1287 }
-};
-
-// Play a high-end mechanical watch crystal click sound (Zero dependencies, Web Audio API)
-const playLockChime = () => {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.type = 'sine';
-    // Precise mechanical lock click chime frequency sweep
-    osc.frequency.setValueAtTime(1000, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.03);
-    
-    gain.gain.setValueAtTime(0.04, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    
-    osc.start();
-    osc.stop(ctx.currentTime + 0.13);
-  } catch (e) {
-    console.warn("Mechanical chime blocked or failed:", e);
-  }
 };
 
 // Sub-component 1: Compact Compass Dial (Memoized structure prevents DOM reconciliation overhead)
@@ -66,10 +39,10 @@ const CompactCompassDial = React.memo(({ dialRef, qiblaAngle }: CompassDialProps
       }}
     >
       {/* 4 Cardinal Directions only for Apple HIG Widget Minimalism */}
-      <span className="absolute top-3.5 text-[10px] font-bold text-rose-500 tracking-wide">K</span>
-      <span className="absolute right-4.5 text-[8px] font-bold text-[var(--text-secondary)]/50">D</span>
-      <span className="absolute bottom-3.5 text-[8px] font-bold text-[var(--text-secondary)]/50">G</span>
-      <span className="absolute left-4.5 text-[8px] font-bold text-[var(--text-secondary)]/50">B</span>
+      <span className="absolute top-3.5 text-[11px] font-bold text-[var(--aura-ruby)] tracking-wide">K</span>
+      <span className="absolute right-4.5 text-[11px] font-bold text-[var(--text-secondary)]/50">D</span>
+      <span className="absolute bottom-3.5 text-[11px] font-bold text-[var(--text-secondary)]/50">G</span>
+      <span className="absolute left-4.5 text-[11px] font-bold text-[var(--text-secondary)]/50">B</span>
 
       {/* Astro-Geometric Rings */}
       <div className="absolute w-[80%] h-[80%] rounded-full border border-[var(--glass-border)] opacity-10" />
@@ -84,8 +57,8 @@ const CompactCompassDial = React.memo(({ dialRef, qiblaAngle }: CompassDialProps
         }}
       >
         {/* Glowing Golden Point */}
-        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 border border-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.85)] relative">
-          <span className="absolute inset-[-4px] rounded-full border border-amber-400/30 animate-ping-slow" />
+        <div className="w-2.5 h-2.5 rounded-full bg-[var(--aura-amber)] border border-[var(--aura-amber)]/40 shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_85%,transparent)] relative">
+          <span className="absolute inset-[-4px] rounded-full border border-[var(--aura-amber)]/30 animate-ping-slow" />
         </div>
       </div>
     </div>
@@ -116,30 +89,30 @@ const CompactCompassNeedle = React.memo(({ needleRef, qiblaAngle, isAligned }: C
         <div 
           className={`absolute w-6 h-6 rounded-full blur-[4px] -top-4 transition-all duration-[1s] ${
             isAligned 
-              ? 'bg-emerald-400/40 shadow-[0_0_12px_rgba(52,211,153,0.5)]' 
-              : 'bg-amber-400/10'
-          }`} 
+              ? 'bg-[var(--aura-emerald)]/40 shadow-[0_0_12px_color-mix(in_srgb,var(--aura-emerald)_50%,transparent)]'
+              : 'bg-[var(--aura-amber)]/10'
+          }`}
         />
-        
+
         {/* Compact Prismatic Arrow Geometry */}
-        <svg 
-          viewBox="0 0 20 40" 
+        <svg
+          viewBox="0 0 20 40"
           className={`w-3.5 h-10 transition-colors duration-500 drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)] ${
-            isAligned ? 'text-emerald-400' : 'text-amber-500'
+            isAligned ? 'text-[var(--aura-emerald)]' : 'text-[var(--aura-amber)]'
           }`}
         >
           {/* Left Prism Facet: Golden Amber */}
           <polygon points="10,0 10,40 0,12" fill="currentColor" opacity="0.9" />
           {/* Right Prism Facet: Dark Gold Shadow */}
-          <polygon points="10,0 20,12 10,40" fill={isAligned ? '#10b981' : '#b45309'} />
+          <polygon points="10,0 20,12 10,40" fill={isAligned ? 'color-mix(in srgb, var(--aura-emerald) 65%, black)' : 'color-mix(in srgb, var(--aura-amber) 65%, black)'} />
         </svg>
 
         {/* Minimalist Kaaba Medallion */}
-        <div 
+        <div
           className={`w-6 h-6 rounded-full flex items-center justify-center border shadow-sm relative z-30 -top-[48px] transition-all duration-700 ${
-            isAligned 
-              ? 'bg-emerald-500 border-emerald-300 text-white shadow-emerald-500/30' 
-              : 'bg-zinc-900 border-amber-500/40 text-amber-500/80 shadow-black/50'
+            isAligned
+              ? 'bg-[var(--aura-emerald)] border-[var(--aura-emerald)]/60 text-[var(--text-primary)] shadow-[var(--aura-emerald)]/30'
+              : 'bg-zinc-900 border-[var(--aura-amber)]/40 text-[var(--aura-amber)]/80 shadow-black/50'
           }`}
         >
           <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
@@ -209,7 +182,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
       if (now - lastVibeTimeRef.current > 2000) {
         lastVibeTimeRef.current = now;
         hapticQiblaLock(); // Stronger double tap vibration for Qibla alignment
-        playLockChime(); // Crisp mechanical bell sound
+        playQiblaLock(); // Crisp mechanical bell sound
       }
     }
   }, [isAligned, isOpen]);
@@ -403,8 +376,8 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           }}
         />
 
-        <p className="text-[9px] text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
-          Precision Orientation
+        <p className="text-[11px] text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
+          Hassas Yön Tayini
         </p>
         <h3 className="text-sm font-light text-[var(--text-primary)] mb-5 tracking-tight">
           {locationText}
@@ -413,7 +386,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         {/* COMPASS COMPACT SCREEN - 220PX ULTRA-PREMIUM APPLE WIDGET DESIGN */}
         <div className="relative w-[220px] h-[220px] flex items-center justify-center z-10 mb-8 select-none">
           {/* Bezel Ring: Compact Matte Sandblasted Metal Frame */}
-          <div className="absolute inset-[-4px] rounded-full bg-gradient-to-b from-zinc-200/90 to-zinc-400/90 dark:from-zinc-800/80 dark:to-zinc-950/80 border border-white/5 dark:border-white/10 shadow-[0_12px_28px_rgba(0,0,0,0.25),inset_0_1px_1.5px_rgba(255,255,255,0.12)] pointer-events-none z-0" />
+          <div className="absolute inset-[-4px] rounded-full bg-gradient-to-b from-zinc-200/90 to-zinc-400/90 dark:from-zinc-800/80 dark:to-zinc-950/80 border border-[var(--text-primary)]/5 dark:border-[var(--text-primary)]/10 shadow-[0_12px_28px_rgba(0,0,0,0.25),inset_0_1px_1.5px_rgba(255,255,255,0.12)] pointer-events-none z-0" />
           
           {/* Compass Dial Outer Ring */}
           <CompactCompassDial dialRef={dialRef} qiblaAngle={qiblaAngle} />
@@ -428,9 +401,9 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
               className="w-2.5 h-2.5 rounded-full border shadow-inner transition-all duration-[1s]" 
               style={{
                 background: isAligned
-                  ? 'radial-gradient(circle at 35% 35%, #10b981 0%, #047857 60%, #064e3b 100%)'
-                  : 'radial-gradient(circle at 35% 35%, #f43f5e 0%, #be123c 60%, #881337 100%)',
-                borderColor: isAligned ? '#6ee7b7' : '#fda4af'
+                  ? 'radial-gradient(circle at 35% 35%, var(--aura-emerald) 0%, color-mix(in srgb, var(--aura-emerald) 70%, black) 60%, color-mix(in srgb, var(--aura-emerald) 40%, black) 100%)'
+                  : 'radial-gradient(circle at 35% 35%, var(--aura-ruby) 0%, color-mix(in srgb, var(--aura-ruby) 70%, black) 60%, color-mix(in srgb, var(--aura-ruby) 40%, black) 100%)',
+                borderColor: isAligned ? 'color-mix(in srgb, var(--aura-emerald) 60%, white)' : 'color-mix(in srgb, var(--aura-ruby) 60%, white)'
               }}
             />
           </div>
@@ -441,11 +414,11 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full p-5 spatial-glass border-amber-500/20 bg-amber-500/[0.015] rounded-3xl flex flex-col items-center gap-3.5 mb-6 z-10"
+            className="w-full p-5 spatial-glass border-[var(--aura-amber)]/20 bg-[var(--aura-amber)]/[0.015] rounded-3xl flex flex-col items-center gap-3.5 mb-6 z-10"
           >
-            <div className="flex items-center gap-2 text-amber-400">
+            <div className="flex items-center gap-2 text-[var(--aura-amber)]">
               <ShieldAlert size={16} />
-              <span className="text-[10px] font-extrabold uppercase tracking-widest leading-none">HAREKET SENSÖRÜ İZNİ</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-widest leading-none">HAREKET SENSÖRÜ İZNİ</span>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)]/70 font-light leading-normal">
               Safari tarayıcısında pusulanın telefonunuzla birlikte dönmesi için cihaz sensörlerine erişim verilmelidir.
@@ -454,7 +427,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={requestPermission}
-              className="px-5 py-3 bg-amber-500 text-white rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-amber-500/20"
+              className="px-5 py-3 bg-[var(--aura-amber)] text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-[var(--aura-amber)]/20"
             >
               PUSULAYI ETKİNLEŞTİR
             </motion.button>
@@ -470,10 +443,10 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="px-5 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-extrabold text-[9px] tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                className="px-5 py-2 rounded-full border border-[var(--aura-emerald)]/30 bg-[var(--aura-emerald)]/10 text-[var(--aura-emerald)] font-extrabold text-[11px] tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_color-mix(in_srgb,var(--aura-emerald)_15%,transparent)]"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping-slow shadow-[0_0_10px_rgb(52,211,153)]" />
-                KIBLETÜN - KIBLE YÖNÜ HİZALANDI
+                <span className="w-2 h-2 rounded-full bg-[var(--aura-emerald)] animate-ping-slow shadow-[0_0_10px_var(--aura-emerald)]" />
+                KIBLE YÖNÜ HİZALANDI
               </motion.div>
             ) : headingState !== null ? (
               <motion.div
@@ -483,7 +456,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 exit={{ opacity: 0 }}
                 className="text-[11px] text-[var(--text-secondary)]/75 font-light"
               >
-                Telefonunuzu çevirerek ibreyi <strong className="text-amber-500 font-medium">KIBLE (Altın Nokta)</strong> yönüne hizalayın.
+                Telefonunuzu çevirerek ibreyi <strong className="text-[var(--aura-amber)] font-medium">KIBLE (Altın Nokta)</strong> yönüne hizalayın.
               </motion.div>
             ) : (
               <motion.div
@@ -491,9 +464,9 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-[10px] sm:text-[11px] text-amber-500/85 bg-amber-500/5 border border-amber-500/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
+                className="text-[11px] sm:text-[11px] text-[var(--aura-amber)]/85 bg-[var(--aura-amber)]/5 border border-[var(--aura-amber)]/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
               >
-                <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <Info size={16} className="text-[var(--aura-amber)] shrink-0 mt-0.5" />
                 <div>
                   <strong className="font-bold">Masaüstü ve Statik Mod:</strong> Yön sensörü bulunmayan cihazlarda, Kabe haritadaki <strong>kuzeyden saat yönünde doğuya doğru {qiblaAngle.toFixed(1)}°</strong> açıda yer alır. Telefonunuzu bu açıya göre hizalayabilirsiniz.
                 </div>
@@ -506,26 +479,26 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         <div className="grid grid-cols-2 gap-3.5 w-full z-10 relative">
           {/* Qibla Angle Card */}
           <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
-            <span className="text-[7.5px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
+            <span className="text-[11px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {qiblaAngle.toFixed(1)}°
             </span>
-            <span className="text-[8px] font-medium opacity-35 mt-0.5">Kuzeyden Doğuya</span>
+            <span className="text-[11px] font-medium opacity-35 mt-0.5">Kuzeyden Doğuya</span>
           </div>
 
           {/* Kaaba Distance Card */}
           <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
-            <span className="text-[7.5px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
+            <span className="text-[11px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {distance.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} km
             </span>
-            <span className="text-[8px] font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
+            <span className="text-[11px] font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
           </div>
         </div>
 
         {/* Live Heading status when sensors active */}
         {headingState !== null && (
-          <span className="text-[7.5px] text-[var(--text-secondary)]/30 uppercase tracking-widest font-mono mt-6">
+          <span className="text-[11px] text-[var(--text-secondary)]/30 uppercase tracking-widest font-mono mt-6">
             Pusula Sapma Açısı: {Math.round(headingState)}° • Kabe Bağıl Açısı: {Math.round(needleRotation)}°
           </span>
         )}

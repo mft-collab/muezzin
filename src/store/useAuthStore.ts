@@ -113,8 +113,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
  let inviteData: { displayName?: string; role?: 'admin' | 'muezzin' | 'gozlemci'; haftalikIzinGunu?: number } | null = null;
 
- // Check special admin email
- if (currentEmail === 'muftum@gmail.com') {
+ // Süper-admin e-postaları config/bootstrap dokümanında tutulur (bkz. firestore.rules
+ // isSuperAdminEmail ve scripts/seedSuperAdminConfig.ts).
+ const bootstrapDoc = await getDocFromServer(doc(db, 'config', 'bootstrap'));
+ const superAdminEmails: string[] = bootstrapDoc.exists()
+ ? (bootstrapDoc.data().superAdminEmails || [])
+ : [];
+ const isSuperAdmin = superAdminEmails.includes(currentEmail);
+
+ if (isSuperAdmin) {
  inviteData = { displayName: 'Baş Yönetici', role: 'admin' };
  } else {
  // Check invites collection
@@ -152,7 +159,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
  await setDoc(doc(db, 'muezzins', currentUser.uid), profileData);
 
- if (currentEmail !== 'muftum@gmail.com') {
+ if (!isSuperAdmin) {
  await deleteDoc(doc(db, 'invites', currentEmail));
  }
  // loading will be set to false on the next snapshot trigger

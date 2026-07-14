@@ -27,7 +27,7 @@ export function AuthErrorScreen({ error, setError, setLoading, logout }: AuthErr
  <div className="space-y-3">
  <button
  onClick={() => { setError(null); setLoading(false); }}
- className="w-full h-14 bg-blue-600 text-white rounded-2xl font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all "
+ className="w-full h-14 bg-blue-600 text-[var(--text-primary)] rounded-2xl font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all "
  >
  TEKRAR DENE
  </button>

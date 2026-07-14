@@ -67,9 +67,9 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
       <div className="flex justify-between items-center mb-8 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h4 className="premium-label !text-[9px] !opacity-70 tracking-wide">KİŞİSEL HİZMET GÜNLÜĞÜ</h4>
+          <h4 className="premium-label !text-[11px] !opacity-70 tracking-wide">KİŞİSEL HİZMET GÜNLÜĞÜ</h4>
         </div>
-        <span className="text-[8px] font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
           SON 30 GÖREV
         </span>
       </div>
@@ -77,11 +77,11 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
       {loading ? (
         <div className="py-12 text-center">
           <div className="w-6 h-6 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="premium-label !text-[8.5px] !opacity-55 animate-pulse">HİZMET KÜTÜĞÜ SORGULANIYOR</p>
+          <p className="premium-label !text-[11px] !opacity-55 animate-pulse">HİZMET KÜTÜĞÜ SORGULANIYOR</p>
         </div>
       ) : history.length === 0 ? (
-        <div className="py-12 text-center border border-dashed border-white/5 rounded-3xl">
-          <BookOpen className="text-white/5 mx-auto mb-4" size={32} strokeWidth={1.5} />
+        <div className="py-12 text-center border border-dashed border-[var(--text-primary)]/5 rounded-3xl">
+          <BookOpen className="text-[var(--text-secondary)] mx-auto mb-4" size={32} strokeWidth={1.5} />
           <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Son 30 gün içinde onaylanmış veya mazeret bildirilmiş bir göreviniz bulunmamaktadır.</p>
         </div>
       ) : (
@@ -112,15 +112,15 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-[var(--text-primary)]">{toTurkishUpperCase(vakitName)} VAKTİ</span>
-                    <span className={`px-2.5 py-0.5 rounded-lg border text-[7.5px] font-extrabold uppercase tracking-wide ${statusColor}`}>
+                    <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-extrabold uppercase tracking-wide ${statusColor}`}>
                       {isConfirmed ? 'HİZMET EDİLDİ' : 'MAZERETLİ DEVR'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)]/40 font-light">
+                  <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)]/40 font-light">
                     <Clock size={11} className="text-[var(--dynamic-aura,var(--aura-indigo))]/50" />
                     <span>{dateFormatted}, {dayName}</span>
                     <span className="opacity-40">•</span>
-                    <span className="uppercase tracking-wider font-semibold text-[8px]">
+                    <span className="uppercase tracking-wider font-semibold text-[11px]">
                       {gorev.tip === 'asil' ? 'ASİL VARDİYA' : 'DESTEK NÖBETİ'}
                     </span>
                   </div>

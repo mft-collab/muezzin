@@ -277,7 +277,7 @@ export function GeriSayim({
                   className="px-5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center gap-2.5 shadow-lg shadow-rose-500/5"
                 >
                   <KerahatIcon size={14} className="text-rose-500 animate-pulse" />
-                  <span className="authority-title !text-[8px] text-rose-500 font-bold tracking-wide">
+                  <span className="authority-title !text-[11px] text-rose-500 font-bold tracking-wide">
                     KRİTİK: KERAHAT VAKTİ
                   </span>
                 </motion.div>
@@ -289,7 +289,7 @@ export function GeriSayim({
                   exit={{ scale: 0.9, opacity: 0, y: -5 }}
                   className="px-5 py-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center gap-2.5 shadow-lg "
                 >
-                  <span className="authority-title !text-[8px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide">
+                  <span className="authority-title !text-[11px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide">
                     TEHECCÜD VAKTİ
                   </span>
                 </motion.div>
@@ -305,7 +305,7 @@ export function GeriSayim({
                     className="w-1.5 h-1.5 rounded-full bg-current animate-pulse shadow-[0_0_12px_currentColor]"
                     style={{ color: auraColor }}
                   />
-                  <span className="authority-title text-[9px] sm:text-[10px] opacity-90 tracking-wide font-semibold uppercase">
+                  <span className="authority-title text-[11px] sm:text-[11px] opacity-90 tracking-wide font-semibold uppercase">
                     {toTurkishUpperCase(VAKIT_DISPLAY_NAMES[mevcutVakit])} SÜRÜYOR
                   </span>
                 </motion.div>
@@ -457,7 +457,7 @@ export function GeriSayim({
                   >
                     <DigitPair value={h} />
                   </div>
-                  <span className="authority-title !text-[6.5px] opacity-60 tracking-wide font-bold mt-1">SAAT</span>
+                  <span className="authority-title !text-[11px] opacity-60 tracking-wide font-bold mt-1">SAAT</span>
                 </div>
 
                 <motion.span
@@ -476,7 +476,7 @@ export function GeriSayim({
                   >
                     <DigitPair value={m} />
                   </div>
-                  <span className="authority-title !text-[6.5px] opacity-60 tracking-wide font-bold mt-1">DAKİKA</span>
+                  <span className="authority-title !text-[11px] opacity-60 tracking-wide font-bold mt-1">DAKİKA</span>
                 </div>
 
                 <motion.span
@@ -495,7 +495,7 @@ export function GeriSayim({
                   >
                     <DigitPair value={s} dim />
                   </div>
-                  <span className="authority-title !text-[6.5px] opacity-60 tracking-wide font-bold mt-1">SANİYE</span>
+                  <span className="authority-title !text-[11px] opacity-60 tracking-wide font-bold mt-1">SANİYE</span>
                 </div>
               </div>
 
@@ -511,7 +511,7 @@ export function GeriSayim({
                     ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.08)]'
                     : 'bg-[var(--surface-medium)] border-[var(--glass-border)]'
                 }`}>
-                  <span className={`authority-title !text-[7.5px] tracking-wide font-semibold ${
+                  <span className={`authority-title !text-[11px] tracking-wide font-semibold ${
                     isCumaVakti ? 'text-emerald-400 opacity-100' : 'text-[var(--text-secondary)] opacity-80'
                   }`}>
                     BEKLENEN: {isCumaVakti ? 'CUMA NAMAZI' : toTurkishUpperCase(targetName)}

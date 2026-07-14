@@ -102,6 +102,36 @@ export const playSuccess = (): void => {
 };
 
 /**
+ * Synthesizes a precise mechanical watch-crystal click chime for Qibla compass alignment lock
+ */
+export const playQiblaLock = (): void => {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'sine';
+    // Precise mechanical lock click chime frequency sweep
+    osc.frequency.setValueAtTime(1000, now);
+    osc.frequency.exponentialRampToValueAtTime(1800, now + 0.03);
+
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc.start(now);
+    osc.stop(now + 0.13);
+  } catch (err) {
+    console.warn('Web Audio Qibla Lock Sound Playback failed:', err);
+  }
+};
+
+/**
  * Synthesizes a soft dual-tone warning chime for alerts or errors
  */
 export const playWarning = (): void => {

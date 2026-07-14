@@ -16,6 +16,8 @@ export const GlobalNotifications: React.FC = () => {
  title={n.title}
  message={n.message}
  type={n.type}
+ action={n.action}
+ durationMs={n.durationMs}
  onClose={removeNotification}
  />
  ))}

@@ -12,6 +12,8 @@ interface AdminIzinlerState {
   initialized: boolean;
   init: () => () => void;
   izinGuncelle: (id: string, durum: 'onaylandi' | 'reddedildi') => Promise<void>;
+  /** Yanlışlıkla verilmiş bir onay/red kararını geri alır, talebi tekrar bekleme durumuna döndürür. */
+  izinGeriAl: (id: string) => Promise<void>;
   izinSil: (id: string) => Promise<void>;
 }
 
@@ -57,6 +59,16 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
     try {
       await updateDoc(doc(db, 'izinler', id), { durum });
       await telemetryService.logAudit('İzin Talebi Kararı', id, `Talep durumu '${durum.toUpperCase()}' olarak güncellendi.`);
+    } catch (err) {
+      throw handleFirestoreError(err, OperationType.UPDATE, path);
+    }
+  },
+
+  izinGeriAl: async (id) => {
+    const path = `izinler/${id}`;
+    try {
+      await updateDoc(doc(db, 'izinler', id), { durum: 'onay_bekliyor' });
+      await telemetryService.logAudit('İzin Talebi Kararı Geri Alındı', id, 'Talep durumu tekrar \'ONAY BEKLİYOR\' olarak ayarlandı.');
     } catch (err) {
       throw handleFirestoreError(err, OperationType.UPDATE, path);
     }

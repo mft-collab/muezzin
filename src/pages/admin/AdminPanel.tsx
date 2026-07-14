@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Moon, Search, Sun, X } from 'lucide-react';
+import { LogOut, Moon, Sun, X } from 'lucide-react';
 import { auth } from '../../lib/firebase';
 import { useKrizAlarmlariStore } from '../../store/useKrizAlarmlariStore';
 import { useAdminIzinlerStore } from '../../store/useAdminIzinlerStore';
@@ -16,10 +16,10 @@ import { useMevcutVakit } from '../../hooks/useMevcutVakit';
 import { getActiveAuraColor, getSecondaryAuraColor } from '../../lib/auraTheme';
 import { IslamicGeometricBg } from '../../components/ui/IslamicGeometricBg';
 import { playClick } from '../../lib/sounds';
+import { ChunkErrorFallback } from '../../components/ChunkErrorFallback';
 
 import { SlimSidebar } from './components/SlimSidebar';
 import { MobileDock } from './components/MobileDock';
-import { CommandPalette } from './components/CommandPalette';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
@@ -29,46 +29,6 @@ const SistemAnalitigi = lazy(() => import('./modules/SistemAnalitigi'));
 const PersonelHub = lazy(() => import('./modules/PersonelHub'));
 const AyarlarHub = lazy(() => import('./modules/AyarlarHub'));
 const DuyuruYonetimi = lazy(() => import('./modules/DuyuruYonetimi').then(m => ({ default: m.DuyuruYonetimi })));
-
-function AdminTabFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
- const isChunkError = 
- error.message.includes('Failed to fetch dynamically imported module') || 
- error.message.includes('Loading chunk') ||
- error.message.includes('dynamic import');
-
- return (
- <div className="flex flex-col items-center justify-center p-8 text-center min-h-[50vh]">
- <motion.div 
- initial={{ opacity: 0, scale: 0.95 }}
- animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass-elevated p-8 max-w-md w-full border-[var(--status-error)]/20"
- >
- <div className="w-16 h-16 bg-[var(--status-error)]/10 rounded-[24px] flex items-center justify-center mb-6 mx-auto border border-[var(--status-error)]/20 shadow-[var(--spatial-shadow)]">
- <span className="text-[var(--status-error)] text-3xl font-light">!</span>
- </div>
- <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight mb-2 apple-thin">
- {isChunkError ? 'Yeni Sürüm Tespit Edildi' : 'Bileşen Yüklenemedi'}
- </h3>
- <p className="text-[11px] text-[var(--text-secondary)]/70 leading-relaxed mb-6">
- {isChunkError 
- ? 'Sistemde yeni bir güncelleme yayınlandığı için bu modülün yeniden yüklenmesi gerekiyor.' 
- : 'Seçilen modül yüklenirken geçici bir hata oluştu.'}
- </p>
- <motion.button 
- whileHover={{ scale: 1.02, y: -1 }}
- whileTap={{ scale: 0.98 }}
- onClick={() => {
- resetErrorBoundary();
- window.location.reload();
- }} 
- className="w-full py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-white border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl font-bold text-[9px] uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all"
- >
- {isChunkError ? 'Sürümü Güncelle & Yenile' : 'Sayfayı Yeniden Yükle'}
- </motion.button>
- </motion.div>
- </div>
- );
-}
 
 export default function AdminPanel() {
  const [searchParams, setSearchParams] = useSearchParams();
@@ -213,10 +173,6 @@ export default function AdminPanel() {
  window.location.reload();
  };
 
- const openCommandPalette = () => {
- window.dispatchEvent(new Event('admin-command-palette:open'));
- };
-
  const navigateApp = (path: string) => {
  playClick?.();
  navigate(path);
@@ -248,8 +204,6 @@ export default function AdminPanel() {
  {/* Spiritüel Doku Bütünlüğü */}
  <IslamicGeometricBg />
 
- <CommandPalette />
- 
  {/* Navigation Ecosystem */}
  <MobileDock 
  activeTab={activeTab} 
@@ -290,17 +244,6 @@ export default function AdminPanel() {
  <div className="flex items-center gap-2 shrink-0">
   <button
   type="button"
-  onClick={openCommandPalette}
-  className="flex items-center gap-2 px-3 py-2.5 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/65 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.045] transition-all"
-  aria-label="Komut paletini aç"
-  title="Komut paletini aç"
-  >
-  <Search size={16} strokeWidth={1.7} />
-  <span className="authority-title !text-[10px] tracking-wide hidden sm:inline">Ara</span>
-  <span className="hidden md:inline-flex items-center rounded-md border border-[var(--glass-border)] px-1.5 py-0.5 text-[9px] font-mono opacity-45">Ctrl K</span>
-  </button>
-  <button
-  type="button"
   onClick={toggleTheme}
   className="lg:hidden flex items-center justify-center w-10 h-10 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/55 hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-all"
   aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
@@ -321,7 +264,12 @@ export default function AdminPanel() {
  </header>
 
  <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-[20px] sm:!rounded-[24px] lg:!rounded-[28px]`}>
- <ErrorBoundary FallbackComponent={AdminTabFallback} onReset={() => setSearchParams(prev => prev)}>
+ <ErrorBoundary
+ FallbackComponent={({ error, resetErrorBoundary }) => (
+ <ChunkErrorFallback error={error} variant="inline" onReset={resetErrorBoundary} />
+ )}
+ onReset={() => setSearchParams(prev => prev)}
+ >
   <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[32px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
  {renderContent}
  </Suspense>

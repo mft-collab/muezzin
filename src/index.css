@@ -2,15 +2,21 @@
  * index.css — SPATIAL COMPUTING & NEURO-AESTHETIC ENGINE
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap&subset=latin,latin-ext');
+/* Fontlar self-host edilir (npm @fontsource paketleri) — offline PWA'da CDN'e bağımlı kalınmaz. */
+@import "@fontsource-variable/inter/opsz.css";
+@import "@fontsource-variable/inter/opsz-italic.css";
+@import "@fontsource/instrument-serif/index.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 @import "tailwindcss";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Inter", ui-sans-serif, sans-serif;
+  --font-sans: "Inter Variable", system-ui, -apple-system, BlinkMacSystemFont, ui-sans-serif, sans-serif;
   --font-serif: "Instrument Serif", serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono Variable", monospace;
 
   --app-bg: #000000;
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
@@ -55,12 +61,12 @@
   
   /* Lüks ve yuksek kontrastli Nordic Graphite tipografi standardı */
   --text-primary: hsl(210, 25%, 8%);     /* Deep Graphite Obsidian */
-  --text-secondary: hsl(210, 15%, 26%);  /* Soft Graphite Dark Muted for WCAG AA */
+  --text-secondary: hsl(210, 15%, 34%);  /* Soft Graphite Dark Muted for WCAG AA */
   --aura-opacity: 0.16;
-  
+
   /* Sinir çizgileri aydinlik modda netlik için belirginlestirildi */
-  --glass-border: rgba(0, 0, 0, 0.07);
-  --spatial-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65), inset 0 -1px 1px rgba(0, 0, 0, 0.04), 0 4px 12px -1px rgba(0, 0, 0, 0.02), 0 12px 24px -6px rgba(0, 0, 0, 0.04);
+  --glass-border: hsla(210, 15%, 10%, 0.08);
+  --spatial-shadow: 0 4px 12px rgba(0, 0, 0, 0.015), 0 20px 32px -8px rgba(0, 0, 0, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   --surface-low: hsla(210, 15%, 10%, 0.02);
   --surface-medium: hsla(210, 15%, 10%, 0.04);
@@ -297,7 +303,7 @@
 
 @utility premium-label {
   @apply authority-title;
-  font-size: 8px;
+  font-size: 11px;
   opacity: 0.65;
   font-weight: 600;
 }
@@ -735,109 +741,6 @@
   transform-origin: center center;
   filter: blur(200px) saturate(130%);
   will-change: transform;
-}
-
-/* ──────────────────────────────────────────────────────────
- * LIGHT MODE HIGH-CONTRAST & CLARITY OVERRIDES
- * ────────────────────────────────────────────────────────── */
-
-[data-theme='light'] {
-  /* Ultra-Premium Champagne Silk & Royal Graphite Design Tokens */
-  --bg-h: 38 !important; --bg-s: 20% !important; --bg-l: 94.5% !important;
-  --app-bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l)) !important;
-  --glass-border: hsla(210, 15%, 10%, 0.08) !important;
-  --spatial-glass-bg: hsla(38, 25%, 98.5%, 0.88) !important;
-  --spatial-shadow: 0 4px 12px rgba(0, 0, 0, 0.015), 0 20px 32px -8px rgba(0, 0, 0, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  
-  --text-primary: hsl(210, 25%, 8%) !important;
-  --text-secondary: hsl(210, 15%, 34%) !important;
-
-  --surface-low: hsla(210, 15%, 10%, 0.02) !important;
-  --surface-medium: hsla(210, 15%, 10%, 0.04) !important;
-  --surface-high: hsla(210, 15%, 10%, 0.06) !important;
-  --card-elevated-bg: hsla(38, 25%, 100%, 0.96) !important;
-  --card-flat-bg: hsla(210, 10%, 94%, 0.50) !important;
-  --card-active-bg: hsla(38, 30%, 91%, 0.70) !important;
-  --specular-glow: rgba(255, 255, 255, 0.70) !important;
-  --aura-opacity: 0.16 !important;
-
-
-  /* Hardcoded white background overrides */
-  .bg-white\/5,
-  .bg-white\/\[0\.05\],
-  .bg-white\/\[0\.03\],
-  .bg-white\/\[0\.02\],
-  .bg-white\/10,
-  .bg-white\/\[0\.01\],
-  .bg-white\/\[0\.08\],
-  .bg-white\/\[0\.04\] {
-    background-color: var(--surface-low) !important;
-  }
-  
-  .bg-white\/20,
-  .bg-white\/15,
-  .bg-white\/\[0\.15\] {
-    background-color: var(--surface-medium) !important;
-  }
-
-  .bg-white\/30,
-  .bg-white\/40,
-  .bg-white\/50,
-  .bg-white\/\[0\.3\] {
-    background-color: var(--surface-high) !important;
-  }
-
-  /* Hardcoded white border overrides */
-  .border-white\/5,
-  .border-white\/10,
-  .border-white\/20,
-  .border-white\/\[0\.05\],
-  .border-white\/\[0\.06\],
-  .border-white\/\[0\.08\],
-  .border-white\/\[0\.1\],
-  .border-white\/\[0\.15\],
-  .border-white\/\[0\.2\] {
-    border-color: var(--glass-border) !important;
-  }
-
-  /* Hardcoded white text overrides */
-  .text-white {
-    color: var(--text-primary) !important;
-  }
-
-  .text-white\/90,
-  .text-white\/80,
-  .text-white\/70,
-  .text-white\/\[0\.9\],
-  .text-white\/\[0\.8\] {
-    color: var(--text-primary) !important;
-    opacity: 0.9 !important;
-  }
-
-  .text-white\/60,
-  .text-white\/50,
-  .text-white\/40,
-  .text-white\/\[0\.6\],
-  .text-white\/\[0\.5\],
-  .text-white\/\[0\.4\] {
-    color: var(--text-secondary) !important;
-    opacity: 0.75 !important;
-  }
-
-  .text-white\/30,
-  .text-white\/20,
-  .text-white\/25,
-  .text-white\/\[0\.3\],
-  .text-white\/\[0\.2\],
-  .text-white\/\[0\.25\] {
-    color: var(--text-secondary) !important;
-    opacity: 0.50 !important;
-  }
-
-  .placeholder\:text-white\/10::placeholder {
-    color: var(--text-secondary) !important;
-    opacity: 0.35 !important;
-  }
 }
 
 /* Boost low-contrast text primary/secondary opacities specifically in light mode */

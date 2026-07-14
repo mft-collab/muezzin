@@ -35,7 +35,7 @@ export function ConfirmModal({
       <AlertTriangle size={32} strokeWidth={1.2} />
     </div>
     
-    <p className="premium-label !text-[8.5px] leading-relaxed max-w-sm mb-12 opacity-65 dark:opacity-40 tracking-wide px-4">
+    <p className="premium-label !text-[11px] leading-relaxed max-w-sm mb-12 opacity-65 dark:opacity-40 tracking-wide px-4">
       {message.toUpperCase()}
     </p>
     
@@ -44,9 +44,9 @@ export function ConfirmModal({
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.95 }}
         onClick={onConfirm}
-        className={`flex-1 py-4.5 rounded-[20px] text-[8px] font-bold uppercase tracking-wide transition-all border-none cursor-pointer ${
+        className={`flex-1 py-4.5 rounded-[20px] text-[11px] font-bold uppercase tracking-wide transition-all border-none cursor-pointer ${
           isDanger 
-            ? 'bg-rose-500 text-white shadow-[0_4px_15px_-3px_rgba(244,63,94,0.4)] hover:shadow-[0_8px_25px_-5px_rgba(244,63,94,0.6)]' 
+            ? 'bg-rose-500 text-[var(--text-primary)] shadow-[0_4px_15px_-3px_rgba(244,63,94,0.4)] hover:shadow-[0_8px_25px_-5px_rgba(244,63,94,0.6)]' 
             : 'neural-btn'
         }`}
       >
@@ -56,7 +56,7 @@ export function ConfirmModal({
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.96 }}
         onClick={onClose}
-        className="px-8 py-4.5 text-[8px] font-bold uppercase tracking-wide text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent border-none"
+        className="px-8 py-4.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent border-none"
       >
         {cancelText.toUpperCase()}
       </motion.button>

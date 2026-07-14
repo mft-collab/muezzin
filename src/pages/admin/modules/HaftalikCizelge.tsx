@@ -33,25 +33,25 @@ interface PersonelSeciciProps {
 function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, muezzinler }: PersonelSeciciProps) {
   return (
     <div className="space-y-4 mt-2 first:mt-0">
-      <label className="authority-title !text-[9px] opacity-40 ml-1 tracking-wide">{label}</label>
+      <label className="authority-title !text-[11px] opacity-40 ml-1 tracking-wide">{label}</label>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button
           type="button"
           onClick={() => onSelect('Sistem')}
           className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
             value === 'Sistem'
-              ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-              : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
+              ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+              : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
           }`}
         >
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${
-            value === 'Sistem' ? 'bg-white/20' : 'bg-white/5 text-white/50'
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[11px] ${
+            value === 'Sistem' ? 'bg-[var(--text-primary)]/20' : 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)]'
           }`}>
             🤖
           </div>
           <div className="text-left">
-            <span className="text-[10px] font-black uppercase tracking-wider block">Sistem Otomatik</span>
-            <span className="text-[9px] opacity-60 block leading-tight">{systemSubLabel}</span>
+            <span className="text-[11px] font-black uppercase tracking-wider block">Sistem Otomatik</span>
+            <span className="text-[11px] opacity-60 block leading-tight">{systemSubLabel}</span>
           </div>
         </button>
         {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
@@ -63,18 +63,18 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
               onClick={() => onSelect(m.id)}
               className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
                 isSelected
-                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                  : 'bg-white/[0.02] text-white/40 border-white/5 hover:border-white/10'
+                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+                  : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
               }`}
             >
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                isSelected ? 'bg-white/20' : 'bg-white/5 text-white/50'
+                isSelected ? 'bg-[var(--text-primary)]/20' : 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)]'
               }`}>
                 {(m.displayName || 'M').charAt(0)}
               </div>
               <div className="text-left truncate">
-                <span className="text-[10px] font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
-                <span className="text-[9px] opacity-60 block leading-tight">{roleSubLabel}</span>
+                <span className="text-[11px] font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
+                <span className="text-[11px] opacity-60 block leading-tight">{roleSubLabel}</span>
               </div>
             </button>
           );
@@ -304,7 +304,7 @@ export default function HaftalikCizelge() {
                 className={`flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[24px] sm:rounded-[28px] lg:rounded-[32px] border transition-all duration-700 relative overflow-hidden ${
                   isToday 
                     ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/5 border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-[var(--spatial-shadow)]' 
-                    : 'spatial-glass border-white/5 hover:bg-white/[0.02]'
+                    : 'spatial-glass border-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/[0.02]'
                 }`}
               >
                 {isToday && (
@@ -314,16 +314,16 @@ export default function HaftalikCizelge() {
                 {/* Date Identity */}
                 <div className="flex items-center gap-4 sm:gap-5 min-w-[150px] shrink-0 pl-1 sm:pl-2">
                   <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-[22px] border ${
-                    isToday ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-white border-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-white/[0.03] text-[var(--dynamic-aura,var(--aura-indigo))]/60 border-white/5'
+                    isToday ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))] shadow-lg' : 'bg-[var(--text-primary)]/[0.03] text-[var(--dynamic-aura,var(--aura-indigo))]/60 border-[var(--text-primary)]/5'
                   }`}>
                     <span className="text-2xl font-light tracking-tighter leading-none">{format(parsedDate, 'd')}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide mt-1 opacity-60">{format(parsedDate, 'MMM')}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wide mt-1 opacity-60">{format(parsedDate, 'MMM')}</span>
                   </div>
                   <div>
                     <h4 className={`text-lg font-light tracking-tight ${isToday ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : 'text-[var(--text-primary)]'}`}>
                       {gunAdi}
                     </h4>
-                    <p className="authority-title !text-[9px] opacity-20 uppercase tracking-wide mt-1">{format(parsedDate, 'dd/MM/yyyy')}</p>
+                    <p className="authority-title !text-[11px] opacity-20 uppercase tracking-wide mt-1">{format(parsedDate, 'dd/MM/yyyy')}</p>
                   </div>
                 </div>
 
@@ -339,13 +339,13 @@ export default function HaftalikCizelge() {
                         whileHover={{ y: -5, backgroundColor: 'rgba(255,255,255,0.05)', zIndex: 50 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => openEdit(tarih, gunAdi, vakit, atama)}
-                        className="spatial-glass-elevated p-3 sm:p-4 rounded-[18px] sm:rounded-[24px] text-left border border-white/5 transition-all duration-500 group relative min-h-[84px]"
+                        className="spatial-glass-elevated p-3 sm:p-4 rounded-[18px] sm:rounded-[24px] text-left border border-[var(--text-primary)]/5 transition-all duration-500 group relative min-h-[84px]"
                       >
                         <div className="flex justify-between items-center mb-3">
-                          <span className="authority-title !text-[9px] opacity-40 uppercase tracking-wide font-bold text-[var(--dynamic-aura,var(--aura-indigo))]">
+                          <span className="authority-title !text-[11px] opacity-40 uppercase tracking-wide font-bold text-[var(--dynamic-aura,var(--aura-indigo))]">
                             {vakit}
                           </span>
-                          <Edit2 size={12} strokeWidth={1.5} className="group-hover:opacity-100 opacity-0 transition-all text-white/20" />
+                          <Edit2 size={12} strokeWidth={1.5} className="group-hover:opacity-100 opacity-0 transition-all text-[var(--text-secondary)]" />
                         </div>
                         
                         <div className="flex flex-col gap-2">
@@ -358,8 +358,8 @@ export default function HaftalikCizelge() {
 
                           {atama?.yedek && (
                             <div className="flex items-center gap-3 opacity-30">
-                              <div className="w-1 h-1 rounded-full bg-white/40" />
-                              <span className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wide truncate">
+                              <div className="w-1 h-1 rounded-full bg-[var(--text-primary)]/40" />
+                              <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wide truncate">
                                 {getMuezzinName(atama?.yedek || '').split(' ').slice(-1)[0]}
                               </span>
                             </div>
@@ -383,15 +383,15 @@ export default function HaftalikCizelge() {
  <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 lg:gap-6">
  <div className="flex flex-col gap-1.5">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Hizmet Cetveli</h2>
- <p className="authority-title !text-[9px] opacity-30 font-medium tracking-wide">OPERASYONEL GÖREV DAĞILIMI VE PLANLAMA</p>
+ <p className="authority-title !text-[11px] opacity-30 font-medium tracking-wide">OPERASYONEL GÖREV DAĞILIMI VE PLANLAMA</p>
  </div>
 
- <div className="flex items-center gap-2 sm:gap-4 bg-white/[0.02] p-2 rounded-[20px] sm:rounded-[24px] border border-white/5 shadow-[var(--spatial-shadow)] w-full lg:w-auto justify-between">
+ <div className="flex items-center gap-2 sm:gap-4 bg-[var(--text-primary)]/[0.02] p-2 rounded-[20px] sm:rounded-[24px] border border-[var(--text-primary)]/5 shadow-[var(--spatial-shadow)] w-full lg:w-auto justify-between">
  <motion.button 
  whileHover={{ scale: 1.1 }}
  whileTap={{ scale: 0.9 }}
  onClick={() => setCurrentDate(subWeeks(currentDate, 1))} 
- className="w-12 h-12 flex items-center justify-center bg-white/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-white/5 transition-all shadow-lg"
+ className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--text-primary)]/5 transition-all shadow-lg"
  >
  <ChevronLeft size={20} />
  </motion.button>
@@ -400,14 +400,14 @@ export default function HaftalikCizelge() {
  <span className="text-xs sm:text-sm font-light text-[var(--text-primary)] tracking-tight truncate max-w-[170px] sm:max-w-none">
  {format(currentWeekStart, 'd MMMM yyyy', { locale: tr })}
  </span>
- <span className="authority-title !text-[9px] opacity-40 mt-1 uppercase tracking-wide">PLANLAMA HAFTASI</span>
+ <span className="authority-title !text-[11px] opacity-40 mt-1 uppercase tracking-wide">PLANLAMA HAFTASI</span>
  </div>
 
  <motion.button 
  whileHover={{ scale: 1.1 }}
  whileTap={{ scale: 0.9 }}
  onClick={() => setCurrentDate(addWeeks(currentDate, 1))} 
- className="w-12 h-12 flex items-center justify-center bg-white/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-white/5 transition-all shadow-lg"
+ className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--text-primary)]/5 transition-all shadow-lg"
  >
  <ChevronRight size={20} />
  </motion.button>
@@ -419,7 +419,7 @@ export default function HaftalikCizelge() {
       whileTap={{ scale: 0.98 }}
       onClick={exportWeeklyPlanCSV}
       disabled={!plan || loading}
-      className="bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-[9px] font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 sm:gap-4 disabled:opacity-30 group w-full lg:w-auto cursor-pointer"
+      className="bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-[11px] font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 sm:gap-4 disabled:opacity-30 group w-full lg:w-auto cursor-pointer"
     >
       <Zap size={16} className="group-hover:scale-110 transition-transform duration-500" />
       ÇİZELGEYİ AKTAR
@@ -430,7 +430,7 @@ export default function HaftalikCizelge() {
       whileTap={{ scale: 0.98 }}
       onClick={() => plan ? setConfirmPlanRefreshOpen(true) : handlePlanOlustur()}
       disabled={generating || loading}
-      className="bg-[var(--dynamic-aura,var(--aura-indigo))] text-white px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-[9px] font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 sm:gap-4 disabled:opacity-50 group w-full lg:w-auto cursor-pointer"
+      className="bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-[11px] font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 sm:gap-4 disabled:opacity-50 group w-full lg:w-auto cursor-pointer"
     >
       <RotateCcw size={16} className={`group-hover:rotate-180 transition-transform duration-700 ${generating ? 'animate-spin' : ''}`} />
       {generating ? 'YENİLENİYOR...' : 'PLANLARI GÜNCELLE'}
@@ -444,13 +444,13 @@ export default function HaftalikCizelge() {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-16 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-white/10"
+ className="spatial-glass p-16 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
  >
  <div className="w-20 h-20 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border border-[var(--dynamic-aura,var(--aura-indigo))]/20">
  <AlertCircle size={36} strokeWidth={1.2} />
  </div>
  <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Planlama Bulunamadı</h3>
- <p className="authority-title !text-[10px] opacity-40 uppercase tracking-wide leading-relaxed mb-12 max-w-sm">
+ <p className="authority-title !text-[11px] opacity-40 uppercase tracking-wide leading-relaxed mb-12 max-w-sm">
  SEÇİLEN HAFTA İÇİN HENÜZ BİR OPERASYONEL CETVEL OLUŞTURULMADI. OTOMATİK PLANLAMA MOTORUNU ÇALIŞTIRABİLİRSİNİZ.
  </p>
  
@@ -459,7 +459,7 @@ export default function HaftalikCizelge() {
  whileTap={{ scale: 0.95 }}
  onClick={handlePlanOlustur}
  disabled={generating}
- className="bg-white text-black px-12 py-6 rounded-[24px] text-[10px] font-bold uppercase tracking-wide shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center gap-6"
+ className="bg-white text-black px-12 py-6 rounded-[24px] text-[11px] font-bold uppercase tracking-wide shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center gap-6"
  >
  <Zap size={18} className="text-amber-500 fill-amber-500" />
  SİSTEMİ ŞİMDİ PLANLA
@@ -474,17 +474,17 @@ export default function HaftalikCizelge() {
   className="flex flex-col gap-3 lg:gap-4"
   >
   {Array.from({ length: 3 }).map((_, i) => (
-  <div key={i} className="flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[24px] sm:rounded-[28px] lg:rounded-[32px] border spatial-glass border-white/5 opacity-50">
+  <div key={i} className="flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[24px] sm:rounded-[28px] lg:rounded-[32px] border spatial-glass border-[var(--text-primary)]/5 opacity-50">
   <div className="flex items-center gap-4 sm:gap-5 min-w-[150px] shrink-0 pl-1 sm:pl-2">
-  <div className="w-14 h-14 rounded-[22px] bg-white/5 animate-pulse" />
+  <div className="w-14 h-14 rounded-[22px] bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
-  <div className="w-20 h-4 bg-white/5 rounded-full animate-pulse" />
-  <div className="w-16 h-2 bg-white/5 rounded-full animate-pulse" />
+  <div className="w-20 h-4 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-16 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
   </div>
   </div>
   <div className="flex-1 grid grid-cols-1 min-[370px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 w-full">
   {Array.from({ length: 5 }).map((_, j) => (
-  <div key={j} className="spatial-glass-elevated p-3 sm:p-4 rounded-[18px] sm:rounded-[24px] border border-white/5 min-h-[84px] animate-pulse bg-white/[0.02]" />
+  <div key={j} className="spatial-glass-elevated p-3 sm:p-4 rounded-[18px] sm:rounded-[24px] border border-[var(--text-primary)]/5 min-h-[84px] animate-pulse bg-[var(--text-primary)]/[0.02]" />
   ))}
   </div>
   </div>
@@ -499,13 +499,13 @@ export default function HaftalikCizelge() {
     <form onSubmit={handleMubahale} className="space-y-10 py-4">
       <div className="spatial-glass-elevated p-4 sm:p-6 rounded-[24px] sm:rounded-[28px] border border-[var(--dynamic-aura,var(--aura-indigo))]/15 relative overflow-hidden bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.02]">
         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-3xl rounded-full" />
-        <p className="authority-title !text-[9px] opacity-30 mb-3 tracking-wide">SEÇİLİ VAKİT VE TARİH</p>
+        <p className="authority-title !text-[11px] opacity-30 mb-3 tracking-wide">SEÇİLİ VAKİT VE TARİH</p>
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <span className="text-xl sm:text-2xl font-light text-[var(--text-primary)] tracking-tighter">{editingCell?.gunAdi}</span>
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_var(--dynamic-aura,var(--aura-indigo))]" />
           <span className="text-sm font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wide">{editingCell?.vakit}</span>
         </div>
-        <p className="text-[10px] text-[var(--text-secondary)]/75 mt-2 font-medium tracking-wide">{editingCell?.tarih}</p>
+        <p className="text-[11px] text-[var(--text-secondary)]/75 mt-2 font-medium tracking-wide">{editingCell?.tarih}</p>
       </div>
 
       <div className="flex flex-col gap-6">
@@ -532,7 +532,7 @@ export default function HaftalikCizelge() {
           whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)' }}
           whileTap={{ scale: 0.98 }}
           type="submit" 
-          className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-white text-[10px] font-bold uppercase tracking-wide py-4 sm:py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/15 transition-all"
+          className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-[11px] font-bold uppercase tracking-wide py-4 sm:py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/15 transition-all"
         >
           ATAMAYI GÜNCELLE
         </motion.button>
@@ -540,7 +540,7 @@ export default function HaftalikCizelge() {
           whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
           type="button" 
           onClick={() => setModalOpen(false)} 
-          className="px-6 sm:px-10 py-3.5 sm:py-5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-white/5 rounded-2xl"
+          className="px-6 sm:px-10 py-3.5 sm:py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl"
         >
           İPTAL
         </motion.button>
