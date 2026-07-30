@@ -6,12 +6,19 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 export function useHaftaBildirimleri(haftaId: string | undefined) {
  const [bildirimler, setBildirimler] = useState<Bildirim[]>([]);
- const [loading, setLoading] = useState(true);
+ const [loading, setLoading] = useState(!!haftaId);
+
+ // haftaId değiştiğinde (ör. undefined olduğunda) state'i render
+ // sırasında sıfırla — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+ const [lastHaftaId, setLastHaftaId] = useState(haftaId);
+ if (haftaId !== lastHaftaId) {
+ setLastHaftaId(haftaId);
+ setBildirimler([]);
+ setLoading(!!haftaId);
+ }
 
  useEffect(() => {
  if (!haftaId) {
- setBildirimler([]);
- setLoading(false);
  return;
  }
 

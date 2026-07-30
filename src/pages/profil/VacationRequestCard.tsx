@@ -38,10 +38,19 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
   const [talepler, setTalepler] = useState<IzinTalep[]>([]);
   const [loadingTalepler, setLoadingTalepler] = useState(true);
 
+  // Kullanıcı değiştiğinde yükleme durumunu render sırasında ayarla —
+  // bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+  const [lastUserUid, setLastUserUid] = useState(user?.uid);
+  if (user?.uid !== lastUserUid) {
+    setLastUserUid(user?.uid);
+    if (user) {
+      setLoadingTalepler(true);
+    }
+  }
+
   // Real-time listener for current user's leaves
   useEffect(() => {
     if (!user) return;
-    setLoadingTalepler(true);
     const q = query(
       collection(db, 'izinler'),
       where('uid', '==', user.uid)

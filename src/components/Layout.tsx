@@ -199,7 +199,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <GlobalNotifications />
       {/* Page Content */}
-      <main className={`flex-1 w-full transition-all duration-300 relative z-10 ${isAdminRoute ? 'pb-0' : 'pb-[calc(96px+env(safe-area-inset-bottom,0px))] md:pb-36'}`}>
+      {/* PWA install/iOS banner'ları nav dock'un ÜZERİNDE ayrıca yüzen sabit
+          elemanlar — görünürken alttaki içerikle (ör. AnaEkranHero vakit
+          matrisi) çakışmaması için ekstra alt boşluk eklenir. */}
+      <main className={`flex-1 w-full transition-all duration-300 relative z-10 ${
+        isAdminRoute
+          ? 'pb-0'
+          : isIosPrompt
+            ? 'pb-[calc(230px+env(safe-area-inset-bottom,0px))] md:pb-36'
+            : isInstallable
+              ? 'pb-[calc(150px+env(safe-area-inset-bottom,0px))] md:pb-36'
+              : 'pb-[calc(96px+env(safe-area-inset-bottom,0px))] md:pb-36'
+      }`}>
         {children}
       </main>
 

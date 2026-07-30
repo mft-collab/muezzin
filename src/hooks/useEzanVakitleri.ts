@@ -91,6 +91,15 @@ export function useEzanVakitleri() {
     return adjustSabahTime(rawYarinVakitler);
   }, [rawYarinVakitler]);
 
-  return { bugunVakitler, yarinVakitler, loading };
+  // GPS'e göre hesaplanan vaktin resmi ilçe vaktinden farkını göstermek
+  // isteyen bileşenler için (bkz. AnaEkranHero'daki "±Ndk" fark rozetleri)
+  // GPS'ten bağımsız, yalnızca ilçe önbelleğine dayanan resmi vakit — aynı
+  // imsak/sabah düzeltmesiyle — ayrıca dışa aktarılır. `bugunVakitler` GPS
+  // açıkken zaten GPS verisine döndüğü için, karşılaştırma bunu KULLANMAZ.
+  const resmiBugunVakitler = useMemo(() => {
+    return adjustSabahTime(officialBugun);
+  }, [officialBugun]);
+
+  return { bugunVakitler, yarinVakitler, loading, resmiBugunVakitler };
 }
 

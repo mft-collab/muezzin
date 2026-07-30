@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": [
+      "ES2022"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": false,
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "resolveJsonModule": true
+    // NOT: src/tsconfig.json ile aynı kademeli-strict felsefesi (bkz. o dosyadaki
+    // not) — noImplicitAny henüz açılmadı, ayrı bir migrasyon işi.
+  },
+  "include": [
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Edit3, CheckCircle2, AlertCircle, Shield, User, Eye } from 'lucide-react';
 import { updateDoc, doc } from 'firebase/firestore';
@@ -18,11 +18,19 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  const [updateSuccess, setUpdateSuccess] = useState(false);
  const [isUpdating, setIsUpdating] = useState(false);
 
- useEffect(() => {
+ // editMode veya displayName değiştiğinde (ör. düzenlemeden vazgeçilince
+ // ismi geri yükle) state'i render sırasında ayarla — bkz.
+ // useBugunkuGorevlerim.ts'teki aynı desen. Birleşik anahtar, orijinal
+ // effect'in [userData?.displayName, editMode] bağımlılık dizisiyle
+ // birebir aynı tetiklenme semantiğini korur.
+ const syncKey = `${editMode}|${userData?.displayName ?? ''}`;
+ const [lastSyncKey, setLastSyncKey] = useState(syncKey);
+ if (syncKey !== lastSyncKey) {
+ setLastSyncKey(syncKey);
  if (!editMode && userData?.displayName) {
  setNewName(userData.displayName);
  }
- }, [userData?.displayName, editMode]);
+ }
 
  const handleUpdate = async () => {
  if (!user || !newName.trim() || isUpdating) return;

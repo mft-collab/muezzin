@@ -14,15 +14,18 @@ export function useVakitBildirimleri(tarih: string | undefined, vakit: Vakit | u
  const [bildirimler, setBildirimler] = useState<Bildirim[]>(() => globalVakitBildirimleriCache.get(cacheKey) || []);
  const [loading, setLoading] = useState(cacheKey ? !globalVakitBildirimleriCache.has(cacheKey) : false);
 
- useEffect(() => {
- if (!tarih || !vakit || !cacheKey) {
- setBildirimler([]);
- setLoading(false);
- return;
+ // cacheKey değiştiğinde state'i render sırasında ayarla — bkz.
+ // useBugunkuGorevlerim.ts'teki aynı desen.
+ const [lastCacheKey, setLastCacheKey] = useState(cacheKey);
+ if (cacheKey !== lastCacheKey) {
+ setLastCacheKey(cacheKey);
+ setBildirimler(globalVakitBildirimleriCache.get(cacheKey) || []);
+ setLoading(cacheKey ? !globalVakitBildirimleriCache.has(cacheKey) : false);
  }
 
- if (!globalVakitBildirimleriCache.has(cacheKey)) {
- setLoading(true);
+ useEffect(() => {
+ if (!tarih || !vakit || !cacheKey) {
+ return;
  }
 
  const q = query(

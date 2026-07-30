@@ -1,24 +1,33 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriCek } from './lib/ezanFetch.ts';
+import { aylikVakitleriCek } from '../src/services/ezanVaktiServisi.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
 async function main() {
   const simdi = getTurkeyNow();
-  
+
   try {
+    // Uygulamanın gerçekten okuduğu ilçe hangisiyse veriyi ona göre çek ve
+    // doküman ID'sini de aynı şekilde ilçe önekiyle yaz — aksi halde
+    // (bkz. src/store/useVakitStore.ts `${ilceId}_${YYYY-MM}`) uygulama bu
+    // güncellemeyi hiç görmez ve eski veri üzerinde donar.
+    const settingsSnap = await db.collection('settings').doc('system').get();
+    const settings = settingsSnap.data() as { ilceId?: string; ilceAdi?: string } | undefined;
+    const ilceId = settings?.ilceId || '9148';
+    const ilceAdi = settings?.ilceAdi || 'Ceyhan';
+
     // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren)
-    const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1);
-    
+    const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
+
     // Verileri aylara göre grupla
     const aylar: Record<string, any> = {};
-    
+
     Object.entries(vakitData.gunler).forEach(([tarih, vakitler]) => {
       const [y, m] = tarih.split('-');
       const ayId = `${y}-${m}`;
       if (!aylar[ayId]) {
         aylar[ayId] = {
-          ceyhanId: vakitData.ceyhanId,
+          ilceId: vakitData.ilceId,
           kaynakApi: vakitData.kaynakApi,
           gunler: {}
         };
@@ -28,13 +37,14 @@ async function main() {
 
     // Gruplanmış verileri Firestore'a yaz
     for (const [ayId, data] of Object.entries(aylar)) {
-      await db.collection('vakitler').doc(ayId).set({
+      const docId = `${ilceId}_${ayId}`;
+      await db.collection('vakitler').doc(docId).set({
         ...data,
         guncellenmeTarihi: Timestamp.now()
       }, { merge: true });
-      console.log(`Başarılı: ${ayId} (${Object.keys(data.gunler).length} gün güncellendi)`);
+      console.log(`Başarılı: ${docId} (${Object.keys(data.gunler).length} gün güncellendi)`);
     }
-    
+
   } catch (err: any) {
     if (err.message.includes('permission') || err.message.includes('NOT_FOUND') || err.message.includes('code: 5') || err.message.includes('code: 7')) {
        handleFirestoreError(err, OperationType.WRITE, `vakitler`);

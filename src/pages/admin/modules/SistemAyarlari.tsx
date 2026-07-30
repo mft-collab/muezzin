@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { Save, MapPin } from 'lucide-react';
@@ -21,13 +21,17 @@ export default function SistemAyarlari() {
  const [saving, setSaving] = useState(false);
  const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
 
- useEffect(() => {
+ // Uzak ayar dokümanı değiştiğinde form alanlarını render sırasında
+ // doldur — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+ const [lastSettings, setLastSettings] = useState(settings);
+ if (settings !== lastSettings) {
+ setLastSettings(settings);
  if (settings) {
  setIlceId(settings.ilceId);
  setIlceAdi(settings.ilceAdi);
  setHicriDuzeltme(settings.hicriDuzeltme ?? 0);
  }
- }, [settings]);
+ }
 
  const handleSave = async (e: React.FormEvent) => {
  e.preventDefault();

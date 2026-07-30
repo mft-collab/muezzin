@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Star, BookOpen, Check, Award, Flame } from 'lucide-react';
 import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
@@ -93,16 +93,31 @@ export const RamazanHub: React.FC = () => {
     oruc: `muezzin_ramazan_oruc_${hijriGunu.day}`
   }), [hijriGunu.day]);
 
-  const [cuzOkundu, setCuzOkundu] = useState(false);
-  const [teravihRekat, setTeravihRekat] = useState(0);
-  const [orucTutuldu, setOrucTutuldu] = useState(false);
+  const gunlukKayitOku = (keys: typeof storageKeys) => {
+    if (typeof window === 'undefined') {
+      return { cuzOkundu: false, teravihRekat: 0, orucTutuldu: false };
+    }
+    return {
+      cuzOkundu: localStorage.getItem(keys.cuz) === 'true',
+      teravihRekat: Number(localStorage.getItem(keys.teravih) || '0'),
+      orucTutuldu: localStorage.getItem(keys.oruc) === 'true'
+    };
+  };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setCuzOkundu(localStorage.getItem(storageKeys.cuz) === 'true');
-    setTeravihRekat(Number(localStorage.getItem(storageKeys.teravih) || '0'));
-    setOrucTutuldu(localStorage.getItem(storageKeys.oruc) === 'true');
-  }, [storageKeys]);
+  const [cuzOkundu, setCuzOkundu] = useState(() => gunlukKayitOku(storageKeys).cuzOkundu);
+  const [teravihRekat, setTeravihRekat] = useState(() => gunlukKayitOku(storageKeys).teravihRekat);
+  const [orucTutuldu, setOrucTutuldu] = useState(() => gunlukKayitOku(storageKeys).orucTutuldu);
+
+  // Hicri gün değiştiğinde (storageKeys değişir) kayıtları render sırasında
+  // yeniden oku — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+  const [lastStorageKeys, setLastStorageKeys] = useState(storageKeys);
+  if (storageKeys !== lastStorageKeys) {
+    setLastStorageKeys(storageKeys);
+    const kayit = gunlukKayitOku(storageKeys);
+    setCuzOkundu(kayit.cuzOkundu);
+    setTeravihRekat(kayit.teravihRekat);
+    setOrucTutuldu(kayit.orucTutuldu);
+  }
 
   const toggleCuz = () => {
     const val = !cuzOkundu;

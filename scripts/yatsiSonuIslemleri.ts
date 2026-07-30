@@ -147,7 +147,7 @@ async function main() {
         muezzinMap[d.id] = d.data();
       });
 
-      const messages = [];
+      const messages: { token: string; notification: { title: string; body: string }; data: { type: string; tarih: string } }[] = [];
       const tokenToUidMap: Record<string, string> = {};
       for (const uid of uidList) {
         const userProfile = muezzinMap[uid];

@@ -30,16 +30,20 @@ export function useBugunkuGorevlerim() {
  const [gorevler, setGorevler] = useState<Bildirim[]>(() => sortGorevler(globalGorevlerCache.get(cacheKey) || []));
  const [loading, setLoading] = useState(cacheKey ? !globalGorevlerCache.has(cacheKey) : false);
 
- useEffect(() => {
- if (!uid || !cacheKey) {
- setGorevler([]);
- setLoading(false);
- return;
+ // cacheKey değiştiğinde (uid/gün değişimi) state'i render sırasında
+ // ayarla — bir effect içinde senkron setState çağırmak yerine React'in
+ // önerdiği "prop değişince state ayarlama" deseni (bkz. react.dev/learn/
+ // you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+ const [lastCacheKey, setLastCacheKey] = useState(cacheKey);
+ if (cacheKey !== lastCacheKey) {
+ setLastCacheKey(cacheKey);
+ setGorevler(sortGorevler(globalGorevlerCache.get(cacheKey) || []));
+ setLoading(cacheKey ? !globalGorevlerCache.has(cacheKey) : false);
  }
 
- // Sadece cache'de yoksa yükleme animasyonu göster
- if (!globalGorevlerCache.has(cacheKey)) {
- setLoading(true);
+ useEffect(() => {
+ if (!uid || !cacheKey) {
+ return;
  }
 
  const q = query(

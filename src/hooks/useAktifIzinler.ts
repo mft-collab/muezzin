@@ -16,10 +16,6 @@ export function useAktifIzinler() {
  const today = getTurkeyDateString();
  const path = 'izinler';
 
- if (globalAktifIzinlerCache === null) {
- setLoading(true);
- }
-
  const q = query(
  collection(db, path),
  where('durum', '==', 'onaylandi'),

@@ -1,20 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff } from 'lucide-react';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export function OfflineBanner() {
   const isOnline = useNetworkStatus();
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    // Sadece çevrimdışı olduğunda göster
-    if (!isOnline) {
-      setShow(true);
-    } else {
-      setShow(false);
-    }
-  }, [isOnline]);
+  const show = !isOnline;
 
   return (
     <AnimatePresence>

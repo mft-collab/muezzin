@@ -1,0 +1,33 @@
+name: Vakit Veri Sağlığı Kontrolü
+
+# Aylık takvim güncellemesi (aylik-ezan-takvimi.yml) yalnızca ayda bir
+# çalışır; aradaki bir hata veya yanlış dokümana yazma durumu fark
+# edilmeden günlerce sürebilir (bkz. 2026-07-30 kesintisi). Bu iş her gün
+# bugün/yarın verisinin eksiksiz olduğunu doğrular, eksikse API'den
+# tazeler ve admin paneline iz bırakır.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * *' # 01:00 Türkiye saati — gece yarısı geçişinden hemen sonra
+
+jobs:
+  saglik-kontrolu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Vakit verisi sağlığını kontrol et
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/vakitVeriSagligiKontrol.ts
+      - name: Başarısızlığı admin paneline bildir
+        if: failure()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Vakit Veri Sağlığı Kontrolü"

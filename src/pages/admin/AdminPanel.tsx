@@ -84,12 +84,18 @@ export default function AdminPanel() {
  const { bugunVakitler } = useEzanVakitleri();
  const mevcutVakit = useMevcutVakit(bugunVakitler);
 
- useEffect(() => {
- const sub = searchParams.get('sub');
- if (sub === 'alarmlar' || sub === 'duyurular') {
- setDrawerContent(sub);
+ // URL'deki ?sub= parametresi değiştiğinde drawer'ı render sırasında aç —
+ // drawerContent programatik olarak da açılabildiği için (bkz. onOpenDrawer)
+ // tamamen türetilmiş bir değer olamaz, bu yüzden "izlenen anahtar
+ // değişince state ayarla" deseni kullanılıyor (bkz. useBugunkuGorevlerim.ts).
+ const subParam = searchParams.get('sub');
+ const [lastSubParam, setLastSubParam] = useState(subParam);
+ if (subParam !== lastSubParam) {
+ setLastSubParam(subParam);
+ if (subParam === 'alarmlar' || subParam === 'duyurular') {
+ setDrawerContent(subParam);
  }
- }, [searchParams]);
+ }
 
  const closeDrawer = () => {
  setDrawerContent(null);

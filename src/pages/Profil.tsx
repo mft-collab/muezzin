@@ -80,27 +80,35 @@ export default function Profil() {
   const user = useAuthStore(s => s.user);
   const authInitialized = useAuthStore(s => s.initialized);
 
-  useEffect(() => {
-    if (!authInitialized) return undefined;
-
-    if (user) {
-      setLoading(true);
-      const unsubscribe = onSnapshot(doc(db, 'muezzins', user.uid), (docSnap) => {
-        if (docSnap.exists()) {
-          setUserData(docSnap.data() as UserData);
-        }
-        setLoading(false);
-      }, (err) => {
-        console.error('Profil verisi dinlenemedi:', err);
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } else {
+  // Kullanıcı değiştiğinde (giriş/çıkış) state'i render sırasında ayarla —
+  // bkz. useBugunkuGorevlerim.ts'teki aynı desen. `undefined` = auth henüz
+  // bilinmiyor, `null` = oturum yok.
+  const userKey = authInitialized ? (user?.uid ?? null) : undefined;
+  const [lastUserKey, setLastUserKey] = useState(userKey);
+  if (userKey !== lastUserKey) {
+    setLastUserKey(userKey);
+    if (userKey === null) {
       setUserData(null);
       setLoading(false);
+    } else if (userKey !== undefined) {
+      setLoading(true);
     }
-    return undefined;
+  }
+
+  useEffect(() => {
+    if (!authInitialized || !user) return undefined;
+
+    const unsubscribe = onSnapshot(doc(db, 'muezzins', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        setUserData(docSnap.data() as UserData);
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error('Profil verisi dinlenemedi:', err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user, authInitialized]);
 
   const currentAylikVakit = userData?.aylikVakitSayisi || 0;

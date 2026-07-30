@@ -133,7 +133,14 @@ export default function HaftalikCizelge() {
       if (import.meta.env.DEV) {
         console.log(`[Self-Healing] Cizelge sayfasında plan bulunamadı (${haftaId}). Otomatik oluşturma tetikleniyor...`);
       }
-      handlePlanOlustur();
+      // Effect gövdesinde senkron olarak handlePlanOlustur'u çağırmak,
+      // içindeki ilk satır olan setGenerating(true)'nun aynı render turunda
+      // senkron çalışmasına yol açıyordu. Bir microtask'a erteleyerek bunu
+      // onSnapshot/event callback'leriyle aynı — "harici bir tetikleyiciye
+      // yanıt olarak state güncelleme" — kalıba taşıyoruz.
+      queueMicrotask(() => {
+        void handlePlanOlustur();
+      });
     }
   }, [plan, planLoading, isAdmin, haftaId, generating]);
 

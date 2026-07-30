@@ -61,7 +61,11 @@ export const AnaEkranHero = React.memo(({
   const now = useTime();
   const { gpsEnabled, gpsCoords, gpsKonumAdi } = useGpsVakitStore();
   const { settings } = useSystemSettingsStore();
-  const { bugunVakitler: officialVakitler } = useEzanVakitleri();
+  // NOT: useEzanVakitleri()'nin `bugunVakitler`'ı GPS açıkken zaten GPS
+  // verisine döner — bu yüzden fark rozeti karşılaştırması için GPS'ten
+  // bağımsız `resmiBugunVakitler` kullanılır (aksi halde her iki taraf da
+  // aynı GPS verisi olur ve fark her zaman 0 çıkardı).
+  const { resmiBugunVakitler: officialVakitler } = useEzanVakitleri();
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 

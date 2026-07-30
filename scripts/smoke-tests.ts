@@ -45,11 +45,11 @@ function withFakeNow<T>(isoDate: string, run: () => T): T {
   const fixedTime = new RealDate(isoDate).getTime();
 
   class FakeDate extends RealDate {
-    constructor(...args: ConstructorParameters<typeof Date>) {
+    constructor(...args: any[]) {
       if (args.length === 0) {
         super(fixedTime);
       } else {
-        super(...args);
+        super(...(args as ConstructorParameters<typeof Date>));
       }
     }
 

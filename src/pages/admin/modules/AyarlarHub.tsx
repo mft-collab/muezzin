@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useTransition } from 'react';
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
@@ -10,15 +10,16 @@ const SistemLoglari = lazy(() => import('./SistemLoglari'));
 
 export default function AyarlarHub() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialSubtab = searchParams.get('subtab');
-  const [activeTab, setActiveTabState] = useState(
-    initialSubtab === 'onbellek' || initialSubtab === 'loglar' ? initialSubtab : 'ayarlar'
-  );
+  // Aktif sekme tamamen URL'deki ?subtab= parametresinden türetilir — ayrı
+  // bir state + onu senkronize eden effect gerekmiyor (tek doğruluk kaynağı
+  // URL'dir; setActiveTab zaten URL'i güncelliyor, bu da bu değeri otomatik
+  // günceller).
+  const subtabParam = searchParams.get('subtab');
+  const activeTab = subtabParam === 'onbellek' || subtabParam === 'loglar' ? subtabParam : 'ayarlar';
   const [isPending, startTransition] = useTransition();
 
   const setActiveTab = (tab: string) => {
     startTransition(() => {
-      setActiveTabState(tab);
       setSearchParams(prev => {
         const next = new URLSearchParams(prev);
         if (tab === 'ayarlar') {
@@ -30,16 +31,6 @@ export default function AyarlarHub() {
       });
     });
   };
-
-  useEffect(() => {
-    const subtab = searchParams.get('subtab');
-    if ((subtab === 'onbellek' || subtab === 'loglar') && subtab !== activeTab) {
-      setActiveTabState(subtab);
-    }
-    if (!subtab && activeTab !== 'ayarlar') {
-      setActiveTabState('ayarlar');
-    }
-  }, [searchParams, activeTab]);
 
   const navItems = [
     { id: 'ayarlar', label: 'Sistem Ayarları' },

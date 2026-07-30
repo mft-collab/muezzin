@@ -33,8 +33,15 @@ export default function SistemAnalitigi() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const muezzinMap = useMuezzinStore(s => s.muezzinMap);
 
-  useEffect(() => {
+  // Seçili dönem değiştiğinde yükleme durumunu render sırasında ayarla —
+  // bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+  const [lastPeriodDays, setLastPeriodDays] = useState(periodDays);
+  if (periodDays !== lastPeriodDays) {
+    setLastPeriodDays(periodDays);
     setLoading(true);
+  }
+
+  useEffect(() => {
     const today = new Date();
     const days: { dateStr: string; dayName: string }[] = [];
 

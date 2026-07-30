@@ -151,8 +151,28 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
   // Throttled states (Updated at 10Hz, which is perfect for text labels and glows)
   const [headingState, setHeadingState] = useState<number | null>(null);
   const [isAligned, setIsAligned] = useState<boolean>(false);
-  
+
+  // iOS Safari'de requestPermission() zorunludur; bu tarayıcı özelliği
+  // oturum boyunca sabittir, bir kez tespit edilip saklanır.
+  const [isIOSDevice] = useState(() =>
+    typeof window !== 'undefined' &&
+    typeof DeviceOrientationEvent !== 'undefined' &&
+    // @ts-expect-error requestPermission yalnızca iOS Safari'de mevcut, lib.dom.d.ts'te yok
+    typeof DeviceOrientationEvent.requestPermission === 'function'
+  );
+
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+
+  // Modal her açıldığında izin durumunu render sırasında ayarla (iOS'ta izin
+  // banner'ı gösterilir, diğerlerinde sensöre doğrudan izin varsayılır) —
+  // bkz. useBugunkuGorevlerim.ts'teki aynı desen.
+  const [lastPermCheckOpen, setLastPermCheckOpen] = useState(false);
+  if (isOpen !== lastPermCheckOpen) {
+    setLastPermCheckOpen(isOpen);
+    if (isOpen) {
+      setPermissionGranted(isIOSDevice ? false : true);
+    }
+  }
 
   // Resolve Active Coordinates (GPS or Fallback)
   const coords = useMemo(() => {
@@ -322,22 +342,10 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
   // Sensor Lifecycle management (Ensures 100% cleanup when closed)
   useEffect(() => {
     if (!isOpen) {
-      // Completely reset states and refs when closed to achieve 0% active CPU usage
-      setHeadingState(null);
-      setIsAligned(false);
-      headingRef.current = null;
-      lastVibeTimeRef.current = 0;
       return;
     }
 
-    const isIOS =
-      typeof window !== 'undefined' &&
-      typeof DeviceOrientationEvent !== 'undefined' &&
-      // @ts-expect-error requestPermission yalnızca iOS Safari'de mevcut, lib.dom.d.ts'te yok
-      typeof DeviceOrientationEvent.requestPermission === 'function';
-
-    if (!isIOS) {
-      setPermissionGranted(true);
+    if (!isIOSDevice) {
       if ('ondeviceorientationabsolute' in (window as any)) {
         window.addEventListener('deviceorientationabsolute', handleOrientationAbsolute, true);
       } else {
@@ -345,15 +353,21 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
       }
     } else {
       // iOS: Show permission banner first, but also attempt immediate binding in case it's pre-granted
-      setPermissionGranted(false);
       window.addEventListener('deviceorientation', handleOrientation, true);
     }
 
     return () => {
       window.removeEventListener('deviceorientationabsolute', handleOrientationAbsolute, true);
       window.removeEventListener('deviceorientation', handleOrientation, true);
+      // Kapanırken (veya yeniden çalışmadan önce) sensör durumunu sıfırla —
+      // 0% aktif CPU kullanımı hedefi. Cleanup effect kapanış anında zaten
+      // çalıştığı için ayrı bir "!isOpen" dalına gerek yok.
+      setHeadingState(null);
+      setIsAligned(false);
+      headingRef.current = null;
+      lastVibeTimeRef.current = 0;
     };
-  }, [isOpen]);
+  }, [isOpen, isIOSDevice]);
 
   const locationText = gpsEnabled && gpsKonumAdi ? `${gpsKonumAdi} (GPS)` : `${settings.ilceAdi || 'Ceyhan'} İlçe Merkezi`;
   const needleRotation = headingState !== null ? qiblaAngle - headingState : qiblaAngle;

@@ -60,7 +60,7 @@ export async function aylikVakitleriCek(
  
  if (!response.ok) throw new Error('Ezan vakti servislerine erişilemiyor.');
 
- const result = await response.json();
+ const result = (await response.json()) as { data?: unknown };
  if (!Array.isArray(result?.data)) {
    throw new Error('Ezan vakti servisi beklenmeyen bir yanıt döndü.');
  }

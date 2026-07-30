@@ -7,35 +7,30 @@ interface BeforeInstallPromptEvent extends Event {
 
 type PWAWindow = Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent };
 
-export function usePWAInstall() {
- const [isInstallable, setIsInstallable] = useState(false);
- const [isInstalled, setIsInstalled] = useState(false);
- const [isIosPrompt, setIsIosPrompt] = useState(false);
-
- useEffect(() => {
- // Standalone (yüklü) mod kontrolü (iOS ve diğerleri)
- const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
- ('standalone' in window.navigator && (window.navigator as any).standalone === true);
- 
- if (isStandalone) {
- setIsInstalled(true);
- return;
+// Standalone/iOS tespiti sabit tarayıcı özellikleridir (oturum boyunca
+// değişmez) — bunları bir effect'te setState ile değil, doğrudan lazy
+// state initializer'larla hesaplıyoruz ki mount sırasında gereksiz bir
+// senkron re-render tetiklenmesin.
+function detectPwaEnvironment() {
+ if (typeof window === 'undefined') {
+ return { isStandalone: false, isIos: false };
  }
-
- // iOS kontrolü
+ const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+ ('standalone' in window.navigator && (window.navigator as any).standalone === true);
  const userAgent = window.navigator.userAgent.toLowerCase();
  const isIos = /iphone|ipad|ipod/.test(userAgent);
- 
- if (isIos) {
- setIsIosPrompt(true);
- // iOS'te beforeinstallprompt desteklenmediği için burada bitiriyoruz
- return;
- }
+ return { isStandalone, isIos };
+}
 
- // Android / Desktop için beforeinstallprompt dinleme
- if ((window as PWAWindow).__pwaInstallPrompt) {
- setIsInstallable(true);
- }
+export function usePWAInstall() {
+ const [{ isStandalone, isIos }] = useState(detectPwaEnvironment);
+ const [isInstallable, setIsInstallable] = useState(() => !isStandalone && !isIos && !!(window as PWAWindow).__pwaInstallPrompt);
+ const [isInstalled, setIsInstalled] = useState(isStandalone);
+ const [isIosPrompt, setIsIosPrompt] = useState(isIos && !isStandalone);
+
+ useEffect(() => {
+ // Standalone veya iOS: beforeinstallprompt hiç desteklenmiyor/gerekmiyor.
+ if (isStandalone || isIos) return;
 
  // Henüz gelmemişse, main.tsx'in dispatch ettiği event'i bekle
  const onReady = () => setIsInstallable(true);
@@ -53,7 +48,7 @@ export function usePWAInstall() {
  window.removeEventListener('pwaInstallReady', onReady);
  window.removeEventListener('appinstalled', onInstalled);
  };
- }, []);
+ }, [isStandalone, isIos]);
 
  const install = async () => {
  const prompt = (window as PWAWindow).__pwaInstallPrompt;

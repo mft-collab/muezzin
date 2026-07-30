@@ -13,16 +13,18 @@ export function useHaftaPlan(haftaId: string) {
  const [plan, setPlan] = useState<(HaftaPlan & { id: string }) | null>(() => globalHaftaPlanCache.get(haftaId) || null);
  const [loading, setLoading] = useState(!globalHaftaPlanCache.has(haftaId));
 
- useEffect(() => {
- if (!haftaId) {
- setPlan(null);
- setLoading(false);
- return;
+ // haftaId değiştiğinde state'i render sırasında ayarla — bkz.
+ // useBugunkuGorevlerim.ts'teki aynı desen.
+ const [lastHaftaId, setLastHaftaId] = useState(haftaId);
+ if (haftaId !== lastHaftaId) {
+ setLastHaftaId(haftaId);
+ setPlan(haftaId ? (globalHaftaPlanCache.get(haftaId) || null) : null);
+ setLoading(haftaId ? !globalHaftaPlanCache.has(haftaId) : false);
  }
 
- // Önbellekte yoksa yükleme ekranı göster
- if (!globalHaftaPlanCache.has(haftaId)) {
- setLoading(true);
+ useEffect(() => {
+ if (!haftaId) {
+ return;
  }
 
  const unsubPlan = onSnapshot(doc(db, 'haftaPlanlari', haftaId), (snapshot) => {

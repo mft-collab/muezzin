@@ -129,12 +129,29 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
  };
 
+ // Doküman Firestore'da mevcut olsa bile içindeki `gunler` haritasında
+ // bugün/yarın için kayıt bulunmayabilir (örn. cron'un bir sonraki
+ // çalışmasına kadar geçen boşluk). _processData bu durumda sessizce
+ // null üretip spinner'ı kapatıyordu — kullanıcı "Vakitler güncelleniyor"
+ // ekranında sonsuza dek takılı kalıyordu. Eksik günü tespit edip API'den
+ // tek seferlik bir tazeleme tetikleyerek kendi kendine onarım sağlanır.
+ let eksikGunIcinTazelemeDenendi = false;
+ const eksikGunuTazele = () => {
+ if (eksikGunIcinTazelemeDenendi) return;
+ if (!get().bugunVakitler || !get().yarinVakitler) {
+ eksikGunIcinTazelemeDenendi = true;
+ console.warn('VakitStore: doküman(lar) mevcut ama bugün/yarın verisi eksik, API üzerinden tazeleniyor...');
+ fetchFallback(tarih.getFullYear(), tarih.getMonth() + 1);
+ }
+ };
+
  const unsubscribeBuAy = onSnapshot(
  doc(db, 'vakitler', buAyDocId),
  (snap) => {
  if (snap.exists()) {
  set({ currentMonthData: snap.data() as Vakitler });
  get()._processData();
+ eksikGunuTazele();
  } else {
  fetchFallback(tarih.getFullYear(), tarih.getMonth() + 1);
  }
@@ -154,6 +171,7 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  set({ nextMonthData: snap.data() as Vakitler });
  get()._processData();
  }
+ eksikGunuTazele();
  },
  (err) => console.warn('Yarın vakitleri çekilemedi:', err)
  );
