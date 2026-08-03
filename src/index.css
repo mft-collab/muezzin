@@ -18,6 +18,12 @@
   --font-serif: "Instrument Serif", serif;
   --font-mono: "JetBrains Mono Variable", monospace;
 
+  /* text-[11px] resmi ölçeğin dışında ~468 kez kullanılıyordu — tüm standart
+     Tailwind boyut sınıflarının toplam kullanımından fazla. Buraya taşınarak
+     tasarım sisteminin gerçek/fiili bir parçası haline getiriliyor. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: calc(1 / 0.6875);
+
   --app-bg: #000000;
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
   --spatial-highlight: rgba(255, 255, 255, 0.15);
@@ -75,8 +81,10 @@
   --card-flat-bg: hsla(210, 10%, 94%, 0.50);
   --card-active-bg: hsla(38, 30%, 91%, 0.70);
 
-  --status-success: hsl(var(--aura-emerald-h), 85%, 32%);
-  --status-warning: hsl(42, 95%, 38%); /* Gilded Gold warning override */
+  /* status-success/warning ölçüldüğünde app-bg üzerinde WCAG AA'nın altındaydı
+     (sırasıyla 3.31:1 ve 2.86:1) — koyulaştırılarak ≥4.5:1'e çekildi (bkz. tasarım denetimi). */
+  --status-success: hsl(var(--aura-emerald-h), 85%, 24%);
+  --status-warning: hsl(38, 100%, 28%); /* Gilded Gold warning override, kontrast için koyulaştırıldı */
   --status-danger: hsl(var(--aura-ruby-h), 88%, 38%);
   --status-error: hsl(var(--aura-ruby-h), 88%, 38%);
   --status-info: hsl(var(--aura-indigo-h), 78%, 42%);
@@ -88,6 +96,52 @@
   --aura-indigo: hsl(var(--aura-indigo-h), 62%, 48%);
   --aura-rose: hsl(var(--aura-rose-h), 76%, 42%);
   --specular-glow: rgba(255, 255, 255, 0.70);
+
+  /* ─────────────────────────────────────────
+   * Ham Tailwind palet renkleri (bg-rose-500, text-emerald-500 vb.) --aura-*/
+  /* --status-* token'larının aksine otomatik mod-bazlı yeniden haritalama almıyordu;
+   * kod tabanında en sık kullanılan (>%90) ailelerin şu anda kullanılan tonları burada
+   * aydınlık mod için kontrastı WCAG AA'ya çekecek şekilde yeniden tanımlanıyor. Bu,
+   * yüzlerce component çağrı noktasını tek tek değiştirmeden aynı otomatik-remap
+   * davranışını sağlıyor. Uzun kuyruktaki nadir renkler (blue/purple/yellow/teal/slate/
+   * zinc/green, ≤4 kullanım) kapsam dışı bırakıldı. */
+  --color-rose-300: hsl(343, 70%, 78%);
+  --color-rose-400: hsl(343, 80%, 58%);
+  --color-rose-500: hsl(343, 88%, 38%);
+  --color-rose-600: hsl(343, 88%, 30%);
+  --color-red-400: hsl(343, 80%, 58%);
+  --color-red-500: hsl(343, 88%, 38%);
+
+  --color-emerald-200: hsl(162, 70%, 80%);
+  --color-emerald-400: hsl(162, 80%, 40%);
+  --color-emerald-500: hsl(162, 85%, 24%);
+  --color-emerald-600: hsl(162, 85%, 19%);
+  --color-green-400: hsl(162, 80%, 40%);
+
+  --color-amber-200: hsl(38, 90%, 82%);
+  --color-amber-300: hsl(38, 95%, 66%);
+  --color-amber-400: hsl(38, 100%, 42%);
+  --color-amber-500: hsl(38, 100%, 28%);
+  --color-amber-600: hsl(38, 100%, 22%);
+  --color-amber-700: hsl(38, 100%, 18%);
+  --color-yellow-400: hsl(38, 100%, 42%);
+  --color-yellow-600: hsl(38, 100%, 22%);
+
+  --color-orange-400: hsl(25, 90%, 50%);
+  --color-orange-500: hsl(25, 90%, 34%);
+  --color-orange-600: hsl(25, 90%, 27%);
+
+  --color-violet-400: hsl(262, 62%, 62%);
+  --color-violet-500: hsl(262, 62%, 44%);
+  --color-violet-600: hsl(262, 62%, 36%);
+  --color-violet-700: hsl(262, 62%, 30%);
+  --color-purple-400: hsl(272, 62%, 62%);
+  --color-purple-500: hsl(272, 62%, 44%);
+  --color-purple-600: hsl(272, 62%, 36%);
+  --color-indigo-500: hsl(244, 62%, 48%);
+  --color-indigo-600: hsl(244, 62%, 40%);
+  --color-blue-500: hsl(217, 62%, 44%);
+  --color-blue-600: hsl(217, 62%, 36%);
 }
 
 
@@ -304,7 +358,9 @@
 @utility premium-label {
   @apply authority-title;
   font-size: 11px;
-  opacity: 0.65;
+  /* 0.65 önceki değeriyle text-secondary/app-bg kontrastı ışık modunda 3.01:1'e
+     düşüyordu (WCAG AA 4.5:1 eşiğinin altı) — 0.85 her iki modda da ≥4.5:1 sağlıyor. */
+  opacity: 0.85;
   font-weight: 600;
 }
 
@@ -698,10 +754,11 @@
   flex-shrink: 0;
 }
 
-/* Aydinlik modda düşük opaklikli etiketlerin okunabilirligini koruma kurallari */
-[data-theme='light'] .authority-title,
+/* Aydinlik modda etiketlerin okunabilirligini koruma kurallari — önceki opacity:0.55
+   patch'i .premium-label'i tasarım denetiminde 3.01:1'in altına düşürüyordu (WCAG AA
+   4.5:1 altı); .authority-title zaten opaklık düşürmüyordu (tam kontrast 6.63:1),
+   bu yüzden kapsam dışı bırakıldı. */
 [data-theme='light'] .premium-label {
-  opacity: 0.55 !important;
   font-weight: 600 !important;
 }
 
@@ -743,32 +800,55 @@
   will-change: transform;
 }
 
-/* Boost low-contrast text primary/secondary opacities specifically in light mode */
+/* Boost low-contrast text primary/secondary opacities in her iki modda da.
+   Ölçüm: text-secondary/30-50 önceki 0.70 değeriyle ışık modunda yalnızca 3.33:1
+   veriyordu, /20-35 için 0.55 ise 2.46:1 — ikisi de WCAG AA 4.5:1'in altında.
+   0.85 floor'u her iki modda da ≥4.5:1 sağlıyor (bkz. tasarım denetimi). Koyu modda
+   bu utility'ler daha önce hiç düzeltilmiyordu (aynı problem orada da vardı). */
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/20,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/25,
 [data-theme='light'] .text-\[var\(--text-secondary\)\]\/30,
+[data-theme='light'] .text-\[var\(--text-secondary\)\]\/35,
 [data-theme='light'] .text-\[var\(--text-secondary\)\]\/40,
 [data-theme='light'] .text-\[var\(--text-secondary\)\]\/50 {
   color: var(--text-secondary) !important;
-  opacity: 0.70 !important;
+  opacity: 0.85 !important;
 }
 
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/20,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/25,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/35 {
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/20,
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/25,
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/30,
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/35,
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/40,
+[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/50 {
   color: var(--text-secondary) !important;
-  opacity: 0.55 !important;
+  opacity: 0.8 !important;
 }
 
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/10,
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/15,
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/20 {
   color: var(--text-primary) !important;
-  opacity: 0.50 !important;
+  opacity: 0.55 !important;
+}
+
+[data-theme='dark'] .text-\[var\(--text-primary\)\]\/10,
+[data-theme='dark'] .text-\[var\(--text-primary\)\]\/15,
+[data-theme='dark'] .text-\[var\(--text-primary\)\]\/20 {
+  color: var(--text-primary) !important;
+  opacity: 0.4 !important;
 }
 
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/30,
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/40 {
   color: var(--text-primary) !important;
   opacity: 0.75 !important;
+}
+
+[data-theme='dark'] .text-\[var\(--text-primary\)\]\/30,
+[data-theme='dark'] .text-\[var\(--text-primary\)\]\/40 {
+  color: var(--text-primary) !important;
+  opacity: 0.55 !important;
 }
 
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/70,

@@ -172,8 +172,8 @@ function KalanSure({ bitisZamani, barClass }: { bitisZamani: Date; barClass: str
   return (
     <div className="flex flex-col gap-1.5 mt-2.5 pt-2.5 border-t border-current/[0.06]">
       <div className="flex justify-between items-center">
-        <span className="text-[11px] font-bold uppercase tracking-widest opacity-35">Kalan Süre</span>
-        <span className="text-[11px] font-mono font-bold opacity-60">{kalanMetin}</span>
+        <span className="text-2xs font-bold uppercase tracking-widest opacity-35">Kalan Süre</span>
+        <span className="text-2xs font-mono font-bold opacity-60">{kalanMetin}</span>
       </div>
       <div className="w-full h-[2px] bg-current/[0.08] rounded-full overflow-hidden">
         <motion.div
@@ -233,20 +233,20 @@ export const OzelVakitBanner = React.memo<OzelVakitBannerProps>(({ durum }) => {
                 {/* Icon + Başlık */}
                 <div className={`flex items-center gap-1.5 ${style.icon}`}>
                   {getIkon(durum.tip)}
-                  <h3 className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${style.title}`}>
+                  <h3 className={`text-2xs sm:text-xs font-black uppercase tracking-wider ${style.title}`}>
                     {durum.baslik}
                   </h3>
                 </div>
               </div>
 
               {/* Alt başlık badge */}
-              <span className={`text-[11px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full border border-current/15 ${style.sub} flex-shrink-0 mt-0.5`}>
+              <span className={`text-2xs font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full border border-current/15 ${style.sub} flex-shrink-0 mt-0.5`}>
                 {durum.altBaslik}
               </span>
             </div>
 
             {/* Açıklama */}
-            <p className={`text-[11px] sm:text-[11px] leading-relaxed mt-2 font-medium ${style.body}`}>
+            <p className={`text-2xs sm:text-2xs leading-relaxed mt-2 font-medium ${style.body}`}>
               {durum.aciklama}
             </p>
 
@@ -262,7 +262,7 @@ export const OzelVakitBanner = React.memo<OzelVakitBannerProps>(({ durum }) => {
                   {durum.arapca}
                 </p>
                 {durum.transkript && (
-                  <p className="text-[11px] sm:text-[11px] font-medium mt-1.5 text-[var(--text-secondary)] opacity-75">
+                  <p className="text-2xs sm:text-2xs font-medium mt-1.5 text-[var(--text-secondary)] opacity-75">
                     {durum.transkript}
                   </p>
                 )}

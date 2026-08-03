@@ -105,7 +105,7 @@ const NavItem = memo(({ item, isActive }: { item: typeof ALL_NAV_ITEMS[0], isAct
  >
  {content}
 
- <div className="hidden sm:block absolute -top-14 left-1/2 -translate-x-1/2 px-4 py-2 bg-[var(--app-bg)] text-[var(--text-primary)] text-[11px] font-sans font-extralight tracking-wide rounded-[14px] opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none -translate-y-2 group-hover:translate-y-0 scale-90 shadow-[var(--spatial-shadow)] border border-[var(--glass-border)] backdrop-blur-xl">
+ <div className="hidden sm:block absolute -top-14 left-1/2 -translate-x-1/2 px-4 py-2 bg-[var(--app-bg)] text-[var(--text-primary)] text-2xs font-sans font-extralight tracking-wide rounded-[14px] opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none -translate-y-2 group-hover:translate-y-0 scale-90 shadow-[var(--spatial-shadow)] border border-[var(--glass-border)] backdrop-blur-xl">
  {item.label}
  <div className="absolute bottom-[-5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[var(--app-bg)] rotate-45 border-r border-b border-[var(--glass-border)]" />
  </div>
@@ -141,6 +141,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
  const isAdmin = useAuthStore(state => state.isAdmin);
  useFcmToken();
  const { isInstallable, isIosPrompt, install, dismissIosPrompt } = usePWAInstall();
+
+ // Yüzen dock `position: fixed` olduğu için sayfanın ortasında kaydırılan
+ // kartların (ör. "SIRADAKİ GÖREVİM") üzerine biniyordu — sadece sayfa sonuna
+ // padding eklemek bunu çözmüyor, çünkü sorun kaydırma SIRASINDA oluşuyor.
+ // Standart çözüm: aşağı kaydırırken dock'u gizle, yukarı kaydırırken göster.
+ const [navHidden, setNavHidden] = React.useState(false);
+ React.useEffect(() => {
+ let lastY = window.scrollY;
+ let ticking = false;
+ const onScroll = () => {
+ if (ticking) return;
+ ticking = true;
+ requestAnimationFrame(() => {
+ const y = window.scrollY;
+ const delta = y - lastY;
+ if (y < 80) {
+ setNavHidden(false);
+ } else if (delta > 6) {
+ setNavHidden(true);
+ } else if (delta < -6) {
+ setNavHidden(false);
+ }
+ lastY = y;
+ ticking = false;
+ });
+ };
+ window.addEventListener('scroll', onScroll, { passive: true });
+ return () => window.removeEventListener('scroll', onScroll);
+ }, []);
 
  // Mouse move and leave handers for the navigation dock ambient follow-aura
  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
@@ -261,11 +290,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       {!isAdminRoute && (
-        <div className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 left-4 right-4 sm:left-0 sm:right-0 z-[100] pointer-events-none flex justify-center pb-0 md:pb-12 md:px-6">
-          <nav 
+        <div
+          className={`fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 left-4 right-4 sm:left-0 sm:right-0 z-[100] pointer-events-none flex justify-center pb-0 md:pb-12 md:px-6 transition-all duration-300 ease-out ${
+            navHidden ? 'opacity-0 translate-y-[calc(100%+1.5rem)]' : 'opacity-100 translate-y-0'
+          }`}
+        >
+          <nav
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            className="w-full sm:w-fit md:min-w-[520px] h-[64px] sm:h-[72px] md:h-[88px] apple-glass rounded-[24px] sm:rounded-[28px] md:rounded-full flex items-center justify-around md:justify-center gap-1 sm:gap-2 md:gap-8 px-2 sm:px-6 md:px-10 pointer-events-auto transition-all duration-1000 relative group/nav"
+            className={`w-full sm:w-fit md:min-w-[520px] h-[64px] sm:h-[72px] md:h-[88px] apple-glass rounded-[24px] sm:rounded-[28px] md:rounded-full flex items-center justify-around md:justify-center gap-1 sm:gap-2 md:gap-8 px-2 sm:px-6 md:px-10 transition-all duration-1000 relative group/nav ${
+              navHidden ? 'pointer-events-none' : 'pointer-events-auto'
+            }`}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-[var(--text-primary)]/5 to-transparent opacity-0 group-hover/nav:opacity-100 transition-opacity duration-700 pointer-events-none" />
             <div 

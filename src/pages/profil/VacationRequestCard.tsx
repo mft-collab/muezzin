@@ -177,16 +177,16 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <h4 className="premium-label !text-[11px] !opacity-70 tracking-wide uppercase">İZİN & MAZERET TALEBİ</h4>
+              <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">İZİN & MAZERET TALEBİ</h4>
             </div>
-            <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed max-w-sm font-light">
+            <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed max-w-sm font-light">
               Haftalık izin, yıllık izin ve mazeret taleplerinizi yönetici onayına iletmek için dokunun.
             </p>
           </div>
           
           <button 
             type="button"
-            className="px-6 py-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-[11px] font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
+            className="px-6 py-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
           >
             <Calendar size={13} strokeWidth={2} />
             <span>TALEP OLUŞTUR</span>
@@ -204,16 +204,16 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           <div className="flex flex-col gap-1.5 mb-6 opacity-60">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <p className="text-[11px] font-bold tracking-wide uppercase text-amber-500">YÖNETİCİ ONAYINA GÖNDERİLİR</p>
+              <p className="text-2xs font-bold tracking-wide uppercase text-amber-500">YÖNETİCİ ONAYINA GÖNDERİLİR</p>
             </div>
-            <span className="text-[11px] opacity-40 font-mono">LÜTFEN BİLGİLERİ EKSİKSİZ VE DOĞRU BİR ŞEKİLDE DOLDURUNUZ.</span>
+            <span className="text-2xs opacity-40 font-mono">LÜTFEN BİLGİLERİ EKSİKSİZ VE DOĞRU BİR ŞEKİLDE DOLDURUNUZ.</span>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {/* Start Date */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Başlangıç Tarihi</label>
+                <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Başlangıç Tarihi</label>
                 <input 
                   type="date"
                   value={baslangic}
@@ -225,7 +225,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               
               {/* End Date */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Bitiş Tarihi</label>
+                <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Bitiş Tarihi</label>
                 <input 
                   type="date"
                   value={bitis}
@@ -238,7 +238,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
 
             {/* Leave Type Select */}
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Muafiyet Türü</label>
+              <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Muafiyet Türü</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'haftalik', label: 'Haftalık' },
@@ -249,7 +249,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                     type="button"
                     key={item.id}
                     onClick={() => setTip(item.id as any)}
-                    className={`py-3.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border cursor-pointer ${
+                    className={`py-3.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all duration-300 border cursor-pointer ${
                       tip === item.id 
                         ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
                         : 'bg-transparent border-[var(--glass-border)] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)]'
@@ -263,7 +263,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
 
             {/* Reason Text Area */}
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">İzin Gerekçesi</label>
+              <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">İzin Gerekçesi</label>
               <textarea
                 value={sebep}
                 onChange={e => setSebep(e.target.value)}
@@ -279,7 +279,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               {errorMessage && (
                 <motion.div 
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="p-5 rounded-[22px] bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[11px] leading-relaxed flex items-start gap-3.5"
+                  className="p-5 rounded-[22px] bg-rose-500/10 border border-rose-500/20 text-rose-500 text-2xs leading-relaxed flex items-start gap-3.5"
                 >
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
@@ -288,7 +288,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               {successMessage && (
                 <motion.div 
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="p-5 rounded-[22px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[11px] leading-relaxed flex items-start gap-3.5"
+                  className="p-5 rounded-[22px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-2xs leading-relaxed flex items-start gap-3.5"
                 >
                   <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
                   <span>{successMessage}</span>
@@ -303,7 +303,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={isSubmitting}
-                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-[11px] font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
+                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />
@@ -318,7 +318,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-8 py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--glass-border)] rounded-2xl cursor-pointer bg-transparent"
+                className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--glass-border)] rounded-2xl cursor-pointer bg-transparent"
               >
                 VAZGEÇ
               </motion.button>
@@ -331,7 +331,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
       <div className="space-y-4">
         <div className="flex items-center gap-3 pl-2">
           <Calendar size={16} className="text-[var(--text-secondary)]/40" />
-          <h4 className="premium-label !text-[11px] !opacity-70 tracking-wide uppercase">İzin Taleplerim ve Durum Akışı</h4>
+          <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">İzin Taleplerim ve Durum Akışı</h4>
         </div>
 
         {loadingTalepler ? (
@@ -340,7 +340,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           </div>
         ) : talepler.length === 0 ? (
           <div className="p-8 text-center spatial-glass rounded-[32px] border-dashed border-[var(--text-primary)]/5">
-            <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
+            <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5">
@@ -372,16 +372,16 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-[var(--text-primary)]">{typeLabel}</span>
-                        <span className="text-[11px] opacity-40 font-mono">({startFmt} - {endFmt})</span>
+                        <span className="text-2xs opacity-40 font-mono">({startFmt} - {endFmt})</span>
                       </div>
-                      <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light italic">
+                      <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light italic">
                         "{talep.sebep}"
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 ml-auto sm:ml-0">
-                    <span className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border shadow-sm ${
+                    <span className={`px-4 py-1.5 rounded-full text-2xs font-bold uppercase tracking-wider border shadow-sm ${
                       talep.durum === 'onaylandi' ? 'bg-[var(--status-success)]/10 border-[var(--status-success)]/20 text-[var(--status-success)]' :
                       talep.durum === 'reddedildi' ? 'bg-[var(--status-danger)]/10 border-[var(--status-danger)]/20 text-[var(--status-danger)]' : 'bg-[var(--status-warning)]/10 border-[var(--status-warning)]/20 text-[var(--status-warning)]'
                     }`}>

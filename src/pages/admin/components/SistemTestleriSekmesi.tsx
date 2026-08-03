@@ -169,7 +169,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       {/* Intro Banner */}
       <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-[20px] sm:rounded-[28px] bg-gradient-to-r from-[var(--text-primary)]/[0.01] to-[var(--dynamic-aura,var(--aura-indigo))]/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div className="space-y-1">
-          <span className="premium-label !text-[11px] text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
+          <span className="premium-label !text-2xs text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
             <Sparkles size={10} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" /> SİSTEM SAĞLIK MODÜLÜ
           </span>
           <h4 className="text-sm font-semibold text-[var(--text-primary)]">İnteraktif Sistem Teşhis Paneli</h4>
@@ -201,34 +201,34 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
               <div>
                 <h5 className="text-xs font-semibold text-[var(--text-primary)]">Veritabanı Katmanı</h5>
-                <p className="text-[11px] text-[var(--text-secondary)]/50">Firestore DB Bağlantı Durumu</p>
+                <p className="text-2xs text-[var(--text-secondary)]/50">Firestore DB Bağlantı Durumu</p>
               </div>
             </div>
             
             <div>
-              {dbTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[11px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {dbTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {dbTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {dbTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">AKTİF <CheckCircle2 size={10} /></span>}
-              {dbTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[11px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">ÇEVRİMDIŞI <XCircle size={10} /></span>}
+              {dbTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">AKTİF <CheckCircle2 size={10} /></span>}
+              {dbTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">ÇEVRİMDIŞI <XCircle size={10} /></span>}
             </div>
           </div>
 
           <div className="my-4 space-y-2">
             <div className="flex flex-col gap-1">
               {dbTestState === 'success' && (
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">DB Yanıt Süresi:</span>
                   <span className="font-semibold text-emerald-400">{dbLatency} ms</span>
                 </div>
               )}
             </div>
             {dbTestState === 'error' && (
-              <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl text-[11px] font-mono text-rose-400/90 leading-relaxed overflow-y-auto max-h-16">
+              <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl text-2xs font-mono text-rose-400/90 leading-relaxed overflow-y-auto max-h-16">
                 Hata: {dbError}
               </div>
             )}
             {dbTestState === 'idle' && (
-              <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
                 Veritabanı bağlantı hızını ve canlı veri kanallarındaki toplam listener yükünü anlık denetler.
               </p>
             )}
@@ -239,7 +239,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={runDbTest}
             disabled={dbTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[11px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-2xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {dbTestState === 'running' ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
           </motion.button>
@@ -265,28 +265,28 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
               <div>
                 <h5 className="text-xs font-semibold text-[var(--text-primary)]">Bildirim Servisleri</h5>
-                <p className="text-[11px] text-[var(--text-secondary)]/50">FCM ve Push API Uyumluluğu</p>
+                <p className="text-2xs text-[var(--text-secondary)]/50">FCM ve Push API Uyumluluğu</p>
               </div>
             </div>
 
             <div>
-              {fcmTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[11px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {fcmTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {fcmTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {fcmTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {fcmTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[11px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
+              {fcmTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {fcmTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
             </div>
           </div>
 
           <div className="my-4 space-y-2">
             {fcmTestState === 'success' && (
               <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Tarayıcı İzni:</span>
                   <span className={`font-semibold uppercase ${fcmPermission === 'granted' ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {fcmPermission === 'granted' ? 'İzin Verildi' : fcmPermission === 'denied' ? 'Reddedildi' : 'Varsayılan/Sorgu'}
                   </span>
                 </div>
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Service Worker Entegrasyonu:</span>
                   <span className={`font-semibold ${fcmSwActive ? 'text-emerald-400' : 'text-amber-500'}`}>
                     {fcmSwActive ? 'Kayıtlı & Aktif' : 'Bulunamadı / PWA Yüklü Değil'}
@@ -295,7 +295,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
             )}
             {fcmTestState === 'idle' && (
-              <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
                 Tarayıcı anlık bildirim izinlerini sorgular. Görev uyarısı dağıtımları için kritiktir.
               </p>
             )}
@@ -306,7 +306,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={runFcmTest}
             disabled={fcmTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[11px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-2xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {fcmTestState === 'running' ? 'Sorgulanıyor...' : 'İzinleri Denetle'}
           </motion.button>
@@ -330,40 +330,40 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
               <div>
                 <h5 className="text-xs font-semibold text-[var(--text-primary)]">PWA ve Sürüm Kontrolü</h5>
-                <p className="text-[11px] text-[var(--text-secondary)]/50">Çevrimdışı Çalışma Kabiliyeti</p>
+                <p className="text-2xs text-[var(--text-secondary)]/50">Çevrimdışı Çalışma Kabiliyeti</p>
               </div>
             </div>
 
             <div>
-              {pwaTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[11px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {pwaTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {pwaTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {pwaTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {pwaTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
             </div>
           </div>
 
           <div className="my-4 space-y-2">
             {pwaTestState === 'success' && (
               <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Offline Desteği:</span>
                   <span className={`font-semibold ${pwaOfflineCapable ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {pwaOfflineCapable ? 'Aktif (SW Var)' : 'Desteklenmiyor'}
                   </span>
                 </div>
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Güncelleme Durumu:</span>
                   <span className={`font-semibold ${swUpdateWaiting ? 'text-amber-400' : 'text-emerald-400'}`}>
                     {swUpdateWaiting ? 'Yeni Sürüm Hazır (Sayfayı Yenileyin)' : 'Uygulama Güncel'}
                   </span>
                 </div>
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Önbellek Depoları:</span>
                   <span className="font-semibold text-[var(--text-primary)]">{pwaCacheSize}</span>
                 </div>
               </div>
             )}
             {pwaTestState === 'idle' && (
-              <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
                 Çevrimdışı önbellek durumunu denetler ve arka planda yeni bir güncelleme paketi olup olmadığını sorgular.
               </p>
             )}
@@ -375,7 +375,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               whileTap={{ scale: 0.99 }}
               onClick={runPwaTest}
               disabled={pwaTestState === 'running'}
-              className="flex-1 py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[11px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-2xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {pwaTestState === 'running' ? 'Denetleniyor...' : 'PWA Denetle'}
             </motion.button>
@@ -385,7 +385,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
                 whileTap={{ scale: 0.99 }}
                 onClick={checkSwUpdate}
                 disabled={checkingUpdate}
-                className="px-3 py-3 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] rounded-xl text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="px-3 py-3 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] rounded-xl text-2xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 disabled:opacity-50"
                 title="Yeni Sürümü Kontrol Et"
               >
                 <RefreshCw size={11} className={checkingUpdate ? 'animate-spin' : ''} />
@@ -414,28 +414,28 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
               <div>
                 <h5 className="text-xs font-semibold text-[var(--text-primary)]">Ağ & Çevrimdışı Eşitleme</h5>
-                <p className="text-[11px] text-[var(--text-secondary)]/50">Veri Senkronizasyon Kuyruğu</p>
+                <p className="text-2xs text-[var(--text-secondary)]/50">Veri Senkronizasyon Kuyruğu</p>
               </div>
             </div>
 
             <div>
-              {networkTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[11px] font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+              {networkTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
               {networkTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {networkTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {networkTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-[11px] font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
+              {networkTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
+              {networkTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
             </div>
           </div>
 
           <div className="my-4 space-y-2">
             <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-[11px]">
+              <div className="flex justify-between text-2xs">
                 <span className="text-[var(--text-secondary)]/60">Eşitleme Kuyruğu (Outbox):</span>
                 <span className={`font-semibold ${syncState === 'pending' ? 'text-amber-400 font-bold animate-pulse' : syncState === 'checking' ? 'text-[var(--text-secondary)]/50' : 'text-emerald-400'}`}>
                   {syncState === 'pending' ? 'Eşitleme Bekleyen İşlemler Var' : syncState === 'checking' ? 'Sorgulanıyor...' : 'Tüm Veriler Eşitlendi ✓'}
                 </span>
               </div>
               {networkTestState === 'success' && (
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-2xs">
                   <span className="text-[var(--text-secondary)]/60">Ping Gecikmesi:</span>
                   <span className={`font-semibold ${networkLatency !== null && networkLatency < 100 ? 'text-emerald-400' : 'text-amber-500'}`}>
                     {networkLatency} ms
@@ -444,7 +444,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               )}
             </div>
             {networkTestState === 'idle' && (
-              <p className="text-[11px] text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
                 Cihazın internet gecikmesini test eder ve Firebase'e yazılmış ancak henüz sunucuya ulaşmamış bekleyen çevrimdışı işlemleri doğrular.
               </p>
             )}
@@ -455,7 +455,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             whileTap={{ scale: 0.99 }}
             onClick={() => { runNetworkTest(); runSyncCheck(); }}
             disabled={networkTestState === 'running'}
-            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-[11px] font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[var(--text-primary)]/[0.03] hover:bg-[var(--text-primary)]/[0.06] border border-[var(--glass-border)] rounded-xl text-2xs font-bold uppercase tracking-wide text-[var(--text-primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {networkTestState === 'running' ? 'Ping Ölçülüyor...' : 'Ağ ve Kuyruğu Sorgula'}
           </motion.button>
@@ -471,21 +471,21 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-1">
-            <span className="text-[11px] text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">İşletim Sistemi</span>
+            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">İşletim Sistemi</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? ((navigator as any).userAgentData?.platform || navigator.platform || 'Algılanamadı') : 'Bilinmiyor'}</span>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Ekran Çözünürlüğü</span>
+            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Ekran Çözünürlüğü</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'Bilinmiyor'}</span>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Çevrimiçi Durumu</span>
+            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Çevrimiçi Durumu</span>
             <span className={`text-xs font-bold uppercase ${typeof navigator !== 'undefined' && navigator.onLine ? 'text-emerald-400' : 'text-rose-400'}`}>
               {typeof navigator !== 'undefined' && navigator.onLine ? 'BAĞLI' : 'ÇEVRİMDIŞI'}
             </span>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Dil / Yerel Ayar</span>
+            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Dil / Yerel Ayar</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? navigator.language : 'tr-TR'}</span>
           </div>
         </div>
@@ -519,7 +519,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
                   <h6 className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
                     <ShieldAlert size={13} /> React Error Boundary & Hata Günlüğü Testi
                   </h6>
-                  <p className="text-[11px] text-[var(--text-secondary)]/60 leading-relaxed font-light max-w-xl">
+                  <p className="text-2xs text-[var(--text-secondary)]/60 leading-relaxed font-light max-w-xl">
                     Bu araç, sistem hata kayıt altyapısını test etmek için yapay bir Javascript hatası fırlatır. Hata fırlatıldığında uygulama hatayı yakalayarak Firestore loglarına yazacak ve sizi hata izleme sekmesine yönlendirecektir.
                   </p>
                 </div>
@@ -528,7 +528,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
                   whileHover={{ scale: 1.02, y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setConfirmSimulateOpen(true)}
-                  className="px-4 py-3.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-md flex items-center gap-2 transition-all whitespace-nowrap self-end sm:self-center"
+                  className="px-4 py-3.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl text-2xs font-bold uppercase tracking-wider shadow-md flex items-center gap-2 transition-all whitespace-nowrap self-end sm:self-center"
                 >
                   <Play size={10} /> Hata Simüle Et
                 </motion.button>

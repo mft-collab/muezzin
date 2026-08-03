@@ -273,7 +273,7 @@ export const GorevKarti = React.memo(({
  isAktif ? 'bg-emerald-500 shadow-[0_0_10px_var(--status-success)]' : 'bg-[var(--text-primary)]/10'
  }`}
  />
- <p className="authority-title !text-[11px] tracking-wide opacity-45 uppercase">
+ <p className="authority-title !text-2xs tracking-wide opacity-45 uppercase">
  {toTurkishUpperCase(bildirim.vakit)} VAKTİ • BUGÜN
  </p>
  </div>
@@ -283,7 +283,7 @@ export const GorevKarti = React.memo(({
  <div className="flex items-center gap-2">
  <div className="px-4 py-1.5 bg-[var(--text-primary)]/[0.03] rounded-2xl flex items-center gap-2.5 border border-[var(--glass-border)] shadow-sm">
  <Clock size={12} strokeWidth={2} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
- <span className="text-[13px] font-medium tabular-nums text-[var(--text-primary)] opacity-80">
+ <span className="text-sm font-medium tabular-nums text-[var(--text-primary)] opacity-80">
  {saat}
  </span>
  </div>
@@ -292,7 +292,7 @@ export const GorevKarti = React.memo(({
  </div>
 
  <div
- className={`px-4 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition-all duration-500 shadow-sm ${
+ className={`px-4 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wide border transition-all duration-500 shadow-sm ${
  config.color === 'red'
  ? 'border-rose-500/20 text-rose-500 bg-rose-500/5'
  : config.color === 'green'
@@ -313,7 +313,7 @@ export const GorevKarti = React.memo(({
  className="mb-8 overflow-hidden"
  >
  <div
- className={`p-6 rounded-[28px] text-[13px] font-light border leading-relaxed flex items-center gap-5 ${
+ className={`p-6 rounded-[28px] text-sm font-light border leading-relaxed flex items-center gap-5 ${
  uiMessage.type === 'success'
  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
  : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
@@ -343,7 +343,7 @@ export const GorevKarti = React.memo(({
  whileTap={isAktif ? { scale: 0.98 } : {}}
  onClick={isAktif ? handleOkudum : undefined}
  disabled={!isAktif}
- className={`w-full py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
+ className={`w-full py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
  isAktif
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] '
  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/35 cursor-not-allowed border border-[var(--glass-border)]'
@@ -362,7 +362,7 @@ export const GorevKarti = React.memo(({
  </span>
  </>
  ) : (
- <span className="flex items-center justify-center gap-2.5 opacity-85 font-bold tracking-wide text-[11px]">
+ <span className="flex items-center justify-center gap-2.5 opacity-85 font-bold tracking-wide text-2xs">
   <Clock size={14} strokeWidth={2} className="animate-pulse text-[var(--dynamic-aura,var(--aura-indigo))]" /> KİLİT AÇILACAK: {kalanSureText || 'HESAPLANIYOR...'}
   </span>
  )}
@@ -372,7 +372,7 @@ export const GorevKarti = React.memo(({
       whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
       whileTap={{ scale: 0.98 }}
       onClick={() => setIsMazeretModalOpen(true)}
-      className="flex-1 py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
     >
       {GOREV_LABELS.mazeretBildir}
     </motion.button>
@@ -380,7 +380,7 @@ export const GorevKarti = React.memo(({
       whileHover={{ scale: 1.02, backgroundColor: 'rgba(99, 102, 241, 0.08)' }}
       whileTap={{ scale: 0.98 }}
       onClick={() => setIsVekaletModalOpen(true)}
-      className="flex-1 py-5 rounded-[18px] font-bold text-[11px] tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
     >
       {GOREV_LABELS.goreviDevret}
     </motion.button>
@@ -392,19 +392,19 @@ export const GorevKarti = React.memo(({
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-[11px] tracking-wide border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
+ className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-2xs tracking-wide border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
  >
  <div className="flex items-center gap-4">
  <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-emerald-500/20">
  <CheckCircle2 size={18} strokeWidth={2} />
  </div>
- <span className="authority-title !text-[11px] !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
+ <span className="authority-title !text-2xs !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
  </div>
  <motion.button
  whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
  whileTap={{ scale: 0.95 }}
  onClick={() => setIsMazeretModalOpen(true)}
- className="px-6 py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all"
+ className="px-6 py-2.5 min-h-[44px] flex items-center justify-center bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-2xs font-bold uppercase tracking-wide transition-all"
  >
  {GOREV_LABELS.mazeretBildir}
  </motion.button>
@@ -415,12 +415,12 @@ export const GorevKarti = React.memo(({
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-[11px] tracking-wide border border-rose-500/10 flex items-center justify-center gap-4"
+ className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-2xs tracking-wide border border-rose-500/10 flex items-center justify-center gap-4"
  >
  <div className="w-10 h-10 rounded-2xl bg-rose-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-rose-500/20">
  <AlertCircle size={18} strokeWidth={2} />
  </div>
- <span className="authority-title !text-[11px] !text-inherit">{GOREV_LABELS.mazeretGovDev}</span>
+ <span className="authority-title !text-2xs !text-inherit">{GOREV_LABELS.mazeretGovDev}</span>
  </motion.div>
  )}
 
@@ -434,9 +434,9 @@ export const GorevKarti = React.memo(({
       <div className="flex flex-col gap-1.5 mb-6 opacity-60">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          <p className="text-[11px] font-bold tracking-wide uppercase text-rose-500">{GOREV_LABELS.resmiTebligat}</p>
+          <p className="text-2xs font-bold tracking-wide uppercase text-rose-500">{GOREV_LABELS.resmiTebligat}</p>
         </div>
-        <span className="text-[11px] opacity-40 font-mono">{GOREV_LABELS.beyanIslenecek}</span>
+        <span className="text-2xs opacity-40 font-mono">{GOREV_LABELS.beyanIslenecek}</span>
       </div>
 
       <textarea
@@ -458,7 +458,7 @@ export const GorevKarti = React.memo(({
         />
         <label
           htmlFor="onay"
-          className="text-[11px] text-[var(--text-secondary)]/60 leading-relaxed cursor-pointer select-none"
+          className="text-2xs text-[var(--text-secondary)]/60 leading-relaxed cursor-pointer select-none"
         >
           {GOREV_LABELS.onayMetni}
         </label>
@@ -470,7 +470,7 @@ export const GorevKarti = React.memo(({
           whileTap={{ scale: 0.98 }}
           onClick={submitMazeret}
           disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
-          className="flex-1 bg-rose-500 text-[var(--text-primary)] text-[11px] font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed border-none cursor-pointer"
+          className="flex-1 bg-rose-500 text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed border-none cursor-pointer"
         >
           {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
         </motion.button>
@@ -479,7 +479,7 @@ export const GorevKarti = React.memo(({
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={() => setIsMazeretModalOpen(false)}
-          className="px-8 py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
+          className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
         >
           {GOREV_LABELS.vazgec}
         </motion.button>
@@ -497,14 +497,14 @@ export const GorevKarti = React.memo(({
       <div className="flex flex-col gap-1.5 mb-6 opacity-60">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
-          <p className="text-[11px] font-bold tracking-wide uppercase text-[var(--dynamic-aura,var(--aura-indigo))]">{GOREV_LABELS.otonomDevir}</p>
+          <p className="text-2xs font-bold tracking-wide uppercase text-[var(--dynamic-aura,var(--aura-indigo))]">{GOREV_LABELS.otonomDevir}</p>
         </div>
-        <span className="text-[11px] opacity-40 font-mono">GÖREVİ DEVRETMEK İSTEDİĞİNİZ AKRANINIZI SEÇİNİZ.</span>
+        <span className="text-2xs opacity-40 font-mono">GÖREVİ DEVRETMEK İSTEDİĞİNİZ AKRANINIZI SEÇİNİZ.</span>
       </div>
 
       {eligiblePeers.length === 0 ? (
         <div className="py-8 text-center border border-dashed border-[var(--text-primary)]/5 rounded-2xl">
-          <p className="text-[11px] text-[var(--text-secondary)]/75 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
+          <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
         </div>
       ) : (
         <div className="max-h-[35vh] overflow-y-auto space-y-2 pr-1 no-scrollbar mb-6">
@@ -537,7 +537,7 @@ export const GorevKarti = React.memo(({
               className={`p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.01] flex items-center justify-between transition-all ${isSendingVekalet ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
             >
               <span className="text-xs font-semibold text-[var(--text-primary)]">{peer.displayName}</span>
-              <span className="text-[11px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-3 py-1 rounded-full uppercase tracking-wide">{isSendingVekalet ? 'GÖNDERİLİYOR' : GOREV_LABELS.teklifGonder}</span>
+              <span className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-3 py-1 rounded-full uppercase tracking-wide">{isSendingVekalet ? 'GÖNDERİLİYOR' : GOREV_LABELS.teklifGonder}</span>
             </motion.div>
           ))}
         </div>
@@ -549,7 +549,7 @@ export const GorevKarti = React.memo(({
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={() => setIsVekaletModalOpen(false)}
-          className="px-8 py-[18px] text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
+          className="px-8 py-[18px] text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
         >
           {GOREV_LABELS.vazgec}
         </motion.button>

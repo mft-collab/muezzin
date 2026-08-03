@@ -64,7 +64,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  </div>
  <div>
  <h2 className="text-2xl sm:text-4xl font-light text-[var(--text-primary)] tracking-tight leading-none">Kişisel Görevlerim</h2>
- <p className={`authority-title text-[11px] mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
+ <p className={`authority-title text-2xs mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
  </div>
  </motion.div>
 
@@ -93,7 +93,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  <CheckCircle2 size={32} strokeWidth={1.2} />
  </div>
  <h3 className="text-2xl sm:text-3xl font-light mb-5 tracking-tight text-[var(--text-primary)]">Bugün görev yok</h3>
- <p className="authority-title !text-[11px] max-w-sm mx-auto leading-relaxed mt-8 opacity-35">BUGÜN İÇİN ATANMIŞ BİR GÖREVİNİZ BULUNMAMAKTADIR.</p>
+ <p className="authority-title !text-2xs max-w-sm mx-auto leading-relaxed mt-8 opacity-35">BUGÜN İÇİN ATANMIŞ BİR GÖREVİNİZ BULUNMAMAKTADIR.</p>
  </motion.div>
  ) : (
  <div className="grid grid-cols-1 gap-8">

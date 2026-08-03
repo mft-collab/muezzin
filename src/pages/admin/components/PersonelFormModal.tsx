@@ -103,7 +103,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <div className="space-y-4 group">
- <label className="authority-title !text-[11px] opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
+ <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
  <input 
  type="email" 
  required 
@@ -117,7 +117,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="space-y-3">
- <label className="authority-title !text-[11px] opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
+ <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
  <input 
  type="text" 
  required 
@@ -129,7 +129,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  />
  </div>
  <div className="space-y-3">
- <label className="authority-title !text-[11px] opacity-50 ml-1 tracking-wide">SOYADI</label>
+ <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">SOYADI</label>
  <input 
  type="text" 
  required 
@@ -144,7 +144,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="col-span-2 md:col-span-1 space-y-4 group">
- <label className="authority-title !text-[11px] opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
+ <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
  <div className="grid grid-cols-3 gap-2.5">
  {[
  { value: 'muezzin', label: 'MÜEZZİN', desc: 'Görevli Kadro' },
@@ -162,15 +162,15 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10 focus:border-[var(--text-primary)]/10'
  }`}
  >
- <span className="text-[11px] font-black uppercase tracking-wide">{role.label}</span>
- <span className="text-[11px] mt-1 opacity-55 block leading-normal">{role.desc}</span>
+ <span className="text-2xs font-black uppercase tracking-wide">{role.label}</span>
+ <span className="text-2xs mt-1 opacity-55 block leading-normal">{role.desc}</span>
  </button>
  ))}
  </div>
  </div>
 
  <div className="col-span-2 md:col-span-1 space-y-4">
- <label className="authority-title !text-[11px] opacity-50 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</label>
+ <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</label>
  <div className="flex flex-wrap gap-2">
  {[
  { value: 0, label: 'İZİNSİZ' },
@@ -189,7 +189,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  type="button"
  disabled={day.disabled || isSubmitting}
  onClick={() => setFormData({ ...formData, haftalikIzinGunu: day.value })}
- className={`px-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all border outline-none ${
+ className={`px-3 py-2.5 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all border outline-none ${
  day.disabled
  ? 'opacity-10 cursor-not-allowed border-transparent bg-transparent'
  : isSelected
@@ -211,7 +211,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  whileTap={{ scale: 0.98 }}
  type="submit" 
  disabled={isSubmitting}
- className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-[11px] font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 transition-all disabled:opacity-50"
+ className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 transition-all disabled:opacity-50"
  >
  {isSubmitting ? 'İŞLENİYOR...' : (editingUser ? 'PROFİLİ GÜNCELLE' : 'PERSONELİ SİSTEME EKLE')}
  </motion.button>
@@ -221,7 +221,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  type="button" 
  onClick={onClose} 
  disabled={isSubmitting}
- className="px-8 py-5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl"
+ className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl"
  >
  İPTAL
  </motion.button>
@@ -235,7 +235,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
  exit={{ opacity: 0 }}
- className="fixed bottom-6 right-6 z-50 spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-[11px] font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
+ className="fixed bottom-6 right-6 z-50 spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
  >
  <AlertCircle size={20} />
  {errorStatus}

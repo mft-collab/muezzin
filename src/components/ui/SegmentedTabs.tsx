@@ -62,7 +62,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
                     )}
                   </div>
                 )}
-                <span className={`authority-title !text-[11px] font-bold tracking-wide uppercase transition-all duration-700 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+                <span className={`authority-title !text-2xs font-bold tracking-wide uppercase transition-all duration-700 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
                   {item.label}
                 </span>
               </div>
@@ -129,7 +129,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onChange(item.id)}
-            className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide relative group ${
+            className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-2xs font-bold uppercase tracking-wide relative group ${
               isActive
                 ? 'text-[var(--text-primary)]'
                 : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/50 hover:bg-[var(--text-primary)]/[0.02]'

@@ -40,7 +40,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
           <ClipboardList size={16} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
           Yönetici Denetim İzleri (Audit Logs)
         </h4>
-        <span className="premium-label !text-[11px] !opacity-20">{logs.length} SON İŞLEM LİSTELENDİ</span>
+        <span className="premium-label !text-2xs !opacity-20">{logs.length} SON İŞLEM LİSTELENDİ</span>
       </div>
 
       <div className="space-y-4">
@@ -50,7 +50,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
               <Shield size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Kayıt Bulunmuyor</p>
-            <p className="premium-label !text-[11px] !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
+            <p className="premium-label !text-2xs !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
           </div>
         ) : (
           logs.map((log) => (
@@ -69,7 +69,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                       <span className="text-sm font-medium text-[var(--text-primary)] tracking-tight">
                         {log.userDisplayName}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider border ${getActionBadgeColor(log.actionType)}`}>
                         {log.actionType}
                       </span>
                     </div>
@@ -79,10 +79,10 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                   </div>
                 </div>
                 <div className="text-right sm:flex-shrink-0">
-                  <span className="text-[11px] text-[var(--text-secondary)]/50 font-bold block">
+                  <span className="text-2xs text-[var(--text-secondary)]/50 font-bold block">
                     {formatDate(log.timestamp)}
                   </span>
-                  <span className="text-[11px] text-[var(--text-secondary)]/20 font-mono block mt-1">
+                  <span className="text-2xs text-[var(--text-secondary)]/20 font-mono block mt-1">
                     LOG ID: {log.id}
                   </span>
                 </div>

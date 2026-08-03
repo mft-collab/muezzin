@@ -117,7 +117,7 @@ export default function ExecutiveHeroScreen({
  <div className="flex flex-col gap-4">
  <div className="flex items-center gap-3">
  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
- <span className="authority-title !text-[11px] !text-emerald-500 font-medium">CANLI SİSTEM DURUMU</span>
+ <span className="authority-title !text-2xs !text-emerald-500 font-medium">CANLI SİSTEM DURUMU</span>
  </div>
  <h1 className="text-3xl lg:text-5xl font-light text-[var(--text-primary)] tracking-tight leading-none max-w-2xl group-hover:font-medium transition-all duration-1000">
  Yönetim <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Senkronize</span> ve <span className="font-normal group-hover:font-bold transition-all duration-1000">Aktif.</span>
@@ -127,7 +127,7 @@ export default function ExecutiveHeroScreen({
  <div className="flex items-center gap-10 px-8 py-4 spatial-glass border border-[var(--glass-border)]">
  <div className="flex flex-col items-end">
  <LiveClock className="text-2xl font-light text-[var(--text-primary)] tracking-tighter leading-none" />
- <span className="authority-title !text-[11px] opacity-30 mt-2">YEREL ZAMAN</span>
+ <span className="authority-title !text-2xs opacity-30 mt-2">YEREL ZAMAN</span>
  </div>
  </div>
  </motion.header>
@@ -151,7 +151,7 @@ export default function ExecutiveHeroScreen({
   <div className="w-12 h-12 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-lg">
   <Activity size={24} strokeWidth={1.5} />
   </div>
-  <span className="authority-title !text-[11px] opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-700">HİZMET KADROSU</span>
+  <span className="authority-title !text-2xs opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-700">HİZMET KADROSU</span>
   </div>
 
   {/* Personnel Count — large number */}
@@ -159,7 +159,7 @@ export default function ExecutiveHeroScreen({
   <div className="text-6xl lg:text-8xl font-extralight text-[var(--text-primary)] tracking-tighter leading-none tabular-nums mb-2">
   {muezzinlerSayisi}
   </div>
-  <span className="authority-title !text-[11px] opacity-25 tracking-widest">AKTİF MÜEZZİN KADROSU</span>
+  <span className="authority-title !text-2xs opacity-25 tracking-widest">AKTİF MÜEZZİN KADROSU</span>
 
   {/* Status bars */}
   <div className="mt-8 flex flex-col gap-3">
@@ -168,7 +168,7 @@ export default function ExecutiveHeroScreen({
   <div className="flex-1 h-[2px] rounded-full bg-[var(--glass-border)] overflow-hidden">
   <div className="h-full bg-emerald-500/60 rounded-full" style={{ width: '100%' }} />
   </div>
-  <span className="authority-title !text-[11px] opacity-30 w-16 text-right">AKTİF</span>
+  <span className="authority-title !text-2xs opacity-30 w-16 text-right">AKTİF</span>
   </div>
   <div className="flex items-center gap-4">
   <div className={`w-2 h-2 rounded-full ${cozulmamisSayisi > 0 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'bg-[var(--glass-border)]'}`} />
@@ -176,7 +176,7 @@ export default function ExecutiveHeroScreen({
   <div className={`h-full rounded-full transition-all duration-1000 ${cozulmamisSayisi > 0 ? 'bg-rose-500/60' : 'bg-[var(--glass-border)]'}`}
   style={{ width: cozulmamisSayisi > 0 && muezzinlerSayisi > 0 ? `${Math.min((cozulmamisSayisi / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
   </div>
-  <span className="authority-title !text-[11px] opacity-30 w-16 text-right">UYARI</span>
+  <span className="authority-title !text-2xs opacity-30 w-16 text-right">UYARI</span>
   </div>
   <div className="flex items-center gap-4">
   <div className={`w-2 h-2 rounded-full ${pendingIzinler > 0 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-[var(--glass-border)]'}`} />
@@ -184,13 +184,13 @@ export default function ExecutiveHeroScreen({
   <div className={`h-full rounded-full transition-all duration-1000 ${pendingIzinler > 0 ? 'bg-amber-500/60' : 'bg-[var(--glass-border)]'}`}
   style={{ width: pendingIzinler > 0 && muezzinlerSayisi > 0 ? `${Math.min((pendingIzinler / muezzinlerSayisi) * 100, 100)}%` : '0%' }} />
   </div>
-  <span className="authority-title !text-[11px] opacity-30 w-16 text-right">BEKLEYEN</span>
+  <span className="authority-title !text-2xs opacity-30 w-16 text-right">BEKLEYEN</span>
   </div>
   </div>
   </div>
 
   <div className="relative z-10 flex items-center justify-between gap-4 mt-6 pt-4 border-t border-[var(--glass-border)]">
-  <p className="authority-title !text-[11px] opacity-35 font-medium tracking-wide">
+  <p className="authority-title !text-2xs opacity-35 font-medium tracking-wide">
   Nöbet alabilir aktif müezzin kadrosu
   </p>
   <ChevronRight size={18} className="text-[var(--text-primary)]/25 group-hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-colors" />
@@ -216,12 +216,12 @@ export default function ExecutiveHeroScreen({
  <div className={`text-4xl font-light tracking-tighter leading-none ${cozulmamisSayisi > 0 ? 'text-rose-500' : 'text-[var(--text-primary)]'}`}>
  {cozulmamisSayisi}
  </div>
- <span className="authority-title !text-[11px] opacity-40 mt-2 font-medium tracking-wide">NÖBET UYARILARI</span>
+ <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">NÖBET UYARILARI</span>
  </div>
  </div>
  {cozulmamisSayisi > 0 && (
  <div className="mt-4 pt-4 border-t border-rose-500/10 relative z-10">
- <p className="text-[11px] font-bold text-rose-400 uppercase tracking-wide truncate">
+ <p className="text-2xs font-bold text-rose-400 uppercase tracking-wide truncate">
  SON: {alarmlar[0]?.mesaj || 'Tespit Edilemedi'}
  </p>
  </div>
@@ -246,11 +246,11 @@ export default function ExecutiveHeroScreen({
  <div className="text-3xl font-light text-[var(--text-primary)] tracking-tighter leading-none tabular-nums">
  {pendingIzinler}
  </div>
- <span className="authority-title !text-[11px] opacity-40 mt-2 font-medium tracking-wide">BEKLEYEN İZİN</span>
+ <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">BEKLEYEN İZİN</span>
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-[11px] font-bold text-amber-500/60 uppercase tracking-wide">AKTİF TALEPLER</p>
+  <p className="text-2xs font-bold text-amber-500/60 uppercase tracking-wide">AKTİF TALEPLER</p>
   </div>
  </motion.div>
 
@@ -272,11 +272,11 @@ export default function ExecutiveHeroScreen({
  }`}>
  {planStatusLabel}
  </div>
- <span className="authority-title !text-[11px] opacity-40 mt-2 font-medium tracking-wide">HAFTALIK PLAN</span>
+ <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">HAFTALIK PLAN</span>
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-[11px] font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
+  <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
   {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
   </p>
   </div>
@@ -299,7 +299,7 @@ export default function ExecutiveHeroScreen({
  </div>
   <button
   onClick={() => setActiveTab('ekip')}
-  className="authority-title !text-[11px] !text-[var(--dynamic-aura,var(--aura-indigo))] cursor-pointer hover:text-[var(--text-primary)] transition-all flex items-center gap-2 group tracking-wide font-medium"
+  className="authority-title !text-2xs !text-[var(--dynamic-aura,var(--aura-indigo))] cursor-pointer hover:text-[var(--text-primary)] transition-all flex items-center gap-2 group tracking-wide font-medium"
   >
   TÜMÜNÜ GÖR <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
   </button>
@@ -326,7 +326,7 @@ export default function ExecutiveHeroScreen({
 
  <motion.div layout className="flex items-center justify-between relative z-10">
  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
- <div className="w-20 authority-title !text-[11px] opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
+ <div className="w-20 authority-title !text-2xs opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
  <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
  {record.title}
  </div>
@@ -346,7 +346,7 @@ export default function ExecutiveHeroScreen({
  record.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgb(245,158,11)]' : 
  'bg-emerald-500 shadow-[0_0_8px_rgb(16,185,129)]'
  }`} />
- <span className={`authority-title !text-[11px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
+ <span className={`authority-title !text-2xs relative z-10 transition-all duration-700 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
  record.status === 'active' ? 'text-rose-500' : 
  record.status === 'pending' ? 'text-amber-500' : 
  'text-emerald-500'
@@ -372,17 +372,17 @@ export default function ExecutiveHeroScreen({
  >
  <div className="pt-10 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-10">
  <div className="flex flex-col gap-3">
- <span className="authority-title !text-[11px] opacity-30 tracking-wide">KAYIT KİMLİĞİ</span>
+ <span className="authority-title !text-2xs opacity-30 tracking-wide">KAYIT KİMLİĞİ</span>
  <span className="text-[var(--text-primary)] font-mono text-xs tracking-wide opacity-80">#{record.id.substring(0, 10).toUpperCase()}</span>
  </div>
  <div className="flex flex-col gap-3">
- <span className="authority-title !text-[11px] opacity-30 tracking-wide">KATEGORİZASYON</span>
+ <span className="authority-title !text-2xs opacity-30 tracking-wide">KATEGORİZASYON</span>
  <span className={`text-xs font-medium uppercase tracking-wide ${record.type === 'alarm' ? 'text-rose-500' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'}`}>
  {record.type === 'alarm' ? 'Nöbet Uyarısı' : 'İzin Talebi'}
  </span>
  </div>
  <div className="flex flex-col gap-3 col-span-2">
- <span className="authority-title !text-[11px] opacity-30 tracking-wide">HIZLI İŞLEMLER</span>
+ <span className="authority-title !text-2xs opacity-30 tracking-wide">HIZLI İŞLEMLER</span>
  <div className="flex flex-wrap gap-3">
  {record.type === 'izin' && record.status === 'pending' ? (
  <>
@@ -391,7 +391,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  disabled={processingId === record.id}
  onClick={(e) => { e.stopPropagation(); setDecisionConfirm({ open: true, id: record.id, durum: 'onaylandi', title: record.title }); }}
- className="px-6 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[11px] uppercase tracking-wide font-bold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-wait"
+ className="px-6 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-2xs uppercase tracking-wide font-bold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-wait"
  >
  <Check size={14} strokeWidth={3} /> ONAYLA
  </motion.button>
@@ -400,7 +400,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  disabled={processingId === record.id}
  onClick={(e) => { e.stopPropagation(); setDecisionConfirm({ open: true, id: record.id, durum: 'reddedildi', title: record.title }); }}
- className="px-6 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-[11px] uppercase tracking-wide font-bold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-wait"
+ className="px-6 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-2xs uppercase tracking-wide font-bold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-wait"
  >
  <X size={14} strokeWidth={3} /> REDDET
  </motion.button>
@@ -417,7 +417,7 @@ export default function ExecutiveHeroScreen({
    setActiveTab('ekip', 'mazeretler');
   }
  }}
- className="px-6 py-2.5 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/10 text-[var(--text-primary)] text-[11px] uppercase tracking-wide font-bold shadow-lg"
+ className="px-6 py-2.5 rounded-2xl bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/10 text-[var(--text-primary)] text-2xs uppercase tracking-wide font-bold shadow-lg"
  >
  DETAYLARI İNCELE
  </motion.button>
@@ -436,7 +436,7 @@ export default function ExecutiveHeroScreen({
  <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center animate-float">
  <Activity size={24} strokeWidth={1} className="text-[var(--text-secondary)]" />
  </div>
- <p className="authority-title !text-[11px] opacity-20 tracking-wide">ŞU AN AKTİF BİR HİZMET KAYDI BULUNMUYOR</p>
+ <p className="authority-title !text-2xs opacity-20 tracking-wide">ŞU AN AKTİF BİR HİZMET KAYDI BULUNMUYOR</p>
  </div>
  )}
  </AnimatePresence>

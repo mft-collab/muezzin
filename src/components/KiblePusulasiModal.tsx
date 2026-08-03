@@ -39,10 +39,10 @@ const CompactCompassDial = React.memo(({ dialRef, qiblaAngle }: CompassDialProps
       }}
     >
       {/* 4 Cardinal Directions only for Apple HIG Widget Minimalism */}
-      <span className="absolute top-3.5 text-[11px] font-bold text-[var(--aura-ruby)] tracking-wide">K</span>
-      <span className="absolute right-4.5 text-[11px] font-bold text-[var(--text-secondary)]/50">D</span>
-      <span className="absolute bottom-3.5 text-[11px] font-bold text-[var(--text-secondary)]/50">G</span>
-      <span className="absolute left-4.5 text-[11px] font-bold text-[var(--text-secondary)]/50">B</span>
+      <span className="absolute top-3.5 text-2xs font-bold text-[var(--aura-ruby)] tracking-wide">K</span>
+      <span className="absolute right-4.5 text-2xs font-bold text-[var(--text-secondary)]/50">D</span>
+      <span className="absolute bottom-3.5 text-2xs font-bold text-[var(--text-secondary)]/50">G</span>
+      <span className="absolute left-4.5 text-2xs font-bold text-[var(--text-secondary)]/50">B</span>
 
       {/* Astro-Geometric Rings */}
       <div className="absolute w-[80%] h-[80%] rounded-full border border-[var(--glass-border)] opacity-10" />
@@ -390,7 +390,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           }}
         />
 
-        <p className="text-[11px] text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
+        <p className="text-2xs text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
           Hassas Yön Tayini
         </p>
         <h3 className="text-sm font-light text-[var(--text-primary)] mb-5 tracking-tight">
@@ -432,16 +432,16 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           >
             <div className="flex items-center gap-2 text-[var(--aura-amber)]">
               <ShieldAlert size={16} />
-              <span className="text-[11px] font-extrabold uppercase tracking-widest leading-none">HAREKET SENSÖRÜ İZNİ</span>
+              <span className="text-2xs font-extrabold uppercase tracking-widest leading-none">HAREKET SENSÖRÜ İZNİ</span>
             </div>
-            <p className="text-[11px] text-[var(--text-secondary)]/70 font-light leading-normal">
+            <p className="text-2xs text-[var(--text-secondary)]/70 font-light leading-normal">
               Safari tarayıcısında pusulanın telefonunuzla birlikte dönmesi için cihaz sensörlerine erişim verilmelidir.
             </p>
             <motion.button
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={requestPermission}
-              className="px-5 py-3 bg-[var(--aura-amber)] text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-[var(--aura-amber)]/20"
+              className="px-5 py-3 bg-[var(--aura-amber)] text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-[var(--aura-amber)]/20"
             >
               PUSULAYI ETKİNLEŞTİR
             </motion.button>
@@ -457,7 +457,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="px-5 py-2 rounded-full border border-[var(--aura-emerald)]/30 bg-[var(--aura-emerald)]/10 text-[var(--aura-emerald)] font-extrabold text-[11px] tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_color-mix(in_srgb,var(--aura-emerald)_15%,transparent)]"
+                className="px-5 py-2 rounded-full border border-[var(--aura-emerald)]/30 bg-[var(--aura-emerald)]/10 text-[var(--aura-emerald)] font-extrabold text-2xs tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_color-mix(in_srgb,var(--aura-emerald)_15%,transparent)]"
               >
                 <span className="w-2 h-2 rounded-full bg-[var(--aura-emerald)] animate-ping-slow shadow-[0_0_10px_var(--aura-emerald)]" />
                 KIBLE YÖNÜ HİZALANDI
@@ -468,7 +468,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-[11px] text-[var(--text-secondary)]/75 font-light"
+                className="text-2xs text-[var(--text-secondary)]/75 font-light"
               >
                 Telefonunuzu çevirerek ibreyi <strong className="text-[var(--aura-amber)] font-medium">KIBLE (Altın Nokta)</strong> yönüne hizalayın.
               </motion.div>
@@ -478,7 +478,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-[11px] sm:text-[11px] text-[var(--aura-amber)]/85 bg-[var(--aura-amber)]/5 border border-[var(--aura-amber)]/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
+                className="text-2xs sm:text-2xs text-[var(--aura-amber)]/85 bg-[var(--aura-amber)]/5 border border-[var(--aura-amber)]/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
               >
                 <Info size={16} className="text-[var(--aura-amber)] shrink-0 mt-0.5" />
                 <div>
@@ -493,26 +493,26 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         <div className="grid grid-cols-2 gap-3.5 w-full z-10 relative">
           {/* Qibla Angle Card */}
           <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
-            <span className="text-[11px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
+            <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {qiblaAngle.toFixed(1)}°
             </span>
-            <span className="text-[11px] font-medium opacity-35 mt-0.5">Kuzeyden Doğuya</span>
+            <span className="text-2xs font-medium opacity-35 mt-0.5">Kuzeyden Doğuya</span>
           </div>
 
           {/* Kaaba Distance Card */}
           <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
-            <span className="text-[11px] tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
+            <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {distance.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} km
             </span>
-            <span className="text-[11px] font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
+            <span className="text-2xs font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
           </div>
         </div>
 
         {/* Live Heading status when sensors active */}
         {headingState !== null && (
-          <span className="text-[11px] text-[var(--text-secondary)]/30 uppercase tracking-widest font-mono mt-6">
+          <span className="text-2xs text-[var(--text-secondary)]/30 uppercase tracking-widest font-mono mt-6">
             Pusula Sapma Açısı: {Math.round(headingState)}° • Kabe Bağıl Açısı: {Math.round(needleRotation)}°
           </span>
         )}

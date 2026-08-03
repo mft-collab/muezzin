@@ -129,7 +129,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  whileTap={{ scale: isUpdating ? 1 : 0.95 }}
  onClick={handleUpdate}
  disabled={isUpdating}
- className={`px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-wide shadow-lg flex items-center gap-1.5 ${isUpdating ? 'opacity-70 cursor-wait' : ''}`}
+ className={`px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide shadow-lg flex items-center gap-1.5 ${isUpdating ? 'opacity-70 cursor-wait' : ''}`}
  >
  {isUpdating ? (
  <div className="w-3 h-3 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />
@@ -143,7 +143,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  whileHover={{ scale: 1.05, y: -1, backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.95 }}
  onClick={() => { setEditMode(false); setNewName(userData?.displayName || ''); setUpdateError(null); }}
- className="px-5 py-2.5 bg-[var(--text-primary)]/[0.05] border border-[var(--text-primary)]/10 text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-wide transition-all"
+ className="px-5 py-2.5 bg-[var(--text-primary)]/[0.05] border border-[var(--text-primary)]/10 text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide transition-all"
  >
  İPTAL
  </motion.button>
@@ -172,7 +172,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  {updateSuccess && (
  <motion.p 
  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
- className="text-[11px] font-bold text-[var(--status-success)] text-center tracking-wide uppercase"
+ className="text-2xs font-bold text-[var(--status-success)] text-center tracking-wide uppercase"
  >
  ✓ KİMLİK VERİSİ GÜNCELLENDİ
  </motion.p>
@@ -180,7 +180,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  {updateError && (
  <motion.p 
  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
- className="text-[11px] font-bold text-[var(--status-danger)] text-center tracking-wide uppercase flex items-center justify-center gap-2"
+ className="text-2xs font-bold text-[var(--status-danger)] text-center tracking-wide uppercase flex items-center justify-center gap-2"
  >
  <AlertCircle size={12} /> {updateError}
  </motion.p>
@@ -189,7 +189,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  </div>
 
  <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
- <div className="px-6 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-wide bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[var(--text-primary)]/60 shadow-lg backdrop-blur-md flex items-center gap-1.5">
+ <div className="px-6 py-2.5 rounded-2xl text-2xs font-bold uppercase tracking-wide bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-[var(--text-primary)]/60 shadow-lg backdrop-blur-md flex items-center gap-1.5">
  {isAdmin ? (
  <Shield size={10} className="text-[var(--aura-indigo)]" />
  ) : isObserver ? (

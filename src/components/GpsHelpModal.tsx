@@ -35,10 +35,10 @@ export function GpsHelpModal({ isOpen, onClose, onRetry }: GpsHelpModalProps) {
             <span className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
             <div className="flex-1 bg-[var(--text-primary)]/5 rounded-md h-5 flex items-center px-2 gap-1.5 ml-2">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              <span className="text-[11px] font-mono opacity-50 truncate">muezzin.pro/anaekran</span>
+              <span className="text-2xs font-mono opacity-50 truncate">muezzin.pro/anaekran</span>
             </div>
           </div>
-          <ol className="text-[11px] sm:text-xs text-[var(--text-secondary)]/85 space-y-2 list-decimal list-inside leading-relaxed">
+          <ol className="text-2xs sm:text-xs text-[var(--text-secondary)]/85 space-y-2 list-decimal list-inside leading-relaxed">
             <li>Adres çubuğunun solundaki <strong>kilit 🔒 veya ayar ⚙️</strong> simgesine dokunun.</li>
             <li><strong>Konum / Location</strong> seçeneğini bulun ve <strong>İzin Ver / Allow</strong> konumuna getirin.</li>
             <li>Ayarlar kaydedildikten sonra sayfayı yeniden yükleyin.</li>

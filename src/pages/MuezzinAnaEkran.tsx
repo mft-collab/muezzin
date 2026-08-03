@@ -238,13 +238,40 @@ export default function MuezzinAnaEkran() {
   transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
   className="lg:col-span-5 sticky-hero isolate flex flex-col gap-4"
   >
-  <AnaEkranHero 
+  <AnaEkranHero
   isLoading={isHeroLoading}
   mevcutVakit={mevcutVakit}
   sonraki={sonraki}
   bugunDate={bugunDate}
   bugunVakitler={bugunVakitler}
   />
+
+  {/* Next Duty Signal — sayacın hemen altına, mobilde ilk view-port'a taşındı.
+      Önceden GPS/Kıble panelinin ALTINDA, içerik sütununun başında yer alıyordu;
+      uygulamanın asıl değeri (nöbet bilgisi) vakit bilgisinden çok daha geç
+      görünüyordu (bkz. tasarım denetimi). */}
+  {siradakiGorev && (
+  <motion.button
+  initial={{ opacity: 0, y: 12 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.45, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+  onClick={() => document.getElementById('gorev-akisi')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+  className="w-full spatial-glass p-5 sm:p-6 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.025] flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.045] transition-all"
+  >
+  <div className="flex items-center gap-4 min-w-0">
+  <div className="w-12 h-12 rounded-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center shrink-0">
+  <ClipboardList size={20} strokeWidth={1.8} />
+  </div>
+  <div className="min-w-0">
+  <p className="authority-title !text-2xs text-[var(--dynamic-aura,var(--aura-indigo))]/80 font-bold tracking-wide uppercase">Sıradaki görevim</p>
+  <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] tracking-tight truncate">
+  {toTurkishUpperCase(VAKIT_GORA_ISIMLERI[siradakiGorev.vakit as Vakit] || siradakiGorev.vakit)} vakti - {siradakiGorev.tip === 'asil' ? 'Asil görev' : siradakiGorev.tip === 'yedek' ? 'Yedek nöbet' : 'Acil çağrı'}
+  </h3>
+  </div>
+  </div>
+  <ChevronRight size={18} className="text-[var(--text-secondary)]/45 shrink-0" />
+  </motion.button>
+  )}
 
   {/* Hızlı Erişim Kontrol Paneli */}
   <motion.div 
@@ -281,12 +308,12 @@ export default function MuezzinAnaEkran() {
       </div>
       
       <div className="flex flex-col items-start leading-tight">
-        <span className={`text-[11px] font-bold tracking-wide transition-colors ${
+        <span className={`text-2xs font-bold tracking-wide transition-colors ${
           gpsEnabled ? 'text-emerald-400' : 'text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/80'
         }`}>
           GPS VAKİT
         </span>
-        <span className="text-[11px] text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
+        <span className="text-2xs text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
           {gpsEnabled ? 'Aktif' : 'Pasif'}
         </span>
       </div>
@@ -304,10 +331,10 @@ export default function MuezzinAnaEkran() {
       </div>
       
       <div className="flex flex-col items-start leading-tight">
-        <span className="text-[11px] font-bold tracking-wide text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/80">
+        <span className="text-2xs font-bold tracking-wide text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/80">
           KIBLE
         </span>
-        <span className="text-[11px] text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
+        <span className="text-2xs text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
           Pusula
         </span>
       </div>
@@ -322,30 +349,6 @@ export default function MuezzinAnaEkran() {
  transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
  className="lg:col-span-7 flex flex-col gap-6 sm:gap-8"
  >
-
- {/* Next Duty Signal */}
- {siradakiGorev && (
- <motion.button
- initial={{ opacity: 0, y: 12 }}
- animate={{ opacity: 1, y: 0 }}
- transition={{ duration: 0.45, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
- onClick={() => document.getElementById('gorev-akisi')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
- className="spatial-glass p-5 sm:p-6 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.025] flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.045] transition-all"
- >
- <div className="flex items-center gap-4 min-w-0">
- <div className="w-12 h-12 rounded-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center shrink-0">
- <ClipboardList size={20} strokeWidth={1.8} />
- </div>
- <div className="min-w-0">
- <p className="authority-title !text-[11px] text-[var(--dynamic-aura,var(--aura-indigo))]/80 font-bold tracking-wide uppercase">Sıradaki görevim</p>
- <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] tracking-tight truncate">
- {toTurkishUpperCase(VAKIT_GORA_ISIMLERI[siradakiGorev.vakit as Vakit] || siradakiGorev.vakit)} vakti - {siradakiGorev.tip === 'asil' ? 'Asil görev' : siradakiGorev.tip === 'yedek' ? 'Yedek nöbet' : 'Acil çağrı'}
- </h3>
- </div>
- </div>
- <ChevronRight size={18} className="text-[var(--text-secondary)]/45 shrink-0" />
- </motion.button>
- )}
 
  <motion.div
  initial={{ opacity: 0, y: 12 }}
@@ -370,7 +373,7 @@ export default function MuezzinAnaEkran() {
  <div className="flex items-center justify-between mb-4 relative z-10">
  <div className="flex items-center gap-2">
  <div className="w-1.5 h-1.5 rounded-full bg-[var(--status-info)] animate-pulse" />
- <p className="text-[11px] text-[var(--status-info)]/85 font-bold tracking-wide uppercase">RESMİ GÖREVLENDİRME DUYURULARI</p>
+ <p className="text-2xs text-[var(--status-info)]/85 font-bold tracking-wide uppercase">RESMİ GÖREVLENDİRME DUYURULARI</p>
  </div>
  {duyurular.length > 1 && (
  <div className="flex items-center gap-1.5 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] p-1 rounded-xl backdrop-blur-md relative z-20">
@@ -385,7 +388,7 @@ export default function MuezzinAnaEkran() {
  >
  <ChevronLeft size={10} strokeWidth={2.5} />
  </button>
- <span className="text-[11px] font-bold text-[var(--text-secondary)]/65 px-1.5 tabular-nums">
+ <span className="text-2xs font-bold text-[var(--text-secondary)]/65 px-1.5 tabular-nums">
  {activeDuyuruIdx + 1} / {duyurular.length}
  </span>
  <button
@@ -432,7 +435,7 @@ export default function MuezzinAnaEkran() {
   <h3 className={`text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/item:font-normal transition-all duration-300 truncate ${isCurrentDuyuruRead ? 'opacity-50' : ''}`}>
   {duyurular[activeDuyuruIdx].baslik}
   </h3>
-  <p className="text-[11px] text-[var(--text-secondary)]/50 mt-0.5 line-clamp-1">
+  <p className="text-2xs text-[var(--text-secondary)]/50 mt-0.5 line-clamp-1">
   {duyurular[activeDuyuruIdx].icerik}
   </p>
   </div>
@@ -482,7 +485,7 @@ export default function MuezzinAnaEkran() {
               <Megaphone size={18} />
             </div>
             <div className="text-left">
-              <span className="text-[11px] font-extrabold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded uppercase tracking-wide leading-none">VEKALET TEKLİFİ</span>
+              <span className="text-2xs font-extrabold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded uppercase tracking-wide leading-none">VEKALET TEKLİFİ</span>
               <p className="text-sm font-light text-[var(--text-primary)] mt-1">
                 {talep.gonderenIsim} Hocam, size <strong className="text-[var(--dynamic-aura,var(--aura-indigo))]">{talep.tarih}</strong> günü <strong className="text-[var(--dynamic-aura,var(--aura-indigo))]">{toTurkishUpperCase(VAKIT_GORA_ISIMLERI[talep.vakit as Vakit] || talep.vakit)}</strong> vakti vekaletini teklif ediyor.
               </p>
@@ -505,7 +508,7 @@ export default function MuezzinAnaEkran() {
                   setProcessingVekaletId(null);
                 }
               }}
-              className="px-4 py-2.5 bg-emerald-500 text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-emerald-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
+              className="px-4 py-2.5 bg-emerald-500 text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-emerald-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
             >
               {processingVekaletId === talep.id ? 'İŞLENİYOR' : 'KABUL ET'}
             </motion.button>
@@ -528,7 +531,7 @@ export default function MuezzinAnaEkran() {
                     setProcessingVekaletId(null);
                   }
                 }}
-                className="px-4 py-2.5 bg-rose-500 text-[var(--text-primary)] rounded-xl text-[11px] font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-rose-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
+                className="px-4 py-2.5 bg-rose-500 text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-rose-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
               >
                 {processingVekaletId === talep.id ? 'İŞLENİYOR' : 'EMİN MİSİNİZ?'}
               </motion.button>
@@ -538,7 +541,7 @@ export default function MuezzinAnaEkran() {
                 whileTap={{ scale: 0.97 }}
                 disabled={!!processingVekaletId}
                 onClick={() => setPendingRejectId(talep.id)}
-                className="px-4 py-2.5 bg-transparent border border-rose-500/20 text-rose-500 hover:text-rose-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wide cursor-pointer hover:bg-rose-500/5 transition-all disabled:opacity-45 disabled:cursor-wait"
+                className="px-4 py-2.5 bg-transparent border border-rose-500/20 text-rose-500 hover:text-rose-400 rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer hover:bg-rose-500/5 transition-all disabled:opacity-45 disabled:cursor-wait"
               >
                 REDDET
               </motion.button>
@@ -579,7 +582,7 @@ export default function MuezzinAnaEkran() {
  </div>
  <div>
  <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/cal:font-normal transition-all duration-500">Haftalık Plan</h3>
- <p className="text-[11px] text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">Koordinasyon Takvimi</p>
+ <p className="text-2xs text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">Koordinasyon Takvimi</p>
  </div>
  </Link>
  </motion.div>
@@ -596,7 +599,7 @@ export default function MuezzinAnaEkran() {
  </div>
  <div>
  <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/prof:font-normal transition-all duration-500">Haftalık Görev Özeti</h3>
- <p className="text-[11px] text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">
+ <p className="text-2xs text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">
  {haftalikOzet.toplam} görev • {haftalikOzet.tamamlanan} tamamlandı • {haftalikOzet.bekleyen} bekliyor
  </p>
  </div>
@@ -617,9 +620,9 @@ export default function MuezzinAnaEkran() {
         <div className="flex flex-col gap-1.5 mb-6 opacity-60">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
-            <p className="text-[11px] font-bold tracking-wide uppercase text-[var(--dynamic-aura,var(--aura-indigo))]">RESMİ TEBLİĞ</p>
+            <p className="text-2xs font-bold tracking-wide uppercase text-[var(--dynamic-aura,var(--aura-indigo))]">RESMİ TEBLİĞ</p>
           </div>
-          <span className="text-[11px] opacity-40 font-mono">BELGE NO: {viewingDuyuru.id?.slice(0,8)?.toUpperCase() || 'BELİRSİZ'}</span>
+          <span className="text-2xs opacity-40 font-mono">BELGE NO: {viewingDuyuru.id?.slice(0,8)?.toUpperCase() || 'BELİRSİZ'}</span>
         </div>
         
         <div className="max-h-[40vh] overflow-y-auto mb-8 pr-2 no-scrollbar">

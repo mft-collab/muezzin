@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, WifiOff } from 'lucide-react';
 import { isChunkLoadError } from '../lib/errorUtils';
 
 interface ChunkErrorFallbackProps {
@@ -14,9 +14,34 @@ interface ChunkErrorFallbackProps {
 
 export function ChunkErrorFallback({ error, variant, onReset, autoReload = false }: ChunkErrorFallbackProps) {
   const isChunkError = isChunkLoadError(error);
+  // "Failed to fetch dynamically imported module" hatasının en yaygın gerçek nedeni
+  // yeni bir deploy DEĞİL, sahadaki zayıf/kesik internet bağlantısıdır — önceden bu
+  // durumda da yanıltıcı biçimde "yeni sürüm yayınlandı" mesajı gösteriliyordu.
+  const [isOffline, setIsOffline] = useState(isChunkError && typeof navigator !== 'undefined' && !navigator.onLine);
+
+  useEffect(() => {
+    if (!isChunkError) return undefined;
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isChunkError]);
 
   useEffect(() => {
     if (!autoReload || !isChunkError) return undefined;
+
+    // Çevrimdışıyken körü körüne yeniden denemek (ve tekrar başarısız olmak) yerine,
+    // bağlantı geri gelene kadar bekleyip O ZAMAN yenile.
+    if (isOffline) {
+      const handleReconnect = () => window.location.reload();
+      window.addEventListener('online', handleReconnect);
+      return () => window.removeEventListener('online', handleReconnect);
+    }
+
     // Sonsuz döngüyü engellemek için son reload zamanını kontrol et (15 saniye içinde tekrar reload etmez)
     const lastReload = localStorage.getItem('last-chunk-reload');
     const now = Date.now();
@@ -28,7 +53,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [autoReload, isChunkError]);
+  }, [autoReload, isChunkError, isOffline]);
 
   const handleRestart = () => {
     onReset?.();
@@ -49,7 +74,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight mb-2 apple-thin">
             {isChunkError ? 'Yeni Sürüm Tespit Edildi' : 'Bileşen Yüklenemedi'}
           </h3>
-          <p className="text-[11px] text-[var(--text-secondary)]/70 leading-relaxed mb-6">
+          <p className="text-2xs text-[var(--text-secondary)]/70 leading-relaxed mb-6">
             {isChunkError
               ? 'Sistemde yeni bir güncelleme yayınlandığı için bu modülün yeniden yüklenmesi gerekiyor.'
               : 'Seçilen modül yüklenirken geçici bir hata oluştu.'}
@@ -58,7 +83,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleRestart}
-            className="w-full py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl font-bold text-[11px] uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all"
+            className="w-full py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl font-bold text-2xs uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all"
           >
             {isChunkError ? 'Sürümü Güncelle & Yenile' : 'Sayfayı Yeniden Yükle'}
           </motion.button>
@@ -76,17 +101,29 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           animate={{ opacity: 1, scale: 1 }}
           className="spatial-glass-elevated p-12 max-w-lg w-full border-[var(--text-primary)]/10 shadow-[var(--spatial-shadow)]"
         >
-          <div className="relative w-20 h-20 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 rounded-[30px] flex items-center justify-center mb-8 mx-auto border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-[var(--spatial-shadow)]">
-            <RefreshCw size={28} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
-            <div className="absolute inset-0 bg-[var(--dynamic-aura,var(--aura-indigo))]/20 blur-xl rounded-full opacity-30" />
+          <div className={`relative w-20 h-20 rounded-[30px] flex items-center justify-center mb-8 mx-auto border shadow-[var(--spatial-shadow)] ${
+            isOffline
+              ? 'bg-[var(--status-warning)]/10 border-[var(--status-warning)]/20'
+              : 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/20'
+          }`}>
+            {isOffline ? (
+              <WifiOff size={28} className="text-[var(--status-warning)]" />
+            ) : (
+              <RefreshCw size={28} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
+            )}
+            <div className={`absolute inset-0 blur-xl rounded-full opacity-30 ${isOffline ? 'bg-[var(--status-warning)]/20' : 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20'}`} />
           </div>
-          <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">Yeni Güncelleme Uygulanıyor</h1>
+          <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">
+            {isOffline ? 'İnternet Bağlantınız Yok' : 'Yeni Güncelleme Uygulanıyor'}
+          </h1>
           <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed mb-8">
-            Müezzin Hizmet Dizgesi'nin en son sürümü yayınlandı. Arayüzünüz ve veri akışınızın kesintisiz çalışması için uygulama otomatik olarak yenileniyor...
+            {isOffline
+              ? 'Bir bölümün yüklenmesi bağlantı sorunu nedeniyle tamamlanamadı. Bağlantınız geri geldiğinde sayfa otomatik olarak devam edecek — beklerken diğer sekmelerdeki bilgiler önbellekten görüntülenmeye devam eder.'
+              : "Müezzin Hizmet Dizgesi'nin en son sürümü yayınlandı. Arayüzünüz ve veri akışınızın kesintisiz çalışması için uygulama otomatik olarak yenileniyor..."}
           </p>
           <div className="flex flex-col gap-2">
-            <span className="premium-label !text-[11px] !opacity-30">OTOMATİK YENİLEME BAŞLATILDI</span>
-            <span className="text-[11px] text-[var(--text-secondary)]/40 font-mono">Bileşen: {error.message.split('assets/').pop()}</span>
+            <span className="premium-label !text-2xs !opacity-30">{isOffline ? 'BAĞLANTI BEKLENİYOR' : 'OTOMATİK YENİLEME BAŞLATILDI'}</span>
+            <span className="text-2xs text-[var(--text-secondary)]/40 font-mono">Bileşen: {error.message.split('assets/').pop()}</span>
           </div>
         </motion.div>
       </div>
@@ -104,15 +141,15 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           <span className="text-[var(--status-error)] text-4xl">!</span>
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">Sistemsel Bir Aksama Oluştu</h1>
-        <p className="premium-label !text-[11px] !opacity-20 mb-8">HATA AYRINTILARI</p>
-        <pre className="text-[11px] font-mono bg-[var(--text-primary)]/[0.03] p-6 rounded-3xl border border-[var(--glass-border)] text-[var(--status-error)]/80 overflow-auto w-full text-left leading-relaxed mb-10">
+        <p className="premium-label !text-2xs !opacity-20 mb-8">HATA AYRINTILARI</p>
+        <pre className="text-2xs font-mono bg-[var(--text-primary)]/[0.03] p-6 rounded-3xl border border-[var(--glass-border)] text-[var(--status-error)]/80 overflow-auto w-full text-left leading-relaxed mb-10">
           {error.message}
         </pre>
         <motion.button
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleRestart}
-          className="w-full py-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-2xl font-bold text-[11px] uppercase tracking-wide shadow-[var(--spatial-shadow)] hover:opacity-90 transition-all"
+          className="w-full py-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-2xl font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] hover:opacity-90 transition-all"
         >
           Uygulamayı Yeniden Başlat
         </motion.button>

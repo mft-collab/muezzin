@@ -166,7 +166,7 @@ export default function SistemAnalitigi() {
       <div className="flex items-center justify-center h-[500px]">
         <div className="flex flex-col items-center gap-8">
           <div className="w-14 h-14 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
-          <p className="authority-title !text-[11px] opacity-20 tracking-wide uppercase">VERİLER YÜKLENİYOR</p>
+          <p className="authority-title !text-2xs opacity-20 tracking-wide uppercase">VERİLER YÜKLENİYOR</p>
         </div>
       </div>
     );
@@ -184,7 +184,7 @@ export default function SistemAnalitigi() {
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-            <span className="authority-title !text-[11px] !text-emerald-400 font-bold tracking-wide uppercase">SİSTEM SAĞLIK PARAMETRELERİ • CANLI</span>
+            <span className="authority-title !text-2xs !text-emerald-400 font-bold tracking-wide uppercase">SİSTEM SAĞLIK PARAMETRELERİ • CANLI</span>
           </div>
           <h2 className="text-4xl md:text-6xl font-light text-[var(--text-primary)] tracking-tight leading-none">
             Hizmet <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Verimliliği</span>
@@ -197,7 +197,7 @@ export default function SistemAnalitigi() {
               key={opt.days}
               type="button"
               onClick={() => setPeriodDays(opt.days)}
-              className={`px-5 py-2.5 rounded-[14px] text-[11px] font-bold uppercase tracking-wide transition-all ${
+              className={`px-5 py-2.5 rounded-[14px] text-2xs font-bold uppercase tracking-wide transition-all ${
                 periodDays === opt.days
                   ? 'bg-[var(--surface-medium)] text-[var(--text-primary)] shadow-lg'
                   : 'text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)]/70'
@@ -220,7 +220,7 @@ export default function SistemAnalitigi() {
 
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <p className="authority-title mb-8 flex items-center gap-3 !text-[11px] opacity-40 font-bold tracking-wide">
+              <p className="authority-title mb-8 flex items-center gap-3 !text-2xs opacity-40 font-bold tracking-wide">
                 <Activity size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
                 SON {periodDays} GÜN — GÖREV TAMAMLANMA ORANI
               </p>
@@ -230,7 +230,7 @@ export default function SistemAnalitigi() {
                 </h3>
                 <div className="flex flex-col">
                   <span className="text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
-                  <span className={`authority-title !text-[11px] mt-2 font-bold tracking-wide uppercase ${
+                  <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
                     healthScore >= 80 ? 'text-emerald-500' :
                     healthScore >= 60 ? 'text-amber-500' :
                     healthScore > 0 ? 'text-rose-500' : 'text-[var(--text-secondary)]/30'
@@ -266,7 +266,7 @@ export default function SistemAnalitigi() {
                           initial={{ opacity: 0, y: 10, scale: 0.9 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                          className="absolute -top-16 bg-[var(--surface-medium)] text-[var(--text-primary)] border border-[var(--glass-border)] text-[11px] font-bold py-3 px-6 rounded-2xl tracking-wide shadow-[var(--spatial-shadow)] z-50 whitespace-nowrap"
+                          className="absolute -top-16 bg-[var(--surface-medium)] text-[var(--text-primary)] border border-[var(--glass-border)] text-2xs font-bold py-3 px-6 rounded-2xl tracking-wide shadow-[var(--spatial-shadow)] z-50 whitespace-nowrap"
                         >
                           {data.day.toUpperCase()} •{' '}
                           {data.total > 0
@@ -312,7 +312,7 @@ export default function SistemAnalitigi() {
                       <div className="w-full max-w-[56px] h-[4px] rounded-full bg-[var(--text-primary)]/5" />
                     )}
                   </div>
-                  <span className={`authority-title !text-[11px] transition-all duration-700 font-bold tracking-wide ${
+                  <span className={`authority-title !text-2xs transition-all duration-700 font-bold tracking-wide ${
                     hoveredIdx === idx ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100' : 'opacity-20'
                   }`}>
                     {data.day.substring(0, 3).toUpperCase()}
@@ -329,12 +329,12 @@ export default function SistemAnalitigi() {
           className="lg:col-span-12 spatial-glass p-8 sm:p-10 relative overflow-hidden shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <p className="authority-title !text-[11px] opacity-40 font-bold tracking-wide">KİŞİ BAZLI PERFORMANS ÖZETİ — SON {periodDays} GÜN</p>
+            <p className="authority-title !text-2xs opacity-40 font-bold tracking-wide">KİŞİ BAZLI PERFORMANS ÖZETİ — SON {periodDays} GÜN</p>
             <button
               type="button"
               onClick={handleExport}
               disabled={personnelStats.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] text-[11px] font-bold uppercase tracking-wide disabled:opacity-30 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 text-[var(--dynamic-aura,var(--aura-indigo))] text-2xs font-bold uppercase tracking-wide disabled:opacity-30 transition-all"
             >
               <Download size={14} />
               Raporu Dışa Aktar (CSV)
@@ -342,17 +342,17 @@ export default function SistemAnalitigi() {
           </div>
 
           {personnelStats.length === 0 ? (
-            <p className="text-[11px] text-[var(--text-secondary)]/50 py-8 text-center">Bu dönemde kayıtlı görev bulunmuyor.</p>
+            <p className="text-2xs text-[var(--text-secondary)]/50 py-8 text-center">Bu dönemde kayıtlı görev bulunmuyor.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--glass-border)]">
-                    <th className="pb-3 authority-title !text-[11px] opacity-40 font-bold">Personel</th>
-                    <th className="pb-3 authority-title !text-[11px] opacity-40 font-bold text-right">Tamamlanan</th>
-                    <th className="pb-3 authority-title !text-[11px] opacity-40 font-bold text-right">Reddedilen</th>
-                    <th className="pb-3 authority-title !text-[11px] opacity-40 font-bold text-right">Toplam</th>
-                    <th className="pb-3 authority-title !text-[11px] opacity-40 font-bold text-right">Oran</th>
+                    <th className="pb-3 authority-title !text-2xs opacity-40 font-bold">Personel</th>
+                    <th className="pb-3 authority-title !text-2xs opacity-40 font-bold text-right">Tamamlanan</th>
+                    <th className="pb-3 authority-title !text-2xs opacity-40 font-bold text-right">Reddedilen</th>
+                    <th className="pb-3 authority-title !text-2xs opacity-40 font-bold text-right">Toplam</th>
+                    <th className="pb-3 authority-title !text-2xs opacity-40 font-bold text-right">Oran</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -74,13 +74,13 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  <h4 className="text-xs font-medium text-[var(--text-primary)] mb-1 leading-none">
  {title}
  </h4>
- <p className="text-[11px] font-light text-[var(--text-secondary)]/60 leading-relaxed">
+ <p className="text-2xs font-light text-[var(--text-secondary)]/60 leading-relaxed">
  {message}
  </p>
  {action && (
  <button
  onClick={() => { action.onClick(); onClose(id); }}
- className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--status-info)] hover:opacity-70 transition-opacity"
+ className="mt-2 text-2xs font-bold uppercase tracking-wide text-[var(--status-info)] hover:opacity-70 transition-opacity"
  >
  {action.label}
  </button>

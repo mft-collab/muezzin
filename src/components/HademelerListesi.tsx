@@ -77,7 +77,7 @@ export const HademelerListesi = React.memo(({
  isFriday ? 'bg-emerald-400 text-emerald-400' : 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--dynamic-aura,var(--aura-indigo))]'
  }`}
  />
- <p className="authority-title text-[11px] opacity-40 tracking-wide font-bold uppercase">
+ <p className="authority-title text-2xs opacity-40 tracking-wide font-bold uppercase">
  {isFriday ? 'CUMA NAMAZI GÖREV DAĞILIMI' : 'VAKİT HİZMET GÖREVLİLERİ'}
  </p>
  </div>
@@ -136,7 +136,7 @@ export const HademelerListesi = React.memo(({
  />
  </div>
  <div className="max-w-md relative z-10">
- <p className="authority-title !text-[11px] opacity-20 tracking-wide mb-3 uppercase">
+ <p className="authority-title !text-2xs opacity-20 tracking-wide mb-3 uppercase">
  Veri Akışı Kesildi
  </p>
  <p className="text-lg font-extralight text-[var(--text-secondary)]/75 italic leading-relaxed">

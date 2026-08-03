@@ -34,7 +34,7 @@ export function PendingApprovalScreen({ logout }: PendingApprovalScreenProps) {
  </div>
  <button 
  onClick={logout} 
- className="w-full h-12 text-[var(--text-secondary)] font-medium hover:text-red-500 transition-colors uppercase text-[11px] tracking-wide"
+ className="w-full h-12 text-[var(--text-secondary)] font-medium hover:text-red-500 transition-colors uppercase text-2xs tracking-wide"
  >
  GİRİŞ YAPILAN HESAPTAN ÇIK
  </button>

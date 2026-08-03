@@ -81,7 +81,7 @@ export default function MuezzinAyarlari() {
               <Settings size={24} strokeWidth={1.5} />
             </div>
             <div>
-              <p className="premium-label !text-[11px] !opacity-50 tracking-wide">KİŞİSEL UYGULAMA AYARLARI</p>
+              <p className="premium-label !text-2xs !opacity-50 tracking-wide">KİŞİSEL UYGULAMA AYARLARI</p>
               <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mt-1">Ayarlar</h1>
             </div>
           </div>
@@ -116,10 +116,10 @@ export default function MuezzinAyarlari() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[var(--text-primary)]">Hakkında</p>
-                  <p className="text-[11px] text-[var(--text-secondary)]/75 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
+                  <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
                 </div>
               </div>
-              <span className="premium-label !text-[11px] !opacity-35">v2.2.0</span>
+              <span className="premium-label !text-2xs !opacity-35">v2.2.0</span>
             </button>
 
             <button
@@ -133,7 +133,7 @@ export default function MuezzinAyarlari() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-rose-500/85">Oturumu Kapat</p>
-                  <p className="text-[11px] text-[var(--text-secondary)]/75 mt-1">Bu cihazdaki aktif oturumu sonlandırır</p>
+                  <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Bu cihazdaki aktif oturumu sonlandırır</p>
                 </div>
               </div>
               <ShieldCheck size={16} className="text-[var(--text-secondary)]/25" />

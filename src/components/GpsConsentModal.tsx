@@ -41,7 +41,7 @@ export function GpsConsentModal({ isOpen, onClose, onConfirm, isLoading }: GpsCo
         {/* Privacy Note */}
         <div className="w-full max-w-md p-4 rounded-2xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] mb-8 flex items-center gap-3 text-left">
           <Navigation size={18} className="text-[var(--dynamic-aura,var(--aura-indigo))] shrink-0" strokeWidth={1.5} />
-          <span className="text-[11px] sm:text-[11px] text-[var(--text-secondary)]/75 leading-tight">
+          <span className="text-2xs sm:text-2xs text-[var(--text-secondary)]/75 leading-tight">
             Konum verileriniz hiçbir sunucuya kaydedilmez, tamamen cihazınızda (lokal) işlenir.
           </span>
         </div>

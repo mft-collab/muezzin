@@ -163,20 +163,20 @@ export const AnaEkranHero = React.memo(({
  
  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
   <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
-  <span className="text-[11px] font-medium tracking-wide text-[var(--text-secondary)]/80">
+  <span className="text-2xs font-medium tracking-wide text-[var(--text-secondary)]/80">
   {gpsEnabled && gpsKonumAdi
      ? `${gpsKonumAdi} (GPS)`
      : settings.ilceAdi ? `${settings.ilceAdi} Müftülüğü` : 'Müftülük'}
   </span>
-  <span className="text-[11px] font-medium tracking-wide opacity-75 hidden sm:inline">•</span>
-  <span className="text-[11px] font-medium tracking-wide" style={{ color: auraColor }}>
+  <span className="text-2xs font-medium tracking-wide opacity-75 hidden sm:inline">•</span>
+  <span className="text-2xs font-medium tracking-wide" style={{ color: auraColor }}>
   {hijriDate}
   </span>
   </div>
   </div>
  
  {gpsEnabled && gpsCoords && (
- <span className="text-[11px] font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
+ <span className="text-2xs font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
  <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-success)] animate-ping" />
  GPS AKTİF ({gpsCoords.latitude.toFixed(4)}, {gpsCoords.longitude.toFixed(4)})
  </span>
@@ -186,7 +186,7 @@ export const AnaEkranHero = React.memo(({
  {/* Sağ: Canlı Saat + Gün adı */}
  <div className="flex flex-col items-end gap-0.5">
  <LiveClock />
- <span className="text-[11px] text-[var(--text-secondary)]/70 tracking-widest uppercase font-medium">
+ <span className="text-2xs text-[var(--text-secondary)]/70 tracking-widest uppercase font-medium">
  {format(bugunDate, 'EEEE', { locale: tr })}
  </span>
  </div>
@@ -316,7 +316,7 @@ export const AnaEkranHero = React.memo(({
         ? 'bg-[var(--status-danger)]/15 border-[var(--status-danger)]/20 text-[var(--status-danger)]' 
         : 'bg-[var(--status-success)]/15 border-[var(--status-success)]/20 text-[var(--status-success)]';
       offsetBadge = (
-        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-[11px] font-extrabold tracking-normal transition-all ${badgeColor}`}>
+        <span className={`absolute -bottom-1 sm:-bottom-1.5 px-1.5 py-0.5 rounded-full border text-2xs font-extrabold tracking-normal transition-all ${badgeColor}`}>
           {sign}{diff}dk
         </span>
       );
@@ -332,11 +332,11 @@ export const AnaEkranHero = React.memo(({
  >
  {indicatorDot}
 
- <span className={`text-[11px] sm:text-[11px] tracking-wide font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
+ <span className={`text-2xs sm:text-2xs tracking-wide font-bold mb-1.5 transition-colors duration-500 uppercase ${labelColor}`}>
  {label}
  </span>
  
- <span className={`text-xs sm:text-[15px] tabular-nums tracking-tight transition-colors duration-500 ${timeColor}`}>
+ <span className={`text-xs sm:text-base tabular-nums tracking-tight transition-colors duration-500 ${timeColor}`}>
  {timeStr}
  </span>
 

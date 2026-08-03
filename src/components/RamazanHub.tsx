@@ -244,14 +244,14 @@ export const RamazanHub: React.FC = () => {
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <Star size={10} className="text-amber-500 fill-amber-500 animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-500/95 font-sans">{RAMAZAN_LABELS.baslik}</span>
+            <span className="text-2xs font-black uppercase tracking-[0.25em] text-amber-500/95 font-sans">{RAMAZAN_LABELS.baslik}</span>
           </div>
           <h2 className="text-xs sm:text-sm font-black text-[var(--text-primary)] tracking-wide font-sans mt-0.5">{hijriGunu.day}. Gün Hub</h2>
         </div>
         
         {/* Ay Fazı Göstergesi */}
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/[0.04] border border-amber-500/10">
-          <span className="text-[11px] font-bold tracking-wider text-[var(--text-secondary)] uppercase">{ramazanGunuStr}</span>
+          <span className="text-2xs font-bold tracking-wider text-[var(--text-secondary)] uppercase">{ramazanGunuStr}</span>
           <div className="flex items-center justify-center">
             <MoonPhaseView day={hijriGunu.day} />
           </div>
@@ -279,20 +279,20 @@ export const RamazanHub: React.FC = () => {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col justify-center items-center text-center">
-            <span className="text-[11px] font-extrabold text-[var(--text-secondary)]/85 uppercase tracking-[0.12em]">{zamanVerileri.etiket}</span>
-            <span className="text-[17px] font-black font-mono text-[var(--text-primary)] tracking-tight leading-none mt-1">{zamanVerileri.metin}</span>
-            <span className="text-[11px] font-black text-amber-500 uppercase tracking-widest mt-1">%{Math.round(zamanVerileri.yuzde)}</span>
+            <span className="text-2xs font-extrabold text-[var(--text-secondary)]/85 uppercase tracking-[0.12em]">{zamanVerileri.etiket}</span>
+            <span className="text-lg font-black font-mono text-[var(--text-primary)] tracking-tight leading-none mt-1">{zamanVerileri.metin}</span>
+            <span className="text-2xs font-black text-amber-500 uppercase tracking-widest mt-1">%{Math.round(zamanVerileri.yuzde)}</span>
           </div>
         </div>
 
         {/* Günlük Oruç Durumu & Teşvik */}
         <div className="flex flex-col text-center sm:text-left gap-2 sm:gap-2.5">
-          <h3 className="text-[11px] sm:text-xs font-extrabold text-[var(--text-primary)] leading-tight">
+          <h3 className="text-2xs sm:text-xs font-extrabold text-[var(--text-primary)] leading-tight">
             {zamanVerileri.mod === 'gunduz' 
               ? 'Niyetliyiz, Ruhumuzu ve Bedenimizi Arındırıyoruz' 
               : 'İftar Edildi, Şükürler Olsun. Sahur Hazırlığı'}
           </h3>
-          <p className="text-[11px] sm:text-[11px] text-[var(--text-secondary)]/70 leading-relaxed max-w-[220px]">
+          <p className="text-2xs sm:text-2xs text-[var(--text-secondary)]/70 leading-relaxed max-w-[220px]">
             {zamanVerileri.mod === 'gunduz'
               ? 'Rabbimiz oruçlarımızı kabul eylesin. Akşam ezanı vakti ile iftar şerefine nail olacağız.'
               : 'Sahura kadar beslenmemize dikkat edip, ibadet ve teheccüd vakitlerini gözleyelim.'}
@@ -301,7 +301,7 @@ export const RamazanHub: React.FC = () => {
           {/* Hızlı Oruç Kontrol Checkbox */}
           <button 
             onClick={toggleOruc}
-            className={`flex items-center justify-center sm:justify-start gap-1.5 self-center sm:self-start text-[11px] font-bold px-3 py-1 rounded-full border transition-all duration-300 ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 self-center sm:self-start text-2xs font-bold px-3 py-1 rounded-full border transition-all duration-300 ${
               orucTutuldu 
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                 : 'bg-amber-500/[0.04] border-amber-500/15 text-amber-300/70 hover:bg-amber-500/[0.08]'
@@ -335,9 +335,9 @@ export const RamazanHub: React.FC = () => {
             <BookOpen size={14} strokeWidth={2} />
           </div>
           <div className="flex flex-col text-left overflow-hidden">
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-500/80 leading-none">{RAMAZAN_LABELS.mukabele}</span>
-            <span className="text-[11px] font-extrabold truncate mt-0.5">{hijriGunu.day}. Cüz Okuması</span>
-            <span className="text-[11px] font-bold text-amber-200/40 leading-none mt-0.5">{cuzOkundu ? 'Okundu ✓' : 'Tamamla'}</span>
+            <span className="text-2xs font-black uppercase tracking-wider text-amber-500/80 leading-none">{RAMAZAN_LABELS.mukabele}</span>
+            <span className="text-2xs font-extrabold truncate mt-0.5">{hijriGunu.day}. Cüz Okuması</span>
+            <span className="text-2xs font-bold text-amber-200/40 leading-none mt-0.5">{cuzOkundu ? 'Okundu ✓' : 'Tamamla'}</span>
           </div>
         </button>
 
@@ -362,9 +362,9 @@ export const RamazanHub: React.FC = () => {
             {teravihRekat === 20 ? <Award size={14} strokeWidth={2} /> : <Flame size={14} strokeWidth={2} className={teravihRekat > 0 ? 'animate-pulse' : ''} />}
           </div>
           <div className="flex flex-col text-left overflow-hidden">
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-500/80 leading-none">Sünnet-i Müekkede</span>
-            <span className="text-[11px] font-extrabold truncate mt-0.5">{RAMAZAN_LABELS.teravihTakipcisi}</span>
-            <span className="text-[11px] font-bold text-amber-200/40 leading-none mt-0.5">
+            <span className="text-2xs font-black uppercase tracking-wider text-amber-500/80 leading-none">Sünnet-i Müekkede</span>
+            <span className="text-2xs font-extrabold truncate mt-0.5">{RAMAZAN_LABELS.teravihTakipcisi}</span>
+            <span className="text-2xs font-bold text-amber-200/40 leading-none mt-0.5">
               {teravihRekat === 20 ? '20 Rekat Tamam ✓' : teravihRekat > 0 ? `${teravihRekat} Rekat Kılındı` : 'Rekat Seç (+4)'}
             </span>
           </div>

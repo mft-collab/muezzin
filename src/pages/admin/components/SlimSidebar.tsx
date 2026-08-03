@@ -69,7 +69,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  className={isActive ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : ''}
  />
  </div>
- <span className={`authority-title !text-[11px] relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
+ <span className={`authority-title !text-2xs relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
  {item.shortLabel.toUpperCase()}
  </span>
 
@@ -113,7 +113,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  className="relative w-full h-10 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/22 hover:text-[var(--text-primary)]/70 hover:bg-[var(--text-primary)]/[0.025] border border-transparent hover:border-[var(--glass-border)] transition-all group"
  >
  <item.icon strokeWidth={1.6} size={18} />
- <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-[11px] font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
+ <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-2xs font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
  {item.label}
  </span>
  </button>

@@ -112,14 +112,14 @@ export default function SistemAyarlari() {
   </div>
   <div>
   <h3 className="text-lg sm:text-xl font-semibold text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
-  <p className="authority-title !text-[11px] opacity-45 uppercase tracking-wide">Diyanet ilçe kodu ve hicri tarih ayarı</p>
+  <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">Diyanet ilçe kodu ve hicri tarih ayarı</p>
   </div>
   </div>
 
   <form onSubmit={handleSave} className="space-y-6 sm:space-y-8 relative z-10">
      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
        <div className="space-y-3">
-         <label className="authority-title !text-[11px] opacity-65 ml-1 tracking-wide">Diyanet İlçe Kodu</label>
+         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Diyanet İlçe Kodu</label>
          <div className="relative">
            <input 
              type="text" 
@@ -134,7 +134,7 @@ export default function SistemAyarlari() {
        </div>
        
        <div className="space-y-3">
-         <label className="authority-title !text-[11px] opacity-65 ml-1 tracking-wide">İlçe Tanımı</label>
+         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">İlçe Tanımı</label>
          <div className="relative">
            <input 
              type="text" 
@@ -148,7 +148,7 @@ export default function SistemAyarlari() {
        </div>
 
        <div className="space-y-3">
-         <label className="authority-title !text-[11px] opacity-65 ml-1 tracking-wide">Hicri Tarih Düzeltmesi</label>
+         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Hicri Tarih Düzeltmesi</label>
          <div className="relative">
            <select 
              value={hicriDuzeltme}
@@ -183,7 +183,7 @@ export default function SistemAyarlari() {
   }`}
   >
   <div className="w-1.5 h-1.5 rounded-full bg-current" />
-  <span className="text-[11px] font-semibold tracking-wide">{statusMessage.text}</span>
+  <span className="text-2xs font-semibold tracking-wide">{statusMessage.text}</span>
   </motion.div>
   )}
   </AnimatePresence>
@@ -194,7 +194,7 @@ export default function SistemAyarlari() {
  whileTap={{ scale: 0.98 }}
   type="submit" 
   disabled={saving}
-  className="bg-white text-black w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-[11px] uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
+  className="bg-white text-black w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
   >
   {saving ? (
   <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin" />

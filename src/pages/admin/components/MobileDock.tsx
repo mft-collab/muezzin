@@ -75,7 +75,7 @@ export const MobileDock = React.memo<MobileDockProps>(({
  <div className="relative z-10 transition-transform duration-500">
  <item.icon strokeWidth={isActive ? 2 : 1.5} size={20} />
  {item.badge > 0 && (
- <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-[11px]">
+ <div className="badge-pulse-danger -top-2 -right-2 w-3.5 h-3.5 !text-2xs">
  {item.badge}
  </div>
  )}
