@@ -231,13 +231,19 @@ export default function MuezzinAnaEkran() {
 
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 lg:gap-12 relative z-10">
  
-  {/* Hero Section */}
+  {/* Hero Section — `sticky-hero` sadece AnaEkranHero'yu sarmalıyor (aşağıda),
+      dış kapsayıcının kendisi artık sticky/overflow-constrained DEĞİL. Önceden
+      bu dış motion.div'in tamamı sticky-hero idi; "Sıradaki görevim" kartı
+      buraya taşınınca lg: (≥1024px) breakpoint'te masaüstü sticky kutusunun
+      max-height + overflow-y:auto sınırını aşıp kutunun içine gömülüyor,
+      görünür alanın dışında kalabiliyordu (CI E2E testi bunu yakaladı). */}
   <motion.div
   initial={{ opacity: 0, y: 16 }}
   animate={{ opacity: 1, y: 0 }}
   transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-  className="lg:col-span-5 sticky-hero isolate flex flex-col gap-4"
+  className="lg:col-span-5 flex flex-col gap-4"
   >
+  <div className="sticky-hero isolate flex flex-col">
   <AnaEkranHero
   isLoading={isHeroLoading}
   mevcutVakit={mevcutVakit}
@@ -245,6 +251,7 @@ export default function MuezzinAnaEkran() {
   bugunDate={bugunDate}
   bugunVakitler={bugunVakitler}
   />
+  </div>
 
   {/* Next Duty Signal — sayacın hemen altına, mobilde ilk view-port'a taşındı.
       Önceden GPS/Kıble panelinin ALTINDA, içerik sütununun başında yer alıyordu;
