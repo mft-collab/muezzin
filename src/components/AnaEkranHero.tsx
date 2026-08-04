@@ -51,6 +51,69 @@ const UI_VAKIT_LISTESI = [
  { key: 'yatsi', label: 'YATSI' }
 ] as const;
 
+// Aktif vakt kartının dark/light stilleri ve gösterge noktasının rengi —
+// vakit başına tek satırlık bir tablo, altı ayrı switch-case dalı yerine.
+interface AktifVakitRenk {
+  cardDark: string;
+  cardLight: string;
+  dotShadow: string;
+  dotBgDark: string;
+  dotBgLight: string;
+}
+
+const AKTIF_VAKIT_RENKLERI: Record<string, AktifVakitRenk> = {
+  sabah: {
+    cardDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]/25 border-[var(--dynamic-aura,var(--aura-indigo))]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_16%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--aura-indigo)] to-violet-700 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)]',
+    dotBgDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]',
+    dotBgLight: 'bg-white/80',
+  },
+  gunes: {
+    cardDark: 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--aura-amber)] to-orange-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)]',
+    dotBgDark: 'bg-[var(--aura-amber)]',
+    dotBgLight: 'bg-amber-200',
+  },
+  ogle: {
+    cardDark: 'bg-[var(--status-success)]/25 border-[var(--status-success)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-success)_12%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--status-success)] to-teal-600 border-[var(--status-success)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-success)_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--status-success)_80%,transparent)]',
+    dotBgDark: 'bg-[var(--status-success)]',
+    dotBgLight: 'bg-emerald-200',
+  },
+  ikindi: {
+    cardDark: 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--aura-amber)] to-amber-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)]',
+    dotBgDark: 'bg-[var(--aura-amber)]',
+    dotBgLight: 'bg-amber-300',
+  },
+  aksam: {
+    cardDark: 'bg-[var(--status-danger)]/25 border-[var(--status-danger)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-danger)_12%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--status-danger)] to-purple-600 border-[var(--status-danger)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-danger)_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--status-danger)_80%,transparent)]',
+    dotBgDark: 'bg-[var(--status-danger)]',
+    dotBgLight: 'bg-rose-200',
+  },
+  yatsi: {
+    cardDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]/30 border-[var(--dynamic-aura,var(--aura-indigo))]/70 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_12%,transparent)] scale-[1.02] z-20',
+    cardLight: 'bg-gradient-to-b from-[var(--aura-indigo)] to-blue-900 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20',
+    dotShadow: 'shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)]',
+    dotBgDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]',
+    dotBgLight: 'bg-white/80',
+  },
+};
+
+const AKTIF_VAKIT_VARSAYILAN: AktifVakitRenk = {
+  cardDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20',
+  cardLight: 'bg-[var(--aura-indigo)] border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20',
+  dotShadow: '',
+  dotBgDark: 'bg-[var(--dynamic-aura,var(--aura-indigo))]',
+  dotBgLight: 'bg-white/80',
+};
+
 export const AnaEkranHero = React.memo(({
  isLoading,
  mevcutVakit,
@@ -245,50 +308,11 @@ export const AnaEkranHero = React.memo(({
   timeColor = isDark
     ? 'text-[var(--text-primary)] font-semibold drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]'
     : 'text-[var(--text-primary)] font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]';
-  
-  switch (key as string) {
-  case 'sabah':
-   cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/25 border-[var(--dynamic-aura,var(--aura-indigo))]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_16%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-violet-700 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
-   break;
-  case 'gunes':
-   cardStyle = isDark
-    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-amber)] to-orange-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--aura-amber)]' : 'bg-amber-200'}`} />;
-   break;
-  case 'ogle':
-   cardStyle = isDark
-    ? 'bg-[var(--status-success)]/25 border-[var(--status-success)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-success)_12%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--status-success)] to-teal-600 border-[var(--status-success)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-success)_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--status-success)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--status-success)]' : 'bg-emerald-200'}`} />;
-   break;
-  case 'ikindi':
-   cardStyle = isDark
-    ? 'bg-[var(--aura-amber)]/25 border-[var(--aura-amber)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--aura-amber)_12%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-amber)] to-amber-600 border-[var(--aura-amber)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--aura-amber)_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--aura-amber)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--aura-amber)]' : 'bg-amber-300'}`} />;
-   break;
-  case 'aksam':
-   cardStyle = isDark
-    ? 'bg-[var(--status-danger)]/25 border-[var(--status-danger)]/65 shadow-[0_0_24px_color-mix(in_srgb,var(--status-danger)_12%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--status-danger)] to-purple-600 border-[var(--status-danger)]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--status-danger)_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--status-danger)_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--status-danger)]' : 'bg-rose-200'}`} />;
-   break;
-  case 'yatsi':
-   cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/30 border-[var(--dynamic-aura,var(--aura-indigo))]/70 shadow-[0_0_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_12%,transparent)] scale-[1.02] z-20'
-    : 'bg-gradient-to-b from-[var(--aura-indigo)] to-blue-900 border-[var(--dynamic-aura,var(--aura-indigo))]/30 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_35%,transparent)] scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
-   break;
-  default:
-   cardStyle = isDark
-    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20'
-    : 'bg-[var(--aura-indigo)] border-[var(--dynamic-aura,var(--aura-indigo))]/30 scale-[1.02] z-20';
-   indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full animate-pulse ${isDark ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-white/80'}`} />;
-  }
+
+  const renk = AKTIF_VAKIT_RENKLERI[key as string] ?? AKTIF_VAKIT_VARSAYILAN;
+  cardStyle = isDark ? renk.cardDark : renk.cardLight;
+  const dotBg = isDark ? renk.dotBgDark : renk.dotBgLight;
+  indicatorDot = <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${renk.dotShadow} animate-pulse ${dotBg}`} />;
  } else if (isNext) {
   cardStyle = 'bg-[var(--dynamic-aura,var(--aura-indigo))]/5 border-[var(--dynamic-aura,var(--aura-indigo))]/30 border-dashed shadow-[0_0_15px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/10 hover:border-[var(--dynamic-aura,var(--aura-indigo))]/40';
   indicatorDot = <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse" />;

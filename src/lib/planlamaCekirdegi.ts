@@ -1,5 +1,6 @@
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { tieBreakerSirala } from '../utils/tieBreaker';
+import { isFriday as isFridayTarih } from './dateUtils';
 
 export const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 export const SISTEM_ATAMA: VakitAtama = { asil: 'Sistem', yedek: 'Sistem' };
@@ -57,7 +58,7 @@ export function haftalikPlanUret(
     const gunTarihi = new Date(gY, gM - 1, gD);
     // Pazartesi=1 ... Pazar=7 (haftalikIzinGunu ile aynı ölçek)
     const gunIndex = (gunTarihi.getDay() + 6) % 7;
-    const isFriday = gunTarihi.getDay() === 5;
+    const isFriday = isFridayTarih(gunTarihi);
 
     const bugunIzinliUidler = onayliIzinler
       .filter((izin) => gun >= izin.baslangic && gun <= izin.bitis)

@@ -5,6 +5,7 @@ import {
   parseVakitToDate,
   calculateLastThirdOfNight,
   calculateKerahatTimes,
+  isFriday as isFridayTarih,
 } from '../lib/dateUtils';
 import { Vakit } from '../types';
 
@@ -56,7 +57,7 @@ export function useCircadianTheme() {
       }
 
       // ── 1. Friday/Cuma Check ──
-      const isFriday = now.getDay() === 5;
+      const isFriday = isFridayTarih(now);
       const isCumaVakti = isFriday && mevcutVakit === 'gunes';
 
       // ── 2. Teheccüd Check ──

@@ -3,6 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { HaftaPlan } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { useChangeKey } from './useChangeKey';
 
 import { SizeLimitedCache } from '../lib/cache';
 
@@ -13,11 +14,7 @@ export function useHaftaPlan(haftaId: string) {
  const [plan, setPlan] = useState<(HaftaPlan & { id: string }) | null>(() => globalHaftaPlanCache.get(haftaId) || null);
  const [loading, setLoading] = useState(!globalHaftaPlanCache.has(haftaId));
 
- // haftaId değiştiğinde state'i render sırasında ayarla — bkz.
- // useBugunkuGorevlerim.ts'teki aynı desen.
- const [lastHaftaId, setLastHaftaId] = useState(haftaId);
- if (haftaId !== lastHaftaId) {
- setLastHaftaId(haftaId);
+ if (useChangeKey(haftaId)) {
  setPlan(haftaId ? (globalHaftaPlanCache.get(haftaId) || null) : null);
  setLoading(haftaId ? !globalHaftaPlanCache.has(haftaId) : false);
  }

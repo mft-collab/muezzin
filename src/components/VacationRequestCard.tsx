@@ -4,7 +4,7 @@ import { Calendar, AlertCircle, CheckCircle2, Hourglass, Trash2, Send } from 'lu
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
-import { getTurkeyDateString } from '../lib/dateUtils';
+import { getTurkeyDateString, isFriday } from '../lib/dateUtils';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from './ui/Modal';
@@ -105,7 +105,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
     // Friday exclusion validation
     let hasFriday = false;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      if (d.getDay() === 5) {
+      if (isFriday(d)) {
         hasFriday = true;
         break;
       }

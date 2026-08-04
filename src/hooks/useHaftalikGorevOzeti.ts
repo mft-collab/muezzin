@@ -4,6 +4,7 @@ import { addDays, format, startOfWeek } from 'date-fns';
 import { db } from '../lib/firebase';
 import { Bildirim } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { useChangeKey } from './useChangeKey';
 
 interface HaftalikOzet {
   toplam: number;
@@ -17,11 +18,7 @@ const BOS_OZET: HaftalikOzet = { toplam: 0, bekleyen: 0, tamamlanan: 0 };
 export function useHaftalikGorevOzeti(uid: string | undefined, bugunDate: Date): HaftalikOzet {
   const [haftalikOzet, setHaftalikOzet] = useState<HaftalikOzet>(BOS_OZET);
 
-  // uid değiştiğinde (örn. çıkış yapıldığında) state'i render sırasında
-  // sıfırla — bkz. useHaftaBildirimleri.ts'teki aynı desen.
-  const [lastUid, setLastUid] = useState(uid);
-  if (uid !== lastUid) {
-    setLastUid(uid);
+  if (useChangeKey(uid)) {
     setHaftalikOzet(BOS_OZET);
   }
 

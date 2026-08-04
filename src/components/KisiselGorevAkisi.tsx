@@ -4,7 +4,7 @@ import { Star, CheckCircle2 } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { GorevKarti } from './GorevKarti';
 import { Bildirim, GunlukVakit } from '../types';
-import { getTurkeyNow } from '../lib/dateUtils';
+import { getTurkeyNow, isFriday as isFridayTarih } from '../lib/dateUtils';
 import { useOneShotAnimation } from '../hooks/useOneShotAnimation';
 
 interface Props {
@@ -26,9 +26,9 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
 
  const isFriday = useMemo(() => {
  if (bugunVakitler?.tarih) {
- return parseISO(bugunVakitler.tarih).getDay() === 5;
+ return isFridayTarih(parseISO(bugunVakitler.tarih));
  }
- return getTurkeyNow().getDay() === 5;
+ return isFridayTarih(getTurkeyNow());
  }, [bugunVakitler?.tarih]);
 
 

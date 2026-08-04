@@ -6,6 +6,7 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, Calendar, User, Trash2, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { isFriday } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
  const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinlerStore();
@@ -195,7 +196,7 @@ export default function IzinYonetimi() {
  const end = new Date(izin.bitis);
  let hasFriday = false;
  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
- if (d.getDay() === 5) { hasFriday = true; break; }
+ if (isFriday(d)) { hasFriday = true; break; }
  }
   if (hasFriday) {
   if (izin.tip !== 'mazeret') {

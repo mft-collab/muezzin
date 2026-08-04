@@ -4,6 +4,7 @@ import { Users, AlertCircle } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { GorevliKarti } from './GorevliKarti';
 import { useOneShotAnimation } from '../hooks/useOneShotAnimation';
+import { isFriday as isFridayTarih } from '../lib/dateUtils';
 
 interface Props {
  asilIsim?: string;
@@ -40,7 +41,7 @@ export const HademelerListesi = React.memo(({
  planTarih,
 }: Props) => {
  const shouldAnimate = useOneShotAnimation('hademeler-listesi');
- const isFriday = useMemo(() => parseISO(planTarih).getDay() === 5, [planTarih]);
+ const isFriday = useMemo(() => isFridayTarih(parseISO(planTarih)), [planTarih]);
 
  const motionInitial = { opacity: 0, y: 16 };
  const motionAnimate = { opacity: 1, y: 0 };

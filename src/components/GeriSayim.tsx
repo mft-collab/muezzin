@@ -5,6 +5,7 @@ import {
  calculateLastThirdOfNight,
  calculateVakitProgress,
  calculateKerahatTimes,
+ isFriday as isFridayTarih,
 } from '../lib/dateUtils';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { Vakit } from '../types';
@@ -210,7 +211,7 @@ export function GeriSayim({
   const circumference = 2 * Math.PI * radius;
 
   // ── Contextual flags ──────────────────────────────────────────────────────
-  const isFriday = now.getDay() === 5;
+  const isFriday = isFridayTarih(now);
   const isCumaVakti = isFriday && sonrakiVakit === 'ogle';
 
   // ── Aura color ────────────────────────────────────────────────────────────

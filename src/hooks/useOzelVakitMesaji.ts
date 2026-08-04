@@ -11,7 +11,7 @@
 
 import { useMemo } from 'react';
 import { GunlukVakit, Vakit } from '../types';
-import { parseVakitToDate, calculateKerahatTimes, calculateLastThirdOfNight } from '../lib/dateUtils';
+import { parseVakitToDate, calculateKerahatTimes, calculateLastThirdOfNight, isFriday as isFridayTarih } from '../lib/dateUtils';
 import {
   isRamazanBayram,
   isKurbanBayram,
@@ -321,7 +321,7 @@ export function useOzelVakitMesaji(
     }
 
     // Cuma Günü (İmsak ile Akşam ezanı arasında)
-    const isFriday = bugunDate.getDay() === 5;
+    const isFriday = isFridayTarih(bugunDate);
     if (isFriday && imsakDate && aksamDate) {
       if (now >= imsakDate && now < aksamDate) {
         return {

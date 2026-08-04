@@ -3,16 +3,13 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { VekaletTalebi } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { useChangeKey } from './useChangeKey';
 
 /** Oturum sahibine yönelik, henüz karar verilmemiş gelen vekalet tekliflerini canlı dinler. */
 export function useGelenVekaletler(uid: string | undefined) {
   const [gelenVekaletler, setGelenVekaletler] = useState<(VekaletTalebi & { id: string })[]>([]);
 
-  // uid değiştiğinde (örn. çıkış yapıldığında) state'i render sırasında
-  // sıfırla — bkz. useHaftaBildirimleri.ts'teki aynı desen.
-  const [lastUid, setLastUid] = useState(uid);
-  if (uid !== lastUid) {
-    setLastUid(uid);
+  if (useChangeKey(uid)) {
     setGelenVekaletler([]);
   }
 

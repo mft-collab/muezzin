@@ -5,6 +5,7 @@ import { Bildirim } from '../types';
 import { getTurkeyDateString } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { useAuthStore } from '../store/useAuthStore';
+import { useChangeKey } from './useChangeKey';
 
 import { SizeLimitedCache } from '../lib/cache';
 
@@ -30,13 +31,7 @@ export function useBugunkuGorevlerim() {
  const [gorevler, setGorevler] = useState<Bildirim[]>(() => sortGorevler(globalGorevlerCache.get(cacheKey) || []));
  const [loading, setLoading] = useState(cacheKey ? !globalGorevlerCache.has(cacheKey) : false);
 
- // cacheKey değiştiğinde (uid/gün değişimi) state'i render sırasında
- // ayarla — bir effect içinde senkron setState çağırmak yerine React'in
- // önerdiği "prop değişince state ayarlama" deseni (bkz. react.dev/learn/
- // you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
- const [lastCacheKey, setLastCacheKey] = useState(cacheKey);
- if (cacheKey !== lastCacheKey) {
- setLastCacheKey(cacheKey);
+ if (useChangeKey(cacheKey)) {
  setGorevler(sortGorevler(globalGorevlerCache.get(cacheKey) || []));
  setLoading(cacheKey ? !globalGorevlerCache.has(cacheKey) : false);
  }
