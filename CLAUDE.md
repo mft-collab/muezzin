@@ -24,15 +24,15 @@ Dizin yapısı:
 ### Köşe yarıçapı: `rounded-card`
 
 Uygulama genelinde "ana kart" katmanı (dashboard kartları, admin panel kartları,
-modal/login/boş-durum kartları) tek bir standarda oturur: **40px**. Bu,
+modal/login/boş-durum kartları) tek bir standarda oturur: **12px**. Bu,
 `src/index.css`'teki `@theme` bloğunda bir Tailwind v4 token'ı:
 
 ```css
---radius-card: 40px;
+--radius-card: 12px;
 ```
 
 Bu otomatik olarak `rounded-card` (ve `!rounded-card` important varyantı) utility
-sınıflarını üretir. **Yeni bir "ana kart" eklerken `rounded-[40px]` yazma —
+sınıflarını üretir. **Yeni bir "ana kart" eklerken `rounded-[12px]` yazma —
 `rounded-card` kullan.** Değer değişirse tek satır (`--radius-card`) güncellenir,
 44+ dosyada arama-değiştirme gerekmez. Küçük katman öğeleri (butonlar, ikon
 daireleri, rozetler, toast'lar, nav chrome, tablo hücreleri, iç içe alt kartlar)

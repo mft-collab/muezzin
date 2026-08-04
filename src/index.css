@@ -28,7 +28,7 @@
      (bkz. kart tasarım denetimi) — rounded-[40px] tekrar tekrar elle
      yazılıyordu, bu değişkenin `rounded-card` utility'sini otomatik üretmesi
      gelecekteki değişikliği 44 dosya yerine tek satıra indiriyor. */
-  --radius-card: 40px;
+  --radius-card: 12px;
 
   --app-bg: #000000;
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
