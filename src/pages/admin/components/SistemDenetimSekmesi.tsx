@@ -11,10 +11,10 @@ interface AuditLog {
   details: string;
   userId: string;
   userDisplayName: string;
-  timestamp: any;
+  timestamp: unknown;
 }
 
-export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (ts: any) => string }) => {
+export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (ts: unknown) => string }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {

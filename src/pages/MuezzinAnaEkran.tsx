@@ -24,7 +24,7 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
 
-const VacationRequestCard = lazy(() => import('./profil/VacationRequestCard'));
+const VacationRequestCard = lazy(() => import('../components/VacationRequestCard'));
 
 export default function MuezzinAnaEkran() {
  const {

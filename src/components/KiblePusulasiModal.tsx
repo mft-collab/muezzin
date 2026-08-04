@@ -4,7 +4,7 @@ import { Info, ShieldAlert } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
-import { kibleAcisiHesapla, kibleMesafesiHesapla } from '../services/gpsVakitServisi';
+import { kibleAcisiHesapla, kibleMesafesiHesapla, ilceKoordinatlariniCek } from '../services/gpsVakitServisi';
 import { hapticLight, hapticQiblaLock } from '../lib/haptic';
 import { playQiblaLock } from '../lib/sounds';
 
@@ -13,6 +13,11 @@ interface KiblePusulasiModalProps {
   onClose: () => void;
 }
 
+// Ağ çağrısı olmadan anında çözülen, doğruluğu bilinen birkaç sabit nokta
+// (uygulamanın varsayılan konumu ve büyük iller). Bu tabloda olmayan
+// ilçeler için `ilceKoordinatlariniCek` ile geocoding denenir — aksi halde
+// (bkz. tasarım denetimi) tanınmayan her ilçe sessizce Ceyhan açısını
+// gösteriyordu.
 const FALLBACK_KOORDINATLAR: Record<string, { lat: number; lng: number }> = {
   "ceyhan": { lat: 37.0298, lng: 35.8164 },
   "seyhan": { lat: 36.9934, lng: 35.3256 },
@@ -21,6 +26,19 @@ const FALLBACK_KOORDINATLAR: Record<string, { lat: number; lng: number }> = {
   "istanbul": { lat: 41.0082, lng: 28.9784 },
   "izmir": { lat: 38.4192, lng: 27.1287 }
 };
+const VARSAYILAN_KOORDINAT = FALLBACK_KOORDINATLAR.ceyhan;
+
+function ilceAdiniNormallestir(ilceAdi: string): string {
+  return ilceAdi
+    .trim()
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+}
 
 // Sub-component 1: Compact Compass Dial (Memoized structure prevents DOM reconciliation overhead)
 interface CompassDialProps {
@@ -174,21 +192,44 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     }
   }
 
-  // Resolve Active Coordinates (GPS or Fallback)
+  // GPS kapalıyken, sabit tabloda olmayan ilçeler için arka planda geocoding
+  // denenir (bkz. tasarım denetimi: önceden tanınmayan ~1000 ilçe sessizce
+  // Ceyhan açısını gösteriyordu). Sonuç oturum boyunca (sessionStorage,
+  // bkz. gpsVakitServisi.ts) önbelleklenir; hangi ilçenin bu bileşen
+  // ömründe zaten denendiği bir ref'te tutulur (render'ı tetiklemesine
+  // gerek yok, sadece tekrar istek atılmasını engelliyor).
+  const [geocodedCoords, setGeocodedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const geocodeAttemptedForRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (gpsEnabled) return;
+    const ilceAdi = settings.ilceAdi?.trim();
+    if (!ilceAdi) return;
+    if (FALLBACK_KOORDINATLAR[ilceAdiniNormallestir(ilceAdi)]) return;
+    if (geocodeAttemptedForRef.current === ilceAdi) return;
+
+    let cancelled = false;
+    geocodeAttemptedForRef.current = ilceAdi;
+    ilceKoordinatlariniCek(ilceAdi).then(result => {
+      if (!cancelled && result) setGeocodedCoords(result);
+    });
+    return () => { cancelled = true; };
+  }, [gpsEnabled, settings.ilceAdi]);
+
+  // Resolve Active Coordinates (GPS > bilinen sabit ilçe > geocode edilmiş ilçe > varsayılan)
   const coords = useMemo(() => {
     if (gpsEnabled && gpsCoords) {
-      return { lat: gpsCoords.latitude, lng: gpsCoords.longitude };
+      return { lat: gpsCoords.latitude, lng: gpsCoords.longitude, kaynak: 'gps' as const };
     }
-    const normalized = settings.ilceAdi ? settings.ilceAdi.trim().toLowerCase() : "";
-    const trNormalized = normalized
-      .replace(/ı/g, 'i')
-      .replace(/ş/g, 's')
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c');
-    return FALLBACK_KOORDINATLAR[trNormalized] || FALLBACK_KOORDINATLAR[normalized] || { lat: 37.0298, lng: 35.8164 }; // Default to Ceyhan base
-  }, [gpsEnabled, gpsCoords, settings.ilceAdi]);
+    const bilinenKoordinat = settings.ilceAdi ? FALLBACK_KOORDINATLAR[ilceAdiniNormallestir(settings.ilceAdi)] : undefined;
+    if (bilinenKoordinat) {
+      return { ...bilinenKoordinat, kaynak: 'ilce' as const };
+    }
+    if (geocodedCoords) {
+      return { ...geocodedCoords, kaynak: 'ilce' as const };
+    }
+    return { ...VARSAYILAN_KOORDINAT, kaynak: 'varsayilan' as const };
+  }, [gpsEnabled, gpsCoords, settings.ilceAdi, geocodedCoords]);
 
   // Calculate Qibla angle and distance
   const qiblaAngle = useMemo(() => kibleAcisiHesapla(coords.lat, coords.lng), [coords]);
@@ -346,7 +387,13 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     }
 
     if (!isIOSDevice) {
-      if ('ondeviceorientationabsolute' in (window as any)) {
+      // `'x' in window` doğrudan if koşulunda kullanılırsa, TS'in `in`
+      // daraltması `window`'u else dalında `never`'a indirgiyor (Window
+      // arayüzünde bu prop hiç tanımlı olmadığı için) — ayrı bir boolean'a
+      // atayarak bu daraltmayı `window`'un kendisine değil sadece bu
+      // değişkene uygulanmasını sağlıyoruz.
+      const supportsAbsoluteOrientation = 'ondeviceorientationabsolute' in window;
+      if (supportsAbsoluteOrientation) {
         window.addEventListener('deviceorientationabsolute', handleOrientationAbsolute, true);
       } else {
         window.addEventListener('deviceorientation', handleOrientation, true);
@@ -369,7 +416,11 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     };
   }, [isOpen, isIOSDevice]);
 
-  const locationText = gpsEnabled && gpsKonumAdi ? `${gpsKonumAdi} (GPS)` : `${settings.ilceAdi || 'Ceyhan'} İlçe Merkezi`;
+  const locationText = gpsEnabled && gpsKonumAdi
+    ? `${gpsKonumAdi} (GPS)`
+    : coords.kaynak === 'varsayilan'
+      ? 'Varsayılan Konum (Ceyhan)'
+      : `${settings.ilceAdi || 'Ceyhan'} İlçe Merkezi`;
   const needleRotation = headingState !== null ? qiblaAngle - headingState : qiblaAngle;
 
   return (
@@ -393,9 +444,16 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         <p className="text-2xs text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
           Hassas Yön Tayini
         </p>
-        <h3 className="text-sm font-light text-[var(--text-primary)] mb-5 tracking-tight">
+        <h3 className="text-sm font-light text-[var(--text-primary)] tracking-tight">
           {locationText}
         </h3>
+        <div className="mb-5 mt-1.5 min-h-0">
+          {!gpsEnabled && coords.kaynak === 'varsayilan' && (
+            <p className="text-2xs text-[var(--aura-amber)] font-medium leading-snug max-w-[220px]">
+              İlçeniz için konum bulunamadı, açı varsayılan konuma göre hesaplandı. Kesin sonuç için GPS'i etkinleştirin.
+            </p>
+          )}
+        </div>
 
         {/* COMPASS COMPACT SCREEN - 220PX ULTRA-PREMIUM APPLE WIDGET DESIGN */}
         <div className="relative w-[220px] h-[220px] flex items-center justify-center z-10 mb-8 select-none">

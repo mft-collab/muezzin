@@ -178,7 +178,7 @@ export const AnaEkranHero = React.memo(({
  {gpsEnabled && gpsCoords && (
  <span className="text-2xs font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
  <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-success)] animate-ping" />
- GPS AKTİF ({gpsCoords.latitude.toFixed(4)}, {gpsCoords.longitude.toFixed(4)})
+ GPS AKTİF
  </span>
  )}
  </div>

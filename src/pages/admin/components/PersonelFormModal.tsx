@@ -91,7 +91,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
         await telemetryService.logAudit('Personel Daveti', mail, `Kullanıcı adı: ${fullName}, Davet edilen rol: ${formData.role.toUpperCase()}`);
       }
       onClose();
-    } catch (err) {
+    } catch {
       setErrorStatus('Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
     } finally {
       setIsSubmitting(false);
@@ -146,16 +146,18 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <div className="col-span-2 md:col-span-1 space-y-4 group">
  <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
  <div className="grid grid-cols-3 gap-2.5">
- {[
+ {(
+ [
  { value: 'muezzin', label: 'MÜEZZİN', desc: 'Görevli Kadro' },
  { value: 'gozlemci', label: 'GÖZLEMCİ', desc: 'Sadece İzleyici' },
  { value: 'admin', label: 'YÖNETİCİ', desc: 'Tam Yetkili' }
- ].map((role) => (
+ ] as const
+ ).map((role) => (
  <button
  key={role.value}
  type="button"
  disabled={isSubmitting}
- onClick={() => setFormData({ ...formData, role: role.value as any })}
+ onClick={() => setFormData({ ...formData, role: role.value })}
  className={`p-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all border outline-none ${
  formData.role === role.value
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'

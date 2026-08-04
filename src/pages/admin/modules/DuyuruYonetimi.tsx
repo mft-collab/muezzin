@@ -313,15 +313,17 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="space-y-2">
  <span className="text-2xs text-[var(--text-secondary)] font-bold uppercase tracking-wider block">Üslup ve Ton Seçimi</span>
  <div className="grid grid-cols-3 gap-2">
- {[
+ {(
+ [
  { key: 'resmi', label: 'Resmi / Kurumsal' },
  { key: 'hitabet', label: 'Edebi / Hitabet' },
  { key: 'kisa', label: 'Kısa ve Net' }
- ].map((tone) => (
+ ] as const
+ ).map((tone) => (
  <button
  key={tone.key}
  type="button"
- onClick={() => setTemplateTone(tone.key as any)}
+ onClick={() => setTemplateTone(tone.key)}
  className={`py-2 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all border ${
  templateTone === tone.key
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/30'
@@ -393,7 +395,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="space-y-4">
  <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
  <div className="grid grid-cols-3 gap-3">
- {['onemli', 'bilgi', 'duyuru'].map((type) => {
+ {(['onemli', 'bilgi', 'duyuru'] as const).map((type) => {
  const isSelected = formData.tip === type;
  let activeStyle = '';
  if (isSelected) {
@@ -407,7 +409,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  key={type}
  type="button"
- onClick={() => setFormData({...formData, tip: type as any})}
+ onClick={() => setFormData({...formData, tip: type})}
  className={`py-3.5 rounded-2xl text-2xs font-bold uppercase tracking-wide transition-all border outline-none ${activeStyle}`}
  >
  {type === 'onemli' ? 'ÖNEMLİ' : type === 'bilgi' ? 'BİLGİ' : 'DUYURU'}

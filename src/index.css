@@ -655,6 +655,30 @@
   }
 }
 
+/* Kinetic Refraction Sheen — spatial-glass kartlarında hover'da beliren aura-tonlu
+   ışık geçişi. `.shimmer-trigger` kapsayıcısı + içindeki `.kinetic-sheen` çocuğu
+   birlikte kullanılır (bkz. GorevKarti/ExecutiveHeroScreen). z-index:1, spatial-glass'ın
+   kendi ::before specular katmanıyla aynı seviyede — pozisyonsuz iç içerik üzerinde
+   z-index kuralları gereği görünür ama pointer-events:none olduğundan tıklamayı engellemez. */
+@utility kinetic-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 10%, transparent) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform 1s var(--spring-easing);
+}
+
+.shimmer-trigger:hover > .kinetic-sheen {
+  transform: translateX(120%);
+}
+
 @utility fluid-skeleton {
   position: relative;
   overflow: hidden;

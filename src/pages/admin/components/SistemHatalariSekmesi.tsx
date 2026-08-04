@@ -10,7 +10,7 @@ interface ErrorLog extends Partial<EnrichedErrorLog> {
   id: string;
   errorMessage: string;
   userId: string;
-  timestamp: any;
+  timestamp: unknown;
   device: { os: string; browser: string; screenSize: string; pwaMode: boolean; language: string };
 }
 
@@ -119,7 +119,7 @@ function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnap
   );
 }
 
-export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (ts: any) => string }) => {
+export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (ts: unknown) => string }) => {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [selectedError, setSelectedError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<'stack' | 'breadcrumbs' | 'snapshot'>('stack');
@@ -248,11 +248,13 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                     >
                       {/* Panel Sekme Seçici */}
                       <div role="tablist" aria-label="Hata detay sekmeleri" className="flex gap-1 mb-5 p-1 bg-[var(--text-primary)]/[0.03] rounded-2xl border border-[var(--glass-border)] w-full sm:w-fit overflow-x-auto no-scrollbar">
-                        {[
-                          { key: 'stack', label: 'Stack Trace', icon: AlertTriangle },
-                          { key: 'breadcrumbs', label: `Kullanıcı İzleri (${breadcrumbCount})`, icon: Activity },
-                          { key: 'snapshot', label: 'Durum Fotoğrafı', icon: Cpu },
-                        ].map(({ key, label, icon: Icon }) => (
+                        {(
+                          [
+                            { key: 'stack', label: 'Stack Trace', icon: AlertTriangle },
+                            { key: 'breadcrumbs', label: `Kullanıcı İzleri (${breadcrumbCount})`, icon: Activity },
+                            { key: 'snapshot', label: 'Durum Fotoğrafı', icon: Cpu },
+                          ] as const
+                        ).map(({ key, label, icon: Icon }) => (
                           <button
                             key={key}
                             role="tab"
@@ -260,7 +262,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                             aria-selected={activePanel === key}
                             aria-controls={`error-panel-${key}`}
                             tabIndex={activePanel === key ? 0 : -1}
-                            onClick={() => setActivePanel(key as any)}
+                            onClick={() => setActivePanel(key)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all ${
                               activePanel === key
                                 ? 'bg-[var(--text-primary)]/[0.07] text-[var(--text-primary)] shadow-sm'

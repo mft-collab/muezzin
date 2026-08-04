@@ -21,6 +21,10 @@ import { telemetryService } from '../../../services/telemetryService';
 import { haftalikPlanOlustur } from '../../../services/planServisi';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
+type PendingUser =
+ | ({ isInvite: false } & Muezzin & { id: string })
+ | ({ isInvite: true; isOnay: false } & Invite & { id: string });
+
 export default function MuezzinYonetimi() {
  const shouldAnimate = useOneShotAnimation('muezzin-yonetimi');
 
@@ -48,9 +52,12 @@ export default function MuezzinYonetimi() {
  return () => unsub();
  }, []);
 
- const [confirmDelete, setConfirmDelete] = useState<{ open: boolean, data: (Muezzin & { id: string }) | null }>({ open: false, data: null });
- const [confirmToggle, setConfirmToggle] = useState<{ open: boolean, data: (Muezzin & { id: string }) | null }>({ open: false, data: null });
- const [confirmRestore, setConfirmRestore] = useState<{ open: boolean, data: (Muezzin & { id: string }) | null }>({ open: false, data: null });
+ type ConfirmActionType = 'delete' | 'toggle' | 'restore';
+ const [confirmAction, setConfirmAction] = useState<{ type: ConfirmActionType; data: Muezzin & { id: string } } | null>(null);
+ const closeConfirmAction = () => setConfirmAction(null);
+ const confirmDeleteData = confirmAction?.type === 'delete' ? confirmAction.data : null;
+ const confirmToggleData = confirmAction?.type === 'toggle' ? confirmAction.data : null;
+ const confirmRestoreData = confirmAction?.type === 'restore' ? confirmAction.data : null;
 
  const openNew = () => {
  setEditingUser(null);
@@ -78,12 +85,9 @@ export default function MuezzinYonetimi() {
  }
  };
 
-  const executeToggleAktif = async () => {
-  const m = confirmToggle.data;
-  if (!m) return;
+  const toggleAktif = async (m: Muezzin & { id: string }) => {
   if (isLastActiveAdmin(m)) {
   setErrorStatus('Son aktif yönetici pasife alınamaz.');
-  setConfirmToggle({ open: false, data: null });
   return;
   }
   try {
@@ -92,11 +96,9 @@ export default function MuezzinYonetimi() {
  onayBekliyor: false
  });
  await refreshCurrentWeekPlanIfNeeded(m);
- setConfirmToggle({ open: false, data: null });
  await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'AKTİF' : 'PASİF'} yapıldı.`);
  } catch {
  setErrorStatus('Personel durumu güncellenemedi.');
- setConfirmToggle({ open: false, data: null });
  }
  };
 
@@ -116,9 +118,7 @@ export default function MuezzinYonetimi() {
  }
  };
 
- const executeRestore = async () => {
- const m = confirmRestore.data;
- if (!m) return;
+ const restoreUser = async (m: Muezzin & { id: string }) => {
  try {
  await updateDoc(doc(db, 'muezzins', m.id), {
  aktif: true,
@@ -127,20 +127,15 @@ export default function MuezzinYonetimi() {
  arsivTarihi: null
  });
  await refreshCurrentWeekPlanIfNeeded(m);
- setConfirmRestore({ open: false, data: null });
  await telemetryService.logAudit('Personel Geri Yükleme', m.displayName, 'Arşivlenmiş personel aktif kadroya geri yüklendi.');
  } catch {
  setErrorStatus('Personel geri yüklenemedi.');
- setConfirmRestore({ open: false, data: null });
  }
  };
 
-  const executeDelete = async () => {
-  const m = confirmDelete.data;
-  if (!m) return;
+  const archiveUser = async (m: Muezzin & { id: string }) => {
   if (isLastActiveAdmin(m)) {
   setErrorStatus('Son aktif yönetici arşive alınamaz.');
-  setConfirmDelete({ open: false, data: null });
   return;
   }
   try {
@@ -151,12 +146,19 @@ export default function MuezzinYonetimi() {
  arsivTarihi: Timestamp.now()
  });
  await refreshCurrentWeekPlanIfNeeded(m);
- setConfirmDelete({ open: false, data: null });
  await telemetryService.logAudit('Personel Arşivleme', m.displayName, 'Personel aktif kadrodan çıkarılarak arşiv kategorisine alındı.');
  } catch {
  setErrorStatus('Kullanıcı kaydı arşivlenemedi.');
- setConfirmDelete({ open: false, data: null });
  }
+ };
+
+ const runConfirmedAction = async () => {
+ if (!confirmAction) return;
+ const { type, data } = confirmAction;
+ setConfirmAction(null);
+ if (type === 'toggle') await toggleAktif(data);
+ else if (type === 'delete') await archiveUser(data);
+ else await restoreUser(data);
  };
 
  const executeDeleteInvite = async (inviteEmail: string) => {
@@ -168,16 +170,18 @@ export default function MuezzinYonetimi() {
  }
  };
 
- const pendingUsers = React.useMemo(() => {
- const pendingMuezzins = muezzinler.filter(m => m && m.onayBekliyor === true && m.arsivlendi !== true);
+ const pendingUsers = React.useMemo((): PendingUser[] => {
+ const pendingMuezzins: PendingUser[] = muezzinler
+ .filter(m => m && m.onayBekliyor === true && m.arsivlendi !== true)
+ .map(m => ({ ...m, isInvite: false as const }));
  const knownEmails = new Set(
  muezzinler
  .map(m => m.email?.trim().toLowerCase())
  .filter(Boolean)
  );
- const pendingInvites = invites
+ const pendingInvites: PendingUser[] = invites
  .filter(i => !knownEmails.has(i.email?.trim().toLowerCase()))
- .map(i => ({ ...i, isOnay: false, isInvite: true } as any));
+ .map(i => ({ ...i, isOnay: false as const, isInvite: true as const }));
  return [...pendingMuezzins, ...pendingInvites];
  }, [muezzinler, invites]);
  
@@ -297,11 +301,11 @@ export default function MuezzinYonetimi() {
   </div>
   <div className="min-w-0 flex-1">
   <p className="text-sm font-light text-[var(--text-primary)] tracking-tight truncate">{m.displayName}</p>
-  <p className="text-2xs text-[var(--text-secondary)]/60 font-bold uppercase tracking-wide mt-1 break-all">{(m as any).email}</p>
+  <p className="text-2xs text-[var(--text-secondary)]/60 font-bold uppercase tracking-wide mt-1 break-all">{m.email}</p>
   </div>
   </div>
  <div className="flex items-center gap-3">
- {!(m as any).isInvite ? (
+ {!m.isInvite ? (
  <motion.button 
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(16,185,129,0.15)' }}
  whileTap={{ scale: 0.9 }}
@@ -319,7 +323,7 @@ export default function MuezzinYonetimi() {
  <motion.button
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.15)' }}
  whileTap={{ scale: 0.9 }}
- onClick={() => (m as any).isInvite ? executeDeleteInvite(m.id) : setConfirmDelete({ open: true, data: m })}
+ onClick={() => m.isInvite ? executeDeleteInvite(m.id) : setConfirmAction({ type: 'delete', data: m })}
  aria-label="Sil"
  className="p-3 bg-[var(--text-primary)]/5 text-[var(--text-secondary)]/30 rounded-xl border border-[var(--text-primary)]/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
  >
@@ -482,7 +486,7 @@ export default function MuezzinYonetimi() {
     <motion.button
       whileHover={{ scale: 1.1, backgroundColor: 'rgba(16,185,129,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmRestore({ open: true, data: m })}
+      onClick={() => setConfirmAction({ type: 'restore', data: m })}
       aria-label="Arşivden geri yükle"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-emerald-400 hover:text-emerald-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all shadow-lg cursor-pointer"
     >
@@ -502,7 +506,7 @@ export default function MuezzinYonetimi() {
       <motion.button
       whileHover={{ scale: 1.1, backgroundColor: m.aktif ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmToggle({ open: true, data: m })}
+      onClick={() => setConfirmAction({ type: 'toggle', data: m })}
       aria-label={m.aktif ? 'Personeli pasife al' : 'Personeli aktife al'}
       className={`p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer ${
       m.aktif ? 'text-rose-400 hover:border-rose-400/30' : 'text-emerald-400 hover:border-emerald-400/30'
@@ -513,7 +517,7 @@ export default function MuezzinYonetimi() {
       <motion.button
       whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
       whileTap={{ scale: 0.9 }}
-      onClick={() => setConfirmDelete({ open: true, data: m })}
+      onClick={() => setConfirmAction({ type: 'delete', data: m })}
       aria-label="Personeli sil"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
       >
@@ -554,35 +558,35 @@ export default function MuezzinYonetimi() {
  editingUser={editingUser} 
  />
 
- <ConfirmModal 
- isOpen={confirmDelete.open}
- onClose={() => setConfirmDelete({ open: false, data: null })}
- onConfirm={executeDelete}
+ <ConfirmModal
+ isOpen={!!confirmDeleteData}
+ onClose={closeConfirmAction}
+ onConfirm={runConfirmedAction}
  title="ARŞİVE AL"
- message={`${confirmDelete.data?.displayName} adlı personel pasife alınacak ve aktif panelden arşivlenecektir. Geçmiş plan ve bildirim kayıtları korunur.`}
+ message={`${confirmDeleteData?.displayName} adlı personel pasife alınacak ve aktif panelden arşivlenecektir. Geçmiş plan ve bildirim kayıtları korunur.`}
  isDanger={true}
  confirmText="EVET, ARŞİVE AL"
  />
 
- <ConfirmModal 
- isOpen={confirmToggle.open}
- onClose={() => setConfirmToggle({ open: false, data: null })}
- onConfirm={executeToggleAktif}
- title={confirmToggle.data?.aktif ? "PASİFE AL" : "AKTİFLEŞTİR"}
- message={confirmToggle.data?.aktif 
- ? `${confirmToggle.data?.displayName} adlı personel dondurulacaktır. Mevcut haftanın güvenli plan yenilemesi otomatik çalıştırılır; onay/ret geçmişi korunur.`
- : `${confirmToggle.data?.displayName} adlı personel aktif kadroya geri dahil edilecektir. Mevcut hafta planı güvenli şekilde yeniden dengelenir.`
+ <ConfirmModal
+ isOpen={!!confirmToggleData}
+ onClose={closeConfirmAction}
+ onConfirm={runConfirmedAction}
+ title={confirmToggleData?.aktif ? "PASİFE AL" : "AKTİFLEŞTİR"}
+ message={confirmToggleData?.aktif
+ ? `${confirmToggleData?.displayName} adlı personel dondurulacaktır. Mevcut haftanın güvenli plan yenilemesi otomatik çalıştırılır; onay/ret geçmişi korunur.`
+ : `${confirmToggleData?.displayName} adlı personel aktif kadroya geri dahil edilecektir. Mevcut hafta planı güvenli şekilde yeniden dengelenir.`
  }
- isDanger={confirmToggle.data?.aktif}
+ isDanger={confirmToggleData?.aktif}
  confirmText="OPERASYONU ONAYLA"
  />
 
- <ConfirmModal 
-  isOpen={confirmRestore.open}
-  onClose={() => setConfirmRestore({ open: false, data: null })}
-  onConfirm={executeRestore}
+ <ConfirmModal
+  isOpen={!!confirmRestoreData}
+  onClose={closeConfirmAction}
+  onConfirm={runConfirmedAction}
   title="PERSONELİ GERİ YÜKLE"
-  message={`${confirmRestore.data?.displayName} adlı personel arşivden çıkartılacak ve aktif kadroya geri eklenecektir.`}
+  message={`${confirmRestoreData?.displayName} adlı personel arşivden çıkartılacak ve aktif kadroya geri eklenecektir.`}
   isDanger={false}
   confirmText="EVET, GERİ YÜKLE"
   />

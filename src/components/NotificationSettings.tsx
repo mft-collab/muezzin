@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BellRing, History } from 'lucide-react';
 import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { db } from '../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
-import { UserData } from '../Profil';
-import { registerFcmToken } from '../../hooks/useFcmToken';
-import { useThemeStore } from '../../store/useThemeStore';
-import { useNotificationStore } from '../../store/useNotificationStore';
-import { NotificationHistoryPanel } from '../../components/NotificationHistoryPanel';
+import { Muezzin } from '../types';
+import { registerFcmToken } from '../hooks/useFcmToken';
+import { useThemeStore } from '../store/useThemeStore';
+import { useNotificationStore } from '../store/useNotificationStore';
+import { NotificationHistoryPanel } from './NotificationHistoryPanel';
 
 interface NotificationSettingsProps {
-  userData: UserData | null;
+  userData: Muezzin | null;
   user: FirebaseUser | null;
 }
 
@@ -161,29 +161,31 @@ export default function NotificationSettings({ userData, user }: NotificationSet
       )}
 
       <div className="space-y-5">
-        {[
-          {
-            key: 'nobetHatirlatici',
-            title: 'Nöbet & Vakit Hatırlatıcıları',
-            desc: 'Adınıza atanan nöbet saatleri yaklaşırken anlık uyarı alırsınız.'
-          },
-          {
-            key: 'duyurular',
-            title: 'Resmi Tebliğler & Duyurular',
-            desc: 'Yönetim tarafından yayınlanan resmi tebliğlerden anında haberdar olursunuz.'
-          },
-          {
-            key: 'mazeretDurumu',
-            title: 'Mazeret & İzin Talebi Güncellemeleri',
-            desc: 'Gönderdiğiniz mazeret veya izin talebi onaylandığında anlık bildirim alırsınız.'
-          }
-        ].map((setting) => {
+        {(
+          [
+            {
+              key: 'nobetHatirlatici',
+              title: 'Nöbet & Vakit Hatırlatıcıları',
+              desc: 'Adınıza atanan nöbet saatleri yaklaşırken anlık uyarı alırsınız.'
+            },
+            {
+              key: 'duyurular',
+              title: 'Resmi Tebliğler & Duyurular',
+              desc: 'Yönetim tarafından yayınlanan resmi tebliğlerden anında haberdar olursunuz.'
+            },
+            {
+              key: 'mazeretDurumu',
+              title: 'Mazeret & İzin Talebi Güncellemeleri',
+              desc: 'Gönderdiğiniz mazeret veya izin talebi onaylandığında anlık bildirim alırsınız.'
+            }
+          ] as const
+        ).map((setting) => {
           const currentSettings = userData?.notificationSettings || {
             nobetHatirlatici: true,
             duyurular: true,
             mazeretDurumu: true
           };
-          const isChecked = currentSettings[setting.key as 'nobetHatirlatici' | 'duyurular' | 'mazeretDurumu'] !== false;
+          const isChecked = currentSettings[setting.key] !== false;
 
           return (
             <div key={setting.key} className="flex items-center justify-between gap-6 py-2">
@@ -192,7 +194,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
                 <p className="text-2xs text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">{setting.desc}</p>
               </div>
               <button
-                onClick={() => handleToggleSetting(setting.key as any)}
+                onClick={() => handleToggleSetting(setting.key)}
                 role="switch"
                 aria-checked={isChecked}
                 aria-label={setting.title}

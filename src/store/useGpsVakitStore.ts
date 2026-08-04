@@ -53,7 +53,7 @@ export const useGpsVakitStore = create<GpsVakitState>()(
             gpsKonumAdi: result.konumAdi,
             lastFetchDate: result.date
           });
-        } catch (err: any) {
+        } catch (err) {
           set({ gpsLoading: false });
           throw err;
         }

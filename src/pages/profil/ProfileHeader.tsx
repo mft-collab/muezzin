@@ -4,10 +4,10 @@ import { Edit3, CheckCircle2, AlertCircle, Shield, User, Eye } from 'lucide-reac
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
-import { UserData } from '../Profil';
+import { Muezzin } from '../../types';
 
 interface ProfileHeaderProps {
- userData: UserData | null;
+ userData: Muezzin | null;
  user: FirebaseUser | null;
 }
 

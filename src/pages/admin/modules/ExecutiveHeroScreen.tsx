@@ -21,15 +21,22 @@ interface HeroScreenProps {
  muezzinlerSayisi: number;
  cozulmamisSayisi: number;
  pendingIzinler: number;
+ /** İlgili store'ların Firestore'dan ilk snapshot'ı henüz vermediğini belirtir —
+  * true iken ham "0" yerine yükleniyor iskeleti gösterilir (bkz. tasarım denetimi). */
+ statsLoading: boolean;
  setActiveTab: (tab: string, subtab?: string) => void;
  onOpenDrawer: (content: 'alarmlar' | 'duyurular' | null) => void;
 }
 
+function HeroStatSkeleton({ className }: { className: string }) {
+ return <div className={`fluid-skeleton ${className}`} />;
+}
 
 export default function ExecutiveHeroScreen({
  muezzinlerSayisi,
  cozulmamisSayisi,
  pendingIzinler,
+ statsLoading,
  setActiveTab,
  onOpenDrawer
 }: HeroScreenProps) {
@@ -156,9 +163,13 @@ export default function ExecutiveHeroScreen({
 
   {/* Personnel Count — large number */}
   <div className="relative z-10 flex-1 flex flex-col justify-center">
+  {statsLoading ? (
+  <HeroStatSkeleton className="w-28 h-16 lg:h-20 mb-2" />
+  ) : (
   <div className="text-6xl lg:text-8xl font-extralight text-[var(--text-primary)] tracking-tighter leading-none tabular-nums mb-2">
   {muezzinlerSayisi}
   </div>
+  )}
   <span className="authority-title !text-2xs opacity-25 tracking-widest">AKTİF MÜEZZİN KADROSU</span>
 
   {/* Status bars */}
@@ -213,9 +224,13 @@ export default function ExecutiveHeroScreen({
  <ShieldAlert size={20} strokeWidth={1.5} />
  </div>
  <div className="text-right">
+ {statsLoading ? (
+ <HeroStatSkeleton className="w-10 h-9 ml-auto" />
+ ) : (
  <div className={`text-4xl font-light tracking-tighter leading-none ${cozulmamisSayisi > 0 ? 'text-rose-500' : 'text-[var(--text-primary)]'}`}>
  {cozulmamisSayisi}
  </div>
+ )}
  <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">NÖBET UYARILARI</span>
  </div>
  </div>
@@ -243,9 +258,13 @@ export default function ExecutiveHeroScreen({
  <CalendarClock size={18} strokeWidth={1.5} />
  </div>
  <div className="text-right">
+ {statsLoading ? (
+ <HeroStatSkeleton className="w-8 h-8 ml-auto" />
+ ) : (
  <div className="text-3xl font-light text-[var(--text-primary)] tracking-tighter leading-none tabular-nums">
  {pendingIzinler}
  </div>
+ )}
  <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">BEKLEYEN İZİN</span>
  </div>
  </div>

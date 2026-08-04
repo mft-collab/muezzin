@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../lib/firebase';
-import { collection, getDoc, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDoc, getDocs, writeBatch, doc, type DocumentData, type UpdateData } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeartPulse, CheckCircle2, AlertOctagon, RefreshCw, ShieldCheck, Terminal } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import type { Muezzin, Izin, HaftaPlan, Vakit } from '../../../types';
+
+// Denetlenen belgeler tanım gereği güvenilmez olabilir (eksik/bozuk alanlar
+// aranan şey) — bu yüzden `Muezzin`/`Izin`/`HaftaPlan` yerine bunların
+// `Partial` hali kullanılıyor; alan adları yine de tip kontrolünden geçer.
+type PersonnelDoc = Partial<Muezzin> & { id: string };
+type VacationDoc = Partial<Izin> & { id: string };
+type PlanDoc = Partial<HaftaPlan> & { id: string };
+
+type RepairData =
+ | { type: 'personnel_field'; docId: string; field: 'displayName' | 'role' | 'aktif'; value: string | boolean }
+ | { type: 'vacation_date'; docId: string; start: string; end: string }
+ | { type: 'delete_doc'; collectionName: string; docId: string }
+ | { type: 'schedule_reset'; planId: string; gun: string; vakit: Vakit; field: 'asil' | 'yedek'; value: string };
 
 interface AuditError {
  id: string;
@@ -11,7 +25,7 @@ interface AuditError {
  message: string;
  severity: 'warning' | 'critical';
  details: string;
- repairData?: any;
+ repairData?: RepairData;
 }
 
 export const VeriSagligiSekmesi = React.memo(() => {
@@ -31,52 +45,52 @@ export const VeriSagligiSekmesi = React.memo(() => {
  setRepairLogs([]);
 
  try {
- let personnelList: any[] = [];
- let vacationsList: any[] = [];
- let plansList: any[] = [];
+ let personnelList: PersonnelDoc[] = [];
+ let vacationsList: VacationDoc[] = [];
+ let plansList: PlanDoc[] = [];
 
  // Fetch muezzins
  try {
  const muezzinsSnap = await getDocs(collection(db, 'muezzins'));
- personnelList = muezzinsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
- } catch (err: any) {
+ personnelList = muezzinsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PersonnelDoc));
+ } catch (err) {
  console.error('Audit: Failed to fetch muezzins:', err);
  auditErrors.push({
  id: 'error-fetch-muezzins',
  category: 'personnel',
  severity: 'critical',
  message: 'Personel verileri veritabanından çekilemedi!',
- details: `Hata: ${err.message || String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
+ details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
  });
  }
 
  // Fetch vacations
  try {
  const izinlerSnap = await getDocs(collection(db, 'izinler'));
- vacationsList = izinlerSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
- } catch (err: any) {
+ vacationsList = izinlerSnap.docs.map(d => ({ id: d.id, ...d.data() } as VacationDoc));
+ } catch (err) {
  console.error('Audit: Failed to fetch vacations:', err);
  auditErrors.push({
  id: 'error-fetch-vacations',
  category: 'vacation',
  severity: 'critical',
  message: 'İzin verileri veritabanından çekilemedi!',
- details: `Hata: ${err.message || String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
+ details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
  });
  }
 
  // Fetch plans
  try {
  const haftaPlanlariSnap = await getDocs(collection(db, 'haftaPlanlari'));
- plansList = haftaPlanlariSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
- } catch (err: any) {
+ plansList = haftaPlanlariSnap.docs.map(d => ({ id: d.id, ...d.data() } as PlanDoc));
+ } catch (err) {
  console.error('Audit: Failed to fetch plans:', err);
  auditErrors.push({
  id: 'error-fetch-plans',
  category: 'schedule',
  severity: 'critical',
  message: 'Haftalık nöbet planları veritabanından çekilemedi!',
- details: `Hata: ${err.message || String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
+ details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
  });
  }
 
@@ -148,11 +162,12 @@ export const VeriSagligiSekmesi = React.memo(() => {
 
  // --- Category C: Schedule Audits ---
  plansList.forEach(plan => {
- if (plan.gunler) {
- Object.keys(plan.gunler).forEach(gun => {
- const gunlukVakitler = plan.gunler[gun];
+ const gunler = plan.gunler;
+ if (gunler) {
+ Object.keys(gunler).forEach(gun => {
+ const gunlukVakitler = gunler[gun];
  if (gunlukVakitler) {
- Object.keys(gunlukVakitler).forEach(vakit => {
+ (Object.keys(gunlukVakitler) as Vakit[]).forEach(vakit => {
  const asil = gunlukVakitler[vakit]?.asil;
  const yedek = gunlukVakitler[vakit]?.yedek;
 
@@ -208,9 +223,9 @@ export const VeriSagligiSekmesi = React.memo(() => {
  });
 
  setErrors(auditErrors);
- } catch (err: any) {
+ } catch (err) {
  console.error('Audit run failed: ', err);
- setAuditError(err.message || String(err));
+ setAuditError(err instanceof Error ? err.message : String(err));
  } finally {
  setLoading(false);
  }
@@ -235,13 +250,13 @@ export const VeriSagligiSekmesi = React.memo(() => {
  logMessage(`Toplam Hata Sayısı: ${errors.length}`);
 
  // Temporary local object to collect schedule edits in memory to batch update documents properly
- const scheduleEdits: Record<string, any> = {};
+ const scheduleEdits: Record<string, HaftaPlan['gunler']> = {};
  // Tüm yazma/silme işlemleri önce burada toplanır, ardından Firestore'un
  // 500 işlemlik batch sınırını aşmamak için 400'lük parçalar halinde
  // commit edilir (bkz. SistemHatalariSekmesi.executeClearErrors) — tek
  // dev bir batch, 500+ hata olduğunda commit'in komple başarısız olup
  // hiçbir kaydın onarılmamasına yol açardı.
- const operations: Array<{ ref: ReturnType<typeof doc>; type: 'update' | 'delete'; data?: Record<string, any> }> = [];
+ const operations: Array<{ ref: ReturnType<typeof doc>; type: 'update' | 'delete'; data?: UpdateData<DocumentData> }> = [];
 
  for (const err of errors) {
  if (!err.repairData) continue;
@@ -294,8 +309,8 @@ export const VeriSagligiSekmesi = React.memo(() => {
  setTimeout(() => {
  runAudit();
  }, 1000);
- } catch (err: any) {
- logMessage(`ONARIM HATASI: ${err.message || err}`);
+ } catch (err) {
+ logMessage(`ONARIM HATASI: ${err instanceof Error ? err.message : err}`);
  } finally {
  setRepairing(false);
  }

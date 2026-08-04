@@ -1,24 +1,21 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { LogOut, Info, Settings, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
-import { auth, db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
-import { UserData } from './Profil';
+import { useMuezzinStore } from '../store/useMuezzinStore';
 import { HakkindaModal } from '../components/HakkindaModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { playClick } from '../lib/sounds';
 
-const NotificationSettings = lazy(() => import('./profil/NotificationSettings'));
+const NotificationSettings = lazy(() => import('../components/NotificationSettings'));
 
 function SettingsSkeleton() {
   return <div className="h-72 rounded-[40px] fluid-skeleton" />;
 }
 
 export default function MuezzinAyarlari() {
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const navigate = useNavigate();
@@ -26,36 +23,14 @@ export default function MuezzinAyarlari() {
   const user = useAuthStore(s => s.user);
   const authInitialized = useAuthStore(s => s.initialized);
 
-  // Kullanıcı değiştiğinde (giriş/çıkış) state'i render sırasında ayarla —
-  // bkz. useBugunkuGorevlerim.ts'teki aynı desen. `undefined` = auth henüz
-  // bilinmiyor, `null` = oturum yok.
-  const userKey = authInitialized ? (user?.uid ?? null) : undefined;
-  const [lastUserKey, setLastUserKey] = useState(userKey);
-  if (userKey !== lastUserKey) {
-    setLastUserKey(userKey);
-    if (userKey === null) {
-      setUserData(null);
-      setLoading(false);
-    } else if (userKey !== undefined) {
-      setLoading(true);
-    }
-  }
-
-  useEffect(() => {
-    if (!authInitialized || !user) return;
-
-    const unsubscribe = onSnapshot(doc(db, 'muezzins', user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setUserData(docSnap.data() as UserData);
-      }
-      setLoading(false);
-    }, (err) => {
-      console.error('Ayar profil verisi dinlenemedi:', err);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, authInitialized]);
+  // Kendi profilimiz zaten global useMuezzinStore aboneliğinde mevcut
+  // (bkz. StoreInitializer) — burada ayrı bir muezzins/{uid} dinleyicisi
+  // açmak yerine aynı veriyi paylaşılan store'dan okuyoruz (bkz. Profil.tsx'teki
+  // aynı düzeltme; tasarım denetimi: önceden bu iki sayfa aynı dokümanı
+  // birbirinden bağımsız iki kez dinliyordu).
+  const userData = useMuezzinStore(s => (user ? s.muezzinMap[user.uid] : undefined)) ?? null;
+  const muezzinlerLoading = useMuezzinStore(s => s.loading);
+  const loading = !authInitialized || (!!user && muezzinlerLoading);
 
   const confirmLogout = async () => {
     setLogoutConfirmOpen(false);

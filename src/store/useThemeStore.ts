@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 type Theme = 'light' | 'dark';
+
+type ThemeToggleEvent = ReactMouseEvent | MouseEvent;
 
 interface ThemeState {
  theme: Theme;
  setTheme: (theme: Theme) => void;
- toggleTheme: (event?: any) => void;
+ toggleTheme: (event?: ThemeToggleEvent) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -17,7 +20,7 @@ export const useThemeStore = create<ThemeState>()(
         set({ theme });
         document.documentElement.setAttribute('data-theme', theme);
       },
-      toggleTheme: (event?: any) => {
+      toggleTheme: (event?: ThemeToggleEvent) => {
         const toggle = () => {
           set((state) => {
             const newTheme = state.theme === 'light' ? 'dark' : 'light';
@@ -26,27 +29,26 @@ export const useThemeStore = create<ThemeState>()(
           });
         };
 
-        const doc = document as any;
-        if (!doc.startViewTransition || !event) {
+        if (!document.startViewTransition || !event) {
           toggle();
           return;
         }
 
-        let x = event.clientX;
-        let y = event.clientY;
+        let x: number | undefined = event.clientX;
+        let y: number | undefined = event.clientY;
 
-        if (x === undefined && event.nativeEvent) {
+        if (x === undefined && 'nativeEvent' in event) {
           x = event.nativeEvent.clientX;
           y = event.nativeEvent.clientY;
         }
 
-        if (x === undefined && event.target) {
+        if (x === undefined && event.target instanceof Element) {
           const rect = event.target.getBoundingClientRect();
           x = rect.left + rect.width / 2;
           y = rect.top + rect.height / 2;
         }
 
-        if (x === undefined) {
+        if (x === undefined || y === undefined) {
           toggle();
           return;
         }
@@ -56,7 +58,7 @@ export const useThemeStore = create<ThemeState>()(
           Math.max(y, window.innerHeight - y)
         );
 
-        const transition = doc.startViewTransition(() => {
+        const transition = document.startViewTransition(() => {
           toggle();
         });
 

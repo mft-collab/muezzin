@@ -19,7 +19,6 @@ interface TarihselGorev {
   vakit: Vakit;
   durum: 'onaylandi' | 'reddedildi' | 'bekliyor';
   tip: 'asil' | 'yedek' | 'gorev_cagrisi';
-  sonGuncelleme?: any;
 }
 
 export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) {

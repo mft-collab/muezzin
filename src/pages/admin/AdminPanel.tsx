@@ -70,6 +70,14 @@ export default function AdminPanel() {
  const muezzinlerLength = useMuezzinStore(s => s.muezzinler.filter(m => m.role === 'muezzin' && m.aktif === true && m.arsivlendi !== true).length);
  const cozulmamisSayisi = useKrizAlarmlariStore(s => s.cozulmamisSayisi);
  const pendingIzinler = useAdminIzinlerStore(s => s.izinler.filter(i => i.durum === 'onay_bekliyor').length);
+ // Hero kartlarındaki sayılar ilk Firestore snapshot'ı gelene kadar "0" göstermesin diye
+ // (bu, "uyarı/izin yok" ile karıştırılabiliyordu) — bkz. store'ların kendi `loading` bayrağı.
+ // Not: her hook ayrı çağrılır — `||` ile zincirlemek kısa devre nedeniyle
+ // sonraki hook'ları koşullu atlatır (Rules of Hooks ihlali).
+ const muezzinlerLoading = useMuezzinStore(s => s.loading);
+ const alarmlarLoading = useKrizAlarmlariStore(s => s.loading);
+ const izinlerLoading = useAdminIzinlerStore(s => s.loading);
+ const statsLoading = muezzinlerLoading || alarmlarLoading || izinlerLoading;
 
  // Admin paneline özgü, tüm alt sekmeler arasında paylaşılan tek abonelikler.
  // StoreInitializer'daki global store'larla aynı yaklaşım: dönen unsubscribe
@@ -123,10 +131,11 @@ export default function AdminPanel() {
  case 'dashboard':
  return (
  <div className="space-y-10">
- <ExecutiveHeroScreen 
+ <ExecutiveHeroScreen
  muezzinlerSayisi={muezzinlerLength}
  cozulmamisSayisi={cozulmamisSayisi}
  pendingIzinler={pendingIzinler}
+ statsLoading={statsLoading}
  setActiveTab={setActiveTab}
  onOpenDrawer={setDrawerContent}
  />
@@ -150,7 +159,7 @@ export default function AdminPanel() {
  default:
  return null;
  }
- }, [activeTab, muezzinlerLength, cozulmamisSayisi, pendingIzinler]);
+ }, [activeTab, muezzinlerLength, cozulmamisSayisi, pendingIzinler, statsLoading]);
 
  const pageTitle = useMemo(() => {
  switch (activeTab) {

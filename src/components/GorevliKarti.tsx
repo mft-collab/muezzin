@@ -104,9 +104,8 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
         layout: { type: 'spring', stiffness: 220, damping: 25 }
       }}
       style={unassignedBorderStyle}
-      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[28px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass} shimmer-trigger`}
+      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[28px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass}`}
     >
-      <div className="kinetic-sheen" />
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
       <div
         className={`absolute top-0 right-0 w-48 h-48 rounded-full -translate-y-1/2 translate-x-1/2 transition-opacity duration-700 pointer-events-none ${isFriday ? 'opacity-10' : 'opacity-5 group-hover:opacity-8'}`}

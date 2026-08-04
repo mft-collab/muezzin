@@ -164,6 +164,57 @@ export function kibleMesafesiHesapla(latitude: number, longitude: number): numbe
             Math.cos(phi1) * Math.cos(phi2) *
             Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  
+
   return R * c;
+}
+
+/**
+ * GPS kapalıyken kıble pusulası için sistem ayarlarındaki ilçeyi koordinata
+ * çevirir (Kıble Pusulası Modalı'ndaki küçük, sabit "bilinen ilçeler"
+ * tablosunun dışındaki her ilçe için). Aynı Nominatim servisi ve
+ * sessionStorage önbellek deseni `konumVakitleriniCek`'teki ters-geocoding
+ * ile aynıdır — burada ise ileri (isimden koordinata) yönde kullanılır.
+ * Bulunamazsa/başarısız olursa null döner; çağıran taraf bilinen bir
+ * varsayılana düşer ve bunu kullanıcıya açıkça belirtir.
+ */
+export async function ilceKoordinatlariniCek(ilceAdi: string): Promise<{ lat: number; lng: number } | null> {
+  const trimmed = ilceAdi.trim();
+  if (!trimmed) return null;
+
+  const cacheKey = `ilce_geo_${trimmed.toLowerCase()}`;
+  if (typeof window !== 'undefined') {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {}
+    }
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`${trimmed}, Türkiye`)}&format=json&limit=1&countrycodes=tr`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'MuezzinTakipPro/2.0' }
+    });
+    if (!response.ok) return null;
+
+    const results = await response.json();
+    const first = Array.isArray(results) ? results[0] : null;
+    if (!first || typeof first.lat !== 'string' || typeof first.lon !== 'string') return null;
+
+    const coords = { lat: parseFloat(first.lat), lng: parseFloat(first.lon) };
+    if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) return null;
+
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(coords));
+      } catch (storageErr) {
+        console.warn('sessionStorage write error:', storageErr);
+      }
+    }
+    return coords;
+  } catch (e) {
+    console.warn('İlçe geocoding hatası:', e);
+    return null;
+  }
 }

@@ -62,18 +62,20 @@ export default function IzinYonetimi() {
  </div>
 
  <div className="flex items-center gap-2 bg-[var(--surface-low)] p-1.5 rounded-[22px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0">
- {[
+ {(
+ [
  { id: 'all', label: 'TÜMÜ' },
  { id: 'onay_bekliyor', label: 'BEKLEYEN' },
  { id: 'onaylandi', label: 'ONAYLANDI' },
  { id: 'reddedildi', label: 'RED' }
- ].map(btn => (
+ ] as const
+ ).map(btn => (
  <motion.button
  key={btn.id}
  whileHover={{ scale: 1.05 }}
  whileTap={{ scale: 0.95 }}
  onClick={() => {
- setFilter(btn.id as any);
+ setFilter(btn.id);
  setUiMessage(null);
  }}
  className={`px-5 py-3 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all duration-500 shrink-0 ${

@@ -245,7 +245,6 @@ export const GorevKarti = React.memo(({
  />
 
  {/* Kinetic Refraction Sheen */}
- <div className="kinetic-sheen" />
  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">

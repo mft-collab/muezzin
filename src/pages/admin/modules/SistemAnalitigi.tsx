@@ -321,6 +321,18 @@ export default function SistemAnalitigi() {
               ))}
             </div>
           )}
+
+          {/* Uzun dönemlerde günlük kırılım anlamlı olmadığından bilgilendirici yer tutucu gösterilir */}
+          {periodDays !== 7 && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 mb-10 mt-12 text-center">
+              <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
+                <Activity size={22} strokeWidth={1} className="text-[var(--text-secondary)]" />
+              </div>
+              <p className="authority-title !text-2xs opacity-30 tracking-wide max-w-xs">
+                GÜNLÜK KIRILIM YALNIZCA 7 GÜNLÜK GÖRÜNÜMDE GÖSTERİLİR — AŞAĞIDAKİ TABLODA {periodDays} GÜNLÜK KİŞİ BAZLI ÖZETİ İNCELEYEBİLİRSİNİZ
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* TABLE: Kişi Bazlı Performans Özeti */}

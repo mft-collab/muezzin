@@ -16,6 +16,11 @@ import { telemetryService } from '../../../services/telemetryService';
  * paketleyen bir simülasyondu ve kaldırıldı.
  */
 
+// User-Agent Client Hints API henüz TS DOM lib'inde standart değil.
+interface NavigatorWithUAData extends Navigator {
+  userAgentData?: { platform?: string };
+}
+
 export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
   const [dbTestState, setDbTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [dbLatency, setDbLatency] = useState<number | null>(null);
@@ -93,9 +98,9 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       const latency = Math.round(performance.now() - start);
       setDbLatency(latency);
       setDbTestState('success');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setDbError(err.message || 'Firestore bağlantı hatası');
+      setDbError(err instanceof Error ? err.message : 'Firestore bağlantı hatası');
       setDbTestState('error');
     }
   };
@@ -472,7 +477,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-1">
             <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">İşletim Sistemi</span>
-            <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? ((navigator as any).userAgentData?.platform || navigator.platform || 'Algılanamadı') : 'Bilinmiyor'}</span>
+            <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? ((navigator as NavigatorWithUAData).userAgentData?.platform || navigator.platform || 'Algılanamadı') : 'Bilinmiyor'}</span>
           </div>
           <div className="space-y-1">
             <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Ekran Çözünürlüğü</span>

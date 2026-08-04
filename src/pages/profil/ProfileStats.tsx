@@ -1,33 +1,28 @@
 import React from 'react';
 import { Award, MapPin, Shield, Calendar, Mail } from 'lucide-react';
-import { UserData } from '../Profil';
+import { Muezzin } from '../../types';
 import { auth } from '../../lib/firebase';
 import { useSystemSettingsStore } from '../../store/useSystemSettingsStore';
 
 interface ProfileStatsProps {
-  userData: UserData | null;
+  userData: Muezzin | null;
 }
 
 export default function ProfileStats({ userData }: ProfileStatsProps) {
   const settings = useSystemSettingsStore(s => s.settings);
-  const isAdmin = userData?.role === 'admin';
 
+ // Not: rol bilgisi burada tekrar edilmiyor — ProfileHeader'daki rozette
+ // zaten gösteriliyor (bkz. tasarım denetimi: aynı bilgi sayfada iki kez
+ // farklı biçimde tekrarlanıyordu).
  const menuItems = [
- { 
- icon: <MapPin size={16} />, 
- label: 'Görev Birimi', 
- value: settings.ilceAdi ? `${settings.ilceAdi} Müftülüğü` : 'Belirsiz', 
- color: 'text-[var(--aura-indigo)]', 
+ {
+ icon: <MapPin size={16} />,
+ label: 'Görev Birimi',
+ value: settings.ilceAdi ? `${settings.ilceAdi} Müftülüğü` : 'Belirsiz',
+ color: 'text-[var(--aura-indigo)]',
  bg: 'bg-[var(--aura-indigo)]/10'
  },
- { 
- icon: <Award size={16} />, 
- label: 'Rol', 
- value: isAdmin ? 'Sistem Yöneticisi' : userData?.role === 'gozlemci' ? 'Gözlemci' : 'Görevli Müezzin', 
- color: 'text-[var(--status-success)]', 
- bg: 'bg-[var(--status-success)]/10'
- },
- { 
+ {
  icon: <Shield size={16} />, 
  label: 'Hesap Durumu', 
  value: userData?.aktif ? 'Aktif ve Doğrulanmış' : 'Pasif', 

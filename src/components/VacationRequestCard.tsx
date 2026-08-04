@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, AlertCircle, CheckCircle2, Hourglass, Trash2, Send } from 'lucide-react';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { db } from '../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
-import { getTurkeyDateString } from '../../lib/dateUtils';
+import { getTurkeyDateString } from '../lib/dateUtils';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Modal } from '../../components/ui/Modal';
+import { Modal } from './ui/Modal';
 
 interface VacationRequestCardProps {
   user: FirebaseUser | null;
@@ -240,15 +240,17 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             <div className="space-y-2">
               <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Muafiyet Türü</label>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'haftalik', label: 'Haftalık' },
-                  { id: 'yillik', label: 'Yıllık' },
-                  { id: 'mazeret', label: 'Mazeret' }
-                ].map(item => (
+                {(
+                  [
+                    { id: 'haftalik', label: 'Haftalık' },
+                    { id: 'yillik', label: 'Yıllık' },
+                    { id: 'mazeret', label: 'Mazeret' }
+                  ] as const
+                ).map(item => (
                   <button
                     type="button"
                     key={item.id}
-                    onClick={() => setTip(item.id as any)}
+                    onClick={() => setTip(item.id)}
                     className={`py-3.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all duration-300 border cursor-pointer ${
                       tip === item.id 
                         ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
