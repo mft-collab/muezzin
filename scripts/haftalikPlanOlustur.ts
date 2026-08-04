@@ -3,13 +3,48 @@ import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
 import { haftalikPlanUret, tekKisiliGunleriBul, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
-import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
+import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+// Bir haftanın atamalarını müezzinlerin bellek içi aylık yük sayaçlarına
+// ekler — kalıcı Firestore güncellemesi yine yalnızca
+// scripts/yatsiSonuIslemleri.ts'in günlük işidir, bu yalnızca AYNI script
+// çalıştırması içindeki sonraki hafta iterasyonlarının adalet hesabını
+// beslemek içindir (bkz. algoritma denetimi).
+//
+// minTarih verilirse yalnızca o tarihten (dahil) itibaren olan günler
+// sayılır: zaten var olup atlanan bir haftanın GEÇMİŞ günleri
+// yatsiSonuIslemleri tarafından zaten kalıcı sayaçlara işlenmiş olur, onları
+// burada tekrar saymak çifte sayıma yol açar. Bu script'in bu çalıştırmada
+// TAZE ürettiği hafta için minTarih verilmez (haftanın tamamı zaten geleceğe
+// ait olduğundan çifte sayım riski yoktur).
+function gunPlanProjeksiyonuUygula(
+  gunler: string[],
+  gunPlan: Record<string, Record<Vakit, VakitAtama>>,
+  muezzinler: (Muezzin & { id: string })[],
+  minTarih?: string
+) {
+  for (const gun of gunler) {
+    if (minTarih && gun < minTarih) continue;
+    const veri = gunPlan[gun];
+    if (!veri) continue;
+    const [gY, gM, gD] = gun.split('-').map(Number);
+    const gunCumaMi = isFriday(new Date(gY, gM - 1, gD));
+    for (const vakit of VAKITLER) {
+      const atama = veri[vakit];
+      if (!atama || atama.asil === 'Sistem') continue;
+      const kisi = muezzinler.find((m) => m.id === atama.asil);
+      if (!kisi) continue;
+      kisi.aylikVakitSayisi = (kisi.aylikVakitSayisi || 0) + 1;
+      if (gunCumaMi) kisi.aylikCumaSayisi = (kisi.aylikCumaSayisi || 0) + 1;
+    }
+  }
 }
 
 async function main() {
@@ -59,6 +94,8 @@ async function main() {
   pazartesiTemel.setDate(simdi.getDate() + diff);
   pazartesiTemel.setHours(0, 0, 0, 0);
 
+  const bugunStr = formatDateLocal(simdi);
+
   // Gelecek 3 hafta için plan oluşturmayı dene (Daha güvenli bir aralık)
   for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
     const pazartesi = new Date(pazartesiTemel);
@@ -78,6 +115,14 @@ async function main() {
     const planDoc = await db.collection('haftaPlanlari').doc(haftaId).get();
     if (planDoc.exists) {
       console.log(`Plan (${haftaId}) zaten mevcut, atlanıyor.`);
+      // Bu hafta önceki bir çalıştırmada üretilmiş olabilir — henüz
+      // gerçekleşmemiş (bugünden itibaren) günlerini bellek içi adalet
+      // hesabına dahil et ki bu çalıştırmada üretilecek sonraki haftalar
+      // bu yükten habersiz kalmasın (bkz. algoritma denetimi).
+      const mevcutGunPlan = planDoc.data()?.gunler as Record<string, Record<Vakit, VakitAtama>> | undefined;
+      if (mevcutGunPlan) {
+        gunPlanProjeksiyonuUygula(gunler, mevcutGunPlan, muezzinler, bugunStr);
+      }
       continue;
     }
 
@@ -168,18 +213,7 @@ async function main() {
     // hesabı bu haftanın taze atamalarını görsün diye bellek içi projeksiyon
     // yapılır. Firestore'a yazılmaz — kalıcı güncelleme yine yalnızca
     // scripts/yatsiSonuIslemleri.ts'in günlük işidir (bkz. algoritma denetimi).
-    for (const gun of gunler) {
-      const [pgY, pgM, pgD] = gun.split('-').map(Number);
-      const gunCumaMi = isFriday(new Date(pgY, pgM - 1, pgD));
-      for (const vakit of VAKITLER) {
-        const atama = gunPlan[gun][vakit];
-        if (atama.asil === 'Sistem') continue;
-        const kisi = muezzinler.find((m) => m.id === atama.asil);
-        if (!kisi) continue;
-        kisi.aylikVakitSayisi = (kisi.aylikVakitSayisi || 0) + 1;
-        if (gunCumaMi) kisi.aylikCumaSayisi = (kisi.aylikCumaSayisi || 0) + 1;
-      }
-    }
+    gunPlanProjeksiyonuUygula(gunler, gunPlan, muezzinler);
 
     try {
       const tokenToUidMap: Record<string, string> = {};

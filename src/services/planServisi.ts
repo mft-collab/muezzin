@@ -8,6 +8,12 @@ import { telemetryService } from './telemetryService';
 
 const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi'];
 
+// İyimser eşzamanlılık denetiminin (aşağıda) attığı çakışma hatasını genel
+// Firestore hatalarından ayırt etmek için — böylece dışarıdaki tek seferlik
+// otomatik tekrar deneme yalnızca gerçek bir çakışmada devreye girer, başka
+// bir hatayı (izin, ağ vb.) yutmaz (bkz. algoritma denetimi).
+class PlanEszamanlilikCakismasi extends Error {}
+
 type BildirimQueryDoc = QueryDocumentSnapshot<DocumentData>;
 type BildirimDoc = BildirimQueryDoc | DocumentSnapshot<DocumentData>;
 type GunPlanMap = Record<string, Record<Vakit, VakitAtama>>;
@@ -120,7 +126,23 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
   }
 }
 
-export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
+export async function haftalikPlanOlustur(haftaId: string, denemeSayisi = 1): Promise<void> {
+ try {
+ await haftalikPlanOlusturTekSeferlik(haftaId);
+ } catch (err) {
+ if (err instanceof PlanEszamanlilikCakismasi) {
+ if (denemeSayisi > 0) {
+ return haftalikPlanOlustur(haftaId, denemeSayisi - 1);
+ }
+ // Tekrar denemeler tükendi — nadir ama kalıcı bir çakışma; telemetriye
+ // düşür ki sık tekrarlarsa fark edilsin (bkz. algoritma denetimi).
+ throw handleFirestoreError(err, OperationType.WRITE, 'haftaPlanlari');
+ }
+ throw err;
+ }
+}
+
+async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const path = 'haftaPlanlari';
  try {
  const muezzinSnapshot = await getDocs(query(collection(db, 'muezzins'), where('aktif', '==', true)));
@@ -189,7 +211,7 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  const tazeKontrolSnap = await getDoc(planRef);
  const tazeSonGuncelleme = tazeKontrolSnap.exists() ? tazeKontrolSnap.data().sonGuncelleme?.toMillis() ?? null : null;
  if (tazeSonGuncelleme !== okunanSonGuncelleme) {
- throw new Error('Plan bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
+ throw new PlanEszamanlilikCakismasi('Plan bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
  }
 
  const batch = writeBatch(db);
@@ -252,6 +274,7 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
 
  await batch.commit();
  } catch (err) {
+ if (err instanceof PlanEszamanlilikCakismasi) throw err;
  throw handleFirestoreError(err, OperationType.WRITE, path);
  }
 }

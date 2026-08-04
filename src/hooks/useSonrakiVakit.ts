@@ -1,29 +1,28 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { GunlukVakit, SonrakiVakit } from '../types';
 import { sonrakiVaktiHesapla } from '../services/ezanVaktiServisi';
 import { useMinuteTick } from './useTime';
 
+function ayniVakitMi(a: SonrakiVakit | null, b: SonrakiVakit | null): boolean {
+ return !!a && !!b && a.vakit === b.vakit && a.ezanSaati.getTime() === b.ezanSaati.getTime();
+}
+
 export function useSonrakiVakit(bugunVakitler: GunlukVakit | null, yarinVakitler: GunlukVakit | null) {
  const tick = useMinuteTick();
- const prevSonrakiRef = useRef<SonrakiVakit | null>(null);
 
- const sonraki = useMemo(() => {
+ const yeniSonraki = useMemo(() => {
  if (!bugunVakitler) return null;
- const yeniSonraki = sonrakiVaktiHesapla(bugunVakitler, yarinVakitler || undefined);
- 
- // Eğer önceki hesaplamayla aynı vakit ve aynı saate denk geliyorsa referansı koru
- if (prevSonrakiRef.current && yeniSonraki) {
- if (
- prevSonrakiRef.current.vakit === yeniSonraki.vakit &&
- prevSonrakiRef.current.ezanSaati.getTime() === yeniSonraki.ezanSaati.getTime()
- ) {
- return prevSonrakiRef.current;
- }
- }
- 
- prevSonrakiRef.current = yeniSonraki;
- return yeniSonraki;
+ return sonrakiVaktiHesapla(bugunVakitler, yarinVakitler || undefined);
  }, [bugunVakitler, yarinVakitler, tick]);
 
- return sonraki;
+ // Aynı vakit/saate denk gelen ardışık hesaplamalarda referansı koru — bkz.
+ // useChangeKey ile aynı "render sırasında state senkronu" deseni, ancak
+ // burada boolean değil önceki değerin kendisi saklanıyor.
+ const [sonraki, setSonraki] = useState(yeniSonraki);
+
+ if (!ayniVakitMi(sonraki, yeniSonraki) && sonraki !== yeniSonraki) {
+ setSonraki(yeniSonraki);
+ }
+
+ return ayniVakitMi(sonraki, yeniSonraki) ? sonraki : yeniSonraki;
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 // NOT: Bu değer Firebase Console → Proje Ayarları → Cloud Messaging →
 // Web push sertifikaları'ndan alınan GERÇEK VAPID public key olmalı.
@@ -13,16 +14,26 @@ import { app, db, auth } from '../lib/firebase';
 const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
 
 async function saveTokenToFirestore(uid: string, token: string) {
-  await setDoc(
-    doc(db, 'muezzins', uid),
-    {
-      fcmToken: token,
-      fcmTokens: {
-        [token]: serverTimestamp()
-      }
-    },
-    { merge: true }
-  );
+  const path = `muezzins/${uid}`;
+  try {
+    await setDoc(
+      doc(db, 'muezzins', uid),
+      {
+        fcmToken: token,
+        fcmTokens: {
+          [token]: serverTimestamp()
+        }
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    // Push token kaydı arka planda, kullanıcıya görünmeden çalışır — ama
+    // sessizce başarısız olursa kişi nöbet hatırlatıcısı almadığını hiç
+    // fark etmez. handleFirestoreError ile telemetriye düşürülür ki bu
+    // durum en azından geliştirici tarafında görünür olsun (bkz. algoritma
+    // denetimi).
+    handleFirestoreError(err, OperationType.UPDATE, path);
+  }
 }
 
 export async function registerFcmToken(requestPermission = false): Promise<{
