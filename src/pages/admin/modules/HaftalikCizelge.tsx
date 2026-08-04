@@ -4,9 +4,7 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { db } from '../../../lib/firebase';
-import { collection, doc, getDocs, query, Timestamp, where, writeBatch } from 'firebase/firestore';
-import { haftalikPlanOlustur } from '../../../services/planServisi';
+import { haftalikPlanOlustur, vakitAtamasiniGuncelle } from '../../../services/planServisi';
 import { format, addWeeks, subWeeks, startOfWeek, parseISO, isSameDay } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -193,73 +191,24 @@ export default function HaftalikCizelge() {
  try {
  const gunKey = Object.keys(plan.gunler).find(k => k === editingCell.tarih);
  if (gunKey) {
- const batch = writeBatch(db);
- const gunBildirimleriSnap = await getDocs(query(
- collection(db, 'bildirimler'),
- where('haftaId', '==', plan.id),
- where('tarih', '==', gunKey)
- ));
-
- const selectedVakit = editingCell.vakit;
- const selectedVakitBildirimleri = gunBildirimleriSnap.docs.filter(d => d.data().vakit === selectedVakit);
- const isProtectedVakit = selectedVakitBildirimleri.some((d) => {
- const data = d.data();
- return data.durum === 'onaylandi' || data.durum === 'reddedildi' || data.tip === 'gorev_cagrisi';
+ const sonuc = await vakitAtamasiniGuncelle({
+ haftaId: plan.id,
+ tarih: gunKey,
+ vakit: editingCell.vakit,
+ asilUid: editFormData.asil,
+ yedekUid: editFormData.yedek,
+ asilAdi: getMuezzinName(editFormData.asil),
+ yedekAdi: getMuezzinName(editFormData.yedek),
  });
 
- if (isProtectedVakit) {
+ if (sonuc === 'protected') {
  const msg = 'Bu vakitte onay/ret veya görev çağrısı geçmişi var. Güvenli güncelleme yapılamadı.';
  showNotification('Güncelleme Engellendi', msg, 'warning');
  return;
  }
 
- selectedVakitBildirimleri.forEach((bildirimDoc) => {
- batch.delete(bildirimDoc.ref);
- });
-
- batch.update(doc(db, 'haftaPlanlari', plan.id), {
- [`gunler.${gunKey}.${selectedVakit}`]: {
- asil: editFormData.asil,
- yedek: editFormData.yedek
- }
- });
-
- // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
- // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
- if (editFormData.asil && editFormData.asil !== 'Sistem') {
- batch.set(doc(db, 'bildirimler', `${plan.id}_${gunKey}_${selectedVakit}_asil`), {
- haftaId: plan.id,
- tarih: gunKey,
- vakit: selectedVakit,
- uid: editFormData.asil,
- tip: 'asil',
- durum: 'bekliyor',
- pendingAck: true,
- retSebebi: null,
- olusturmaTarihi: Timestamp.now(),
- sonGuncelleme: Timestamp.now()
- });
- }
-
- if (editFormData.yedek && editFormData.yedek !== 'Sistem') {
- batch.set(doc(db, 'bildirimler', `${plan.id}_${gunKey}_${selectedVakit}_yedek`), {
- haftaId: plan.id,
- tarih: gunKey,
- vakit: selectedVakit,
- uid: editFormData.yedek,
- tip: 'yedek',
- durum: 'bekliyor',
- pendingAck: true,
- retSebebi: null,
- olusturmaTarihi: Timestamp.now(),
- sonGuncelleme: Timestamp.now()
- });
- }
-
- await batch.commit();
  setModalOpen(false);
  showNotification('Güncelleme Başarılı', 'Seçili vakit için asil ve yedek ataması güncellendi.', 'success');
- await telemetryService.logAudit('Manuel Görev Atama', editingCell.tarih, `${editingCell.vakit.toUpperCase()} vakti için asil: ${getMuezzinName(editFormData.asil)}, yedek: ${getMuezzinName(editFormData.yedek)} ataması yapıldı.`);
  }
  } catch {
  showNotification('Hata', 'Güncelleme sırasında bir hata oluştu.', 'error');

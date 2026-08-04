@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { deleteField, doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
 import { Modal } from '../../../components/ui/Modal';
 import { AlertCircle } from 'lucide-react';
 import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
-import { telemetryService } from '../../../services/telemetryService';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
-import { getHaftaIdFromDate, getTurkeyDateString } from '../../../lib/dateUtils';
-import { haftalikPlanOlustur } from '../../../services/planServisi';
+import { personelKaydet } from '../../../services/muezzinServisi';
 
 interface Props {
  isOpen: boolean;
@@ -50,49 +46,17 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
     try {
       setErrorStatus(null);
       const fullName = `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim();
-      if (editingUser) {
-        const activeAdmins = muezzinler.filter(user => user.role === 'admin' && user.aktif === true && user.arsivlendi !== true);
-        const isLastActiveAdminRoleChange = editingUser.role === 'admin' && editingUser.aktif === true && formData.role !== 'admin' && activeAdmins.length <= 1;
-        if (isLastActiveAdminRoleChange) {
-          setErrorStatus('Son aktif yöneticinin yetki seviyesi değiştirilemez.');
-          setIsSubmitting(false);
-          return;
-        }
-        const impactsDutyPlan = editingUser.role === 'muezzin' || formData.role === 'muezzin' || editingUser.haftalikIzinGunu !== formData.haftalikIzinGunu;
-        await updateDoc(doc(db, 'muezzins', editingUser.id), {
-          displayName: fullName,
-          role: formData.role,
-          haftalikIzinGunu: formData.haftalikIzinGunu > 0 ? formData.haftalikIzinGunu : deleteField()
-        });
-        if (impactsDutyPlan) {
-          const haftaId = getHaftaIdFromDate(getTurkeyDateString());
-          await haftalikPlanOlustur(haftaId);
-        }
-        await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${formData.role.toUpperCase()}, İzin günü: ${formData.haftalikIzinGunu > 0 ? formData.haftalikIzinGunu : 'Yok'}`);
-      } else {
-        const mail = formData.email.trim().toLowerCase();
-        if (!mail || !mail.includes('@')) {
-          setErrorStatus('Geçerli bir e-posta adresi giriniz.');
-          setIsSubmitting(false);
-          return;
-        }
-        const inviteData: Record<string, unknown> = {
-          email: mail,
-          displayName: fullName,
-          role: formData.role,
-          olusturmaTarihi: Timestamp.now()
-        };
-
-        if (formData.haftalikIzinGunu > 0) {
-          inviteData.haftalikIzinGunu = formData.haftalikIzinGunu;
-        }
-
-        await setDoc(doc(db, 'invites', mail), inviteData);
-        await telemetryService.logAudit('Personel Daveti', mail, `Kullanıcı adı: ${fullName}, Davet edilen rol: ${formData.role.toUpperCase()}`);
-      }
+      await personelKaydet({
+        editingUser,
+        muezzinler,
+        fullName,
+        role: formData.role,
+        haftalikIzinGunu: formData.haftalikIzinGunu,
+        email: formData.email,
+      });
       onClose();
-    } catch {
-      setErrorStatus('Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
+    } catch (err) {
+      setErrorStatus(err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
     } finally {
       setIsSubmitting(false);
     }

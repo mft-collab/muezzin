@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, ShieldAlert, CheckCircle, Trash2, Wifi, WifiOff, Cpu, Navigation, Layers, Activity, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import type { EnrichedErrorLog, Breadcrumb } from '../../../services/telemetryService';
+import { errorLogsAbone, errorLoglariniTemizle, type EnrichedErrorLog, type Breadcrumb } from '../../../services/telemetryService';
 
 interface ErrorLog extends Partial<EnrichedErrorLog> {
   id: string;
@@ -126,25 +124,16 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   useEffect(() => {
-    const errorsQuery = query(collection(db, 'error_logs'), orderBy('timestamp', 'desc'), limit(20));
-    const unsub = onSnapshot(errorsQuery, (snap) => {
-      setErrorLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ErrorLog)));
-    }, (err) => console.error('Error logs listen error:', err));
+    const unsub = errorLogsAbone(
+      (logs) => setErrorLogs(logs as ErrorLog[]),
+      (err) => console.error('Error logs listen error:', err)
+    );
     return () => unsub();
   }, []);
 
   const executeClearErrors = async () => {
     try {
-      const snap = await getDocs(collection(db, 'error_logs'));
-      // Firestore batch'leri en fazla 500 işlem alır; büyük koleksiyonlarda
-      // tek batch'e sığdırmaya çalışmak commit'in tamamen başarısız olmasına
-      // (ve hiçbir kaydın silinmemesine) yol açar. 400'lük parçalara bölünür.
-      const CHUNK_SIZE = 400;
-      for (let i = 0; i < snap.docs.length; i += CHUNK_SIZE) {
-        const batch = writeBatch(db);
-        snap.docs.slice(i, i + CHUNK_SIZE).forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      }
+      await errorLoglariniTemizle();
       setConfirmClearOpen(false);
     } catch (err) {
       console.error('Hatalar temizlenemedi:', err);

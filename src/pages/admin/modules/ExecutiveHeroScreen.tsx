@@ -12,9 +12,7 @@ import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
 import { getHaftaIdFromDate, getTurkeyDateString } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-
-
-
+import { type ActiveModule } from '../config/navConfig';
 
 
 interface HeroScreenProps {
@@ -24,7 +22,7 @@ interface HeroScreenProps {
  /** İlgili store'ların Firestore'dan ilk snapshot'ı henüz vermediğini belirtir —
   * true iken ham "0" yerine yükleniyor iskeleti gösterilir (bkz. tasarım denetimi). */
  statsLoading: boolean;
- setActiveTab: (tab: string, subtab?: string) => void;
+ setActiveTab: (tab: ActiveModule, subtab?: string) => void;
  onOpenDrawer: (content: 'alarmlar' | 'duyurular' | null) => void;
 }
 

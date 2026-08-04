@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   DocumentData,
   DocumentSnapshot,
   doc,
@@ -154,6 +155,16 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
 
   } catch (err) {
     throw handleFirestoreError(err, OperationType.WRITE, `bildirimler/${bildirimId}`);
+  }
+}
+
+/** Arşivdeki bir geçmiş mazeret kaydını (bildirim belgesini) kalıcı olarak siler. */
+export async function mazeretKaydiSil(id: string): Promise<void> {
+  const path = `bildirimler/${id}`;
+  try {
+    await deleteDoc(doc(db, 'bildirimler', id));
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
 

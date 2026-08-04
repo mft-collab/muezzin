@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { haftalikPlanUret, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { telemetryService } from './telemetryService';
 
 const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi'];
 
@@ -39,6 +40,73 @@ function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
  const data = bildirimDoc.data();
  return KORUNAN_DURUMLAR.includes(data.durum) || data.tip === 'gorev_cagrisi';
  });
+}
+
+export interface VakitAtamasiGuncelleParams {
+  haftaId: string;
+  tarih: string;
+  vakit: Vakit;
+  asilUid: string;
+  yedekUid: string;
+  /** Yalnızca denetim izi mesajında gösterilir. */
+  asilAdi: string;
+  yedekAdi: string;
+}
+
+/**
+ * Tek bir gün/vakit hücresi için elle (admin) atama günceller. Vaktin
+ * onaylanmış/reddedilmiş veya görev-çağrılı bir geçmişi varsa güvenli
+ * güncelleme reddedilir — bu durumda 'protected' döner, hiçbir yazım yapılmaz.
+ */
+export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams): Promise<'updated' | 'protected'> {
+  const { haftaId, tarih, vakit, asilUid, yedekUid, asilAdi, yedekAdi } = params;
+  const path = `haftaPlanlari/${haftaId}`;
+  try {
+    const gunBildirimleriSnap = await getDocs(query(
+      collection(db, 'bildirimler'),
+      where('haftaId', '==', haftaId),
+      where('tarih', '==', tarih)
+    ));
+
+    const selectedVakitBildirimleri = gunBildirimleriSnap.docs.filter(d => d.data().vakit === vakit);
+    if (korumaliSlotMu(selectedVakitBildirimleri)) {
+      return 'protected';
+    }
+
+    const batch = writeBatch(db);
+
+    selectedVakitBildirimleri.forEach((bildirimDoc) => {
+      batch.delete(bildirimDoc.ref);
+    });
+
+    batch.update(doc(db, 'haftaPlanlari', haftaId), {
+      [`gunler.${tarih}.${vakit}`]: { asil: asilUid, yedek: yedekUid }
+    });
+
+    // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
+    // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
+    if (asilUid && asilUid !== 'Sistem') {
+      batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_asil`), {
+        haftaId, tarih, vakit, uid: asilUid, tip: 'asil',
+        durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+        sonGuncelleme: Timestamp.now()
+      });
+    }
+
+    if (yedekUid && yedekUid !== 'Sistem') {
+      batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`), {
+        haftaId, tarih, vakit, uid: yedekUid, tip: 'yedek',
+        durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+        sonGuncelleme: Timestamp.now()
+      });
+    }
+
+    await batch.commit();
+    await telemetryService.logAudit('Manuel Görev Atama', tarih, `${vakit.toUpperCase()} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
+    return 'updated';
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.WRITE, path);
+  }
 }
 
 export async function haftalikPlanOlustur(haftaId: string): Promise<void> {

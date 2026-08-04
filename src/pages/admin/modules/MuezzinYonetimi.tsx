@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { Muezzin, Invite } from '../../../types';
-import { db } from '../../../lib/firebase';
-import { doc, updateDoc, deleteDoc, collection, onSnapshot, Timestamp } from 'firebase/firestore';
-import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { handleFirestoreError, OperationType } from '../../../lib/firestore-errors';
+import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { PersonelFormModal } from '../components/PersonelFormModal';
-import { 
- Edit2, 
- Power, 
- Trash2, 
- AlertCircle, 
- UserPlus, 
+import {
+ Edit2,
+ Power,
+ Trash2,
+ AlertCircle,
+ UserPlus,
  CheckCircle2,
- RotateCcw 
+ RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getHaftaIdFromDate, getTurkeyDateString, GUNLER_TR } from '../../../lib/dateUtils';
-import { telemetryService } from '../../../services/telemetryService';
-import { haftalikPlanOlustur } from '../../../services/planServisi';
+import { GUNLER_TR } from '../../../lib/dateUtils';
+import {
+ invitesAbone,
+ personelAktiflikDegistir,
+ personelOnayla,
+ personelGeriYukle,
+ personelArsivle,
+ davetSil,
+} from '../../../services/muezzinServisi';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
 type PendingUser =
@@ -39,9 +43,7 @@ export default function MuezzinYonetimi() {
  const [showArchived, setShowArchived] = useState(false);
  
  useEffect(() => {
- const unsub = onSnapshot(collection(db, 'invites'), (snap) => {
- setInvites(snap.docs.map(d => ({ id: d.id, ...d.data() }) as (Invite & { id: string })));
- }, (error: import('firebase/firestore').FirestoreError) => {
+ const unsub = invitesAbone(setInvites, (error) => {
  console.error("Firestore Dinleme Hatası:", error.message);
  if (error.code === 'permission-denied') {
  setErrorStatus("Davetiyeleri görme yetkiniz yok.");
@@ -69,86 +71,45 @@ export default function MuezzinYonetimi() {
   setModalOpen(true);
   };
 
- const isLastActiveAdmin = (m: Muezzin & { id: string }) => {
- const activeAdmins = muezzinler.filter(user => user.role === 'admin' && user.aktif === true && user.arsivlendi !== true);
- return m.role === 'admin' && m.aktif === true && activeAdmins.length <= 1;
- };
-
- const refreshCurrentWeekPlanIfNeeded = async (m: Muezzin & { id: string }) => {
- if (m.role !== 'muezzin') return;
- try {
- const haftaId = getHaftaIdFromDate(getTurkeyDateString());
- await haftalikPlanOlustur(haftaId);
- } catch (err) {
- console.warn('Kadro değişikliği sonrası plan yenilenemedi:', err);
+ const warnIfPlanNotRefreshed = (planRefreshed: boolean) => {
+ if (!planRefreshed) {
  setErrorStatus('Kadro güncellendi; mevcut hafta planı otomatik yenilenemedi. Hizmet Cetveli üzerinden güvenli güncelleme yapabilirsiniz.');
  }
  };
 
-  const toggleAktif = async (m: Muezzin & { id: string }) => {
-  if (isLastActiveAdmin(m)) {
-  setErrorStatus('Son aktif yönetici pasife alınamaz.');
-  return;
-  }
-  try {
- await updateDoc(doc(db, 'muezzins', m.id), {
- aktif: !m.aktif,
- onayBekliyor: false
- });
- await refreshCurrentWeekPlanIfNeeded(m);
- await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'AKTİF' : 'PASİF'} yapıldı.`);
- } catch {
- setErrorStatus('Personel durumu güncellenemedi.');
+ const toggleAktif = async (m: Muezzin & { id: string }) => {
+ try {
+ const { planRefreshed } = await personelAktiflikDegistir(m, muezzinler);
+ warnIfPlanNotRefreshed(planRefreshed);
+ } catch (err) {
+ setErrorStatus(err instanceof Error ? err.message : 'Personel durumu güncellenemedi.');
  }
  };
 
  const handleApprove = async (m: Muezzin & { id: string }) => {
  try {
- await updateDoc(doc(db, 'muezzins', m.id), {
- aktif: true,
- onayBekliyor: false
- });
- if (m.email) {
- await deleteDoc(doc(db, 'invites', m.email.toLowerCase()));
- }
- await refreshCurrentWeekPlanIfNeeded(m);
- await telemetryService.logAudit('Personel Onaylama', m.displayName, 'Sisteme katılım talebi onaylandı ve aktif kadroya dahil edildi.');
- } catch {
- setErrorStatus('Onay işlemi sırasında bir hata oluştu.');
+ const { planRefreshed } = await personelOnayla(m);
+ warnIfPlanNotRefreshed(planRefreshed);
+ } catch (err) {
+ setErrorStatus(err instanceof Error ? err.message : 'Onay işlemi sırasında bir hata oluştu.');
  }
  };
 
  const restoreUser = async (m: Muezzin & { id: string }) => {
  try {
- await updateDoc(doc(db, 'muezzins', m.id), {
- aktif: true,
- onayBekliyor: false,
- arsivlendi: false,
- arsivTarihi: null
- });
- await refreshCurrentWeekPlanIfNeeded(m);
- await telemetryService.logAudit('Personel Geri Yükleme', m.displayName, 'Arşivlenmiş personel aktif kadroya geri yüklendi.');
- } catch {
- setErrorStatus('Personel geri yüklenemedi.');
+ const { planRefreshed } = await personelGeriYukle(m);
+ warnIfPlanNotRefreshed(planRefreshed);
+ } catch (err) {
+ setErrorStatus(err instanceof Error ? err.message : 'Personel geri yüklenemedi.');
  }
  };
 
-  const archiveUser = async (m: Muezzin & { id: string }) => {
-  if (isLastActiveAdmin(m)) {
-  setErrorStatus('Son aktif yönetici arşive alınamaz.');
-  return;
-  }
-  try {
- await updateDoc(doc(db, 'muezzins', m.id), {
- aktif: false,
- onayBekliyor: false,
- arsivlendi: true,
- arsivTarihi: Timestamp.now()
- });
- await refreshCurrentWeekPlanIfNeeded(m);
- await telemetryService.logAudit('Personel Arşivleme', m.displayName, 'Personel aktif kadrodan çıkarılarak arşiv kategorisine alındı.');
- } catch {
- setErrorStatus('Kullanıcı kaydı arşivlenemedi.');
+ const archiveUser = async (m: Muezzin & { id: string }) => {
+ try {
+ const { planRefreshed } = await personelArsivle(m, muezzinler);
+ warnIfPlanNotRefreshed(planRefreshed);
+ } catch (err) {
+ setErrorStatus(err instanceof Error ? err.message : 'Kullanıcı kaydı arşivlenemedi.');
  }
  };
 
@@ -163,10 +124,9 @@ export default function MuezzinYonetimi() {
 
  const executeDeleteInvite = async (inviteEmail: string) => {
  try {
- await deleteDoc(doc(db, 'invites', inviteEmail));
- await telemetryService.logAudit('Davetiye İptal', inviteEmail, 'Gönderilmiş sistem katılım davetiyesi iptal edildi ve silindi.');
- } catch {
- setErrorStatus('Davet silinemedi.');
+ await davetSil(inviteEmail);
+ } catch (err) {
+ setErrorStatus(err instanceof Error ? err.message : 'Davet silinemedi.');
  }
  };
 

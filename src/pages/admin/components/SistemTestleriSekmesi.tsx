@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, Database, BellRing, Layers, Wifi, Play, Sparkles, CheckCircle2, XCircle, Info, ChevronDown, ChevronUp, Terminal, ShieldAlert } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { telemetryService } from '../../../services/telemetryService';
+import type { LogTab } from '../modules/SistemLoglari';
 
 /**
  * Bu panel, bileşen state'inde zaten mevcut olan GERÇEK ölçümleri (Firestore
@@ -21,7 +22,7 @@ interface NavigatorWithUAData extends Navigator {
   userAgentData?: { platform?: string };
 }
 
-export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
+export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTab: (t: LogTab) => void }) => {
   const [dbTestState, setDbTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [dbLatency, setDbLatency] = useState<number | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);

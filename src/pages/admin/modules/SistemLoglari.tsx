@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ShieldAlert, Cpu, HeartPulse, ClipboardList } from 'lucide-react';
 
 import { SistemHatalariSekmesi } from '../components/SistemHatalariSekmesi';
@@ -8,6 +9,9 @@ import { SistemDenetimSekmesi } from '../components/SistemDenetimSekmesi';
 import { toJsDate } from '../../../lib/dateUtils';
 import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
 
+export type LogTab = 'errors' | 'diagnostics' | 'health' | 'audit';
+const LOG_TAB_IDS: LogTab[] = ['errors', 'diagnostics', 'health', 'audit'];
+
 const LOG_TABS = [
  { id: 'errors', label: 'Sistem Hataları', icon: ShieldAlert, activeIconClassName: 'text-rose-500' },
  { id: 'diagnostics', label: 'Sistem Teşhisi (Self-Check)', icon: Cpu },
@@ -16,7 +20,20 @@ const LOG_TABS = [
 ];
 
 export default function SistemLoglari() {
- const [activeTab, setActiveTab] = useState<'errors' | 'diagnostics' | 'health' | 'audit'>('errors');
+ // Diğer admin sekmeleriyle (?tab=, ?subtab=) aynı desen: bu iç sekme de
+ // URL'e yazılır — derin bağlantı (deep-link) ve sayfa yenilemesinde konumu
+ // koruma, yalnızca üst iki seviyeyle sınırlı kalmaz (bkz. tasarım denetimi).
+ const [searchParams, setSearchParams] = useSearchParams();
+ const logtabParam = searchParams.get('logtab');
+ const activeTab: LogTab = LOG_TAB_IDS.includes(logtabParam as LogTab) ? (logtabParam as LogTab) : 'errors';
+
+ const setActiveTab = (tab: LogTab) => {
+ setSearchParams(prev => {
+ const newParams = new URLSearchParams(prev);
+ newParams.set('logtab', tab);
+ return newParams;
+ });
+ };
 
  const formatDate = (timestamp: unknown) => {
  const date = toJsDate(timestamp);
@@ -39,7 +56,7 @@ export default function SistemLoglari() {
  <SegmentedTabs
  items={LOG_TABS}
  activeId={activeTab}
- onChange={(id) => setActiveTab(id as 'errors' | 'diagnostics' | 'health' | 'audit')}
+ onChange={(id) => setActiveTab(id as LogTab)}
  ariaLabel="Sistem teşhis sekmeleri"
  idPrefix="log"
  variant="underline"

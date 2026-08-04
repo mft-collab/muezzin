@@ -2,15 +2,15 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { LogOut, Sun, Moon } from 'lucide-react';
 import { Logo } from '../../../components/ui/Logo';
-import { getAdminNavItems, APP_LINKS } from '../config/navConfig';
+import { getAdminNavItems, APP_LINKS, type ActiveModule } from '../config/navConfig';
 
 interface SlimSidebarProps {
- activeTab: string;
- setActiveTab: (tab: string) => void;
+ activeTab: ActiveModule;
+ setActiveTab: (tab: ActiveModule) => void;
  onLogout: () => void;
  pendingIzinler: number;
  cozulmamisSayisi: number;
- onPrefetch?: (tab: string) => void;
+ onPrefetch?: (tab: ActiveModule) => void;
  theme: 'dark' | 'light';
  toggleTheme: (event?: any) => void;
  onNavigateApp: (path: string) => void;

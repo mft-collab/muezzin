@@ -22,6 +22,12 @@ import { SlimSidebar } from './components/SlimSidebar';
 import { MobileDock } from './components/MobileDock';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { type ActiveModule } from './config/navConfig';
+
+const ACTIVE_MODULES: ActiveModule[] = ['dashboard', 'planlama', 'ekip', 'ayarlar'];
+function toActiveModule(raw: string | null): ActiveModule {
+ return ACTIVE_MODULES.includes(raw as ActiveModule) ? (raw as ActiveModule) : 'dashboard';
+}
 
 const HaftalikCizelge = lazy(() => import('./modules/HaftalikCizelge'));
 const KrizAlarmlari = lazy(() => import('./modules/KrizAlarmlari'));
@@ -32,11 +38,11 @@ const DuyuruYonetimi = lazy(() => import('./modules/DuyuruYonetimi').then(m => (
 
 export default function AdminPanel() {
  const [searchParams, setSearchParams] = useSearchParams();
- const activeTab = searchParams.get('tab') || 'dashboard';
- 
+ const activeTab = toActiveModule(searchParams.get('tab'));
+
  const [isPending, startTransition] = React.useTransition();
 
-  const setActiveTab = (tab: string, subtab?: string) => {
+  const setActiveTab = (tab: ActiveModule, subtab?: string) => {
     startTransition(() => {
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
@@ -52,7 +58,7 @@ export default function AdminPanel() {
     });
   };
 
- const prefetchTab = (tab: string) => {
+ const prefetchTab = (tab: ActiveModule) => {
  switch (tab) {
  case 'planlama': import('./modules/HaftalikCizelge'); break;
  case 'ekip': import('./modules/PersonelHub'); break;

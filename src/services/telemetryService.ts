@@ -1,5 +1,5 @@
 import { db, auth } from '../lib/firebase';
-import { collection, addDoc, Timestamp, writeBatch, doc } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, writeBatch, doc, getDocs, limit, onSnapshot, orderBy, query, type FirestoreError } from 'firebase/firestore';
 import { useAuthStore } from '../store/useAuthStore';
 
 export interface TelemetryEvent {
@@ -415,3 +415,27 @@ class TelemetryService {
 }
 
 export const telemetryService = new TelemetryService();
+
+/** Admin panelindeki en son 20 hata kaydını canlı dinler. */
+export function errorLogsAbone(
+  onData: (logs: (Partial<EnrichedErrorLog> & { id: string })[]) => void,
+  onError: (error: FirestoreError) => void
+): () => void {
+  const q = query(collection(db, 'error_logs'), orderBy('timestamp', 'desc'), limit(20));
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map(d => ({ id: d.id, ...d.data() }) as (Partial<EnrichedErrorLog> & { id: string }))),
+    onError
+  );
+}
+
+/** Tüm hata günlüklerini kalıcı olarak siler (Firestore'un 500'lük batch sınırına göre parçalar halinde). */
+export async function errorLoglariniTemizle(): Promise<void> {
+  const snap = await getDocs(collection(db, 'error_logs'));
+  const CHUNK_SIZE = 400;
+  for (let i = 0; i < snap.docs.length; i += CHUNK_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + CHUNK_SIZE).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+}

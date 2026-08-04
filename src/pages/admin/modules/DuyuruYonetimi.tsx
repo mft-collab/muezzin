@@ -1,15 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
- collection, 
- query, 
- orderBy, 
- onSnapshot, 
- addDoc, 
- deleteDoc, 
- doc, 
- Timestamp 
-} from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
 import { Duyuru } from '../../../hooks/useDuyurular';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -24,7 +13,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { telemetryService } from '../../../services/telemetryService';
+import { duyurularAbone, duyuruYayinla, duyuruSil } from '../../../services/duyuruServisi';
 import { toJsDate } from '../../../lib/dateUtils';
 
 export const DuyuruYonetimi: React.FC = () => {
@@ -100,30 +89,17 @@ export const DuyuruYonetimi: React.FC = () => {
  };
 
  useEffect(() => {
- const q = query(collection(db, 'duyurular'), orderBy('tarih', 'desc'));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const data = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as Duyuru[];
- setDuyurular(data);
- setLoading(false);
- }, (error) => {
- import('../../../lib/firestore-errors').then(({ handleFirestoreError, OperationType }) => {
- handleFirestoreError(error, OperationType.LIST, 'duyurular');
- });
- });
+ const unsubscribe = duyurularAbone(
+ (data) => { setDuyurular(data); setLoading(false); },
+ () => setLoading(false)
+ );
  return () => unsubscribe();
  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'duyurular'), {
-        ...formData,
-        tarih: Timestamp.now()
-      });
-      await telemetryService.logAudit('Duyuru Yayınlama', formData.baslik, `Yeni duyuru panoda paylaşıldı. Kategori: ${formData.tip.toUpperCase()}`);
+      await duyuruYayinla(formData);
       setModalOpen(false);
       setFormData({ baslik: '', icerik: '', tip: 'duyuru' });
     } catch (error) {
@@ -138,8 +114,7 @@ export const DuyuruYonetimi: React.FC = () => {
       setDeletingId(id);
       const match = duyurular.find(d => d.id === id);
       const title = match ? match.baslik : 'Bilinmeyen Duyuru';
-      await deleteDoc(doc(db, 'duyurular', id));
-      await telemetryService.logAudit('Duyuru Silme', title, 'Yayınlanmış olan duyuru panodan kaldırıldı ve kalıcı olarak silindi.');
+      await duyuruSil(id, title);
       setConfirmDelete({ open: false, id: null });
     } catch (error) {
       console.error('Duyuru silinemedi:', error);

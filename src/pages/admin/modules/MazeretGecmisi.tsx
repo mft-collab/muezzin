@@ -5,10 +5,9 @@ import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileDown, Filter, Trash2 } from 'lucide-react';
-import { db } from '../../../lib/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { exportCsv } from '../../../lib/csvExport';
+import { mazeretKaydiSil } from '../../../services/mazeretServisi';
 
 export default function MazeretGecmisi() {
  const { gecmis, loading } = useMazeretGecmisi();
@@ -25,7 +24,7 @@ export default function MazeretGecmisi() {
    if (!id) return;
    try {
      setDeletingId(id);
-     await deleteDoc(doc(db, 'bildirimler', id));
+     await mazeretKaydiSil(id);
      setConfirmDelete({ open: false, id: null });
    } catch (err) {
      if (import.meta.env.DEV) console.error('Mazeret silme hatasi:', err);

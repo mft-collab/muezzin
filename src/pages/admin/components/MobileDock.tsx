@@ -2,11 +2,11 @@ import React, { useCallback } from 'react';
 import { motion } from 'motion/react';
 import { hapticMedium } from '../../../lib/haptic';
 import { playClick } from '../../../lib/sounds';
-import { getAdminNavItems, APP_LINKS } from '../config/navConfig';
+import { getAdminNavItems, APP_LINKS, type ActiveModule } from '../config/navConfig';
 
 interface MobileDockProps {
- activeTab: string;
- setActiveTab: (tab: string) => void;
+ activeTab: ActiveModule;
+ setActiveTab: (tab: ActiveModule) => void;
  pendingIzinler: number;
  cozulmamisSayisi: number;
  onNavigateApp: (path: string) => void;

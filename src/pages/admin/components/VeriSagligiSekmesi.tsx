@@ -1,32 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../lib/firebase';
-import { collection, getDoc, getDocs, writeBatch, doc, type DocumentData, type UpdateData } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeartPulse, CheckCircle2, AlertOctagon, RefreshCw, ShieldCheck, Terminal } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import type { Muezzin, Izin, HaftaPlan, Vakit } from '../../../types';
-
-// Denetlenen belgeler tanım gereği güvenilmez olabilir (eksik/bozuk alanlar
-// aranan şey) — bu yüzden `Muezzin`/`Izin`/`HaftaPlan` yerine bunların
-// `Partial` hali kullanılıyor; alan adları yine de tip kontrolünden geçer.
-type PersonnelDoc = Partial<Muezzin> & { id: string };
-type VacationDoc = Partial<Izin> & { id: string };
-type PlanDoc = Partial<HaftaPlan> & { id: string };
-
-type RepairData =
- | { type: 'personnel_field'; docId: string; field: 'displayName' | 'role' | 'aktif'; value: string | boolean }
- | { type: 'vacation_date'; docId: string; start: string; end: string }
- | { type: 'delete_doc'; collectionName: string; docId: string }
- | { type: 'schedule_reset'; planId: string; gun: string; vakit: Vakit; field: 'asil' | 'yedek'; value: string };
-
-interface AuditError {
- id: string;
- category: 'personnel' | 'vacation' | 'schedule';
- message: string;
- severity: 'warning' | 'critical';
- details: string;
- repairData?: RepairData;
-}
+import { veriSagligiTara, veriHatalariniOnar, type AuditError } from '../../../services/veriOnarimServisi';
 
 export const VeriSagligiSekmesi = React.memo(() => {
  const [loading, setLoading] = useState(false);
@@ -41,194 +17,13 @@ export const VeriSagligiSekmesi = React.memo(() => {
  const runAudit = async () => {
  setLoading(true);
  setAuditError(null);
- const auditErrors: AuditError[] = [];
  setRepairLogs([]);
 
- try {
- let personnelList: PersonnelDoc[] = [];
- let vacationsList: VacationDoc[] = [];
- let plansList: PlanDoc[] = [];
-
- // Fetch muezzins
- try {
- const muezzinsSnap = await getDocs(collection(db, 'muezzins'));
- personnelList = muezzinsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PersonnelDoc));
- } catch (err) {
- console.error('Audit: Failed to fetch muezzins:', err);
- auditErrors.push({
- id: 'error-fetch-muezzins',
- category: 'personnel',
- severity: 'critical',
- message: 'Personel verileri veritabanından çekilemedi!',
- details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
- });
- }
-
- // Fetch vacations
- try {
- const izinlerSnap = await getDocs(collection(db, 'izinler'));
- vacationsList = izinlerSnap.docs.map(d => ({ id: d.id, ...d.data() } as VacationDoc));
- } catch (err) {
- console.error('Audit: Failed to fetch vacations:', err);
- auditErrors.push({
- id: 'error-fetch-vacations',
- category: 'vacation',
- severity: 'critical',
- message: 'İzin verileri veritabanından çekilemedi!',
- details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
- });
- }
-
- // Fetch plans
- try {
- const haftaPlanlariSnap = await getDocs(collection(db, 'haftaPlanlari'));
- plansList = haftaPlanlariSnap.docs.map(d => ({ id: d.id, ...d.data() } as PlanDoc));
- } catch (err) {
- console.error('Audit: Failed to fetch plans:', err);
- auditErrors.push({
- id: 'error-fetch-plans',
- category: 'schedule',
- severity: 'critical',
- message: 'Haftalık nöbet planları veritabanından çekilemedi!',
- details: `Hata: ${err instanceof Error ? err.message : String(err)}. Firebase Firestore kurallarında bu koleksiyonu listeleme izniniz olduğunu kontrol edin.`
- });
- }
-
- setStats({
- totalPersonnel: personnelList.length,
- totalVacations: vacationsList.length,
- totalPlans: plansList.length
- });
-
- // --- Category A: Personnel Audits ---
- personnelList.forEach(p => {
- if (!p.displayName || p.displayName.trim() === '') {
- auditErrors.push({
- id: `p-name-${p.id}`,
- category: 'personnel',
- severity: 'critical',
- message: `Personel ad/soyad alanı tanımsız veya boş!`,
- details: `ID: ${p.id} olan personelin görünen ismi boş.`,
- repairData: { type: 'personnel_field', docId: p.id, field: 'displayName', value: p.email ? p.email.split('@')[0] : `Muezzin_${p.id.slice(0, 4)}` }
- });
- }
- if (!p.role) {
- auditErrors.push({
- id: `p-role-${p.id}`,
- category: 'personnel',
- severity: 'warning',
- message: `Personel yetki rolü belirtilmemiş!`,
- details: `İsim: ${p.displayName || 'Bilinmeyen'} için varsayılan 'muezzin' rolü atanacak.`,
- repairData: { type: 'personnel_field', docId: p.id, field: 'role', value: 'muezzin' }
- });
- }
- if (p.aktif === undefined) {
- auditErrors.push({
- id: `p-aktif-${p.id}`,
- category: 'personnel',
- severity: 'warning',
- message: `Personel aktiflik statüsü tanımsız!`,
- details: `İsim: ${p.displayName || 'Bilinmeyen'} için varsayılan aktif durumu 'true' olarak set edilecek.`,
- repairData: { type: 'personnel_field', docId: p.id, field: 'aktif', value: true }
- });
- }
- });
-
- // --- Category B: Vacation Audits ---
- vacationsList.forEach(v => {
- if (v.baslangic && v.bitis && v.baslangic > v.bitis) {
- auditErrors.push({
- id: `v-date-${v.id}`,
- category: 'vacation',
- severity: 'critical',
- message: `Hatalı izin tarih aralığı!`,
- details: `İzin ID: ${v.id} için başlangıç tarihi (${v.baslangic}) bitiş tarihinden (${v.bitis}) sonra olamaz.`,
- repairData: { type: 'vacation_date', docId: v.id, start: v.bitis, end: v.bitis } // Auto swap or align
- });
- }
- 
- const ownerExists = personnelList.some(p => p.id === v.uid);
- if (!ownerExists && v.uid) {
- auditErrors.push({
- id: `v-owner-${v.id}`,
- category: 'vacation',
- severity: 'critical',
- message: `Yetkisiz / Silinmiş Personele ait Yetim İzin!`,
- details: `İzin ID: ${v.id} sistemde bulunmayan bir personele (UID: ${v.uid}) ait.`,
- repairData: { type: 'delete_doc', collectionName: 'izinler', docId: v.id }
- });
- }
- });
-
- // --- Category C: Schedule Audits ---
- plansList.forEach(plan => {
- const gunler = plan.gunler;
- if (gunler) {
- Object.keys(gunler).forEach(gun => {
- const gunlukVakitler = gunler[gun];
- if (gunlukVakitler) {
- (Object.keys(gunlukVakitler) as Vakit[]).forEach(vakit => {
- const asil = gunlukVakitler[vakit]?.asil;
- const yedek = gunlukVakitler[vakit]?.yedek;
-
- if (asil && asil !== 'Sistem') {
- const asilUser = personnelList.find(p => p.id === asil);
- if (!asilUser) {
- auditErrors.push({
- id: `s-asil-exist-${plan.id}-${gun}-${vakit}`,
- category: 'schedule',
- severity: 'critical',
- message: `Nöbette bulunamayan asil görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti asil görevlisi (UID: ${asil}) sistemde kayıtlı değil.`,
- repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
- });
- } else if (asilUser.aktif === false || asilUser.role !== 'muezzin') {
- auditErrors.push({
- id: `s-asil-duty-role-${plan.id}-${gun}-${vakit}`,
- category: 'schedule',
- severity: 'warning',
- message: `Nöbette pasif asil görevli tespit edildi!`,
- details: `${gun} ${vakit.toUpperCase()} vakti görevlisi ${asilUser.displayName} pasif statüde.`,
- repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
- });
- }
- }
-
- if (yedek && yedek !== 'Sistem') {
- const yedekUser = personnelList.find(p => p.id === yedek);
- if (!yedekUser) {
- auditErrors.push({
- id: `s-yedek-exist-${plan.id}-${gun}-${vakit}`,
- category: 'schedule',
- severity: 'critical',
- message: `Nöbette bulunamayan yedek görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti yedek görevlisi (UID: ${yedek}) sistemde kayıtlı değil.`,
- repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
- });
- } else if (yedekUser.aktif === false || yedekUser.role !== 'muezzin') {
- auditErrors.push({
- id: `s-yedek-duty-role-${plan.id}-${gun}-${vakit}`,
- category: 'schedule',
- severity: 'warning',
- message: `Nöbette pasif yedek görevli tespit edildi!`,
- details: `${gun} ${vakit.toUpperCase()} vakti yedeği ${yedekUser.displayName} pasif statüde.`,
- repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
- });
- }
- }
- });
- }
- });
- }
- });
-
- setErrors(auditErrors);
- } catch (err) {
- console.error('Audit run failed: ', err);
- setAuditError(err instanceof Error ? err.message : String(err));
- } finally {
+ const sonuc = await veriSagligiTara();
+ setStats(sonuc.stats);
+ setErrors(sonuc.errors);
+ setAuditError(sonuc.auditError);
  setLoading(false);
- }
  };
 
  const executeAutoRepair = async () => {
@@ -246,65 +41,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  };
 
  try {
- logMessage(`Veritabanı Onarım İşlemi Başlatıldı...`);
- logMessage(`Toplam Hata Sayısı: ${errors.length}`);
-
- // Temporary local object to collect schedule edits in memory to batch update documents properly
- const scheduleEdits: Record<string, HaftaPlan['gunler']> = {};
- // Tüm yazma/silme işlemleri önce burada toplanır, ardından Firestore'un
- // 500 işlemlik batch sınırını aşmamak için 400'lük parçalar halinde
- // commit edilir (bkz. SistemHatalariSekmesi.executeClearErrors) — tek
- // dev bir batch, 500+ hata olduğunda commit'in komple başarısız olup
- // hiçbir kaydın onarılmamasına yol açardı.
- const operations: Array<{ ref: ReturnType<typeof doc>; type: 'update' | 'delete'; data?: UpdateData<DocumentData> }> = [];
-
- for (const err of errors) {
- if (!err.repairData) continue;
-
- const data = err.repairData;
- if (data.type === 'personnel_field') {
- logMessage(`ONARILIYOR: Personel ${data.docId} için '${data.field}' alanı '${data.value}' yapılıyor.`);
- operations.push({ ref: doc(db, 'muezzins', data.docId), type: 'update', data: { [data.field]: data.value } });
- }
- else if (data.type === 'vacation_date') {
- logMessage(`ONARILIYOR: İzin ${data.docId} için tarih düzeltmesi uygulanıyor.`);
- operations.push({ ref: doc(db, 'izinler', data.docId), type: 'update', data: { baslangic: data.start, bitis: data.end } });
- }
- else if (data.type === 'delete_doc') {
- logMessage(`TEMİZLENİYOR: Yetim/Geçersiz belge (${data.collectionName}/${data.docId}) siliniyor.`);
- operations.push({ ref: doc(db, data.collectionName, data.docId), type: 'delete' });
- }
- else if (data.type === 'schedule_reset') {
- logMessage(`DÜZELTİLİYOR: Plan ${data.planId} -> ${data.gun} -> ${data.vakit} -> ${data.field} sistem olarak sıfırlanıyor.`);
- if (!scheduleEdits[data.planId]) {
- // Yalnızca ilgili plan dokümanı çekilir — tüm koleksiyonu indirmek
- // yerine tek bir getDoc yeterli.
- const planSnap = await getDoc(doc(db, 'haftaPlanlari', data.planId));
- scheduleEdits[data.planId] = planSnap.exists() ? JSON.parse(JSON.stringify(planSnap.data().gunler || {})) : {};
- }
- if (scheduleEdits[data.planId][data.gun] && scheduleEdits[data.planId][data.gun][data.vakit]) {
- scheduleEdits[data.planId][data.gun][data.vakit][data.field] = data.value;
- }
- }
- }
-
- // Add accumulated schedule batch updates
- for (const planId of Object.keys(scheduleEdits)) {
- operations.push({ ref: doc(db, 'haftaPlanlari', planId), type: 'update', data: { gunler: scheduleEdits[planId] } });
- }
-
- logMessage(`Değişiklikler Firebase Firestore veritabanına işleniyor...`);
- const CHUNK_SIZE = 400;
- for (let i = 0; i < operations.length; i += CHUNK_SIZE) {
- const batch = writeBatch(db);
- operations.slice(i, i + CHUNK_SIZE).forEach((op) => {
- if (op.type === 'update') batch.update(op.ref, op.data!);
- else batch.delete(op.ref);
- });
- await batch.commit();
- }
- logMessage(`Tebrikler! Tüm veri uyuşmazlıkları başarıyla giderildi ve onarıldı.`);
-
+ await veriHatalariniOnar(errors, logMessage);
  // Refresh audit list
  setTimeout(() => {
  runAudit();

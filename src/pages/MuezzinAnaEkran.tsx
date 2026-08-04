@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Megaphone, Calendar, ChevronRight, ChevronLeft, Compass, Navigation, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { addDays, format, startOfWeek } from 'date-fns';
 
 import { useDashboardLogic } from '../hooks/useDashboardLogic';
 import { HademelerListesi } from '../components/HademelerListesi';
@@ -15,11 +14,11 @@ import { GpsHelpModal } from '../components/GpsHelpModal';
 
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { KiblePusulasiModal } from '../components/KiblePusulasiModal';
-import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useGelenVekaletler } from '../hooks/useGelenVekaletler';
+import { useHaftalikGorevOzeti } from '../hooks/useHaftalikGorevOzeti';
 import { vekaletKabulEt, vekaletReddet } from '../services/vekaletServisi';
 import { VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../lib/dateUtils';
-import { Bildirim, Vakit, VekaletTalebi } from '../types';
+import { Vakit } from '../types';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
@@ -150,57 +149,11 @@ export default function MuezzinAnaEkran() {
     setViewingDuyuru(null);
   }, [viewingDuyuru, markAsRead, setViewingDuyuru]);
 
-  const [gelenVekaletler, setGelenVekaletler] = useState<(VekaletTalebi & { id: string })[]>([]);
-  const [haftalikOzet, setHaftalikOzet] = useState({ toplam: 0, bekleyen: 0, tamamlanan: 0 });
+  const gelenVekaletler = useGelenVekaletler(currentUser?.uid);
+  const haftalikOzet = useHaftalikGorevOzeti(currentUser?.uid, bugunDate);
   const siradakiGorev = React.useMemo(() => (
     gorevler.find(g => g.durum === 'bekliyor') || gorevler[0] || null
   ), [gorevler]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const q = query(
-      collection(db, 'vekalet_talepleri'),
-      where('aliciUid', '==', currentUser.uid),
-      where('durum', '==', 'beklemede')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as VekaletTalebi)
-      }));
-      setGelenVekaletler(data);
-    }, (err) => {
-      console.error('Vekalet talepleri dinlenemedi:', err);
-    });
-
-    return () => unsubscribe();
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const haftaBaslangic = startOfWeek(bugunDate, { weekStartsOn: 1 });
-    const haftaBitis = addDays(haftaBaslangic, 6);
-    const q = query(
-      collection(db, 'bildirimler'),
-      where('uid', '==', currentUser.uid),
-      where('tarih', '>=', format(haftaBaslangic, 'yyyy-MM-dd')),
-      where('tarih', '<=', format(haftaBitis, 'yyyy-MM-dd'))
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Bildirim);
-      setHaftalikOzet({
-        toplam: data.length,
-        bekleyen: data.filter(g => g.durum === 'bekliyor').length,
-        tamamlanan: data.filter(g => g.durum === 'onaylandi' || g.durum === 'okundu_varsayilan' || g.durum === 'sistem_atadi').length,
-      });
-    }, (err) => {
-      console.error('Haftalık görev özeti dinlenemedi:', err);
-    });
-
-    return () => unsubscribe();
-  }, [currentUser, bugunDate]);
 
  return (
  <div 

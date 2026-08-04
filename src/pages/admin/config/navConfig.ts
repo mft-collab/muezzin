@@ -3,8 +3,13 @@ import { LayoutDashboard, CalendarDays, Users, Settings, Home, Calendar, User, S
 
 type IconComponent = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
 
+/** Admin panelinin üst seviye sekmeleri — yeni bir sekme eklerken bu union'a eklemek,
+ * AdminPanel'in renderContent/pageTitle switch'lerindeki eksik case'leri derleme
+ * zamanında yakalamayı sağlar. */
+export type ActiveModule = 'dashboard' | 'planlama' | 'ekip' | 'ayarlar';
+
 export interface AdminNavItemConfig {
-  id: string;
+  id: ActiveModule;
   /** Kısa görünür etiket (SlimSidebar'da metin olarak gösterilir) */
   shortLabel: string;
   /** Tam betimleyici etiket (MobileDock'ta aria-label/title, SlimSidebar'da aria-label) */

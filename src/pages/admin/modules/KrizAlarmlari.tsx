@@ -1,7 +1,5 @@
 import React from 'react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
-import { db } from '../../../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
 import { AlertTriangle, ServerCrash, CalendarX, CheckCircle, RefreshCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -10,10 +8,9 @@ import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
 import { Vakit, AdminUyarisi } from '../../../types';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { kriziBaslat } from '../../../services/mazeretServisi';
-import { telemetryService } from '../../../services/telemetryService';
 
 export default function KrizAlarmlari() {
- const { alarmlar, loading } = useKrizAlarmlariStore();
+ const { alarmlar, loading, alarmCoz } = useKrizAlarmlariStore();
  const [showResolved, setShowResolved] = React.useState(false);
  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
  const [confirmData, setConfirmData] = React.useState<{ open: boolean, alarm: (AdminUyarisi & { id: string }) | null }>({ open: false, alarm: null });
@@ -26,16 +23,12 @@ export default function KrizAlarmlari() {
   const executeResolve = async () => {
     const alarm = confirmData.alarm;
     if (!alarm) return;
-    
+
     setResolvingId(alarm.id);
     setConfirmData({ open: false, alarm: null });
-    
+
     try {
-      await updateDoc(doc(db, 'adminUyarilari', alarm.id), { 
-        cozuldu: true,
-        cozulmeTarihi: new Date()
-      });
-      await telemetryService.logAudit('Nöbet Uyarısı Arşivleme', alarm.id, `Nöbet uyarısı yönetici tarafından çözüldü olarak işaretlendi ve arşivlendi. Mesaj: "${alarm.mesaj}"`);
+      await alarmCoz(alarm.id, 'Nöbet Uyarısı Arşivleme', `Nöbet uyarısı yönetici tarafından çözüldü olarak işaretlendi ve arşivlendi. Mesaj: "${alarm.mesaj}"`);
     } catch (err) {
       console.error("Vaka giderme hatası:", err);
     } finally {
@@ -49,11 +42,7 @@ export default function KrizAlarmlari() {
     try {
       const success = await kriziBaslat(alarm.tarih, alarm.vakit, []);
       if (success) {
-        await updateDoc(doc(db, 'adminUyarilari', alarm.id), { 
-          cozuldu: true,
-          cozulmeTarihi: new Date()
-        });
-        await telemetryService.logAudit('Otomatik Nöbet Onarımı', alarm.id, `Eşik dışı nöbet zinciri sistem tarafından otomatik onarıldı ve yedek görevli devraldı.`);
+        await alarmCoz(alarm.id, 'Otomatik Nöbet Onarımı', 'Eşik dışı nöbet zinciri sistem tarafından otomatik onarıldı ve yedek görevli devraldı.');
       }
     } catch (err) {
       console.error("Retry error:", err);
