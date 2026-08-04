@@ -4,7 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 
 type Theme = 'light' | 'dark';
 
-type ThemeToggleEvent = ReactMouseEvent | MouseEvent;
+export type ThemeToggleEvent = ReactMouseEvent | MouseEvent;
 
 interface ThemeState {
  theme: Theme;

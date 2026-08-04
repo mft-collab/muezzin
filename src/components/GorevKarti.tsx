@@ -527,8 +527,8 @@ export const GorevKarti = React.memo(({
                   );
                   showNotification('Vekalet Gönderildi', `${peer.displayName} Hocamıza teklif iletildi. Kabul ettiğinde görev devredilecektir.`, 'success');
                   setIsVekaletModalOpen(false);
-                } catch (err: any) {
-                  showNotification('Hata', err.message || 'Vekalet teklifi gönderilemedi.', 'error');
+                } catch (err) {
+                  showNotification('Hata', err instanceof Error ? err.message : 'Vekalet teklifi gönderilemedi.', 'error');
                 } finally {
                   setIsSendingVekalet(false);
                 }

@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useMuezzinStore } from '../../store/useMuezzinStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { useThemeStore } from '../../store/useThemeStore';
+import { useNotificationStore } from '../../store/useNotificationStore';
 
 import { useEzanVakitleri } from '../../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../../hooks/useMevcutVakit';
@@ -184,6 +185,7 @@ export default function AdminPanel() {
  }, [activeTab]);
 
  const { theme, toggleTheme } = useThemeStore();
+ const { showNotification } = useNotificationStore();
 
  // Rules-of-Hooks: bu erken dönüş TÜM hook çağrılarından (useState/useEffect/
  // useMemo/useThemeStore) SONRA gelmelidir. isAdmin bir oturum sırasında
@@ -196,8 +198,12 @@ export default function AdminPanel() {
  const requestLogout = () => setLogoutConfirmOpen(true);
  const confirmLogout = async () => {
  setLogoutConfirmOpen(false);
+ try {
  await auth.signOut();
  window.location.reload();
+ } catch {
+ showNotification('Çıkış Başarısız', 'Oturum kapatılırken bir hata oluştu. Lütfen tekrar deneyin.', 'error');
+ }
  };
 
  const navigateApp = (path: string) => {

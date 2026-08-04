@@ -264,7 +264,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button
               onClick={dismissInstallPrompt}
               aria-label="Kapat"
-              className="flex items-center justify-center w-9 h-9 bg-[var(--text-primary)] text-[var(--app-bg)] hover:opacity-90 rounded-full shadow-[var(--spatial-shadow)] transition-all duration-200 touch-manipulation select-none"
+              className="flex items-center justify-center w-11 h-11 bg-[var(--text-primary)] text-[var(--app-bg)] hover:opacity-90 rounded-full shadow-[var(--spatial-shadow)] transition-all duration-200 touch-manipulation select-none"
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <X size={16} strokeWidth={2.5} />

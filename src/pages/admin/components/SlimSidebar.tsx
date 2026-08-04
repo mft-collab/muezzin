@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { LogOut, Sun, Moon } from 'lucide-react';
 import { Logo } from '../../../components/ui/Logo';
 import { getAdminNavItems, APP_LINKS, type ActiveModule } from '../config/navConfig';
+import type { ThemeToggleEvent } from '../../../store/useThemeStore';
 
 interface SlimSidebarProps {
  activeTab: ActiveModule;
@@ -12,7 +13,7 @@ interface SlimSidebarProps {
  cozulmamisSayisi: number;
  onPrefetch?: (tab: ActiveModule) => void;
  theme: 'dark' | 'light';
- toggleTheme: (event?: any) => void;
+ toggleTheme: (event?: ThemeToggleEvent) => void;
  onNavigateApp: (path: string) => void;
 }
 

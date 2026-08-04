@@ -11,7 +11,8 @@ import {
  AlertCircle,
  UserPlus,
  CheckCircle2,
- RotateCcw
+ RotateCcw,
+ X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GUNLER_TR } from '../../../lib/dateUtils';
@@ -78,6 +79,7 @@ export default function MuezzinYonetimi() {
  };
 
  const toggleAktif = async (m: Muezzin & { id: string }) => {
+ setErrorStatus(null);
  try {
  const { planRefreshed } = await personelAktiflikDegistir(m, muezzinler);
  warnIfPlanNotRefreshed(planRefreshed);
@@ -87,6 +89,7 @@ export default function MuezzinYonetimi() {
  };
 
  const handleApprove = async (m: Muezzin & { id: string }) => {
+ setErrorStatus(null);
  try {
  const { planRefreshed } = await personelOnayla(m);
  warnIfPlanNotRefreshed(planRefreshed);
@@ -96,6 +99,7 @@ export default function MuezzinYonetimi() {
  };
 
  const restoreUser = async (m: Muezzin & { id: string }) => {
+ setErrorStatus(null);
  try {
  const { planRefreshed } = await personelGeriYukle(m);
  warnIfPlanNotRefreshed(planRefreshed);
@@ -105,6 +109,7 @@ export default function MuezzinYonetimi() {
  };
 
  const archiveUser = async (m: Muezzin & { id: string }) => {
+ setErrorStatus(null);
  try {
  const { planRefreshed } = await personelArsivle(m, muezzinler);
  warnIfPlanNotRefreshed(planRefreshed);
@@ -508,6 +513,14 @@ export default function MuezzinYonetimi() {
     >
       <AlertCircle size={20} className="shrink-0" />
       <p className="break-all whitespace-normal flex-1 font-mono text-2xs tracking-normal lowercase select-all">{errorStatus}</p>
+      <button
+        type="button"
+        onClick={() => setErrorStatus(null)}
+        aria-label="Uyarıyı kapat"
+        className="shrink-0 p-1 rounded-lg hover:bg-rose-500/20 transition-colors cursor-pointer"
+      >
+        <X size={16} />
+      </button>
     </motion.div>
   )}
  </AnimatePresence>
