@@ -61,6 +61,13 @@ export function usePWAInstall() {
  }
  };
 
- return { isInstallable, isInstalled, isIosPrompt, install, dismissIosPrompt: () => setIsIosPrompt(false) };
+ return {
+ isInstallable,
+ isInstalled,
+ isIosPrompt,
+ install,
+ dismissIosPrompt: () => setIsIosPrompt(false),
+ dismissInstallPrompt: () => setIsInstallable(false),
+ };
 }
 

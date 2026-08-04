@@ -16,6 +16,8 @@ import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { KiblePusulasiModal } from '../components/KiblePusulasiModal';
 import { useGelenVekaletler } from '../hooks/useGelenVekaletler';
 import { useHaftalikGorevOzeti } from '../hooks/useHaftalikGorevOzeti';
+import { useAktifSistemUyarisi } from '../hooks/useAktifSistemUyarisi';
+import { SistemUyarisiBanner } from '../components/SistemUyarisiBanner';
 import { vekaletKabulEt, vekaletReddet } from '../services/vekaletServisi';
 import { VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../lib/dateUtils';
 import { Vakit } from '../types';
@@ -151,6 +153,7 @@ export default function MuezzinAnaEkran() {
 
   const gelenVekaletler = useGelenVekaletler(currentUser?.uid);
   const haftalikOzet = useHaftalikGorevOzeti(currentUser?.uid, bugunDate);
+  const aktifSistemUyarisi = useAktifSistemUyarisi(currentUser?.uid);
   const siradakiGorev = React.useMemo(() => (
     gorevler.find(g => g.durum === 'bekliyor') || gorevler[0] || null
   ), [gorevler]);
@@ -232,6 +235,8 @@ export default function MuezzinAnaEkran() {
   <ChevronRight size={18} className="text-[var(--text-secondary)]/45 shrink-0" />
   </motion.button>
   )}
+
+  <SistemUyarisiBanner uyari={aktifSistemUyarisi} />
 
   {/* Hızlı Erişim Kontrol Paneli */}
   <motion.div 

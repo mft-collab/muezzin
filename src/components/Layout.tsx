@@ -140,7 +140,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
  const location = useLocation();
  const isAdmin = useAuthStore(state => state.isAdmin);
  useFcmToken();
- const { isInstallable, isIosPrompt, install, dismissIosPrompt } = usePWAInstall();
+ const { isInstallable, isIosPrompt, install, dismissIosPrompt, dismissInstallPrompt } = usePWAInstall();
 
  // Yüzen dock `position: fixed` olduğu için sayfanın ortasında kaydırılan
  // kartların (ör. "SIRADAKİ GÖREVİM") üzerine biniyordu — sadece sayfa sonuna
@@ -251,7 +251,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
             transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-1/2 -translate-x-1/2 z-[99] pointer-events-auto"
+            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-1/2 -translate-x-1/2 z-[99] pointer-events-auto flex items-center gap-2"
           >
             <button
               onClick={install}
@@ -260,6 +260,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Download size={16} strokeWidth={2.5} />
               Uygulamayı Yükle
+            </button>
+            <button
+              onClick={dismissInstallPrompt}
+              aria-label="Kapat"
+              className="flex items-center justify-center w-9 h-9 bg-[var(--text-primary)] text-[var(--app-bg)] hover:opacity-90 rounded-full shadow-[var(--spatial-shadow)] transition-all duration-200 touch-manipulation select-none"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <X size={16} strokeWidth={2.5} />
             </button>
           </motion.div>
         )}

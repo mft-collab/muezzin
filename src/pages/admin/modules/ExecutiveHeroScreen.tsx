@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck } from 'lucide-react';
+import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck, Megaphone } from 'lucide-react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
 import { useAdminIzinlerStore } from '../../../store/useAdminIzinlerStore';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
@@ -296,6 +296,28 @@ export default function ExecutiveHeroScreen({
   <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
   {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
   </p>
+  </div>
+ </motion.div>
+
+ <motion.div
+ whileHover={{ y: -4, scale: 1.02 }}
+ whileTap={{ scale: 0.98 }}
+ transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+ onClick={() => onOpenDrawer('duyurular')}
+ className="flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ >
+ <div className="kinetic-sheen" />
+ <div className="flex items-center justify-between">
+ <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-lg flex items-center justify-center">
+ <Megaphone size={18} strokeWidth={1.5} />
+ </div>
+ <div className="text-right">
+ <ChevronRight size={18} className="text-[var(--text-primary)]/25 ml-auto" />
+ <span className="authority-title !text-2xs opacity-40 mt-2 font-medium tracking-wide">DUYURULAR</span>
+ </div>
+ </div>
+  <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
+  <p className="text-2xs font-bold text-emerald-500/60 uppercase tracking-wide">Duyuru panelini yönet</p>
   </div>
  </motion.div>
  </div>

@@ -186,7 +186,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           
           <button 
             type="button"
-            className="px-6 py-[18px] bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
+            className="px-6 py-5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
           >
             <Calendar size={13} strokeWidth={2} />
             <span>TALEP OLUŞTUR</span>
@@ -219,7 +219,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                   value={baslangic}
                   onChange={e => setBaslangic(e.target.value)}
                   required
-                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-[18px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
+                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
                 />
               </div>
               
@@ -231,7 +231,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                   value={bitis}
                   onChange={e => setBitis(e.target.value)}
                   required
-                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-[18px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
+                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
                 />
               </div>
             </div>

@@ -66,7 +66,13 @@ export default function AdminPanel() {
  }
  };
 
- const [drawerContent, setDrawerContent] = useState<'alarmlar' | 'duyurular' | null>(null);
+ // Soğuk sayfa yüklemesinde de (ör. paylaşılan bir ?sub= linkine doğrudan
+ // girildiğinde) drawer'ın açık başlaması için ilk değer URL'den türetilir —
+ // aşağıdaki efekt yalnızca SONRAKİ ?sub= değişimlerini yakalar.
+ const [drawerContent, setDrawerContent] = useState<'alarmlar' | 'duyurular' | null>(() => {
+ const initial = searchParams.get('sub');
+ return initial === 'alarmlar' || initial === 'duyurular' ? initial : null;
+ });
  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
  const navigate = useNavigate();
  const isAdmin = useAuthStore(s => s.isAdmin);

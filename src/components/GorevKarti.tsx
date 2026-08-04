@@ -548,7 +548,7 @@ export const GorevKarti = React.memo(({
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={() => setIsVekaletModalOpen(false)}
-          className="px-8 py-[18px] text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
+          className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] opacity-40 hover:opacity-100 transition-all border border-[var(--text-primary)]/5 rounded-2xl cursor-pointer bg-transparent"
         >
           {GOREV_LABELS.vazgec}
         </motion.button>

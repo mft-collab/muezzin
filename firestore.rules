@@ -336,7 +336,12 @@ service cloud.firestore {
     // ENTITY: Admin Uyarilari
     // ---------------------------------------------------------
     match /adminUyarilari/{docId} {
-      allow read, write: if isAdmin();
+      // Admin her belgeyi görür/yazar. Oturum açmış müezzinler ise yalnızca
+      // ÇÖZÜLMEMİŞ uyarıları görebilir (bkz. tasarım denetimi: saha müezzini
+      // sistem arızasından tamamen habersiz kalıyordu) — çözüm notları ve
+      // geçmiş kayıtlar admin'e özel kalır.
+      allow read: if isAdmin() || (isSignedIn() && existing().cozuldu == false);
+      allow write: if isAdmin();
     }
 
     // ---------------------------------------------------------
