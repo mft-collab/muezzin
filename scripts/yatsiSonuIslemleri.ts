@@ -49,6 +49,10 @@ async function main() {
 
   // Herkesin o günkü yükünü bulalım
   const asilKredi: Record<string, number> = {};
+  // Cuma vakitlerinde asil olunan gün sayısı — aylikVakitSayisi'ndan ayrı
+  // tutulur ki Cuma adaleti ay ilerledikçe aylık toplam tarafından
+  // bastırılmasın (bkz. src/utils/tieBreaker.ts, algoritma denetimi).
+  const cumaKredi: Record<string, number> = {};
 
   bildirimler.docs.forEach(doc => {
     const data = doc.data();
@@ -58,9 +62,11 @@ async function main() {
         // Asil kişi mazeret bildirmemiş ve kendi de onaylamamış: görevi yapmış sayılır
         batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
+        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       } else if (data.durum === 'onaylandi') {
         // Kendi "Okudum" onayını gün içinde vermiş
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
+        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       }
       // durum === 'reddedildi' (mazeret bildirildi) → kredi yok
     } else if (data.tip === 'gorev_cagrisi') {
@@ -82,9 +88,13 @@ async function main() {
     const muezzinlerDocs = await db.collection('muezzins').get();
     muezzinlerDocs.docs.forEach(mDoc => {
       if (asilKredi[mDoc.id]) {
-        batch.update(mDoc.ref, { 
-          aylikVakitSayisi: (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id] 
-        });
+        const updates: Record<string, number> = {
+          aylikVakitSayisi: (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id]
+        };
+        if (cumaKredi[mDoc.id]) {
+          updates.aylikCumaSayisi = (mDoc.data().aylikCumaSayisi || 0) + cumaKredi[mDoc.id];
+        }
+        batch.update(mDoc.ref, updates);
       }
     });
   }
@@ -233,7 +243,7 @@ async function main() {
   if (yarın.getDate() === 1) {
     const muezzins = await db.collection('muezzins').get();
     const resetBatch = db.batch();
-    muezzins.docs.forEach(doc => resetBatch.update(doc.ref, { aylikVakitSayisi: 0 }));
+    muezzins.docs.forEach(doc => resetBatch.update(doc.ref, { aylikVakitSayisi: 0, aylikCumaSayisi: 0 }));
     await resetBatch.commit();
     console.log("Skorlar sıfırlandı.");
   }

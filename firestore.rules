@@ -38,7 +38,7 @@ service cloud.firestore {
       return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
              data.keys().hasOnly([
                'displayName', 'aktif', 'role', 'email', 'photoURL', 'fcmToken', 'fcmTokens',
-               'aylikVakitSayisi', 'haftalikIzinGunu', 'notificationSettings',
+               'aylikVakitSayisi', 'aylikCumaSayisi', 'haftalikIzinGunu', 'notificationSettings',
                'onayBekliyor', 'kayitTarihi', 'arsivlendi', 'arsivTarihi'
              ]) &&
              data.displayName is string && data.displayName.size() <= 100 &&
@@ -49,6 +49,7 @@ service cloud.firestore {
              (!data.keys().hasAny(['fcmToken']) || data.fcmToken is string || data.fcmToken == null) &&
              (!data.keys().hasAny(['fcmTokens']) || isValidFcmTokens(data.fcmTokens)) &&
              (!data.keys().hasAny(['aylikVakitSayisi']) || (data.aylikVakitSayisi is int && data.aylikVakitSayisi >= 0)) &&
+             (!data.keys().hasAny(['aylikCumaSayisi']) || (data.aylikCumaSayisi is int && data.aylikCumaSayisi >= 0)) &&
              (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 0 && data.haftalikIzinGunu <= 7)) &&
              (!data.keys().hasAny(['notificationSettings']) || isValidNotificationSettings(data.notificationSettings)) &&
              (!data.keys().hasAny(['onayBekliyor']) || data.onayBekliyor is bool) &&
@@ -176,6 +177,21 @@ service cloud.firestore {
                  incoming().retSebebi.size() > 0 &&
                  incoming().retSebebi.size() <= 500 &&
                  incoming().devirSonucu in ['yedek_atandi', 'alarm_bekliyor']
+               ) ||
+               (
+                 // Yedek görevli kendi mazeretini bildiriyor — devralacak bir
+                 // "yedeğin yedeği" olmadığından doğrudan admin alarmına
+                 // düşer (bkz. src/services/mazeretServisi.ts, scripts/
+                 // mazeretDevirleriniIsle.ts).
+                 existing().durum == 'bekliyor' &&
+                 existing().tip == 'yedek' &&
+                 existing().cumaMi != true &&
+                 incoming().durum == 'reddedildi' &&
+                 incoming().pendingAck == false &&
+                 incoming().retSebebi is string &&
+                 incoming().retSebebi.size() > 0 &&
+                 incoming().retSebebi.size() <= 500 &&
+                 incoming().devirSonucu == 'alarm_bekliyor'
                )
              );
     }
@@ -256,6 +272,10 @@ service cloud.firestore {
              bildirim.vakit == incoming().vakit &&
              bildirim.tip == incoming().tip &&
              bildirim.durum == 'bekliyor' &&
+             // Cuma gorevleri vekalet ile de devredilemez — aksi halde
+             // mazeret icin uygulanan Cuma kisitlamasi bu yoldan atlatilabilir
+             // (bkz. algoritma denetimi).
+             bildirim.cumaMi != true &&
              alici.role == 'muezzin' &&
              alici.aktif == true;
     }
@@ -279,6 +299,7 @@ service cloud.firestore {
       let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
       let changed = incoming().diff(existing()).affectedKeys();
       return existing().durum == 'bekliyor' &&
+             existing().cumaMi != true &&
              incoming().durum == existing().durum &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&

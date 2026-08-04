@@ -21,10 +21,19 @@ export async function vekaletTeklifEt(
   saat: string,
   tip: 'asil' | 'yedek' | 'gorev_cagrisi',
   aliciUid: string,
-  aliciIsim: string
+  aliciIsim: string,
+  cumaMi?: boolean
 ): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Oturum açmış bir kullanıcı bulunamadı.');
+
+  // Cuma görevleri vekalet ile de devredilemez — mazeret için uygulanan aynı
+  // kısıtlama (bkz. src/lib/mazeretKurallari.ts, firestore.rules
+  // `isValidVekaletCreate`). Asıl uygulama sunucu tarafındadır; bu yalnızca
+  // gereksiz bir yazım denemesini önleyen erken bir kullanıcı geri bildirimi.
+  if (cumaMi === true) {
+    throw new Error('Cuma günleri için görev devri (vekalet) kullanılamaz.');
+  }
 
   const talepId = buildVekaletTalebiId(haftaId, tarih, vakit, tip, aliciUid);
 

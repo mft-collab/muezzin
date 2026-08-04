@@ -1,14 +1,15 @@
-import { collection, query, where, getDocs, getDoc, doc, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
-import { haftalikPlanUret, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
-import { isFriday } from '../lib/dateUtils';
+import { haftalikPlanUret, tekKisiliGunleriBul, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { isFriday, getOncekiHafta } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
 const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi'];
 
-type BildirimDoc = QueryDocumentSnapshot<DocumentData>;
+type BildirimQueryDoc = QueryDocumentSnapshot<DocumentData>;
+type BildirimDoc = BildirimQueryDoc | DocumentSnapshot<DocumentData>;
 type GunPlanMap = Record<string, Record<Vakit, VakitAtama>>;
 
 function haftaGunleri(haftaId: string) {
@@ -26,20 +27,20 @@ function haftaGunleri(haftaId: string) {
  });
 }
 
-function bildirimleriSlotlaraAyir(docs: BildirimDoc[]) {
+function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
  return docs.reduce((acc, bildirimDoc) => {
  const data = bildirimDoc.data();
  const key = `${data.tarih}_${data.vakit}`;
  if (!acc[key]) acc[key] = [];
  acc[key].push(bildirimDoc);
  return acc;
- }, {} as Record<string, BildirimDoc[]>);
+ }, {} as Record<string, BildirimQueryDoc[]>);
 }
 
 function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
  return slotBildirimleri.some((bildirimDoc) => {
  const data = bildirimDoc.data();
- return KORUNAN_DURUMLAR.includes(data.durum) || data.tip === 'gorev_cagrisi';
+ return !!data && (KORUNAN_DURUMLAR.includes(data.durum) || data.tip === 'gorev_cagrisi');
  });
 }
 
@@ -63,51 +64,57 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
   const { haftaId, tarih, vakit, asilUid, yedekUid, asilAdi, yedekAdi } = params;
   const path = `haftaPlanlari/${haftaId}`;
   try {
-    const gunBildirimleriSnap = await getDocs(query(
-      collection(db, 'bildirimler'),
-      where('haftaId', '==', haftaId),
-      where('tarih', '==', tarih)
-    ));
-
-    const selectedVakitBildirimleri = gunBildirimleriSnap.docs.filter(d => d.data().vakit === vakit);
-    if (korumaliSlotMu(selectedVakitBildirimleri)) {
-      return 'protected';
-    }
-
-    const batch = writeBatch(db);
-
-    selectedVakitBildirimleri.forEach((bildirimDoc) => {
-      batch.delete(bildirimDoc.ref);
-    });
-
-    batch.update(doc(db, 'haftaPlanlari', haftaId), {
-      [`gunler.${tarih}.${vakit}`]: { asil: asilUid, yedek: yedekUid }
-    });
+    // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bu sayede
+    // slotu bulmak için bir sorgu yerine iki bilinen belge referansı okunabilir.
+    // Bu da "koru mu?" kontrolünü ve yazımı TEK bir transaction'a almayı
+    // mümkün kılar (bkz. algoritma denetimi — önceki sürüm oku-sonra-yaz
+    // arasında bir yarış koşuluna açıktı: eş zamanlı bir mazeret/vekalet kabulü
+    // bu okumadan sonra gerçekleşirse sessizce ezilebiliyordu).
+    const asilRef = doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_asil`);
+    const yedekRef = doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`);
+    const planRef = doc(db, 'haftaPlanlari', haftaId);
 
     const [gY, gM, gD] = tarih.split('-').map(Number);
     const cumaMi = isFriday(new Date(gY, gM - 1, gD));
 
-    // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
-    // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
-    if (asilUid && asilUid !== 'Sistem') {
-      batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_asil`), {
-        haftaId, tarih, vakit, uid: asilUid, tip: 'asil',
-        durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-        sonGuncelleme: Timestamp.now()
-      });
-    }
+    const sonuc = await runTransaction(db, async (transaction) => {
+      const asilSnap = await transaction.get(asilRef);
+      const yedekSnap = await transaction.get(yedekRef);
 
-    if (yedekUid && yedekUid !== 'Sistem') {
-      batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`), {
-        haftaId, tarih, vakit, uid: yedekUid, tip: 'yedek',
-        durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-        sonGuncelleme: Timestamp.now()
-      });
-    }
+      if (korumaliSlotMu([asilSnap, yedekSnap])) {
+        return 'protected' as const;
+      }
 
-    await batch.commit();
-    await telemetryService.logAudit('Manuel Görev Atama', tarih, `${vakit.toUpperCase()} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
-    return 'updated';
+      if (asilSnap.exists()) transaction.delete(asilRef);
+      if (yedekSnap.exists()) transaction.delete(yedekRef);
+
+      transaction.update(planRef, {
+        [`gunler.${tarih}.${vakit}`]: { asil: asilUid, yedek: yedekUid }
+      });
+
+      if (asilUid && asilUid !== 'Sistem') {
+        transaction.set(asilRef, {
+          haftaId, tarih, vakit, uid: asilUid, tip: 'asil',
+          durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
+          sonGuncelleme: Timestamp.now()
+        });
+      }
+
+      if (yedekUid && yedekUid !== 'Sistem') {
+        transaction.set(yedekRef, {
+          haftaId, tarih, vakit, uid: yedekUid, tip: 'yedek',
+          durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
+          sonGuncelleme: Timestamp.now()
+        });
+      }
+
+      return 'updated' as const;
+    });
+
+    if (sonuc === 'updated') {
+      await telemetryService.logAudit('Manuel Görev Atama', tarih, `${vakit.toUpperCase()} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
+    }
+    return sonuc;
   } catch (err) {
     throw handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -131,12 +138,28 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  const haftaBitisStr = gunler[6];
  const startStr = haftaId.substring(1);
 
- const batch = writeBatch(db);
  const planRef = doc(db, 'haftaPlanlari', haftaId);
  const mevcutPlanSnap = await getDoc(planRef);
  const mevcutGunler = mevcutPlanSnap.exists()
  ? (mevcutPlanSnap.data().gunler || {}) as Partial<GunPlanMap>
  : {};
+ // İyimser eşzamanlılık denetimi (bkz. algoritma denetimi) — commit'ten hemen
+ // önce plan belgesinin bu okumadan beri değişmediği doğrulanır.
+ const okunanSonGuncelleme = mevcutPlanSnap.exists() ? mevcutPlanSnap.data().sonGuncelleme?.toMillis() ?? null : null;
+
+ // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
+ // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için.
+ const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
+ const oncekiPlanSnap = await getDoc(doc(db, 'haftaPlanlari', oncekiHaftaId));
+ const oncekiHaftaSonEkibi: string[] = [];
+ if (oncekiPlanSnap.exists()) {
+ const sonVakitAtama = (oncekiPlanSnap.data().gunler || {})[oncekiSonGun]?.yatsi;
+ if (sonVakitAtama) {
+ [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
+ if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
+ });
+ }
+ }
 
  const eskiBildirimler = await getDocs(query(collection(db, 'bildirimler'), where('haftaId', '==', haftaId)));
  const bildirimlerBySlot = bildirimleriSlotlaraAyir(eskiBildirimler.docs);
@@ -150,13 +173,26 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  if (!korumaliSlotMu(slotBildirimleri)) return null;
 
  const mevcutAtama = mevcutGunler[gun]?.[vakit];
- const asilBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data().tip === 'asil');
- const yedekBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data().tip === 'yedek');
+ const asilBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'asil');
+ const yedekBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'yedek');
  return {
- asil: mevcutAtama?.asil || asilBildirim?.data().uid || 'Sistem',
- yedek: mevcutAtama?.yedek || yedekBildirim?.data().uid || 'Sistem'
+ asil: mevcutAtama?.asil || asilBildirim?.data()?.uid || 'Sistem',
+ yedek: mevcutAtama?.yedek || yedekBildirim?.data()?.uid || 'Sistem'
  };
- });
+ }, oncekiHaftaSonEkibi);
+
+ // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak.
+ const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
+
+ // Commit'ten hemen önce eşzamanlılık kontrolü yapılıp SONRA batch kurulur —
+ // aradaki pencere olabildiğince küçük tutulur.
+ const tazeKontrolSnap = await getDoc(planRef);
+ const tazeSonGuncelleme = tazeKontrolSnap.exists() ? tazeKontrolSnap.data().sonGuncelleme?.toMillis() ?? null : null;
+ if (tazeSonGuncelleme !== okunanSonGuncelleme) {
+ throw new Error('Plan bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
+ }
+
+ const batch = writeBatch(db);
 
  for (const gun of gunler) {
  const [gY, gM, gD] = gun.split('-').map(Number);
@@ -203,6 +239,16 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  sonGuncelleme: Timestamp.now(),
  gunler: gunPlan
  }, { merge: true });
+
+ if (tekKisiliGunler.length > 0) {
+ batch.set(doc(collection(db, 'adminUyarilari')), {
+ tip: 'zincirTukendi',
+ mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
+ tarih: tekKisiliGunler[0],
+ cozuldu: false,
+ olusturmaTarihi: Timestamp.now()
+ });
+ }
 
  await batch.commit();
  } catch (err) {

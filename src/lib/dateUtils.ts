@@ -1,4 +1,4 @@
-import { startOfWeek, format, parseISO } from 'date-fns';
+import { startOfWeek, format, parseISO, subDays, subWeeks } from 'date-fns';
 import { Vakit } from '../types';
 
 /**
@@ -107,6 +107,23 @@ export function getHaftaIdFromDate(dateStr: string): string {
  const date = parseISO(dateStr);
  const pazartesi = startOfWeek(date, { weekStartsOn: 1 });
  return `W${format(pazartesi, 'yyyy-MM-dd')}`;
+}
+
+/**
+ * Verilen haftaId'nin (W-YYYY-MM-DD, Pazartesi başlangıçlı) bir önceki
+ * haftasının haftaId'sini ve o haftanın son gününün (Pazar) tarihini döner.
+ * Haftalık plan üretiminde dinlenme kuralının (SOS) hafta sınırında
+ * sıfırlanmasını önlemek için kullanılır (bkz. algoritma denetimi,
+ * src/lib/planlamaCekirdegi.ts `haftalikPlanUret`'in `oncekiHaftaSonEkibi` parametresi).
+ */
+export function getOncekiHafta(haftaId: string): { haftaId: string; sonGun: string } {
+ const buHaftaninPazartesi = parseISO(haftaId.substring(1));
+ const oncekiPazartesi = subWeeks(buHaftaninPazartesi, 1);
+ const oncekiPazar = subDays(buHaftaninPazartesi, 1);
+ return {
+ haftaId: `W${format(oncekiPazartesi, 'yyyy-MM-dd')}`,
+ sonGun: format(oncekiPazar, 'yyyy-MM-dd')
+ };
 }
 
 export function calculateLastThirdOfNight(aksam: Date, imsak: Date): Date {

@@ -11,6 +11,7 @@ import {
   runTransaction,
   serverTimestamp,
   Timestamp,
+  updateDoc,
   where
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -18,6 +19,7 @@ import { Bildirim } from '../types';
 import { getHaftaIdFromDate, getTurkeyDateString, getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
 import { mazeretKapaliMi } from '../lib/mazeretKurallari';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { telemetryService } from './telemetryService';
 
 async function getEzanVakti(tarih: string, vakit: string): Promise<Date | null> {
  const settingsDoc = await getDoc(doc(db, 'settings', 'system'));
@@ -92,8 +94,8 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
     if (mevcutBildirim.uid !== currentUid) {
       throw new Error('Sadece kendi göreviniz için mazeret bildirebilirsiniz.');
     }
-    if (mevcutBildirim.tip !== 'asil') {
-      throw new Error('Mazeret bildirimi sadece asil görevli tarafından yapılabilir.');
+    if (mevcutBildirim.tip !== 'asil' && mevcutBildirim.tip !== 'yedek') {
+      throw new Error('Mazeret bildirimi sadece asil veya yedek görevli tarafından yapılabilir.');
     }
     if (mevcutBildirim.durum !== 'bekliyor') {
       throw new Error('Sadece bekleyen görevler için mazeret bildirilebilir.');
@@ -116,9 +118,40 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
       ? await getEzanVakti(getTurkeyDateString(new Date(gY, gM - 1, gD - 1)), 'yatsi')
       : null;
 
+    // Referans saat (bugünün vakti ya da sabah için önceki günün yatsısı)
+    // bulunamazsa mazeretKapaliMi süre kısıtlamasını uygulayamaz (fail-open —
+    // bkz. algoritma denetimi). Bu, kullanıcıyı veri eksikliği yüzünden
+    // cezalandırmamak için bilinçli bir tercih; ama sessizce geçmemesi için
+    // burada görünürlük bırakılıyor.
+    const referansSaatYok = vakit === 'sabah' ? !oncekiGunYatsiSaati : !vakitSaati;
+    if (referansSaatYok) {
+      console.warn(`[mazeret] ${tarih} ${vakit} için ezan/yatsı saati bulunamadı — süre kısıtlaması bu talepte uygulanamadı.`);
+      telemetryService.logEvent({
+        eventType: 'performance',
+        eventName: 'MAZERET_SURE_KISITLAMASI_ATLANDI',
+        metadata: { tarih, vakit, bildirimId }
+      });
+    }
+
     const mazeretDurumu = mazeretKapaliMi({ gunTarihi, vakit, vakitSaati, oncekiGunYatsiSaati }, getTurkeyNow());
     if (mazeretDurumu.kapali) {
       throw new Error(mazeretDurumu.sebep ?? 'Mazeret bildirimi bu görev için kapalı.');
+    }
+
+    if (mevcutBildirim.tip === 'yedek') {
+      // Yedek görevli mazeret bildiriyor — devralacak bir "yedeğin yedeği"
+      // yok, bu yüzden asil'deki gibi bir terfi transaction'ı gerekmiyor.
+      // Doğrudan kendi belgesini reddedildi yapar; admin uyarısı (bu vakit
+      // artık yedeksiz kaldı) scripts/mazeretDevirleriniIsle.ts tarafından
+      // devirSonucu:'alarm_bekliyor' üzerinden işlenir.
+      await updateDoc(bildirimRef, {
+        durum: 'reddedildi',
+        retSebebi,
+        pendingAck: false,
+        devirSonucu: 'alarm_bekliyor',
+        sonGuncelleme: serverTimestamp()
+      });
+      return;
     }
 
     const yedekRef = doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`);

@@ -4,6 +4,9 @@ import { isFriday as isFridayTarih } from './dateUtils';
 
 export const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 export const SISTEM_ATAMA: VakitAtama = { asil: 'Sistem', yedek: 'Sistem' };
+/** Yedek görevi, rotasyon adaletinde asil'in yarısı kadar yük sayılır — yedek
+ * çoğu zaman fiilen görev yapmaz, yalnızca hazır bulunur (bkz. algoritma denetimi). */
+export const YEDEK_YUK_CARPANI = 0.5;
 
 export interface OnayliIzin {
   uid: string;
@@ -41,15 +44,21 @@ export function haftalikPlanUret(
   gunler: string[],
   muezzinler: MuezzinAday[],
   onayliIzinler: OnayliIzin[],
-  korunmusAtama?: KorunmusAtamaResolver
+  korunmusAtama?: KorunmusAtamaResolver,
+  /** Bir önceki haftanın son vaktinin (Pazar yatsı) ekibi — hafta sınırında
+   * dinlenme kuralının sıfırlanmasını önlemek için (bkz. algoritma denetimi,
+   * çağıran taraf src/lib/dateUtils.ts `getOncekiHafta` ile hesaplar). */
+  oncekiHaftaSonEkibi: string[] = []
 ): Record<string, Record<Vakit, VakitAtama>> {
   const buHaftakiYukler: Record<string, number> = {};
+  const aylikCumaSayilari: Record<string, number> = {};
   muezzinler.forEach((m) => {
     buHaftakiYukler[m.id] = 0;
+    aylikCumaSayilari[m.id] = m.aylikCumaSayisi || 0;
   });
 
   const gunPlan: Record<string, Record<Vakit, VakitAtama>> = {};
-  let oncekiVakitUidler: string[] = [];
+  let oncekiVakitUidler: string[] = oncekiHaftaSonEkibi;
 
   for (const gun of gunler) {
     gunPlan[gun] = {} as Record<Vakit, VakitAtama>;
@@ -72,7 +81,7 @@ export function haftalikPlanUret(
 
     let gunlukTazeAtama: VakitAtama = SISTEM_ATAMA;
     if (musaitMuezzinler.length >= 2) {
-      const sirali = tieBreakerSirala(musaitMuezzinler, buHaftakiYukler, oncekiVakitUidler, isFriday);
+      const sirali = tieBreakerSirala(musaitMuezzinler, buHaftakiYukler, oncekiVakitUidler, isFriday, aylikCumaSayilari);
       gunlukTazeAtama = { asil: sirali[0].id, yedek: sirali[1].id };
     } else if (musaitMuezzinler.length === 1) {
       gunlukTazeAtama = { asil: musaitMuezzinler[0].id, yedek: 'Sistem' };
@@ -84,9 +93,12 @@ export function haftalikPlanUret(
       const atama = korunmusAtama?.(gun, vakit) ?? gunlukTazeAtama;
       gunPlan[gun][vakit] = atama;
 
-      sistemDisiUidler(atama).forEach((uid) => {
-        buHaftakiYukler[uid] = (buHaftakiYukler[uid] || 0) + 1;
-      });
+      if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM') {
+        buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + 1;
+      }
+      if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM') {
+        buHaftakiYukler[atama.yedek] = (buHaftakiYukler[atama.yedek] || 0) + YEDEK_YUK_CARPANI;
+      }
       gununSonEkibi = sistemDisiUidler(atama);
     }
 
@@ -94,4 +106,22 @@ export function haftalikPlanUret(
   }
 
   return gunPlan;
+}
+
+/**
+ * Üretilmiş bir gün planında, yalnızca tek kişinin müsait olduğu (yedek hep
+ * 'Sistem' kalan) günleri tespit eder — çağıran taraf bunun için admin'e
+ * "bu hafta X günü yedeksiz kalıyor" uyarısı üretebilir (bkz. algoritma
+ * denetimi). Hiç kimsenin müsait olmadığı (asil de Sistem) günler bu listeye
+ * dahil edilmez — o durum zaten scripts/haftalikPlanOlustur.ts'teki toplam
+ * kadro uyarısıyla ayrıca kapsanır.
+ */
+export function tekKisiliGunleriBul(gunPlan: Record<string, Record<Vakit, VakitAtama>>): string[] {
+  return Object.entries(gunPlan)
+    .filter(([, vakitler]) =>
+      VAKITLER.some((v) => vakitler[v].asil !== 'Sistem') &&
+      VAKITLER.every((v) => vakitler[v].yedek === 'Sistem')
+    )
+    .map(([gun]) => gun)
+    .sort();
 }

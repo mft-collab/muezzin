@@ -71,6 +71,38 @@ describe('tieBreakerSirala', () => {
     expect(cuma.map((m) => m.id)).toEqual(['a', 'b']);
   });
 
+  it('Cuma adaleti kademesi, aylık toplamın Cuma çarpanını bastırdığı durumda devreye girer', () => {
+    // a: aylık toplamı düşük (3) ama bu ay zaten 3 kez Cuma yapmış.
+    // b: aylık toplamı yüksek (10) ama bu ay hiç Cuma yapmamış.
+    // Eski davranışta (aylikCumaSayilari verilmeden) Cuma'da bile a'nın düşük
+    // aylık toplamı kazanırdı — bu da Cuma ağırlığının ay ilerledikçe
+    // görünmez hale gelmesi sorunuydu. Yeni kademe bunu SOS'tan hemen sonra,
+    // ağırlıklı toplamdan önce karşılaştırarak düzeltir.
+    const muezzinler = [
+      muezzin('a', { aylikVakitSayisi: 3 }),
+      muezzin('b', { aylikVakitSayisi: 10 }),
+    ];
+    const aylikCumaSayilari = { a: 3, b: 0 };
+
+    const cumaOncesi = tieBreakerSirala(muezzinler, {}, [], true); // aylikCumaSayilari verilmedi
+    const cumaSonrasi = tieBreakerSirala(muezzinler, {}, [], true, aylikCumaSayilari);
+
+    expect(cumaOncesi.map((m) => m.id)).toEqual(['a', 'b']); // eski davranış: aylık toplam kazanır
+    expect(cumaSonrasi.map((m) => m.id)).toEqual(['b', 'a']); // yeni davranış: Cuma adaleti kazanır
+  });
+
+  it('Cuma adaleti kademesi, Cuma olmayan günlerde devreye girmez', () => {
+    const muezzinler = [
+      muezzin('a', { aylikVakitSayisi: 3 }),
+      muezzin('b', { aylikVakitSayisi: 10 }),
+    ];
+    const aylikCumaSayilari = { a: 3, b: 0 };
+
+    const sirali = tieBreakerSirala(muezzinler, {}, [], false, aylikCumaSayilari);
+
+    expect(sirali.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
   it('tüm kriterler eşitse alfabetik değil, id karakter kodu toplamına göre sıralar', () => {
     // Alfabetik sırada 'aa-uid' < 'b-uid' olurdu; karakter kodu toplamına göre ise
     // 'b-uid' (465) 'aa-uid' (561) toplamından küçük olduğu için önce gelir.

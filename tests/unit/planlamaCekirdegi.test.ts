@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { haftalikPlanUret, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
 import { Muezzin, Vakit } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): MuezzinAday {
@@ -129,5 +129,69 @@ describe('haftalikPlanUret', () => {
     // 4 müsait kişiden 2'si dünkü ekipte olduğu için bugün en az bir farklı kişi seçilmeli.
     const kesisim = [...gun1Ekip].filter((uid) => gun2Ekip.has(uid));
     expect(kesisim.length).toBeLessThan(2);
+  });
+
+  it('oncekiHaftaSonEkibi parametresi, yeni haftanın ilk gününde SOS kuralını tetikler', () => {
+    // Önceki turdaki denetimde bulunan gerçek hata: her hafta ayrı bir
+    // haftalikPlanUret() çağrısıyla üretildiği için dinlenme kuralı hafta
+    // sınırında sıfırlanıyordu (Pazar ekibi Pazartesi tekrar seçilebiliyordu).
+    const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c'), muezzin('d')];
+
+    const plan = haftalikPlanUret(['2026-08-03'], muezzinler, [], undefined, ['a', 'b']);
+
+    const gun1Ekip = new Set([plan['2026-08-03'].sabah.asil, plan['2026-08-03'].sabah.yedek]);
+    const kesisim = [...gun1Ekip].filter((uid) => ['a', 'b'].includes(uid));
+    expect(kesisim.length).toBeLessThan(2);
+  });
+
+  it('oncekiHaftaSonEkibi verilmezse (varsayılan boş dizi) SOS kısıtlaması uygulanmaz', () => {
+    const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c'), muezzin('d')];
+
+    // Aynı girdiyle, oncekiHaftaSonEkibi olmadan çağrı — mevcut (geriye dönük
+    // uyumlu) davranışın bozulmadığını doğrular.
+    const planA = haftalikPlanUret(['2026-08-03'], muezzinler, []);
+    const planB = haftalikPlanUret(['2026-08-03'], muezzinler, [], undefined, []);
+
+    expect(planA['2026-08-03']).toEqual(planB['2026-08-03']);
+  });
+
+  it('yedek olmak asil olmaktan daha az yük sayılır (0.5 kat) — bir sonraki gün tekrar asil seçilmeyi kolaylaştırır', () => {
+    const muezzinler = [muezzin('a'), muezzin('b')];
+
+    const plan = haftalikPlanUret(['2026-08-03', '2026-08-04'], muezzinler, []);
+    const gun1 = plan['2026-08-03'].sabah;
+    const gun2 = plan['2026-08-04'].sabah;
+
+    // Gün 1'de SOS her iki taraf için de eşit (tek çift müsait), tiebreak hash
+    // ile kararlaştırılır. Gün 2'de SOS yine ikisini de eşit "aktif" sayar
+    // (2 kişiyle her gün ikisi de görevli), bu yüzden ayrımı yalnızca
+    // ağırlıklı yük yapar: dün yedek olan, dün asil olandan daha az yük
+    // taşıdığından gün 2'de asil seçilir.
+    expect(gun2.asil).toBe(gun1.yedek);
+    expect(gun2.yedek).toBe(gun1.asil);
+  });
+
+  it('tekKisiliGunleriBul, yalnızca tek kişinin (yedeksiz) müsait olduğu günleri tespit eder', () => {
+    const muezzinler = [
+      muezzin('a'),
+      muezzin('b', { haftalikIzinGunu: 1 }), // Pazartesi izinli
+    ];
+
+    const plan = haftalikPlanUret(['2026-08-03', '2026-08-04'], muezzinler, []);
+
+    // 2026-08-03 Pazartesi: yalnızca a müsait (b izinli) -> tek kişili.
+    // 2026-08-04 Salı: ikisi de müsait -> tek kişili değil.
+    expect(tekKisiliGunleriBul(plan)).toEqual(['2026-08-03']);
+  });
+
+  it('tekKisiliGunleriBul, hiç kimsenin müsait olmadığı (Sistem/Sistem) günleri saymaz', () => {
+    const muezzinler = [
+      muezzin('a', { haftalikIzinGunu: 1 }),
+      muezzin('b', { haftalikIzinGunu: 1 }),
+    ];
+
+    const plan = haftalikPlanUret(['2026-08-03'], muezzinler, []);
+
+    expect(tekKisiliGunleriBul(plan)).toEqual([]);
   });
 });

@@ -523,7 +523,8 @@ export const GorevKarti = React.memo(({
                     saat,
                     bildirim.tip,
                     peer.id,
-                    peer.displayName
+                    peer.displayName,
+                    bildirim.cumaMi
                   );
                   showNotification('Vekalet Gönderildi', `${peer.displayName} Hocamıza teklif iletildi. Kabul ettiğinde görev devredilecektir.`, 'success');
                   setIsVekaletModalOpen(false);

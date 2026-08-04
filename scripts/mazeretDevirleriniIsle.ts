@@ -41,8 +41,11 @@ async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
 export async function processMazeretDevirleri(dryRun = false) {
   console.log(`Mazeret devirleri uzlaştırılıyor${dryRun ? ' (dry-run)' : ''}...`);
 
+  // NOT: tip filtresi kasıtlı olarak yalnızca 'asil' ile sınırlı değil — yedek
+  // görevli de kendi mazeretini bildirebilir (bkz. src/services/mazeretServisi.ts),
+  // bu durumda devirSonucu doğrudan 'alarm_bekliyor' olur ve aşağıdaki
+  // yedek_atandi dalı hiç tetiklenmez (bir yedeğin yedeği olmadığından).
   const mazeretSnap = await db.collection('bildirimler')
-    .where('tip', '==', 'asil')
     .where('durum', '==', 'reddedildi')
     .get();
 
@@ -108,7 +111,9 @@ export async function processMazeretDevirleri(dryRun = false) {
         const batch = db.batch();
         batch.set(db.collection('adminUyarilari').doc(), {
           tip: 'zincirTukendi',
-          mesaj: 'Mazeret sonrasi gorevi devralacak uygun yedek bulunamadi. Admin mudahalesi gerekir.',
+          mesaj: mazeret.tip === 'yedek'
+            ? 'Yedek gorevli mazeret bildirdi; bu vakit icin artik yedek gorevli bulunmuyor. Admin mudahalesi gerekir.'
+            : 'Mazeret sonrasi gorevi devralacak uygun yedek bulunamadi. Admin mudahalesi gerekir.',
           tarih: mazeret.tarih,
           vakit: mazeret.vakit,
           cozuldu: false,

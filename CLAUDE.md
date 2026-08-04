@@ -98,10 +98,35 @@ gerekirse önce `useChangeKey` kullanılabilir mi diye bak.
 (`scripts/haftalikPlanOlustur.ts`) hem istemci "self-healing" servisi
 (`src/services/planServisi.ts`) bunu çağırır. Atama kuralları (onaylı izin/sabit
 haftalık izin gününde asla atama yok, haftalık yük dengesi, Cuma vakitleri 1.5x
-ağırlıklı, art arda dinlenme kuralı) yalnızca burada ve `src/utils/tieBreaker.ts`
-(`tieBreakerSirala`) içinde tanımlı. Bu iki dosyayı değiştirirken
-`tests/unit/planlamaCekirdegi.test.ts` ve `tests/unit/tieBreaker.test.ts`'i
-çalıştır — planlama mantığının tek test kapsamı bunlar.
+ağırlıklı + ayrıca `aylikCumaSayisi` üzerinden kalıcı bir adalet kademesi, yedek
+görevi asil'in yarısı (`YEDEK_YUK_CARPANI=0.5`) kadar yük sayılır, art arda
+dinlenme kuralı) yalnızca burada ve `src/utils/tieBreaker.ts`
+(`tieBreakerSirala`) içinde tanımlı. Dinlenme kuralı (SOS) hafta sınırında
+sıfırlanmasın diye `haftalikPlanUret`'in 5. parametresi
+(`oncekiHaftaSonEkibi`) bir önceki haftanın Pazar/yatsı ekibiyle
+beslenir — çağıran taraf bunu `src/lib/dateUtils.ts`'teki `getOncekiHafta`
+ile hesaplar. `tekKisiliGunleriBul(gunPlan)`, yedeksiz (tek kişilik) kalan
+günleri tespit eder; çağıranlar bunun için bir `adminUyarilari` kaydı açar.
+Bu dosyaları değiştirirken `tests/unit/planlamaCekirdegi.test.ts` ve
+`tests/unit/tieBreaker.test.ts`'i çalıştır — planlama mantığının tek test
+kapsamı bunlar.
+
+### Mazeret / Cuma kısıtlaması
+
+`src/lib/mazeretKurallari.ts` (`mazeretKapaliMi`) mazeret/görev devri
+penceresinin saf karar fonksiyonudur: Cuma günleri (asil veya yedek fark
+etmeksizin) her zaman kapalı, sabah vakti önceki günün yatsısına göre kapanır,
+diğer vakitler ezandan 1 saat öncesine kadar açık. Bu kısıtlama üç yerde ayrıca
+uygulanır — birini değiştirirken diğerlerini unutma:
+- `src/services/mazeretServisi.ts` (`mazeretBildir`) — istemci tarafı, hem
+  asil hem yedek için.
+- `firestore.rules` `isSelfBildirimUpdate()` — sunucu tarafı, bildirim
+  belgesindeki `cumaMi` alanına bakar (oluşturma anında hesaplanır, opsiyonel
+  alan — eski belgelerde olmayabilir).
+- `firestore.rules` `isValidVekaletCreate`/`isAcceptedVekaletBildirimTransfer`
+  ve `src/services/vekaletServisi.ts` — vekalet (gönüllü görev devri) de aynı
+  Cuma kısıtlamasına tabi, aksi halde mazeret engelini bu yoldan atlatmak
+  mümkün olurdu (bkz. algoritma denetimi).
 
 ### Firestore dinleyici deseni
 

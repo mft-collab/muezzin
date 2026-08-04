@@ -1,7 +1,7 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
-import { haftalikPlanUret, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
-import { getTurkeyNow, isFriday } from '../src/lib/dateUtils.ts';
+import { haftalikPlanUret, tekKisiliGunleriBul, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
 
@@ -85,11 +85,27 @@ async function main() {
 
     const batch = db.batch();
 
+    // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
+    // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için (bkz.
+    // algoritma denetimi). Önceki hafta hiç üretilmemişse (soğuk başlangıç)
+    // boş dizi kullanılır, mevcut davranışla aynıdır.
+    const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
+    const oncekiPlanDoc = await db.collection('haftaPlanlari').doc(oncekiHaftaId).get();
+    const oncekiHaftaSonEkibi: string[] = [];
+    if (oncekiPlanDoc.exists) {
+      const sonVakitAtama = oncekiPlanDoc.data()?.gunler?.[oncekiSonGun]?.yatsi;
+      if (sonVakitAtama) {
+        [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
+          if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
+        });
+      }
+    }
+
     // Tek, paylaşılan atama çekirdeği (bkz. src/lib/planlamaCekirdegi.ts) —
     // src/services/planServisi.ts'deki istemci "self-healing" akışıyla
     // AYNI kuralları kullanır: onaylı izindeki veya sabit haftalık izin
     // gününde olan personel asla atanmaz.
-    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler);
+    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler, undefined, oncekiHaftaSonEkibi);
 
     for (const gun of gunler) {
       const [gY, gM, gD] = gun.split('-').map(Number);
@@ -130,8 +146,40 @@ async function main() {
       gunler: gunPlan
     });
 
+    // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak —
+    // önceden bu durum sessizce geçiyordu (bkz. algoritma denetimi).
+    const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
+    if (tekKisiliGunler.length > 0) {
+      console.warn(`${haftaId}: yedeksiz kalan günler: ${tekKisiliGunler.join(', ')}`);
+      batch.set(db.collection('adminUyarilari').doc(), {
+        tip: 'zincirTukendi',
+        mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
+        tarih: tekKisiliGunler[0],
+        cozuldu: false,
+        olusturmaTarihi: Timestamp.now()
+      });
+    }
+
     await batch.commit();
     console.log(`Başarı: ${haftaId} planı ve bildirimleri oluşturuldu.`);
+
+    // Bu cron çalıştırması aynı anda birden fazla YENİ hafta üretirse (soğuk
+    // başlangıç / uzun kesinti sonrası), sonraki hafta iterasyonunun adalet
+    // hesabı bu haftanın taze atamalarını görsün diye bellek içi projeksiyon
+    // yapılır. Firestore'a yazılmaz — kalıcı güncelleme yine yalnızca
+    // scripts/yatsiSonuIslemleri.ts'in günlük işidir (bkz. algoritma denetimi).
+    for (const gun of gunler) {
+      const [pgY, pgM, pgD] = gun.split('-').map(Number);
+      const gunCumaMi = isFriday(new Date(pgY, pgM - 1, pgD));
+      for (const vakit of VAKITLER) {
+        const atama = gunPlan[gun][vakit];
+        if (atama.asil === 'Sistem') continue;
+        const kisi = muezzinler.find((m) => m.id === atama.asil);
+        if (!kisi) continue;
+        kisi.aylikVakitSayisi = (kisi.aylikVakitSayisi || 0) + 1;
+        if (gunCumaMi) kisi.aylikCumaSayisi = (kisi.aylikCumaSayisi || 0) + 1;
+      }
+    }
 
     try {
       const tokenToUidMap: Record<string, string> = {};

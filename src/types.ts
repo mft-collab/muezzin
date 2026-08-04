@@ -18,6 +18,10 @@ export interface Muezzin {
  mazeretDurumu?: boolean;
  };
  aylikVakitSayisi: number;
+ /** Bu ay kaç kez Cuma vaktinde asil görevli oldu — Cuma adaletinin aylık
+  * toplam tarafından bastırılmasını önlemek için ayrı tutulur (bkz.
+  * src/utils/tieBreaker.ts, scripts/yatsiSonuIslemleri.ts). */
+ aylikCumaSayisi?: number;
  haftalikIzinGunu?: number;
  kayitTarihi?: string;
  /** Davet kabul edip hesap oluşturdu ama admin onayı bekliyor */

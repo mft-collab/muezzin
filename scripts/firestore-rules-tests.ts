@@ -154,6 +154,22 @@ async function seedBaseData(env: RulesTestEnvironment) {
       sonGuncelleme: Timestamp.now()
     });
 
+    // Aynı Cuma günü için bir yedek görev — yedek'in kendi mazeretinin de
+    // Cuma'da kapalı kaldığını doğrulamak için.
+    await setDoc(doc(db, 'bildirimler/fridayPendingYedek'), {
+      haftaId: 'W2026-05-18',
+      tarih: '2026-05-22',
+      vakit: 'ikindi',
+      uid: 'muezzin1',
+      tip: 'yedek',
+      durum: 'bekliyor',
+      pendingAck: true,
+      retSebebi: null,
+      cumaMi: true,
+      olusturmaTarihi: Timestamp.now(),
+      sonGuncelleme: Timestamp.now()
+    });
+
     await setDoc(doc(db, 'duyurular/publicNotice'), {
       baslik: 'Duyuru',
       icerik: 'Metin',
@@ -472,10 +488,39 @@ const tests: TestCase[] = [
     name: 'yedek gorev mazeret reddine ceviremez',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
+      // devirSonucu eksik (asil dalindaki gibi eski/eksik bir istemci yuku
+      // taklit ediyor) — bkz. asagidaki "devirSonucu ile" testi, dogru
+      // sekilde bicimlendirilmis bir yedek mazereti bunun aksine basarili olur.
       await assertFails(updateDoc(doc(db, 'bildirimler/ownPendingYedek'), {
         durum: 'reddedildi',
         pendingAck: false,
         retSebebi: 'Uygun degilim',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'yedek gorevli kendi mazeretini (devirSonucu ile) bildirebilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(updateDoc(doc(db, 'bildirimler/ownPendingYedek'), {
+        durum: 'reddedildi',
+        pendingAck: false,
+        retSebebi: 'Uygun degilim',
+        devirSonucu: 'alarm_bekliyor',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'yedek gorevli Cuma gorevi icin mazeret bildiremez',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(updateDoc(doc(db, 'bildirimler/fridayPendingYedek'), {
+        durum: 'reddedildi',
+        pendingAck: false,
+        retSebebi: 'Uygun degilim',
+        devirSonucu: 'alarm_bekliyor',
         sonGuncelleme: Timestamp.now()
       }));
     }
@@ -652,6 +697,26 @@ const tests: TestCase[] = [
       const db = testUser(env, 'muezzin1').firestore();
       await assertSucceeds(setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
         bildirimId: 'ownPendingAsil',
+        haftaId: 'W2026-05-18',
+        gonderenUid: 'muezzin1',
+        gonderenIsim: 'Muezzin One',
+        aliciUid: 'muezzin2',
+        aliciIsim: 'Muezzin Two',
+        tarih: '2026-05-22',
+        vakit: 'ogle',
+        saat: '12:45',
+        tip: 'asil',
+        durum: 'beklemede',
+        olusturmaTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'muezzin Cuma gorevi icin vekalet talebi acamaz',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        bildirimId: 'fridayPendingAsil',
         haftaId: 'W2026-05-18',
         gonderenUid: 'muezzin1',
         gonderenIsim: 'Muezzin One',
