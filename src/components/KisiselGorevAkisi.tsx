@@ -86,7 +86,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  whileHover={{ y: -4, scale: 1.005 }}
  whileTap={{ scale: 0.995 }}
  transition={{ type: 'spring', stiffness: 280, damping: 24 }}
- className="spatial-glass p-8 sm:p-14 rounded-[28px] text-center relative overflow-hidden group"
+ className="spatial-glass p-8 sm:p-14 rounded-[40px] text-center relative overflow-hidden group"
  >
  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/[0.03] via-transparent to-transparent" />
  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mx-auto mb-10 border border-emerald-500/20 animate-float shadow-lg shadow-emerald-500/10">

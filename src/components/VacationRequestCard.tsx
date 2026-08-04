@@ -337,11 +337,11 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
         </div>
 
         {loadingTalepler ? (
-          <div className="p-8 text-center spatial-glass rounded-3xl border border-[var(--glass-border)]">
+          <div className="p-8 text-center spatial-glass rounded-[40px] border border-[var(--glass-border)]">
             <div className="w-6 h-6 border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin mx-auto" />
           </div>
         ) : talepler.length === 0 ? (
-          <div className="p-8 text-center spatial-glass rounded-[32px] border-dashed border-[var(--text-primary)]/5">
+          <div className="p-8 text-center spatial-glass rounded-[40px] border-dashed border-[var(--text-primary)]/5">
             <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
         ) : (
@@ -355,7 +355,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 <motion.div
                   key={talep.id}
                   whileHover={{ y: -2 }}
-                  className="p-5 sm:p-6 spatial-glass rounded-[30px] border border-[var(--glass-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
+                  className="p-5 sm:p-6 spatial-glass rounded-[40px] border border-[var(--glass-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
                 >
                   {/* Status Indicator Bar */}
                   <div className={`absolute top-0 left-0 bottom-0 w-[3px] ${

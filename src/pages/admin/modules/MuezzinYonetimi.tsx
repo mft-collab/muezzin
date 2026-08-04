@@ -187,7 +187,7 @@ export default function MuezzinYonetimi() {
   </div>
   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
   {Array.from({ length: 6 }).map((_, i) => (
-  <div key={i} className="p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-[36px] opacity-50 flex flex-col gap-6">
+  <div key={i} className="p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[40px] opacity-50 flex flex-col gap-6">
   <div className="flex items-center gap-5">
   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
@@ -236,7 +236,7 @@ export default function MuezzinYonetimi() {
   <motion.section 
   initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
   animate={{ opacity: 1, y: 0 }}
-  className="spatial-glass p-4 sm:p-8 !bg-rose-500/[0.03] border-rose-500/20 relative overflow-hidden !rounded-[20px] sm:!rounded-[32px]"
+  className="spatial-glass p-4 sm:p-8 !bg-rose-500/[0.03] border-rose-500/20 relative overflow-hidden !rounded-[40px]"
   >
  <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
  
@@ -323,7 +323,7 @@ export default function MuezzinYonetimi() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: shouldAnimate ? idx * 0.05 : 0 }}
  key={m.id}
- className="group relative p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[20px] sm:rounded-3xl overflow-hidden transition-all duration-700 hover:shadow-[var(--spatial-shadow)]"
+ className="group relative p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-[40px] overflow-hidden transition-all duration-700 hover:shadow-[var(--spatial-shadow)]"
  >
  {/* Left Status Pillar */}
  <div className={`absolute left-0 top-6 bottom-6 w-[4px] rounded-r-full transition-all duration-700 shadow-lg ${
@@ -496,7 +496,7 @@ export default function MuezzinYonetimi() {
  </motion.div>
  );
  }) : (
- <div className="col-span-full py-20 text-center spatial-glass border-dashed border-[var(--glass-border)]">
+ <div className="col-span-full py-20 text-center spatial-glass !rounded-[40px] border-dashed border-[var(--glass-border)]">
  <p className="premium-label !opacity-20 italic">SİSTEME KAYITLI PERSONEL BULUNAMADI</p>
  </div>
  )}

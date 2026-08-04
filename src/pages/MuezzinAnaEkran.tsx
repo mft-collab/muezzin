@@ -4,7 +4,7 @@ import { Megaphone, Calendar, ChevronRight, ChevronLeft, Compass, Navigation, Cl
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useDashboardLogic } from '../hooks/useDashboardLogic';
-import { HademelerListesi } from '../components/HademelerListesi';
+import { Muezzinler } from '../components/Muezzinler';
 import { KisiselGorevAkisi } from '../components/KisiselGorevAkisi';
 import { AnaEkranHero } from '../components/AnaEkranHero';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
@@ -419,7 +419,7 @@ export default function MuezzinAnaEkran() {
  transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
  className="spatial-glass p-4 sm:p-8"
  >
- <HademelerListesi 
+ <Muezzinler
  asilIsim={getMuezzinName(bugunPlan?.asil)} 
  yedekIsim={getMuezzinName(bugunPlan?.yedek)} 
  asilDurum={asilDurum}

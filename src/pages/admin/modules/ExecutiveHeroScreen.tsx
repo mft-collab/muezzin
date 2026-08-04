@@ -146,7 +146,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.995 }}
  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
  onClick={() => setActiveTab('ekip')}
- className="col-span-1 md:col-span-1 lg:col-span-7 spatial-glass p-8 relative overflow-hidden group min-h-[300px] flex flex-col justify-between cursor-pointer shimmer-trigger"
+ className="col-span-1 md:col-span-1 lg:col-span-7 spatial-glass !rounded-[40px] p-8 relative overflow-hidden group min-h-[300px] flex flex-col justify-between cursor-pointer shimmer-trigger"
  >
   <div className="kinetic-sheen" />
   <div className="absolute inset-0 bg-gradient-to-b from-[var(--text-primary)]/[0.02] via-transparent to-transparent pointer-events-none" />
@@ -214,7 +214,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.99 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => onOpenDrawer('alarmlar')}
- className={`flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger ${cozulmamisSayisi > 0 ? 'spatial-glass-elevated border-rose-500/30 bg-rose-500/[0.04]' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
+ className={`flex-1 spatial-glass !rounded-[40px] p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger ${cozulmamisSayisi > 0 ? 'spatial-glass-elevated border-rose-500/30 bg-rose-500/[0.04]' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between relative z-10">
@@ -248,7 +248,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => setActiveTab('ekip', 'mazeretler')}
- className="flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-[40px] p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -276,7 +276,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => setActiveTab('planlama')}
- className="flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-[40px] p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -304,7 +304,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => onOpenDrawer('duyurular')}
- className="flex-1 spatial-glass p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-[40px] p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -358,7 +358,7 @@ export default function ExecutiveHeroScreen({
  transition={{ type: 'spring', damping: 25, stiffness: 200, delay: idx * 0.05 }}
  key={record.id}
  onClick={() => setExpandedId(isExpanded ? null : record.id)}
- className={`spatial-glass p-5 cursor-pointer group transition-all duration-500 relative overflow-hidden ${isExpanded ? 'spatial-glass-elevated border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
+ className={`spatial-glass !rounded-[40px] p-5 cursor-pointer group transition-all duration-500 relative overflow-hidden ${isExpanded ? 'spatial-glass-elevated border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
  >
  {/* Item Sheen */}
  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -471,7 +471,7 @@ export default function ExecutiveHeroScreen({
  );
  })
  ) : (
- <div className="spatial-glass p-16 text-center flex flex-col items-center gap-4 relative overflow-hidden">
+ <div className="spatial-glass !rounded-[40px] p-16 text-center flex flex-col items-center gap-4 relative overflow-hidden">
  <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center animate-float">
  <Activity size={24} strokeWidth={1} className="text-[var(--text-secondary)]" />
  </div>

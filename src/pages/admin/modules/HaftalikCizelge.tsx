@@ -257,7 +257,7 @@ export default function HaftalikCizelge() {
                 initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={shouldAnimate ? { type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 } : { duration: 0.2 }}
-                className={`flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[24px] sm:rounded-[28px] lg:rounded-[32px] border transition-all duration-700 relative overflow-hidden ${
+                className={`flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[40px] border transition-all duration-700 relative overflow-hidden ${
                   isToday 
                     ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/5 border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-[var(--spatial-shadow)]' 
                     : 'spatial-glass border-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/[0.02]'
@@ -400,7 +400,7 @@ export default function HaftalikCizelge() {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-16 rounded-[48px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
+ className="spatial-glass p-16 rounded-[40px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
  >
  <div className="w-20 h-20 bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border border-[var(--dynamic-aura,var(--aura-indigo))]/20">
  <AlertCircle size={36} strokeWidth={1.2} />
@@ -430,7 +430,7 @@ export default function HaftalikCizelge() {
   className="flex flex-col gap-3 lg:gap-4"
   >
   {Array.from({ length: 3 }).map((_, i) => (
-  <div key={i} className="flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[24px] sm:rounded-[28px] lg:rounded-[32px] border spatial-glass border-[var(--text-primary)]/5 opacity-50">
+  <div key={i} className="flex flex-col lg:flex-row items-stretch lg:items-center p-3 sm:p-4 gap-4 sm:gap-6 rounded-[40px] border spatial-glass border-[var(--text-primary)]/5 opacity-50">
   <div className="flex items-center gap-4 sm:gap-5 min-w-[150px] shrink-0 pl-1 sm:pl-2">
   <div className="w-14 h-14 rounded-[22px] bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
@@ -453,7 +453,7 @@ export default function HaftalikCizelge() {
 
   <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="HİZMET OPERASYONU">
     <form onSubmit={handleMubahale} className="space-y-10 py-4">
-      <div className="spatial-glass-elevated p-4 sm:p-6 rounded-[24px] sm:rounded-[28px] border border-[var(--dynamic-aura,var(--aura-indigo))]/15 relative overflow-hidden bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.02]">
+      <div className="spatial-glass-elevated p-4 sm:p-6 rounded-[40px] border border-[var(--dynamic-aura,var(--aura-indigo))]/15 relative overflow-hidden bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.02]">
         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-3xl rounded-full" />
         <p className="authority-title !text-2xs opacity-30 mb-3 tracking-wide">SEÇİLİ VAKİT VE TARİH</p>
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">

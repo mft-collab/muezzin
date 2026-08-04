@@ -212,7 +212,7 @@ export default function HaftalikTakvim() {
   className="relative z-10 flex flex-col gap-4 px-4 md:px-0"
   >
   {Array.from({ length: 3 }).map((_, i) => (
-  <div key={i} className="spatial-glass p-6 md:p-8 rounded-[32px] border-[var(--glass-border)] flex flex-col md:flex-row gap-8 opacity-50">
+  <div key={i} className="spatial-glass p-6 md:p-8 rounded-[40px] border-[var(--glass-border)] flex flex-col md:flex-row gap-8 opacity-50">
   <div className="flex gap-6 items-center">
   <div className="w-16 h-16 rounded-2xl bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
@@ -273,7 +273,7 @@ export default function HaftalikTakvim() {
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: idx * 0.05 }}
- className={`group relative p-6 md:p-8 rounded-[32px] transition-all duration-700 overflow-hidden ${
+ className={`group relative p-6 md:p-8 rounded-[40px] transition-all duration-700 overflow-hidden ${
  isToday 
  ? 'spatial-glass border-[var(--status-info)]/30 spatial-glow-primary bg-[var(--status-info)]/[0.03]' 
  : isPersonalDuty

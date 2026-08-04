@@ -25,7 +25,7 @@ interface Props {
  planTarih: string;
 }
 
-export const HademelerListesi = React.memo(({
+export const Muezzinler = React.memo(({
  asilIsim,
  yedekIsim,
  asilDurum,

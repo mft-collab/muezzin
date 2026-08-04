@@ -59,7 +59,7 @@ export default function PersonelHub() {
  exit={{ opacity: 0, x: -20 }}
  transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
  >
- <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[32px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+ <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[40px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
  {activeTab === 'kadro' && <MuezzinYonetimi />}
  {activeTab === 'mazeretler' && <IzinMazeretHub />}
  </Suspense>

@@ -120,7 +120,7 @@ export default function MazeretGecmisi() {
  </AnimatePresence>
 
  {/* TIMELINE TABLE: Chronological Context */}
- <section className="spatial-glass p-5 sm:p-8 border border-[var(--text-primary)]/5 relative overflow-hidden min-h-[400px] !rounded-[24px] sm:!rounded-[32px]">
+ <section className="spatial-glass p-5 sm:p-8 border border-[var(--text-primary)]/5 relative overflow-hidden min-h-[400px] !rounded-[40px]">
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent" />
  
  <div className="hidden md:block overflow-x-auto no-scrollbar">
@@ -204,7 +204,7 @@ export default function MazeretGecmisi() {
  {/* MOBILE ARCHIVE CARDS (Fallback) */}
  <div className="md:hidden flex flex-col gap-4 mt-6">
  {filtered.length === 0 ? (
-    <div className="spatial-glass p-10 text-center rounded-[24px] border border-dashed border-[var(--text-primary)]/5">
+    <div className="spatial-glass p-10 text-center rounded-[40px] border border-dashed border-[var(--text-primary)]/5">
       <p className="authority-title !text-2xs opacity-35 uppercase tracking-wide font-bold italic">Arşivde kayıt bulunmuyor</p>
     </div>
   ) : (

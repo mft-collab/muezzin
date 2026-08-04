@@ -126,7 +126,7 @@ export default function EzanOnbellegi() {
     )}
    </AnimatePresence>
 
-   <section className="p-1 sm:p-8 relative overflow-hidden rounded-[18px] sm:rounded-[24px] border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent">
+   <section className="p-1 sm:p-8 relative overflow-hidden rounded-[40px] border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent">
     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5 mb-6">
      <div className="flex items-center gap-4">
       <div className="w-11 h-11 rounded-[14px] bg-[var(--surface-medium)] text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center border border-[var(--glass-border)]">

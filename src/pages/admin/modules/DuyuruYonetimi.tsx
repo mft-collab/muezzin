@@ -164,7 +164,7 @@ export const DuyuruYonetimi: React.FC = () => {
  animate={{ opacity: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.95 }}
  transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
- className="spatial-glass p-6 group relative overflow-hidden flex flex-col min-h-[220px]"
+ className="spatial-glass !rounded-[40px] p-6 group relative overflow-hidden flex flex-col min-h-[220px]"
  >
  {/* Type Accent Aura */}
  <div className={`absolute -top-12 -right-12 w-24 h-24 blur-[60px] opacity-20 ${

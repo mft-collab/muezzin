@@ -33,7 +33,7 @@ export const SistemUyarisiBanner = React.memo<SistemUyarisiBannerProps>(({ uyari
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full mt-4 spatial-glass border overflow-hidden bg-rose-500/[0.04] dark:bg-rose-500/[0.02] border-rose-500/20 dark:border-rose-400/15 shadow-[var(--spatial-shadow)]"
+        className="relative w-full mt-4 spatial-glass !rounded-[40px] border overflow-hidden bg-rose-500/[0.04] dark:bg-rose-500/[0.02] border-rose-500/20 dark:border-rose-400/15 shadow-[var(--spatial-shadow)]"
       >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-rose-500/10 to-transparent" aria-hidden />
 

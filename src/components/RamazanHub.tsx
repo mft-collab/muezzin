@@ -233,7 +233,7 @@ export const RamazanHub: React.FC = () => {
     <motion.div
       initial={{ opacity: 0, y: 15, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="relative w-full p-4 sm:p-5 mt-4 overflow-hidden rounded-3xl spatial-glass border border-amber-500/20 shadow-[0_12px_36px_rgba(245,158,11,0.06),_inset_0_1px_1px_rgba(255,255,255,0.04)] text-[var(--text-primary)]"
+      className="relative w-full p-4 sm:p-5 mt-4 overflow-hidden rounded-[40px] spatial-glass border border-amber-500/20 shadow-[0_12px_36px_rgba(245,158,11,0.06),_inset_0_1px_1px_rgba(255,255,255,0.04)] text-[var(--text-primary)]"
     >
       {/* Uzaysal parıltı efekti arka planı */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.06)_0%,transparent_50%)] pointer-events-none" />

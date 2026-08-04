@@ -45,7 +45,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  initial={{ opacity: 0, y: 24, scale: 0.98 }}
  animate={{ opacity: 1, y: 0, scale: 1 }}
  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
- className="spatial-glass backdrop-blur-3xl p-8 sm:p-10 lg:p-14 rounded-[48px] max-w-lg w-full text-center border border-[var(--glass-border)] relative overflow-hidden group/login"
+ className="spatial-glass backdrop-blur-3xl p-8 sm:p-10 lg:p-14 rounded-[40px] max-w-lg w-full text-center border border-[var(--glass-border)] relative overflow-hidden group/login"
  style={{ boxShadow: 'var(--spatial-shadow)' }}
  >
  {/* Card shimmer overlay */}

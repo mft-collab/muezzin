@@ -45,7 +45,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
 
       <div className="space-y-4">
         {logs.length === 0 ? (
-          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-[28px] bg-[var(--text-primary)]/[0.01]">
+          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-[40px] bg-[var(--text-primary)]/[0.01]">
             <div className="w-12 h-12 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center mx-auto mb-4 border border-[var(--dynamic-aura,var(--aura-indigo))]/20">
               <Shield size={20} />
             </div>
@@ -57,7 +57,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
             <motion.div
               layout
               key={log.id}
-              className="spatial-glass border border-[var(--glass-border)] p-5 rounded-[24px] hover:bg-[var(--text-primary)]/[0.02] transition-colors"
+              className="spatial-glass border border-[var(--glass-border)] p-5 rounded-[40px] hover:bg-[var(--text-primary)]/[0.02] transition-colors"
             >
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">

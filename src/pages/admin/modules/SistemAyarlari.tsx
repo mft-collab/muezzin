@@ -104,7 +104,7 @@ export default function SistemAyarlari() {
   <motion.div 
   initial={{ opacity: 0, y: 20 }} 
   animate={{ opacity: 1, y: 0 }} 
-  className="p-1 sm:p-8 relative overflow-hidden rounded-[18px] sm:rounded-[24px] border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent"
+  className="p-1 sm:p-8 relative overflow-hidden rounded-[40px] border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent"
   >
   <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8 relative z-10">
   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] bg-[var(--surface-medium)] flex items-center justify-center border border-[var(--glass-border)]">

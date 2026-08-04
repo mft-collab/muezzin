@@ -15,7 +15,7 @@ export function AuthErrorScreen({ error, setError, setLoading, logout }: AuthErr
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="max-w-md w-full spatial-glass rounded-[32px] shadow-[var(--spatial-shadow)] p-10 text-center border border-[var(--glass-border)]"
+ className="max-w-md w-full spatial-glass rounded-[40px] shadow-[var(--spatial-shadow)] p-10 text-center border border-[var(--glass-border)]"
  >
  <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8">
  <AlertCircle className="w-10 h-10 text-red-500" />

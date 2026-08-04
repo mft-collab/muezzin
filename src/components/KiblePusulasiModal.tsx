@@ -486,7 +486,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full p-5 spatial-glass border-[var(--aura-amber)]/20 bg-[var(--aura-amber)]/[0.015] rounded-3xl flex flex-col items-center gap-3.5 mb-6 z-10"
+            className="w-full p-5 spatial-glass border-[var(--aura-amber)]/20 bg-[var(--aura-amber)]/[0.015] rounded-[40px] flex flex-col items-center gap-3.5 mb-6 z-10"
           >
             <div className="flex items-center gap-2 text-[var(--aura-amber)]">
               <ShieldAlert size={16} />
@@ -550,7 +550,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         {/* ANGLE AND DISTANCE CARDS */}
         <div className="grid grid-cols-2 gap-3.5 w-full z-10 relative">
           {/* Qibla Angle Card */}
-          <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
+          <div className="p-4 rounded-[40px] spatial-glass flex flex-col items-center">
             <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {qiblaAngle.toFixed(1)}°
@@ -559,7 +559,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           </div>
 
           {/* Kaaba Distance Card */}
-          <div className="p-4 rounded-3xl spatial-glass flex flex-col items-center">
+          <div className="p-4 rounded-[40px] spatial-glass flex flex-col items-center">
             <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {distance.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} km

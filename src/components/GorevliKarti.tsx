@@ -104,7 +104,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
         layout: { type: 'spring', stiffness: 220, damping: 25 }
       }}
       style={unassignedBorderStyle}
-      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[28px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass}`}
+      className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-[40px] border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass}`}
     >
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
       <div

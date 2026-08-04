@@ -61,7 +61,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <div className="space-y-8">
  {/* Overview Cards */}
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
-  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
+  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[40px]">
   <span className="premium-label !text-2xs !opacity-30 block mb-1">SAĞLIK DURUMU</span>
   <div className="flex items-center gap-2">
   {errors.length === 0 ? (
@@ -78,24 +78,24 @@ export const VeriSagligiSekmesi = React.memo(() => {
   </div>
   </div>
 
-  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
+  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[40px]">
   <span className="premium-label !text-2xs !opacity-30 block mb-1">MÜEZZİN KADROSU</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPersonnel} Aktif</span>
   </div>
 
-  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
+  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[40px]">
   <span className="premium-label !text-2xs !opacity-30 block mb-1">ONAYLI İZİNLER</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalVacations} Kayıt</span>
   </div>
 
-  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[20px]">
+  <div className="spatial-glass border border-[var(--glass-border)] p-4 rounded-[40px]">
   <span className="premium-label !text-2xs !opacity-30 block mb-1">PLANLAMA ARŞİVİ</span>
   <span className="text-sm sm:text-xl font-light text-[var(--text-primary)]">{stats.totalPlans} Plan</span>
   </div>
   </div>
 
  {/* Main Audit Control Screen */}
-  <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-8 rounded-[20px] sm:rounded-[28px] relative overflow-hidden bg-[var(--text-primary)]/[0.005]">
+  <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-8 rounded-[40px] relative overflow-hidden bg-[var(--text-primary)]/[0.005]">
  <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-3xl rounded-full" />
  
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
@@ -137,7 +137,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  Veritabanı taranıyor, lütfen bekleyin...
  </div>
  ) : auditError ? (
- <div className="p-10 text-center border border-dashed border-rose-500/20 rounded-2xl bg-rose-500/[0.01] space-y-4">
+ <div className="p-10 text-center border border-dashed border-rose-500/20 rounded-[40px] bg-rose-500/[0.01] space-y-4">
  <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto border border-rose-500/20">
  <AlertOctagon size={18} />
  </div>
@@ -150,7 +150,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  </p>
  </div>
  ) : errors.length === 0 ? (
- <div className="p-10 text-center border border-dashed border-emerald-500/10 rounded-2xl bg-emerald-500/[0.01]">
+ <div className="p-10 text-center border border-dashed border-emerald-500/10 rounded-[40px] bg-emerald-500/[0.01]">
  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
  <CheckCircle2 size={18} />
  </div>
@@ -201,7 +201,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  initial={{ height: 0, opacity: 0 }}
  animate={{ height: 'auto', opacity: 1 }}
  exit={{ height: 0, opacity: 0 }}
- className="spatial-glass border border-[var(--glass-border)] p-6 rounded-[28px] bg-black/40 overflow-hidden"
+ className="spatial-glass border border-[var(--glass-border)] p-6 rounded-[40px] bg-black/40 overflow-hidden"
  >
  <div className="flex justify-between items-center mb-4">
  <span className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))] tracking-wide flex items-center gap-2 uppercase">
