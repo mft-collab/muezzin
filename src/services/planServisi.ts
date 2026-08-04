@@ -2,6 +2,7 @@ import { collection, query, where, getDocs, getDoc, doc, writeBatch, Timestamp, 
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { haftalikPlanUret, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { isFriday } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
@@ -83,12 +84,15 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
       [`gunler.${tarih}.${vakit}`]: { asil: asilUid, yedek: yedekUid }
     });
 
+    const [gY, gM, gD] = tarih.split('-').map(Number);
+    const cumaMi = isFriday(new Date(gY, gM - 1, gD));
+
     // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
     // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
     if (asilUid && asilUid !== 'Sistem') {
       batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_asil`), {
         haftaId, tarih, vakit, uid: asilUid, tip: 'asil',
-        durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+        durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
         sonGuncelleme: Timestamp.now()
       });
     }
@@ -96,7 +100,7 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
     if (yedekUid && yedekUid !== 'Sistem') {
       batch.set(doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`), {
         haftaId, tarih, vakit, uid: yedekUid, tip: 'yedek',
-        durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+        durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
         sonGuncelleme: Timestamp.now()
       });
     }
@@ -155,6 +159,9 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  });
 
  for (const gun of gunler) {
+ const [gY, gM, gD] = gun.split('-').map(Number);
+ const cumaMi = isFriday(new Date(gY, gM - 1, gD));
+
  for (const vakit of VAKITLER) {
  const slotKey = `${gun}_${vakit}`;
  const slotBildirimleri = bildirimlerBySlot[slotKey] || [];
@@ -173,7 +180,7 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  if (atama.asil !== 'Sistem') {
  batch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_asil`), {
  haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
- durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+ durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
  sonGuncelleme: Timestamp.now()
  });
  }
@@ -181,7 +188,7 @@ export async function haftalikPlanOlustur(haftaId: string): Promise<void> {
  if (atama.yedek !== 'Sistem') {
  batch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_yedek`), {
  haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
- durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+ durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
  sonGuncelleme: Timestamp.now()
  });
  }

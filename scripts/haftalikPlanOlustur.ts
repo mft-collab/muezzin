@@ -1,7 +1,7 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
 import { haftalikPlanUret, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
-import { getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { getTurkeyNow, isFriday } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim } from '../src/types';
 
@@ -92,6 +92,9 @@ async function main() {
     const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler);
 
     for (const gun of gunler) {
+      const [gY, gM, gD] = gun.split('-').map(Number);
+      const cumaMi = isFriday(new Date(gY, gM - 1, gD));
+
       for (const vakit of VAKITLER) {
         const atama = gunPlan[gun][vakit];
 
@@ -103,7 +106,7 @@ async function main() {
           const bAsil = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_asil`);
           batch.set(bAsil, {
             haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
-            durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+            durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
             sonGuncelleme: Timestamp.now()
           });
         }
@@ -112,7 +115,7 @@ async function main() {
           const bYedek = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_yedek`);
           batch.set(bYedek, {
             haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
-            durum: 'bekliyor', pendingAck: true, retSebebi: null, olusturmaTarihi: Timestamp.now(),
+            durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
             sonGuncelleme: Timestamp.now()
           });
         }

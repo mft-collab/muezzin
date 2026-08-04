@@ -165,6 +165,11 @@ service cloud.firestore {
                (
                  existing().durum == 'bekliyor' &&
                  existing().tip == 'asil' &&
+                 // Cuma gunleri mazeret/gorev devri kullanilamaz (bkz. ayni
+                 // kisitlamanin izin taleplerindeki karsiligi:
+                 // src/components/VacationRequestCard.tsx ve istemci tarafi
+                 // ayna kural: src/lib/mazeretKurallari.ts).
+                 existing().cumaMi != true &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
                  incoming().retSebebi is string &&
@@ -301,7 +306,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi', 'cumaMi']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -312,7 +317,11 @@ service cloud.firestore {
              (!data.keys().hasAny(['retSebebi']) || data.retSebebi == null || (data.retSebebi is string && data.retSebebi.size() <= 500)) &&
              (!data.keys().hasAny(['planSenkronEdildi']) || data.planSenkronEdildi is bool) &&
              (!data.keys().hasAny(['devirSonucu']) || data.devirSonucu is string) &&
-             (!data.keys().hasAny(['asilMazeretUid']) || data.asilMazeretUid is string);
+             (!data.keys().hasAny(['asilMazeretUid']) || data.asilMazeretUid is string) &&
+             // cumaMi kasitli olarak opsiyonel: eski (bu alan eklenmeden once
+             // olusturulmus) belgeler bu alan olmadan da gecerli kalir — bkz.
+             // isSelfBildirimUpdate()'teki `!= true` karsilastirmasi.
+             (!data.keys().hasAny(['cumaMi']) || data.cumaMi is bool);
     }
 
     match /bildirimler/{docId} {

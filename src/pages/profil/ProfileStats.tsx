@@ -48,7 +48,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  return (
  <div className="space-y-6">
  {/* Performance Card */}
- <div className="p-8 spatial-glass rounded-[40px] flex flex-col sm:flex-row items-center justify-between gap-6 border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]">
+ <div className="p-8 spatial-glass rounded-card flex flex-col sm:flex-row items-center justify-between gap-6 border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]">
  <div className="flex items-center gap-6">
  <div className="w-16 h-16 rounded-[22px] bg-[var(--status-info)]/10 text-[var(--status-info)] flex items-center justify-center border border-[var(--status-info)]/20 shadow-[var(--spatial-shadow)]">
  <Award size={28} strokeWidth={1.5} />
@@ -66,7 +66,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  </div>
  
  {/* Quick Glance Info Cards */}
- <div className="spatial-glass rounded-[40px] p-4 sm:p-8 shadow-[var(--spatial-shadow)] border-[var(--glass-border)] relative overflow-hidden">
+ <div className="spatial-glass rounded-card p-4 sm:p-8 shadow-[var(--spatial-shadow)] border-[var(--glass-border)] relative overflow-hidden">
  <div className="absolute inset-0 bg-gradient-to-b from-[var(--text-primary)]/[0.01] to-transparent pointer-events-none" />
  
  <div className="divide-y divide-[var(--glass-border)] relative z-10">

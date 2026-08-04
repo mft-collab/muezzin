@@ -168,7 +168,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
         whileHover={{ y: -4, scale: 1.01, boxShadow: '0 20px 40px -15px var(--dynamic-aura, rgba(99, 102, 241, 0.15))' }}
         whileTap={{ scale: 0.99 }}
         onClick={() => setIsModalOpen(true)}
-        className="p-8 spatial-glass rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden cursor-pointer group hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all duration-500 text-left"
+        className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden cursor-pointer group hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all duration-500 text-left"
       >
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
         <div className="absolute right-[-10%] top-[-10%] w-40 h-40 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-[60px] rounded-full pointer-events-none" />
@@ -337,11 +337,11 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
         </div>
 
         {loadingTalepler ? (
-          <div className="p-8 text-center spatial-glass rounded-[40px] border border-[var(--glass-border)]">
+          <div className="p-8 text-center spatial-glass rounded-card border border-[var(--glass-border)]">
             <div className="w-6 h-6 border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin mx-auto" />
           </div>
         ) : talepler.length === 0 ? (
-          <div className="p-8 text-center spatial-glass rounded-[40px] border-dashed border-[var(--text-primary)]/5">
+          <div className="p-8 text-center spatial-glass rounded-card border-dashed border-[var(--text-primary)]/5">
             <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
         ) : (
@@ -355,7 +355,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 <motion.div
                   key={talep.id}
                   whileHover={{ y: -2 }}
-                  className="p-5 sm:p-6 spatial-glass rounded-[40px] border border-[var(--glass-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
+                  className="p-5 sm:p-6 spatial-glass rounded-card border border-[var(--glass-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
                 >
                   {/* Status Indicator Bar */}
                   <div className={`absolute top-0 left-0 bottom-0 w-[3px] ${

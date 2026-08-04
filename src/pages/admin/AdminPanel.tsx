@@ -296,14 +296,14 @@ export default function AdminPanel() {
  </div>
  </header>
 
- <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-[40px]`}>
+ <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-card`}>
  <ErrorBoundary
  FallbackComponent={({ error, resetErrorBoundary }) => (
  <ChunkErrorFallback error={error} variant="inline" onReset={resetErrorBoundary} />
  )}
  onReset={() => setSearchParams(prev => prev)}
  >
-  <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[40px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+  <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
  {renderContent}
  </Suspense>
  </ErrorBoundary>
@@ -366,7 +366,7 @@ export default function AdminPanel() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto phi-padding no-scrollbar relative z-10">
-              <Suspense fallback={<div className="h-full flex flex-col gap-6 w-full opacity-50 pt-4"><div className="w-32 h-6 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[40px] border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+              <Suspense fallback={<div className="h-full flex flex-col gap-6 w-full opacity-50 pt-4"><div className="w-32 h-6 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
                 {drawerContent === 'alarmlar' && <KrizAlarmlari />}
                 {drawerContent === 'duyurular' && <DuyuruYonetimi />}
               </Suspense>

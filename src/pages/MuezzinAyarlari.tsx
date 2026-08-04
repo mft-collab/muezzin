@@ -12,7 +12,7 @@ import { playClick } from '../lib/sounds';
 const NotificationSettings = lazy(() => import('../components/NotificationSettings'));
 
 function SettingsSkeleton() {
-  return <div className="h-72 rounded-[40px] fluid-skeleton" />;
+  return <div className="h-72 rounded-card fluid-skeleton" />;
 }
 
 export default function MuezzinAyarlari() {
@@ -49,7 +49,7 @@ export default function MuezzinAyarlari() {
         <motion.header
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="spatial-glass p-8 rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
+          className="spatial-glass p-8 rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
         >
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 rounded-[22px] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center">
@@ -74,7 +74,7 @@ export default function MuezzinAyarlari() {
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
-          className="spatial-glass rounded-[40px] p-5 sm:p-8 border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
+          className="spatial-glass rounded-card p-5 sm:p-8 border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
         >
           <div className="divide-y divide-[var(--glass-border)]">
             <button

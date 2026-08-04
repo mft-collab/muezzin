@@ -76,13 +76,13 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  <motion.div 
  initial={{ opacity: 0, y: 20 }}
  animate={{ opacity: 1, y: 0 }}
- className="relative overflow-hidden p-8 md:p-10 spatial-glass rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
+ className="relative overflow-hidden p-8 md:p-10 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
  >
  <div className="relative z-10 flex flex-col items-center text-center gap-6">
  <div className="relative">
  <motion.div 
  whileHover={{ scale: 1.05, rotate: 2 }}
- className="w-28 h-28 rounded-[40px] bg-[var(--text-primary)]/[0.04] backdrop-blur-3xl border border-[var(--glass-border)] flex items-center justify-center text-6xl font-extralight shadow-[var(--spatial-shadow)] overflow-hidden transition-all duration-700 relative"
+ className="w-28 h-28 rounded-card bg-[var(--text-primary)]/[0.04] backdrop-blur-3xl border border-[var(--glass-border)] flex items-center justify-center text-6xl font-extralight shadow-[var(--spatial-shadow)] overflow-hidden transition-all duration-700 relative"
  >
  <span className="relative z-10 text-[var(--text-primary)]/90 drop-shadow-[var(--spatial-shadow)]">
  {userData?.photoURL ? (

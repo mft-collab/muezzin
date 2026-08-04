@@ -13,7 +13,7 @@ const PersonalHistoryCard   = lazy(() => import('./profil/PersonalHistoryCard'))
 /** Hafif bir inline yükleme iskeleti */
 function SectionSkeleton() {
   return (
-    <div className="skeleton-shimmer h-40 rounded-[40px] border border-[var(--text-primary)]/[0.04]" />
+    <div className="skeleton-shimmer h-40 rounded-card border border-[var(--text-primary)]/[0.04]" />
   );
 }
 

@@ -222,7 +222,7 @@ export const GorevKarti = React.memo(({
  whileHover={{ y: -2, boxShadow: glowShadow }}
  whileTap={{ scale: 0.99 }}
  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.6 }}
- className={`p-4 sm:p-8 tactile-card !rounded-[40px] relative overflow-hidden group border border-[var(--text-primary)]/5 ${
+ className={`p-4 sm:p-8 tactile-card !rounded-card relative overflow-hidden group border border-[var(--text-primary)]/5 ${
  bildirim.durum === 'onaylandi' ? 'border-emerald-500/20 shadow-lg shadow-emerald-500/5' : ''
  } ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-living-glow' : ''}`}
  >

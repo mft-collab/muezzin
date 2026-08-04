@@ -46,7 +46,7 @@ export default function IzinYonetimi() {
  );
 
  if (error) return (
- <div className="spatial-glass p-12 rounded-[40px] border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
+ <div className="spatial-glass p-12 rounded-card border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
  <AlertCircle className="text-rose-500 mb-6" size={40} />
  <p className="text-lg font-light text-rose-500 tracking-tight mb-2">Veri Senkronizasyon Hatası</p>
  <p className="authority-title !text-2xs opacity-55 uppercase tracking-wide break-all whitespace-normal w-full max-w-full text-center select-all">{error}</p>
@@ -115,7 +115,7 @@ export default function IzinYonetimi() {
  <motion.div 
  initial={{ opacity: 0, scale: 0.95 }}
  animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-12 sm:p-16 rounded-[40px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
+ className="spatial-glass p-12 sm:p-16 rounded-card text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
  >
  <Calendar className="text-[var(--text-secondary)] mb-8" size={60} strokeWidth={1} />
  <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">HİÇBİR İZİN TALEBİ KAYDI BULUNAMADI</p>
@@ -133,7 +133,7 @@ export default function IzinYonetimi() {
  animate={{ opacity: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.95 }}
  transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
- className={`group spatial-glass p-4 sm:p-6 transition-all duration-700 relative overflow-hidden flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6 lg:gap-8 border border-[var(--glass-border)] !rounded-[40px] ${
+ className={`group spatial-glass p-4 sm:p-6 transition-all duration-700 relative overflow-hidden flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6 lg:gap-8 border border-[var(--glass-border)] !rounded-card ${
  izin.durum === 'onay_bekliyor' ? 'hover:bg-amber-500/[0.02]' : 
  izin.durum === 'onaylandi' ? 'hover:bg-emerald-500/[0.02]' : 'hover:bg-rose-500/[0.02]'
  }`}

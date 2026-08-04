@@ -138,6 +138,22 @@ async function seedBaseData(env: RulesTestEnvironment) {
       sonGuncelleme: Timestamp.now()
     });
 
+    // Cuma gunune denk gelen bir gorev (cumaMi:true) — mazeret/gorev devri
+    // kisitlamasi testleri icin (bkz. firestore.rules `isSelfBildirimUpdate`).
+    await setDoc(doc(db, 'bildirimler/fridayPendingAsil'), {
+      haftaId: 'W2026-05-18',
+      tarih: '2026-05-22',
+      vakit: 'ogle',
+      uid: 'muezzin1',
+      tip: 'asil',
+      durum: 'bekliyor',
+      pendingAck: true,
+      retSebebi: null,
+      cumaMi: true,
+      olusturmaTarihi: Timestamp.now(),
+      sonGuncelleme: Timestamp.now()
+    });
+
     await setDoc(doc(db, 'duyurular/publicNotice'), {
       baslik: 'Duyuru',
       icerik: 'Metin',
@@ -422,6 +438,32 @@ const tests: TestCase[] = [
         pendingAck: false,
         retSebebi: 'Hastalik',
         devirSonucu: 'alarm_bekliyor',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'muezzin cuma gorevine mazeret bildiremez',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(updateDoc(doc(db, 'bildirimler/fridayPendingAsil'), {
+        durum: 'reddedildi',
+        pendingAck: false,
+        retSebebi: 'Hastalik',
+        devirSonucu: 'alarm_bekliyor',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'muezzin cuma gorevini yine de okudum olarak onaylayabilir',
+    run: async (env) => {
+      // Cuma kisitlamasi yalnizca mazeret (reddedildi) geciscine uygulanir —
+      // gorevi ustlenme (okudum/onaylandi) onayi hala serbesttir.
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(updateDoc(doc(db, 'bildirimler/fridayPendingAsil'), {
+        durum: 'onaylandi',
+        pendingAck: false,
         sonGuncelleme: Timestamp.now()
       }));
     }

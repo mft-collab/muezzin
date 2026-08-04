@@ -161,7 +161,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
 
       <div className="space-y-4">
         {errorLogs.length === 0 ? (
-          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-[40px] bg-[var(--text-primary)]/[0.01]">
+          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-card bg-[var(--text-primary)]/[0.01]">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle size={20} />
             </div>
@@ -178,7 +178,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
               <motion.div
                 layout
                 key={log.id}
-                className={`spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-[40px] transition-all cursor-pointer ${isOpen ? 'ring-1 ring-rose-500/20' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
+                className={`spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-card transition-all cursor-pointer ${isOpen ? 'ring-1 ring-rose-500/20' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
                 onClick={() => {
                   setSelectedError(isOpen ? null : log.id);
                   setActivePanel('stack');

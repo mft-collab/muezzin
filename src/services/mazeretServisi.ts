@@ -15,7 +15,8 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Bildirim } from '../types';
-import { getHaftaIdFromDate, getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
+import { mazeretKapaliMi } from '../lib/mazeretKurallari';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 async function getEzanVakti(tarih: string, vakit: string): Promise<Date | null> {
@@ -98,18 +99,28 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
       throw new Error('Sadece bekleyen görevler için mazeret bildirilebilir.');
     }
 
-    const ezanVakti = ezanSaati
-      ? parseVakitToDate(mevcutBildirim.tarih, ezanSaati)
-      : await getEzanVakti(mevcutBildirim.tarih, mevcutBildirim.vakit);
+    const { haftaId, tarih, vakit, uid } = mevcutBildirim;
+    const [gY, gM, gD] = tarih.split('-').map(Number);
+    const gunTarihi = new Date(gY, gM - 1, gD);
 
-    if (ezanVakti) {
-      const kalanDakika = Math.floor((ezanVakti.getTime() - getTurkeyNow().getTime()) / 60000);
-      if (kalanDakika < 50) {
-        throw new Error('Ezan vaktine 50 dakikadan az kaldığı için görev devri/mazeret bildirimi kapalıdır.');
-      }
+    // Sabah vaktinin mazeret penceresi kendi saatine göre değil, bir önceki
+    // akşamki yatsıya göre kapanır (bkz. mazeretKurallari.ts) — bu yüzden
+    // sabah için bugünün kendi ezan saati hiç sorgulanmaz.
+    const vakitSaati = vakit === 'sabah'
+      ? null
+      : ezanSaati
+        ? parseVakitToDate(tarih, ezanSaati)
+        : await getEzanVakti(tarih, vakit);
+
+    const oncekiGunYatsiSaati = vakit === 'sabah'
+      ? await getEzanVakti(getTurkeyDateString(new Date(gY, gM - 1, gD - 1)), 'yatsi')
+      : null;
+
+    const mazeretDurumu = mazeretKapaliMi({ gunTarihi, vakit, vakitSaati, oncekiGunYatsiSaati }, getTurkeyNow());
+    if (mazeretDurumu.kapali) {
+      throw new Error(mazeretDurumu.sebep ?? 'Mazeret bildirimi bu görev için kapalı.');
     }
 
-    const { haftaId, tarih, vakit, uid } = mevcutBildirim;
     const yedekRef = doc(db, 'bildirimler', `${haftaId}_${tarih}_${vakit}_yedek`);
 
     await runTransaction(db, async (transaction) => {

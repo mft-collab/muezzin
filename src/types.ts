@@ -87,6 +87,14 @@ export interface Bildirim {
  asilMazeretUid?: string;
  /** admin-SDK uzlaştırma işi (scripts/mazeretDevirleriniIsle.ts) haftaPlanlari'nı senkronize etti mi */
  planSenkronEdildi?: boolean;
+ /**
+  * Görevin tarihi bir Cuma'ya denk geliyor mu — oluşturulma anında hesaplanır.
+  * Cuma günleri mazeret/görev devri kullanılamaz kuralının sunucu tarafı
+  * uygulaması bu alana bakar (bkz. firestore.rules `isSelfBildirimUpdate`,
+  * src/lib/mazeretKurallari.ts). Kasıtlı olarak opsiyonel — bu alan
+  * eklenmeden önce oluşturulmuş eski belgelerde bulunmayabilir.
+  */
+ cumaMi?: boolean;
 }
 
 export interface VekaletTalebi {

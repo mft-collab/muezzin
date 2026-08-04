@@ -24,6 +24,12 @@
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(1 / 0.6875);
 
+  /* Uygulama genelinde "ana kart" katmanının tek köşe yarıçapı standardı
+     (bkz. kart tasarım denetimi) — rounded-[40px] tekrar tekrar elle
+     yazılıyordu, bu değişkenin `rounded-card` utility'sini otomatik üretmesi
+     gelecekteki değişikliği 44 dosya yerine tek satıra indiriyor. */
+  --radius-card: 40px;
+
   --app-bg: #000000;
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
   --spatial-highlight: rgba(255, 255, 255, 0.15);

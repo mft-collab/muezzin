@@ -126,27 +126,34 @@ export default defineConfig(({ mode }) => ({
             return 'vendor-firebase-messaging';
           }
 
-          // 3. Firebase core/Auth/Firestore
+          // 3. Firebase Auth — needed immediately at boot (login gate), kept
+          // separate from Firestore so the login screen doesn't wait on the
+          // larger Firestore bundle to parse.
+          if (id.includes('firebase/auth') || id.includes('@firebase/auth')) {
+            return 'vendor-firebase-auth';
+          }
+
+          // 4. Firebase core/Firestore
           if (id.includes('firebase') || id.includes('@firebase')) {
             return 'vendor-firebase';
           }
 
-          // 4. Animation library
+          // 5. Animation library
           if (id.includes('motion') || id.includes('framer-motion')) {
             return 'vendor-motion';
           }
 
-          // 5. Routing
+          // 6. Routing
           if (id.includes('react-router') || id.includes('@remix-run')) {
             return 'vendor-router';
           }
 
-          // 6. State management
+          // 7. State management
           if (id.includes('zustand')) {
             return 'vendor-state';
           }
 
-          // 7. Everything else (date-fns, lucide, etc.)
+          // 8. Everything else (date-fns, lucide, etc.)
           return 'vendor-utils';
         }
       }

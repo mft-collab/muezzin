@@ -36,7 +36,7 @@ export default function ProfileBadges({ aylikVakitSayisi }: ProfileBadgesProps) 
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className="p-8 spatial-glass rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden text-left"
+      className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden text-left"
     >
       <div className="flex justify-between items-center mb-6 relative z-10">
         <div className="flex items-center gap-3">

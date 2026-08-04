@@ -86,7 +86,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
   return (
     <motion.div 
       whileHover={{ y: -4 }}
-      className="p-8 spatial-glass rounded-[40px] border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
+      className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
     >
       <div className="flex justify-between items-center mb-8 relative z-10">
         <div className="flex items-center gap-3">

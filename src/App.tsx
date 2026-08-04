@@ -51,7 +51,7 @@ export default function App() {
  <Suspense fallback={
           <div className="w-full max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[80vh] flex flex-col gap-8 opacity-50 mt-16 lg:mt-0">
             <div className="w-64 h-10 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
-            <div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-[40px] border border-[var(--glass-border)] animate-pulse spatial-glass" />
+            <div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" />
           </div>
         }>
  <Routes>

@@ -213,7 +213,7 @@ export default function SistemAnalitigi() {
         {/* CHART: Weekly Luminous Pillars — sadece 7 günlük görünümde günlük kırılım anlamlı */}
         <motion.div
           variants={itemVariants}
-          className="lg:col-span-12 spatial-glass !rounded-[40px] p-10 sm:p-12 flex flex-col justify-between min-h-[420px] relative overflow-hidden group shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
+          className="lg:col-span-12 spatial-glass !rounded-card p-10 sm:p-12 flex flex-col justify-between min-h-[420px] relative overflow-hidden group shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
         >
           {/* Living Glow */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/20 to-transparent" />
@@ -338,7 +338,7 @@ export default function SistemAnalitigi() {
         {/* TABLE: Kişi Bazlı Performans Özeti */}
         <motion.div
           variants={itemVariants}
-          className="lg:col-span-12 spatial-glass !rounded-[40px] p-8 sm:p-10 relative overflow-hidden shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
+          className="lg:col-span-12 spatial-glass !rounded-card p-8 sm:p-10 relative overflow-hidden shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <p className="authority-title !text-2xs opacity-40 font-bold tracking-wide">KİŞİ BAZLI PERFORMANS ÖZETİ — SON {periodDays} GÜN</p>

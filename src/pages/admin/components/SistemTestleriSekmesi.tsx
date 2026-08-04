@@ -173,7 +173,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
   return (
     <div className="space-y-8">
       {/* Intro Banner */}
-      <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-[40px] bg-gradient-to-r from-[var(--text-primary)]/[0.01] to-[var(--dynamic-aura,var(--aura-indigo))]/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
+      <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-card bg-gradient-to-r from-[var(--text-primary)]/[0.01] to-[var(--dynamic-aura,var(--aura-indigo))]/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div className="space-y-1">
           <span className="premium-label !text-2xs text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
             <Sparkles size={10} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" /> SİSTEM SAĞLIK MODÜLÜ
@@ -190,7 +190,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         {/* 1. Firestore DB check */}
         <motion.div
           layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-[40px] flex flex-col justify-between h-64 transition-all duration-500 ${
+          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
             dbTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
             dbTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
             'border-[var(--glass-border)]'
@@ -254,7 +254,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         {/* 2. FCM & Push Alerts check */}
         <motion.div
           layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-[40px] flex flex-col justify-between h-64 transition-all duration-500 ${
+          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
             fcmTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
             fcmTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
             'border-[var(--glass-border)]'
@@ -321,7 +321,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         {/* 3. PWA Standalone check & Update Checker */}
         <motion.div
           layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-[40px] flex flex-col justify-between h-64 transition-all duration-500 ${
+          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
             pwaTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
             'border-[var(--glass-border)]'
           }`}
@@ -403,7 +403,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         {/* 4. Network and Outbox check */}
         <motion.div
           layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-[40px] flex flex-col justify-between h-64 transition-all duration-500 ${
+          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
             networkTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
             networkTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
             'border-[var(--glass-border)]'
@@ -469,7 +469,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       </div>
 
       {/* Device & Session Specs */}
-      <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-[40px] space-y-4">
+      <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-card space-y-4">
         <div className="flex items-center gap-2.5 border-b border-[var(--glass-border)] pb-3">
           <Info size={16} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
           <h5 className="text-xs font-semibold text-[var(--text-primary)]">İstemci ve Tarayıcı Sağlık Detayları</h5>
@@ -498,7 +498,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       </div>
 
       {/* 🛠️ Developer Sandbox Panel (Collapsible Accordion) */}
-      <div className="spatial-glass border border-[var(--glass-border)] rounded-[40px] overflow-hidden">
+      <div className="spatial-glass border border-[var(--glass-border)] rounded-card overflow-hidden">
         <button
           onClick={() => setShowSandbox(!showSandbox)}
           className="w-full p-4 sm:p-5 flex items-center justify-between bg-[var(--text-primary)]/[0.01] hover:bg-[var(--text-primary)]/[0.02] transition-colors text-left"

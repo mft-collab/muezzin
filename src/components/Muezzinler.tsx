@@ -97,7 +97,7 @@ export const Muezzinler = React.memo(({
  {[1, 2].map((i) => (
  <div
  key={i}
- className="skeleton-shimmer h-[9.5rem] flex items-center px-8 gap-6 !rounded-[40px] border border-[var(--text-primary)]/[0.04]"
+ className="skeleton-shimmer h-[9.5rem] flex items-center px-8 gap-6 !rounded-card border border-[var(--text-primary)]/[0.04]"
  >
  <div className="w-16 h-16 rounded-[24px] bg-[var(--text-primary)]/5 shrink-0" />
  <div className="flex-1 space-y-4">

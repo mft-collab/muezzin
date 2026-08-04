@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
 import { Vakit, AdminUyarisi } from '../../../types';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { kriziBaslat } from '../../../services/mazeretServisi';
 
 export default function KrizAlarmlari() {
@@ -158,19 +159,13 @@ export default function KrizAlarmlari() {
  </div>
 
  {filteredAlarmlar.length === 0 && (
- <motion.div 
- initial={{ opacity: 0, scale: 0.95 }}
- animate={{ opacity: 1, scale: 1 }}
- className="spatial-glass p-20 rounded-[40px] text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10"
- >
- <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border border-emerald-500/20">
- <CheckCircle size={36} strokeWidth={1.2} />
- </div>
- <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">Uyarı Bulunmuyor</h3>
- <p className="authority-title !text-2xs opacity-40 uppercase tracking-wide leading-relaxed mb-12">
- ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR NÖBET UYARISI BULUNMUYOR.
- </p>
- </motion.div>
+ <EmptyState
+ icon={<CheckCircle size={36} strokeWidth={1.2} />}
+ title="Uyarı Bulunmuyor"
+ description="ŞU ANDA MÜDAHALE GEREKTİREN AKTİF BİR NÖBET UYARISI BULUNMUYOR."
+ tone="emerald"
+ size="lg"
+ />
  )}
 
  {/* ALERT GRID: War Room Matrix */}
@@ -188,7 +183,7 @@ export default function KrizAlarmlari() {
  animate={{ opacity: 1, x: 0 }}
  exit={{ opacity: 0, scale: 0.95 }}
  transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
- className={`relative overflow-hidden p-6 rounded-[40px] border transition-all duration-700 group ${
+ className={`relative overflow-hidden p-6 rounded-card border transition-all duration-700 group ${
  alarm.cozuldu 
  ? 'spatial-glass opacity-30 border-[var(--text-primary)]/5' 
  : `${styles.bg} ${styles.border} shadow-[var(--spatial-shadow)] ${styles.bgHover}`
