@@ -23,10 +23,23 @@ const auth = getAuth(app);
 const UID = 'muezzin_e2e_asil';
 const YEDEK_UID = 'muezzin_e2e_yedek';
 
-function formatDateLocal(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+/**
+ * Uygulama "bugün"ü her zaman Türkiye saatiyle (UTC+3, bkz. src/lib/dateUtils.ts
+ * getTurkeyDateString) hesaplıyor. Bu fonksiyon önceden çalıştıran makinenin
+ * SİSTEM yerel saatini kullanıyordu — GitHub Actions runner'ları UTC'de
+ * çalıştığından, 21:00–24:00 UTC arası (Türkiye'de gece yarısını geçmiş)
+ * seed "bugün" ile uygulamanın gördüğü "bugün" bir takvim günü farklı oluyor,
+ * seed edilen bildirim hiç bulunamıyor ve E2E testi rastgele/saat-bağımlı
+ * biçimde başarısız oluyordu. UTC aritmetiği + UTC getter'ları kullanarak
+ * makinenin yerel saat dilimi ayarından tamamen bağımsız, uygulamayla birebir
+ * aynı "Türkiye bugünü"nü hesaplıyoruz.
+ */
+function turkeyTodayStr(): string {
+  const turkeyMs = Date.now() + 3 * 60 * 60 * 1000; // UTC+3 sabit ofset (Türkiye'de DST yok)
+  const turkey = new Date(turkeyMs);
+  const y = turkey.getUTCFullYear();
+  const m = String(turkey.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(turkey.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -58,7 +71,7 @@ async function seed(): Promise<string> {
     aylikVakitSayisi: 0
   });
 
-  const todayStr = formatDateLocal(new Date());
+  const todayStr = turkeyTodayStr();
   const haftaId = `W${todayStr}`;
 
   await db.collection('bildirimler').doc(`${haftaId}_${todayStr}_yatsi_asil`).set({
