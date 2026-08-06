@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tieBreakerSirala } from '../../src/utils/tieBreaker';
+import { tieBreakerSirala, ARD_ARDA_YEDEK_ESIGI } from '../../src/utils/tieBreaker';
 import { Muezzin } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): Muezzin & { id: string } {
@@ -101,6 +101,40 @@ describe('tieBreakerSirala', () => {
     const sirali = tieBreakerSirala(muezzinler, {}, [], false, aylikCumaSayilari);
 
     expect(sirali.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
+  it('art arda yedek eşiğini aşan kişi, ağırlıklı toplamı en düşük olsa bile tekrar yedek seçilmez (K6 sınır testi)', () => {
+    // a: dün asildi, yüklü. b: dün yedekti, en az yüklü AMA art arda yedek
+    // eşiğini zaten aşmış. c: dün boştaydı (SOS'tan muaf, her zaman asil).
+    // Eşik olmasaydı b (en az yüklü) tekrar yedek olurdu — küçük kadrolarda
+    // bu süresiz bir yedek kilidine yol açıyordu (bkz. mimari denetim K6).
+    const muezzinler = [
+      muezzin('a', { aylikVakitSayisi: 100 }),
+      muezzin('b', { aylikVakitSayisi: 0 }),
+      muezzin('c', { aylikVakitSayisi: 50 }),
+    ];
+    const ardArdaYedekSayilari = { b: ARD_ARDA_YEDEK_ESIGI };
+
+    const sirali = tieBreakerSirala(muezzinler, {}, ['a', 'b'], false, {}, ardArdaYedekSayilari);
+
+    expect(sirali[0].id).toBe('c'); // SOS'tan muaf, her zaman asil
+    expect(sirali[1].id).toBe('a'); // b eşiği aştığı için yedek yarışından çıkar, a yedek olur
+    expect(sirali[2].id).toBe('b'); // b o gün tamamen boşta kalır
+  });
+
+  it('art arda yedek eşiğinin altındaki kişi normal ağırlıklı toplama göre sıralanır', () => {
+    const muezzinler = [
+      muezzin('a', { aylikVakitSayisi: 100 }),
+      muezzin('b', { aylikVakitSayisi: 0 }),
+      muezzin('c', { aylikVakitSayisi: 50 }),
+    ];
+    const ardArdaYedekSayilari = { b: ARD_ARDA_YEDEK_ESIGI - 1 }; // eşiğin altında
+
+    const sirali = tieBreakerSirala(muezzinler, {}, ['a', 'b'], false, {}, ardArdaYedekSayilari);
+
+    expect(sirali[0].id).toBe('c');
+    expect(sirali[1].id).toBe('b'); // eşik aşılmadı, en az yüklü (b) yedek olur
+    expect(sirali[2].id).toBe('a');
   });
 
   it('tüm kriterler eşitse alfabetik değil, id karakter kodu toplamına göre sıralar', () => {

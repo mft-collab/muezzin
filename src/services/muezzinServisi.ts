@@ -37,17 +37,34 @@ export function invitesAbone(
   );
 }
 
-/** Kadro değişikliğinin mevcut hafta planını etkileyip etkilemediğine bakılmaksızın, güvenli bir yeniden hesaplama dener. Başarısızlık sessizce raporlanır — asıl işlemi engellemez. */
+/** Gece cron'unun (scripts/haftalikPlanOlustur.ts) ürettiği kadar ileri hafta
+ * sayısı — bkz. mimari denetim O4: kadro değişikliği yalnızca bu haftayı
+ * yeniliyordu, +1/+2 haftalarındaki planlarda pasife alınan personel
+ * atanmış kalmaya devam ediyordu, hiçbir uyarı da üretilmiyordu. */
+const GUVENLI_YENILEME_HAFTA_SAYISI = 3;
+
+/** Kadro değişikliğinin mevcut VE gece cron'unun ürettiği kadar ileri
+ * haftaları (bu hafta + sonraki 2 hafta) etkileyip etkilemediğine
+ * bakılmaksızın, her biri için güvenli bir yeniden hesaplama dener.
+ * Başarısızlık sessizce raporlanır — asıl işlemi engellemez; bir haftanın
+ * başarısız olması diğerlerinin denenmesini engellemez. */
 async function haftaPlaniniGuvenliYenile(m: MuezzinDoc): Promise<boolean> {
   if (m.role !== 'muezzin') return true;
-  try {
-    const haftaId = getHaftaIdFromDate(getTurkeyDateString());
-    await haftalikPlanOlustur(haftaId);
-    return true;
-  } catch (err) {
-    console.warn('Kadro değişikliği sonrası plan yenilenemedi:', err);
-    return false;
+  const bugun = getTurkeyDateString();
+  let hepsiBasarili = true;
+  for (let haftaOffset = 0; haftaOffset < GUVENLI_YENILEME_HAFTA_SAYISI; haftaOffset++) {
+    try {
+      const [y, mo, d] = bugun.split('-').map(Number);
+      const hedefTarih = new Date(y, mo - 1, d + haftaOffset * 7);
+      const hedefTarihStr = getTurkeyDateString(hedefTarih);
+      const haftaId = getHaftaIdFromDate(hedefTarihStr);
+      await haftalikPlanOlustur(haftaId);
+    } catch (err) {
+      console.warn(`Kadro değişikliği sonrası plan yenilenemedi (hafta +${haftaOffset}):`, err);
+      hepsiBasarili = false;
+    }
   }
+  return hepsiBasarili;
 }
 
 export async function personelAktiflikDegistir(m: MuezzinDoc, muezzinler: MuezzinDoc[]): Promise<{ planRefreshed: boolean }> {

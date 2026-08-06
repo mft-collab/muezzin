@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { haftalikPlanUret, tekKisiliGunleriBul, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
 import { Muezzin, Vakit } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): MuezzinAday {
@@ -193,5 +193,78 @@ describe('haftalikPlanUret', () => {
     const plan = haftalikPlanUret(['2026-08-03'], muezzinler, []);
 
     expect(tekKisiliGunleriBul(plan)).toEqual([]);
+  });
+
+  it('kapsamsizGunleriBul, hiç kimsenin müsait olmadığı günleri tespit eder (O3 regresyonu)', () => {
+    // Önceden bu durum (kadro yeterli ama belirli bir gün herkes izinli)
+    // hiçbir uyarı üretmiyordu — bkz. mimari denetim O3.
+    const muezzinler = [
+      muezzin('a', { haftalikIzinGunu: 1 }), // Pazartesi izinli
+      muezzin('b', { haftalikIzinGunu: 1 }), // Pazartesi izinli
+    ];
+
+    const plan = haftalikPlanUret(['2026-08-03', '2026-08-04'], muezzinler, []);
+
+    expect(kapsamsizGunleriBul(plan)).toEqual(['2026-08-03']);
+  });
+
+  it('kapsamsizGunleriBul, tek kişinin müsait olduğu günü kapsamsız saymaz', () => {
+    const muezzinler = [
+      muezzin('a'),
+      muezzin('b', { haftalikIzinGunu: 1 }),
+    ];
+
+    const plan = haftalikPlanUret(['2026-08-03'], muezzinler, []);
+
+    expect(kapsamsizGunleriBul(plan)).toEqual([]);
+  });
+
+  it('sürekli yedek kalma kilidini kırar: 3 kişilik kadroda 4 hafta sonunda herkes en az bir kez asil olmuş olur (K6 regresyonu)', () => {
+    // Mimari denetimde bulunan gerçek hata: yedeklik hiçbir kalıcı sayaca
+    // işlenmediği için SOS + haftalık-yük-sıfırlama etkileşimi bir kişiyi
+    // süresiz yedekte kilitliyordu (4 hafta sonunda gözlenen gerçek dağılım:
+    // asil {aaa:70, bbb:0, ccc:70}). Bu test, scripts/yatsiSonuIslemleri.ts'in
+    // gün sonu kalıcı kredilendirmesini (aylikVakitSayisi + aylikYedekSayisi)
+    // hafta hafta simüle ederek kilidin artık kırıldığını doğrular.
+    let muezzinler: MuezzinAday[] = [muezzin('aaa'), muezzin('bbb'), muezzin('ccc')];
+    const haftalar = [
+      ['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09'],
+      ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'],
+      ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'],
+      ['2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29', '2026-08-30'],
+    ];
+    const toplamAsilSayisi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+    let oncekiHaftaSonEkibi: string[] = [];
+
+    for (const gunler of haftalar) {
+      const plan = haftalikPlanUret(gunler, muezzinler, [], undefined, oncekiHaftaSonEkibi);
+
+      const haftaAsilKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      const haftaYedekKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      for (const gun of gunler) {
+        for (const vakit of VAKITLER) {
+          const atama = plan[gun][vakit];
+          if (atama.asil !== 'Sistem') {
+            haftaAsilKredi[atama.asil]++;
+            toplamAsilSayisi[atama.asil]++;
+          }
+          if (atama.yedek !== 'Sistem') haftaYedekKredi[atama.yedek]++;
+        }
+      }
+
+      // scripts/yatsiSonuIslemleri.ts'in gün sonu kalıcı kredilendirmesinin
+      // hafta sonundaki eşdeğeri.
+      muezzinler = muezzinler.map((m) => ({
+        ...m,
+        aylikVakitSayisi: (m.aylikVakitSayisi || 0) + haftaAsilKredi[m.id],
+        aylikYedekSayisi: (m.aylikYedekSayisi || 0) + haftaYedekKredi[m.id],
+      }));
+
+      const sonGun = gunler[6];
+      const sonVakitAtama = plan[sonGun].yatsi;
+      oncekiHaftaSonEkibi = [sonVakitAtama.asil, sonVakitAtama.yedek].filter((uid) => uid !== 'Sistem');
+    }
+
+    expect(Object.values(toplamAsilSayisi).every((n) => n > 0)).toBe(true);
   });
 });

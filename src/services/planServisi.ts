@@ -1,12 +1,16 @@
 import { collection, query, where, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
-import { haftalikPlanUret, tekKisiliGunleriBul, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
 import { isFriday, getOncekiHafta } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
-const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi'];
+// 'okundu_varsayilan': yatsiSonuIslemleri.ts'in gün sonunda dokunulmamış
+// bekleyen bildirimlere verdiği "tamamlandı" durumu — bu listede olmazsa
+// tamamlanmış GEÇMİŞ günler bile bir sonraki plan yeniden üretiminde silinip
+// farklı bir kişiye atanabiliyordu (bkz. mimari denetim K7).
+const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi', 'okundu_varsayilan'];
 
 // İyimser eşzamanlılık denetiminin (aşağıda) attığı çakışma hatasını genel
 // Firestore hatalarından ayırt etmek için — böylece dışarıdaki tek seferlik
@@ -46,7 +50,16 @@ function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
 function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
  return slotBildirimleri.some((bildirimDoc) => {
  const data = bildirimDoc.data();
- return !!data && (KORUNAN_DURUMLAR.includes(data.durum) || data.tip === 'gorev_cagrisi');
+ // vekaletDevredildi: true — vekaletServisi.ts'teki vekaletKabulEt bunu
+ // yazar. Kabul edilen bir vekalet devri, bildirimin `durum`unu
+ // DEĞİŞTİRMEZ (hâlâ 'bekliyor' kalabilir) — bu alan olmadan
+ // korumaliSlotMu bu slotu korumasız sanıp plan yeniden üretiminde
+ // sessizce eski sahibine geri döndürüyordu (bkz. mimari denetim K5).
+ return !!data && (
+ KORUNAN_DURUMLAR.includes(data.durum) ||
+ data.tip === 'gorev_cagrisi' ||
+ data.vekaletDevredildi === true
+ );
  });
 }
 
@@ -205,6 +218,9 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
 
  // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak.
  const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
+ // Hiç kimsenin müsait olmadığı (tamamen kapsamsız) günler — sistemdeki en
+ // ağır durum, önceden hiçbir uyarı üretmiyordu (bkz. mimari denetim O3).
+ const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
 
  // Commit'ten hemen önce eşzamanlılık kontrolü yapılıp SONRA batch kurulur —
  // aradaki pencere olabildiğince küçük tutulur.
@@ -262,6 +278,15 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  gunler: gunPlan
  }, { merge: true });
 
+ if (kapsamsizGunler.length > 0) {
+ batch.set(doc(collection(db, 'adminUyarilari')), {
+ tip: 'planOlusturulamadi',
+ mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
+ tarih: kapsamsizGunler[0],
+ cozuldu: false,
+ olusturmaTarihi: Timestamp.now()
+ });
+ }
  if (tekKisiliGunler.length > 0) {
  batch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'zincirTukendi',

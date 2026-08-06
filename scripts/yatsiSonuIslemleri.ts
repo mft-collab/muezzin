@@ -53,6 +53,10 @@ async function main() {
   // tutulur ki Cuma adaleti ay ilerledikçe aylık toplam tarafından
   // bastırılmasın (bkz. src/utils/tieBreaker.ts, algoritma denetimi).
   const cumaKredi: Record<string, number> = {};
+  // Yedek olarak tamamlanan gün sayısı — kalıcı bir sayaca işlenmezse SOS +
+  // haftalık-yük-sıfırlama etkileşimi, sürekli yedek kalan birini süresiz
+  // kilitleyebiliyordu (bkz. src/utils/tieBreaker.ts, mimari denetim K6).
+  const yedekKredi: Record<string, number> = {};
 
   bildirimler.docs.forEach(doc => {
     const data = doc.data();
@@ -77,25 +81,36 @@ async function main() {
       }
     } else if (data.tip === 'yedek') {
       if (data.durum === 'bekliyor') {
-        // Yedek kişi sadece yedekti, yapması gereken bir şey yoktu.
+        // Yedek kişi sadece yedekti, yapması gereken bir şey yoktu — yine de
+        // kalıcı bir sayaca işlenmezse tieBreaker'da sürekli yedek kalma
+        // kilidine yol açıyordu (bkz. mimari denetim K6).
         batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+        yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
+      } else if (data.durum === 'onaylandi') {
+        // Kendi "Okudum" onayını gün içinde vermiş (okudumOnayla tip
+        // ayrımı yapmıyor, yedek de çağırabiliyor).
+        yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
       }
+      // durum === 'reddedildi' (mazeret bildirildi) → kredi yok
     }
   });
 
-  // Asil kişilere puanlarını ver
-  if (Object.keys(asilKredi).length > 0) {
+  // Asil ve yedek kişilere puanlarını ver
+  if (Object.keys(asilKredi).length > 0 || Object.keys(yedekKredi).length > 0) {
     const muezzinlerDocs = await db.collection('muezzins').get();
     muezzinlerDocs.docs.forEach(mDoc => {
+      if (!asilKredi[mDoc.id] && !yedekKredi[mDoc.id]) return;
+      const updates: Record<string, number> = {};
       if (asilKredi[mDoc.id]) {
-        const updates: Record<string, number> = {
-          aylikVakitSayisi: (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id]
-        };
-        if (cumaKredi[mDoc.id]) {
-          updates.aylikCumaSayisi = (mDoc.data().aylikCumaSayisi || 0) + cumaKredi[mDoc.id];
-        }
-        batch.update(mDoc.ref, updates);
+        updates.aylikVakitSayisi = (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id];
       }
+      if (cumaKredi[mDoc.id]) {
+        updates.aylikCumaSayisi = (mDoc.data().aylikCumaSayisi || 0) + cumaKredi[mDoc.id];
+      }
+      if (yedekKredi[mDoc.id]) {
+        updates.aylikYedekSayisi = (mDoc.data().aylikYedekSayisi || 0) + yedekKredi[mDoc.id];
+      }
+      batch.update(mDoc.ref, updates);
     });
   }
 
@@ -243,7 +258,7 @@ async function main() {
   if (yarın.getDate() === 1) {
     const muezzins = await db.collection('muezzins').get();
     const resetBatch = db.batch();
-    muezzins.docs.forEach(doc => resetBatch.update(doc.ref, { aylikVakitSayisi: 0, aylikCumaSayisi: 0 }));
+    muezzins.docs.forEach(doc => resetBatch.update(doc.ref, { aylikVakitSayisi: 0, aylikCumaSayisi: 0, aylikYedekSayisi: 0 }));
     await resetBatch.commit();
     console.log("Skorlar sıfırlandı.");
   }

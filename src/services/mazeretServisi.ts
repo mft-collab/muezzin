@@ -15,9 +15,9 @@ import {
   where
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { Bildirim } from '../types';
+import { Bildirim, Vakit } from '../types';
 import { getHaftaIdFromDate, getTurkeyDateString, getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
-import { mazeretKapaliMi } from '../lib/mazeretKurallari';
+import { mazeretKapaliMi, MazeretDurumu } from '../lib/mazeretKurallari';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
@@ -30,6 +30,46 @@ async function getEzanVakti(tarih: string, vakit: string): Promise<Date | null> 
  const saat = vakitDoc.data()?.gunler?.[tarih]?.[vakit];
  if (typeof saat !== 'string') return null;
  return parseVakitToDate(tarih, saat);
+}
+
+/**
+ * Mazeret/görev devri (vekalet) zaman penceresinin açık olup olmadığını
+ * belirler — Cuma kısıtlaması ve 1 saatlik süre kısıtlamasının TEK ortak
+ * uygulama noktası (bkz. src/lib/mazeretKurallari.ts, CLAUDE.md "Mazeret /
+ * Cuma kısıtlaması"). `mazeretBildir` ve `vekaletServisi.ts`'teki
+ * `vekaletTeklifEt`/`vekaletKabulEt` hepsi bunu çağırır — bildirim
+ * belgesindeki (potansiyel olarak eski/eksik) `cumaMi` alanına GÜVENMEZ,
+ * Cuma'yı `tarih`'ten taze türetir (bkz. mimari denetim K3/K4).
+ */
+export async function mazeretZamanKontrolYap(
+  tarih: string,
+  vakit: Vakit,
+  ezanSaati?: string
+): Promise<MazeretDurumu> {
+  const [gY, gM, gD] = tarih.split('-').map(Number);
+  const gunTarihi = new Date(gY, gM - 1, gD);
+
+  const vakitSaati = vakit === 'sabah'
+    ? null
+    : ezanSaati
+      ? parseVakitToDate(tarih, ezanSaati)
+      : await getEzanVakti(tarih, vakit);
+
+  const oncekiGunYatsiSaati = vakit === 'sabah'
+    ? await getEzanVakti(getTurkeyDateString(new Date(gY, gM - 1, gD - 1)), 'yatsi')
+    : null;
+
+  const referansSaatYok = vakit === 'sabah' ? !oncekiGunYatsiSaati : !vakitSaati;
+  if (referansSaatYok) {
+    console.warn(`[mazeret] ${tarih} ${vakit} için ezan/yatsı saati bulunamadı — süre kısıtlaması bu talepte uygulanamadı.`);
+    telemetryService.logEvent({
+      eventType: 'performance',
+      eventName: 'MAZERET_SURE_KISITLAMASI_ATLANDI',
+      metadata: { tarih, vakit }
+    });
+  }
+
+  return mazeretKapaliMi({ gunTarihi, vakit, vakitSaati, oncekiGunYatsiSaati }, getTurkeyNow());
 }
 
 async function dinamikGorevKontrolMekanizmasi(tarih: string, vakit: string, haricUidler: string[]): Promise<void> {
@@ -102,38 +142,8 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
     }
 
     const { haftaId, tarih, vakit, uid } = mevcutBildirim;
-    const [gY, gM, gD] = tarih.split('-').map(Number);
-    const gunTarihi = new Date(gY, gM - 1, gD);
 
-    // Sabah vaktinin mazeret penceresi kendi saatine göre değil, bir önceki
-    // akşamki yatsıya göre kapanır (bkz. mazeretKurallari.ts) — bu yüzden
-    // sabah için bugünün kendi ezan saati hiç sorgulanmaz.
-    const vakitSaati = vakit === 'sabah'
-      ? null
-      : ezanSaati
-        ? parseVakitToDate(tarih, ezanSaati)
-        : await getEzanVakti(tarih, vakit);
-
-    const oncekiGunYatsiSaati = vakit === 'sabah'
-      ? await getEzanVakti(getTurkeyDateString(new Date(gY, gM - 1, gD - 1)), 'yatsi')
-      : null;
-
-    // Referans saat (bugünün vakti ya da sabah için önceki günün yatsısı)
-    // bulunamazsa mazeretKapaliMi süre kısıtlamasını uygulayamaz (fail-open —
-    // bkz. algoritma denetimi). Bu, kullanıcıyı veri eksikliği yüzünden
-    // cezalandırmamak için bilinçli bir tercih; ama sessizce geçmemesi için
-    // burada görünürlük bırakılıyor.
-    const referansSaatYok = vakit === 'sabah' ? !oncekiGunYatsiSaati : !vakitSaati;
-    if (referansSaatYok) {
-      console.warn(`[mazeret] ${tarih} ${vakit} için ezan/yatsı saati bulunamadı — süre kısıtlaması bu talepte uygulanamadı.`);
-      telemetryService.logEvent({
-        eventType: 'performance',
-        eventName: 'MAZERET_SURE_KISITLAMASI_ATLANDI',
-        metadata: { tarih, vakit, bildirimId }
-      });
-    }
-
-    const mazeretDurumu = mazeretKapaliMi({ gunTarihi, vakit, vakitSaati, oncekiGunYatsiSaati }, getTurkeyNow());
+    const mazeretDurumu = await mazeretZamanKontrolYap(tarih, vakit, ezanSaati);
     if (mazeretDurumu.kapali) {
       throw new Error(mazeretDurumu.sebep ?? 'Mazeret bildirimi bu görev için kapalı.');
     }

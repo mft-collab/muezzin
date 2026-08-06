@@ -5,10 +5,31 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // GLOBALS & HELPERS
     // ---------------------------------------------------------
-    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+    // email_verified zorunlu: istemci yalnizca Google ile giris yapiyor (her
+    // zaman dogrulanmis e-posta doner), ama konsolda Email/Sifre gibi baska
+    // bir saglayici acikken bu kontrol olmasaydi dogrulanmamis bir e-postayla
+    // (ornegin bir superAdminEmails girdisini taklit ederek) kimlik sahtekarligi
+    // mumkun olurdu (bkz. mimari denetim K1).
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null &&
+        request.auth.token.email_verified == true;
+    }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    
+
+    // `cumaMi` opsiyonel bir alandır (bkz. isValidBildirim yorumu) — eski
+    // belgelerde hiç yok. `data.cumaMi != true` alan tümüyle eksikken map
+    // üzerinde tanımsız bir anahtara erişim hatası fırlatır (rules engine'i
+    // "Property cumaMi is undefined on object" ile reddeder), bu da "eksikse
+    // Cuma değil say" (fail-open) niyetinin TAM TERSİNİ üretiyordu — alan
+    // eksik olan bildirimler mazeret/vekalet güncellemelerinde kalıcı olarak
+    // reddediliyordu (bkz. mimari denetim regresyonu, test:rules ile
+    // yakalandı). `.get(key, default)` kullanmak alan eksikliğini güvenle
+    // ele alır.
+    function cumaMiIsaretli(data) {
+      return data.get('cumaMi', false) == true;
+    }
+
     // Süper-admin e-postaları config/bootstrap dokümanında tutulur (kaynak kodda
     // gömülü değildir). Doküman yoksa veya alan eksikse boş liste varsayılır.
     function isSuperAdminEmail(email) {
@@ -38,7 +59,7 @@ service cloud.firestore {
       return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
              data.keys().hasOnly([
                'displayName', 'aktif', 'role', 'email', 'photoURL', 'fcmToken', 'fcmTokens',
-               'aylikVakitSayisi', 'aylikCumaSayisi', 'haftalikIzinGunu', 'notificationSettings',
+               'aylikVakitSayisi', 'aylikCumaSayisi', 'aylikYedekSayisi', 'haftalikIzinGunu', 'notificationSettings',
                'onayBekliyor', 'kayitTarihi', 'arsivlendi', 'arsivTarihi'
              ]) &&
              data.displayName is string && data.displayName.size() <= 100 &&
@@ -50,6 +71,7 @@ service cloud.firestore {
              (!data.keys().hasAny(['fcmTokens']) || isValidFcmTokens(data.fcmTokens)) &&
              (!data.keys().hasAny(['aylikVakitSayisi']) || (data.aylikVakitSayisi is int && data.aylikVakitSayisi >= 0)) &&
              (!data.keys().hasAny(['aylikCumaSayisi']) || (data.aylikCumaSayisi is int && data.aylikCumaSayisi >= 0)) &&
+             (!data.keys().hasAny(['aylikYedekSayisi']) || (data.aylikYedekSayisi is int && data.aylikYedekSayisi >= 0)) &&
              (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 0 && data.haftalikIzinGunu <= 7)) &&
              (!data.keys().hasAny(['notificationSettings']) || isValidNotificationSettings(data.notificationSettings)) &&
              (!data.keys().hasAny(['onayBekliyor']) || data.onayBekliyor is bool) &&
@@ -170,7 +192,7 @@ service cloud.firestore {
                  // kisitlamanin izin taleplerindeki karsiligi:
                  // src/components/VacationRequestCard.tsx ve istemci tarafi
                  // ayna kural: src/lib/mazeretKurallari.ts).
-                 existing().cumaMi != true &&
+                 !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
                  incoming().retSebebi is string &&
@@ -185,7 +207,7 @@ service cloud.firestore {
                  // mazeretDevirleriniIsle.ts).
                  existing().durum == 'bekliyor' &&
                  existing().tip == 'yedek' &&
-                 existing().cumaMi != true &&
+                 !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
                  incoming().retSebebi is string &&
@@ -275,7 +297,7 @@ service cloud.firestore {
              // Cuma gorevleri vekalet ile de devredilemez — aksi halde
              // mazeret icin uygulanan Cuma kisitlamasi bu yoldan atlatilabilir
              // (bkz. algoritma denetimi).
-             bildirim.cumaMi != true &&
+             !cumaMiIsaretli(bildirim) &&
              alici.role == 'muezzin' &&
              alici.aktif == true;
     }
@@ -299,7 +321,13 @@ service cloud.firestore {
       let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
       let changed = incoming().diff(existing()).affectedKeys();
       return existing().durum == 'bekliyor' &&
-             existing().cumaMi != true &&
+             !cumaMiIsaretli(existing()) &&
+             // Talep oluşturulduğunda alıcının aktif müezzin olduğu
+             // doğrulanmıştı (isValidVekaletCreate), ama talep beklerken
+             // admin alıcıyı arşivleyebilir/rolünü değiştirebilir — kabul
+             // anında TEKRAR doğrulanmazsa arşivlenmiş biri çizelgeye geri
+             // dönebiliyordu (bkz. mimari denetim O9).
+             isAssignableDutyUid(request.auth.uid) &&
              incoming().durum == existing().durum &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
@@ -307,7 +335,12 @@ service cloud.firestore {
              incoming().tip == existing().tip &&
              incoming().pendingAck == existing().pendingAck &&
              incoming().uid == request.auth.uid &&
-             changed.hasOnly(['uid', 'sonGuncelleme']) &&
+             // vekaletDevredildi: true zorunlu — durum bu gecişte degismedigi
+             // icin (hala 'bekliyor' olabilir), bu isaret olmadan bir sonraki
+             // plan yeniden uretimi bu slotu korumasiz sanip sessizce eski
+             // sahibine geri dondurebiliyordu (bkz. mimari denetim K5).
+             incoming().vekaletDevredildi == true &&
+             changed.hasOnly(['uid', 'vekaletDevredildi', 'sonGuncelleme']) &&
              talep.bildirimId == bildirimId &&
              talep.haftaId == existing().haftaId &&
              talep.tarih == existing().tarih &&
@@ -327,7 +360,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi', 'cumaMi']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi', 'cumaMi', 'vekaletDevredildi']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -342,7 +375,8 @@ service cloud.firestore {
              // cumaMi kasitli olarak opsiyonel: eski (bu alan eklenmeden once
              // olusturulmus) belgeler bu alan olmadan da gecerli kalir — bkz.
              // isSelfBildirimUpdate()'teki `!= true` karsilastirmasi.
-             (!data.keys().hasAny(['cumaMi']) || data.cumaMi is bool);
+             (!data.keys().hasAny(['cumaMi']) || data.cumaMi is bool) &&
+             (!data.keys().hasAny(['vekaletDevredildi']) || data.vekaletDevredildi is bool);
     }
 
     match /bildirimler/{docId} {
@@ -359,7 +393,13 @@ service cloud.firestore {
       allow get, list: if isAdmin() || isVekaletParticipant(existing());
       allow create: if isSignedIn() && isValidVekaletCreate(talepId);
       allow update: if isAdmin() || isRecipientVekaletStatusUpdate();
-      allow delete: if isAdmin() || (isSignedIn() && existing().gonderenUid == request.auth.uid && existing().durum == 'beklemede');
+      // 'reddedildi' de silinebilir olmalı: talep ID'si deterministik
+      // (haftaId_tarih_vakit_tip_aliciUid) olduğundan, reddedilen bir talep
+      // silinmeden aynı kişiye bir daha teklif gönderilemiyordu — setDoc bu
+      // durumda create değil update sayılır ve isValidVekaletCreate/
+      // isRecipientVekaletStatusUpdate hiçbiri eşleşmediği için kalıcı
+      // kilitleniyordu (bkz. mimari denetim O7).
+      allow delete: if isAdmin() || (isSignedIn() && existing().gonderenUid == request.auth.uid && existing().durum in ['beklemede', 'reddedildi']);
     }
 
     // ---------------------------------------------------------
@@ -432,7 +472,15 @@ service cloud.firestore {
     // ---------------------------------------------------------
     match /config/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // config/bootstrap superAdminEmails listesini tutar. isAdmin() burada
+      // KULLANILAMAZ: isAdmin() siradan role=='admin' kullanicilarini da
+      // kapsadigindan, yazima izin verilirse herhangi bir admin kendini
+      // listeye ekleyip kalici bir super-admin arka kapisi acabilir, hatta
+      // gercek super-adminleri listeden cikarabilir (bkz. mimari denetim K2).
+      // Bu belge yalnizca admin SDK ile (scripts/seedSuperAdminConfig.ts)
+      // yazilir; SDK guvenlik kurallarini atladigi icin bu kisitlama onu
+      // etkilemez.
+      allow write: if false;
     }
 
     function isValidSystemSettings(data) {
@@ -464,7 +512,11 @@ service cloud.firestore {
 
     match /izinler/{docId} {
       allow list: if isAdmin() || (isSignedIn() && (resource == null || resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
-      allow get: if isAdmin() || resource.data.durum == 'onaylandi' || (isSignedIn() && resource.data.uid == request.auth.uid);
+      // isSignedIn() ortadaki disjunktta da zorunlu — eskiden yalnizca
+      // 'onaylandi' durumu kontrol ediliyordu, yani giris yapmamis biri
+      // durumu 'onaylandi' olan HERHANGI bir izin belgesini ID'sini
+      // bilerek okuyabiliyordu (bkz. mimari denetim O10).
+      allow get: if isAdmin() || (isSignedIn() && (resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       allow create: if isSignedIn() && isValidIzin(incoming());
       allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi'])) || 
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));

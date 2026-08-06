@@ -24,6 +24,7 @@
     "test:unit:watch": "vitest",
     "verify:indexes": "tsx scripts/verify-firestore-indexes.ts",
     "process:mazeret-devirleri": "tsx scripts/mazeretDevirleriniIsle.ts",
+    "process:vekalet-devirleri": "tsx scripts/vekaletDevirleriniIsle.ts",
     "seed:super-admin": "tsx scripts/seedSuperAdminConfig.ts",
     "temizle:gunlukler": "tsx scripts/temizleGunlukler.ts"
   },
