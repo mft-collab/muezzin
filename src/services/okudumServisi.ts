@@ -1,4 +1,4 @@
-import { doc, runTransaction, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
 
@@ -60,14 +60,15 @@ export async function adminOkudumOnayla(bildirimId: string): Promise<void> {
       throw new Error('Bu görev zaten sonuçlandırılmış.');
     }
 
-    transaction.update(bildirimRef, { 
-      durum: 'onaylandi', 
-      pendingAck: false, 
-      sonGuncelleme: serverTimestamp() 
-    });
-    
-    transaction.update(doc(db, 'muezzins', bildirim.uid), {
-      aylikVakitSayisi: increment(1)
+    // Not: aylikVakitSayisi puanı burada artırılmıyor — okudumOnayla'daki
+    // gibi puanlama yalnızca gece yatsı sonrası cron'unda (scripts/
+    // yatsiSonuIslemleri.ts), bildirimin `durum` alanına bakılarak merkezi
+    // olarak veriliyor. Burada da artırılsaydı, cron aynı geceyi tekrar
+    // sayıp çift puan verirdi (bkz. mimari denetim O7).
+    transaction.update(bildirimRef, {
+      durum: 'onaylandi',
+      pendingAck: false,
+      sonGuncelleme: serverTimestamp()
     });
   });
 }

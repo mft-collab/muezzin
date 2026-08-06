@@ -1,6 +1,6 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
@@ -64,7 +64,7 @@ async function main() {
   // Sadece aktif müezzinleri alalım
   const muezzinler = muezzinSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }))
-    .filter(m => m.role === 'muezzin');
+    .filter(m => nobeteAtanabilirMi(m));
 
   if (muezzinler.length < 2) {
     console.error("Yetersiz müezzin! Planlama yapılamıyor.");

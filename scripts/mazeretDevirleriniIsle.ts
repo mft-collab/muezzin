@@ -8,7 +8,7 @@ type BildirimData = {
   tip: 'asil' | 'yedek' | 'gorev_cagrisi';
   durum: string;
   devirSonucu?: 'yedek_atandi' | 'alarm_bekliyor' | 'alarm_uretildi';
-  planSenkronEdildi?: boolean;
+  mazeretPlanSenkronEdildi?: boolean;
 };
 
 /**
@@ -23,8 +23,18 @@ type BildirimData = {
  *  - devirSonucu === 'alarm_bekliyor': istemci uygun bir yedek bulamadı.
  *    Bu iş admin'i uyaran bir adminUyarilari kaydı oluşturur.
  *
- * Her iki durumda da işlenen belge `planSenkronEdildi: true` ile işaretlenir
- * ki bu iş tekrar tekrar aynı kaydı işlemesin (idempotent).
+ * Her iki durumda da işlenen belge `mazeretPlanSenkronEdildi: true` ile
+ * işaretlenir ki bu iş tekrar tekrar aynı kaydı işlemesin (idempotent).
+ *
+ * NOT: bu bayrak, `vekaletDevirleriniIsle.ts`'in kullandığı
+ * `vekaletPlanSenkronEdildi`'den KASITLI OLARAK AYRI bir alandır — ikisi
+ * eskiden tek bir paylaşılan `planSenkronEdildi` alanını kullanıyordu. Aynı
+ * bildirim belgesi önce bir vekalet devriyle senkronlanıp sonra (yeni
+ * sahibi tarafından) mazeretle reddedilirse, paylaşılan bayrak zaten
+ * `true` olduğundan bu iş belgeyi "zaten işlenmiş" sanıp tamamen
+ * atlıyordu — vakit görevlisiz kalıyor, hiçbir admin uyarısı üretilmiyordu
+ * (bkz. mimari denetim Y2). Alanlar ayrıldığından beri her iş yalnızca
+ * kendi yaşam döngüsü olayını takip ediyor.
  */
 
 async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
@@ -51,7 +61,7 @@ export async function processMazeretDevirleri(dryRun = false) {
 
   const islenecekler = mazeretSnap.docs.filter((docSnap) => {
     const data = docSnap.data() as BildirimData;
-    return data.planSenkronEdildi !== true && !!data.devirSonucu;
+    return data.mazeretPlanSenkronEdildi !== true && !!data.devirSonucu;
   });
 
   let planSenkronlandi = 0;
@@ -74,7 +84,7 @@ export async function processMazeretDevirleri(dryRun = false) {
           if (!freshMazeret.exists || !freshPromoted.exists) return;
 
           const freshMazeretData = freshMazeret.data() as BildirimData;
-          if (freshMazeretData.planSenkronEdildi === true) return;
+          if (freshMazeretData.mazeretPlanSenkronEdildi === true) return;
 
           const promotedData = freshPromoted.data() as BildirimData;
           if (promotedData.tip !== 'asil') return; // istemci terfisi henüz/hiç gerçekleşmemiş
@@ -85,7 +95,7 @@ export async function processMazeretDevirleri(dryRun = false) {
           });
 
           transaction.update(mazeretDoc.ref, {
-            planSenkronEdildi: true,
+            mazeretPlanSenkronEdildi: true,
             sonGuncelleme: Timestamp.now()
           });
         });
@@ -99,7 +109,7 @@ export async function processMazeretDevirleri(dryRun = false) {
         console.log(`${mazeret.tarih} ${mazeret.vakit}: aktif alarm zaten var, atlandi.`);
         atlandi++;
         if (!dryRun) {
-          await mazeretDoc.ref.update({ planSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
+          await mazeretDoc.ref.update({ mazeretPlanSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
         }
         continue;
       }
@@ -121,7 +131,7 @@ export async function processMazeretDevirleri(dryRun = false) {
         });
         batch.update(mazeretDoc.ref, {
           devirSonucu: 'alarm_uretildi',
-          planSenkronEdildi: true,
+          mazeretPlanSenkronEdildi: true,
           sonGuncelleme: Timestamp.now()
         });
         await batch.commit();
@@ -131,7 +141,7 @@ export async function processMazeretDevirleri(dryRun = false) {
 
     // devirSonucu === 'alarm_uretildi' (önceki bir çalıştırmada zaten işlenmiş): sadece işaretle.
     if (!dryRun) {
-      await mazeretDoc.ref.update({ planSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
+      await mazeretDoc.ref.update({ mazeretPlanSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
     }
   }
 

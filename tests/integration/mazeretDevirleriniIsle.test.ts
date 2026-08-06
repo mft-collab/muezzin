@@ -63,7 +63,7 @@ const tests: TestCase[] = [
         tip: 'asil',
         durum: 'reddedildi', // Mazeret bildirilmis
         devirSonucu: 'yedek_atandi',
-        planSenkronEdildi: false
+        mazeretPlanSenkronEdildi: false
       });
 
       const yedekRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_yedek');
@@ -81,7 +81,7 @@ const tests: TestCase[] = [
 
       // Assert
       const mazeretDoc = await mazeretRef.get();
-      assert.equal(mazeretDoc.data()?.planSenkronEdildi, true);
+      assert.equal(mazeretDoc.data()?.mazeretPlanSenkronEdildi, true);
       assert.equal(mazeretDoc.data()?.devirSonucu, 'yedek_atandi');
 
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
@@ -113,7 +113,7 @@ const tests: TestCase[] = [
         tip: 'asil',
         durum: 'reddedildi', // Mazeret
         devirSonucu: 'alarm_bekliyor',
-        planSenkronEdildi: false
+        mazeretPlanSenkronEdildi: false
       });
 
       // Act
@@ -121,7 +121,7 @@ const tests: TestCase[] = [
 
       // Assert
       const mazeretDoc = await mazeretRef.get();
-      assert.equal(mazeretDoc.data()?.planSenkronEdildi, true);
+      assert.equal(mazeretDoc.data()?.mazeretPlanSenkronEdildi, true);
       assert.equal(mazeretDoc.data()?.devirSonucu, 'alarm_uretildi');
 
       const alarmSnap = await db.collection('adminUyarilari').get();
@@ -131,6 +131,50 @@ const tests: TestCase[] = [
       assert.equal(alarm.cozuldu, false);
       assert.equal(alarm.tarih, '2026-05-23');
       assert.equal(alarm.vakit, 'ogle');
+    }
+  },
+  {
+    // Y2 regresyonu: iki bağımsız uzlaştırma cron'u (mazeret + vekalet) eskiden
+    // aynı paylaşılan `planSenkronEdildi` bayrağını kullanıyordu. Bir bildirim
+    // önce vekaletle senkronlanıp (vekaletPlanSenkronEdildi:true) sonra AYNI
+    // belge yeni sahibi tarafından mazeretle reddedilirse, mazeret cron'u
+    // paylaşılan bayrağın zaten true olduğunu görüp belgeyi tamamen
+    // atlıyordu — vakit görevlisiz kalıyor, hiçbir admin uyarısı üretilmiyordu.
+    // Bu test, ayrılmış alanlarla mazeret olayının artık İŞLENDİĞİNİ doğrular.
+    name: 'Vekaletle senkronlanmis bir bildirim, sonraki mazeret reddi hala islenir (Y2 regresyonu)',
+    run: async () => {
+      await clearCollections();
+
+      await db.collection('muezzins').doc('muezzin_asil').set({
+        displayName: 'Asil',
+        role: 'muezzin',
+        aktif: true
+      });
+      // No active yedek — devirSonucu alarm_bekliyor olacak.
+
+      const bildirimRef = db.collection('bildirimler').doc('bildirim_asil_3');
+      await bildirimRef.set({
+        haftaId: 'W2026-05-18',
+        tarih: '2026-05-24',
+        vakit: 'ikindi',
+        uid: 'muezzin_asil',
+        tip: 'asil',
+        durum: 'reddedildi', // Mazeret bu kez
+        devirSonucu: 'alarm_bekliyor',
+        // Bu belge DAHA ÖNCE bir vekalet devriyle senkronlanmış — paylaşılan
+        // bayrak kullanılsaydı mazeret cron'u bunu "zaten işlenmiş" sanırdı.
+        vekaletPlanSenkronEdildi: true
+      });
+
+      await processMazeretDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.mazeretPlanSenkronEdildi, true);
+      assert.equal(bildirimDoc.data()?.devirSonucu, 'alarm_uretildi');
+
+      const alarmSnap = await db.collection('adminUyarilari').get();
+      assert.equal(alarmSnap.size, 1);
+      assert.equal(alarmSnap.docs[0].data().tarih, '2026-05-24');
     }
   }
 ];

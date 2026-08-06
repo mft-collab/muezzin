@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
 import { Muezzin, Vakit } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): MuezzinAday {
@@ -266,5 +266,26 @@ describe('haftalikPlanUret', () => {
     }
 
     expect(Object.values(toplamAsilSayisi).every((n) => n > 0)).toBe(true);
+  });
+});
+
+describe('nobeteAtanabilirMi', () => {
+  it('aktif, onay bekleyen olmayan bir muezzin icin true doner', () => {
+    expect(nobeteAtanabilirMi({ role: 'muezzin', onayBekliyor: false })).toBe(true);
+  });
+
+  it('onayBekliyor alani hic olmayan (eski) bir muezzin icin true doner (fail-open)', () => {
+    expect(nobeteAtanabilirMi({ role: 'muezzin' })).toBe(true);
+  });
+
+  it('onayBekliyor:true olan bir davetli icin false doner (Y4 regresyonu)', () => {
+    // AuthGuard bu kisiye zaten bir bekleme ekrani gosteriyor — gorevini
+    // goremedigi bir vakte atanmamali (bkz. mimari denetim Y4).
+    expect(nobeteAtanabilirMi({ role: 'muezzin', onayBekliyor: true })).toBe(false);
+  });
+
+  it('admin/gozlemci rolu icin false doner', () => {
+    expect(nobeteAtanabilirMi({ role: 'admin', onayBekliyor: false })).toBe(false);
+    expect(nobeteAtanabilirMi({ role: 'gozlemci', onayBekliyor: false })).toBe(false);
   });
 });

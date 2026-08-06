@@ -355,7 +355,39 @@ const tests: TestCase[] = [
         aktif: true,
         photoURL: '',
         fcmToken: null,
-        aylikVakitSayisi: 0
+        aylikVakitSayisi: 0,
+        // useAuthStore.ts her zaman bunu ayarlar (admin haric) — bkz.
+        // mimari denetim Y4 / isInvitedSelfMuezzinCreate.
+        onayBekliyor: true
+      }));
+    }
+  },
+  {
+    name: 'davetli kullanici onayBekliyor:false ile kendi profilini olusturamaz (Y4 regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'invites/invited2@example.test'), {
+          email: 'invited2@example.test',
+          displayName: 'Invited User 2',
+          role: 'muezzin',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'invited2').firestore();
+      // onayBekliyor:false (ya da hic gonderilmemesi) ile kendi profilini
+      // olusturmaya calisan bir kullanici, admin onayini atlayip dogrudan
+      // nobete atanabilir hale gelmemeli.
+      await assertFails(setDoc(doc(db, 'muezzins/invited2'), {
+        displayName: 'Invited User 2',
+        email: 'invited2@example.test',
+        role: 'muezzin',
+        aktif: true,
+        photoURL: '',
+        fcmToken: null,
+        aylikVakitSayisi: 0,
+        onayBekliyor: false
       }));
     }
   },

@@ -68,6 +68,32 @@ export async function aylikVakitleriCek(
  }
 }
 
+/** Tek bir aya ait, `guncellenmeTarihi` içermeyen vakit grubu — bu alan
+ * yazım anında (client SDK'sı client, admin SDK'sı `firebase-admin/firestore`
+ * Timestamp'ı kullandığından) her çağıran tarafından ayrıca eklenir. */
+export type AylikVakitGrubu = Pick<Vakitler, 'ilceId' | 'kaynakApi'> & { gunler: Vakitler['gunler'] };
+
+/**
+ * `aylikVakitleriCek`'in döndürdüğü (Diyanet kaynağı için `yil`/`ay`
+ * parametrelerini yok sayan, bugünden itibaren ~30-32 günlük kayan bir
+ * pencere döndüren — bkz. yukarıdaki fonksiyon) veriyi gerçek takvim ayına
+ * göre gruplar. Hem `scripts/aylikEzanTakvimiGuncelle.ts` (gece cron'u) hem
+ * `src/services/vakitCacheServisi.ts` (istemci senkronu) bunu kullanır —
+ * eskiden istemci tarafı bu gruplamayı YAPMIYORDU, aynı karışık pencereyi
+ * hem "bu ay" hem "gelecek ay" doc'una kopyalıyordu (bkz. mimari denetim O5).
+ */
+export function aylikVakitleriGrupla(vakitler: Vakitler): Record<string, AylikVakitGrubu> {
+  const aylar: Record<string, AylikVakitGrubu> = {};
+  Object.entries(vakitler.gunler).forEach(([tarih, kayit]) => {
+    const ayId = tarih.slice(0, 7); // YYYY-MM
+    if (!aylar[ayId]) {
+      aylar[ayId] = { ilceId: vakitler.ilceId, kaynakApi: vakitler.kaynakApi, gunler: {} };
+    }
+    aylar[ayId].gunler[tarih] = kayit;
+  });
+  return aylar;
+}
+
 /**
  * Mevcut namaz vaktini hesaplar.
  */

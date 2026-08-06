@@ -15,6 +15,20 @@ export interface OnayliIzin {
   bitis: string;
 }
 
+/**
+ * Bir personelin nöbete atanabilir olup olmadığını belirler — çağıran
+ * taraflar (scripts/haftalikPlanOlustur.ts, src/services/planServisi.ts)
+ * `haftalikPlanUret`'e geçirdikleri `muezzinler` listesini bununla filtreler.
+ * `onayBekliyor: true` olan (admin henüz onaylamamış) bir davetli, kendi
+ * profilini oluşturduğu andan itibaren `aktif: true` olsa da nöbete
+ * atanmamalı — `AuthGuard` ona zaten bir bekleme ekranı gösterdiğinden,
+ * atandığı vakit kimsenin göremeyeceği şekilde sessizce boş kalıyordu (bkz.
+ * mimari denetim Y4).
+ */
+export function nobeteAtanabilirMi(m: Pick<Muezzin, 'role' | 'onayBekliyor'>): boolean {
+  return m.role === 'muezzin' && m.onayBekliyor !== true;
+}
+
 export type MuezzinAday = Muezzin & { id: string };
 
 /**

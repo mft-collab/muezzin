@@ -99,7 +99,13 @@ service cloud.firestore {
              request.auth.uid == uid &&
              incoming().email == emailId &&
              exists(/databases/$(database)/documents/invites/$(emailId)) &&
-             incoming().role == invite.role;
+             incoming().role == invite.role &&
+             // İstemci (useAuthStore.ts) kendi profilini oluştururken admin
+             // rolü hariç her zaman onayBekliyor:true yazar — bu kısıt
+             // olmadan kişi kendi profilini onayBekliyor:false ile
+             // oluşturup admin onayı beklemeden doğrudan nöbete
+             // atanabiliyordu (bkz. mimari denetim Y4).
+             (incoming().role == 'admin' ? incoming().get('onayBekliyor', false) != true : incoming().get('onayBekliyor', false) == true);
     }
 
     match /muezzins/{uid} {
@@ -168,10 +174,28 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Bildirimler
     // ---------------------------------------------------------
+    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı.
+    // `bildirimler` update kuralı bunun gibi 4 ağır dalı OR'lar (bkz. altta
+    // `allow update`); her dal önce pahalı bir Firestore get() ile başlarsa
+    // toplam ifade sayısı emülatörün 1000 ifade tavanına çarpabiliyordu ("K2:
+    // devirSonucu sema disi bir deger olamaz" ve "vekalet alicisi kabul
+    // etmeden bildirimi devralamaz" testleri bu yüzden doğru kural mantığıyla
+    // değil kaynak tükenmesiyle geçiyordu). CEL `&&` soldan sağa kısa devre
+    // yaptığından, ucuz alan eşitlikleri (özellikle `existing().uid ==
+    // request.auth.uid` — başkasının belgesini güncellemeye çalışan HER
+    // istek burada hiç Firestore okumadan elenir) en başta, pahalı
+    // `isAssignableDutyUid()` çağrısı en sonda olmalı.
     function isSelfBildirimUpdate() {
       let changed = incoming().diff(existing()).affectedKeys();
-      return isAssignableDutyUid(request.auth.uid) &&
-             existing().uid == request.auth.uid &&
+      // Her ikisi de opsiyonel alan (bkz. isValidBildirim) — mazeret
+      // reddi/onayı dışındaki hiçbir bildirimde hiç set edilmemiş olabilir.
+      // `.get(key, default)` ile okunmazlarsa alan tümüyle eksikken doğrudan
+      // `incoming().retSebebi`/`incoming().devirSonucu` erişimi rules
+      // motorunda "Property is undefined" hatası fırlatıyordu (bkz.
+      // `cumaMiIsaretli`/`isBackupPromotionFromMazeret` ile aynı kalıp).
+      let retSebebi = incoming().get('retSebebi', null);
+      let devirSonucu = incoming().get('devirSonucu', null);
+      return existing().uid == request.auth.uid &&
              incoming().uid == existing().uid &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
@@ -195,10 +219,10 @@ service cloud.firestore {
                  !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
-                 incoming().retSebebi is string &&
-                 incoming().retSebebi.size() > 0 &&
-                 incoming().retSebebi.size() <= 500 &&
-                 incoming().devirSonucu in ['yedek_atandi', 'alarm_bekliyor']
+                 retSebebi is string &&
+                 retSebebi.size() > 0 &&
+                 retSebebi.size() <= 500 &&
+                 devirSonucu in ['yedek_atandi', 'alarm_bekliyor']
                ) ||
                (
                  // Yedek görevli kendi mazeretini bildiriyor — devralacak bir
@@ -210,12 +234,13 @@ service cloud.firestore {
                  !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
-                 incoming().retSebebi is string &&
-                 incoming().retSebebi.size() > 0 &&
-                 incoming().retSebebi.size() <= 500 &&
-                 incoming().devirSonucu == 'alarm_bekliyor'
+                 retSebebi is string &&
+                 retSebebi.size() > 0 &&
+                 retSebebi.size() <= 500 &&
+                 devirSonucu == 'alarm_bekliyor'
                )
-             );
+             ) &&
+             isAssignableDutyUid(request.auth.uid);
     }
 
     // Bir müezzin mazeret bildirdiğinde (yukarıdaki reddedildi geçişi), aynı
@@ -224,6 +249,15 @@ service cloud.firestore {
     // olduğundan (haftaId_tarih_vakit_tip), yedek belgesi kendi alanlarından
     // asil belgesinin yolunu hesaplayıp getAfter() ile o belgenin bu
     // transaction'da gerçekten 'reddedildi' durumuna geçtiğini doğrulayabilir.
+    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı (bkz.
+    // isSelfBildirimUpdate/isAcceptedVekaletBildirimTransfer yorumları — aynı
+    // gerekçe). Ayrıca `incoming().asilMazeretUid` artık `.get(..., '')` ile
+    // okunuyor: bu fonksiyon `bildirimler` update kuralındaki OR zincirinin
+    // SON dalı olduğundan, önceki dallara uymayan HER güncelleme isteği
+    // (asilMazeretUid alanı hiç göndermeyenler dahil) buraya kadar
+    // düşebiliyordu — alan tamamen eksikken doğrudan `.asilMazeretUid`
+    // erişimi rules motorunda "Property is undefined" hatası fırlatıyordu
+    // (bkz. `cumaMiIsaretli` ile aynı kalıp, aynı kök neden).
     function isBackupPromotionFromMazeret() {
       let changed = incoming().diff(existing()).affectedKeys();
       let asilDocId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_asil';
@@ -232,7 +266,6 @@ service cloud.firestore {
              existing().tip == 'yedek' &&
              existing().durum != 'reddedildi' &&
              existing().uid != request.auth.uid &&
-             isAssignableDutyUid(existing().uid) &&
              incoming().tip == 'asil' &&
              incoming().durum == 'bekliyor' &&
              incoming().pendingAck == true &&
@@ -240,7 +273,7 @@ service cloud.firestore {
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
              incoming().vakit == existing().vakit &&
-             incoming().asilMazeretUid == request.auth.uid &&
+             incoming().get('asilMazeretUid', '') == request.auth.uid &&
              changed.hasOnly(['tip', 'durum', 'pendingAck', 'sonGuncelleme', 'asilMazeretUid']) &&
              asilAfter.tip == 'asil' &&
              asilAfter.durum == 'reddedildi' &&
@@ -248,7 +281,8 @@ service cloud.firestore {
              asilAfter.haftaId == existing().haftaId &&
              asilAfter.tarih == existing().tarih &&
              asilAfter.vakit == existing().vakit &&
-             asilAfter.devirSonucu == 'yedek_atandi';
+             asilAfter.devirSonucu == 'yedek_atandi' &&
+             isAssignableDutyUid(existing().uid);
     }
 
     function vekaletTalepId(data) {
@@ -316,18 +350,18 @@ service cloud.firestore {
              incoming().durum in ['kabul_edildi', 'reddedildi'];
     }
 
+    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı — ucuz
+    // `existing()`/`incoming()` alan karşılaştırmaları önce elenir, ek
+    // Firestore okuması gerektiren doğrulama en son (bkz. isSelfBildirimUpdate
+    // yorumu). `talep.*` karşılaştırmaları zaten fonksiyon girişindeki
+    // `let talep = getAfter(...)`'e bağımlı olduğundan (bu okuma sıralamadan
+    // bağımsız olarak zaten gerçekleşir) sıraları performansı etkilemez.
     function isAcceptedVekaletBildirimTransfer(bildirimId) {
       let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
       let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
       let changed = incoming().diff(existing()).affectedKeys();
       return existing().durum == 'bekliyor' &&
              !cumaMiIsaretli(existing()) &&
-             // Talep oluşturulduğunda alıcının aktif müezzin olduğu
-             // doğrulanmıştı (isValidVekaletCreate), ama talep beklerken
-             // admin alıcıyı arşivleyebilir/rolünü değiştirebilir — kabul
-             // anında TEKRAR doğrulanmazsa arşivlenmiş biri çizelgeye geri
-             // dönebiliyordu (bkz. mimari denetim O9).
-             isAssignableDutyUid(request.auth.uid) &&
              incoming().durum == existing().durum &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
@@ -339,7 +373,7 @@ service cloud.firestore {
              // icin (hala 'bekliyor' olabilir), bu isaret olmadan bir sonraki
              // plan yeniden uretimi bu slotu korumasiz sanip sessizce eski
              // sahibine geri dondurebiliyordu (bkz. mimari denetim K5).
-             incoming().vekaletDevredildi == true &&
+             incoming().get('vekaletDevredildi', false) == true &&
              changed.hasOnly(['uid', 'vekaletDevredildi', 'sonGuncelleme']) &&
              talep.bildirimId == bildirimId &&
              talep.haftaId == existing().haftaId &&
@@ -348,19 +382,31 @@ service cloud.firestore {
              talep.tip == existing().tip &&
              talep.gonderenUid == existing().uid &&
              talep.aliciUid == request.auth.uid &&
-             talep.durum == 'kabul_edildi';
+             talep.durum == 'kabul_edildi' &&
+             // Talep oluşturulduğunda alıcının aktif müezzin olduğu
+             // doğrulanmıştı (isValidVekaletCreate), ama talep beklerken
+             // admin alıcıyı arşivleyebilir/rolünü değiştirebilir — kabul
+             // anında TEKRAR doğrulanmazsa arşivlenmiş biri çizelgeye geri
+             // dönebiliyordu (bkz. mimari denetim O9).
+             isAssignableDutyUid(request.auth.uid);
     }
 
     function isAssignableDutyUid(uid) {
+      let muezzinDoc = /databases/$(database)/documents/muezzins/$(uid);
       return uid is string &&
-             exists(/databases/$(database)/documents/muezzins/$(uid)) &&
-             get(/databases/$(database)/documents/muezzins/$(uid)).data.role == 'muezzin' &&
-             get(/databases/$(database)/documents/muezzins/$(uid)).data.aktif == true;
+             exists(muezzinDoc) &&
+             get(muezzinDoc).data.role == 'muezzin' &&
+             get(muezzinDoc).data.aktif == true &&
+             // onayBekliyor: true olan (admin henüz onaylamamış) bir davetli
+             // nöbete atanabilir sayılmamalı — AuthGuard ona zaten bir
+             // bekleme ekranı gösterdiğinden, atandığı vakit kimse
+             // göremiyordu (bkz. mimari denetim Y4).
+             get(muezzinDoc).data.get('onayBekliyor', false) != true;
     }
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'planSenkronEdildi', 'cumaMi', 'vekaletDevredildi']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -369,7 +415,14 @@ service cloud.firestore {
              data.durum in ['bekliyor', 'onaylandi', 'reddedildi', 'sistem_atadi', 'iptal', 'okundu_varsayilan'] &&
              data.pendingAck is bool &&
              (!data.keys().hasAny(['retSebebi']) || data.retSebebi == null || (data.retSebebi is string && data.retSebebi.size() <= 500)) &&
-             (!data.keys().hasAny(['planSenkronEdildi']) || data.planSenkronEdildi is bool) &&
+             // mazeretPlanSenkronEdildi/vekaletPlanSenkronEdildi kasitli olarak
+             // AYRI iki alan — ikisi eskiden tek bir paylasilan
+             // planSenkronEdildi alanini kullaniyordu, bu da bir bildirim
+             // once vekaletle sonra mazeretle (ya da tam tersi) el
+             // degistirdiginde ikinci olayin "zaten islenmis" sanilip
+             // sessizce atlanmasina yol aciyordu (bkz. mimari denetim Y2).
+             (!data.keys().hasAny(['mazeretPlanSenkronEdildi']) || data.mazeretPlanSenkronEdildi is bool) &&
+             (!data.keys().hasAny(['vekaletPlanSenkronEdildi']) || data.vekaletPlanSenkronEdildi is bool) &&
              (!data.keys().hasAny(['devirSonucu']) || data.devirSonucu is string) &&
              (!data.keys().hasAny(['asilMazeretUid']) || data.asilMazeretUid is string) &&
              // cumaMi kasitli olarak opsiyonel: eski (bu alan eklenmeden once
