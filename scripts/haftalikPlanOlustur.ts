@@ -1,6 +1,6 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
-import { haftalikPlanUret, tekKisiliGunleriBul, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
@@ -190,6 +190,20 @@ async function main() {
       olusturmaTarihi: Timestamp.now(),
       gunler: gunPlan
     });
+
+    // Hiç kimsenin müsait olmadığı (tamamen kapsamsız) günler — sistemdeki
+    // en ağır durum, önceden hiçbir uyarı üretmiyordu (bkz. mimari denetim O3).
+    const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
+    if (kapsamsizGunler.length > 0) {
+      console.error(`${haftaId}: HİÇ KİMSENİN müsait olmadığı günler: ${kapsamsizGunler.join(', ')}`);
+      batch.set(db.collection('adminUyarilari').doc(), {
+        tip: 'planOlusturulamadi',
+        mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
+        tarih: kapsamsizGunler[0],
+        cozuldu: false,
+        olusturmaTarihi: Timestamp.now()
+      });
+    }
 
     // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak —
     // önceden bu durum sessizce geçiyordu (bkz. algoritma denetimi).

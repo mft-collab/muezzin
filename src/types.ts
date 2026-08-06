@@ -22,6 +22,10 @@ export interface Muezzin {
   * toplam tarafından bastırılmasını önlemek için ayrı tutulur (bkz.
   * src/utils/tieBreaker.ts, scripts/yatsiSonuIslemleri.ts). */
  aylikCumaSayisi?: number;
+ /** Bu ay kaç kez yedek görevi tamamladı — kalıcı bir sayaca işlenmezse
+  * sürekli yedek kalan biri her hafta yeniden "en az yüklü" ölçülüp tekrar
+  * yedeğe atanabiliyordu (bkz. src/utils/tieBreaker.ts, mimari denetim K6). */
+ aylikYedekSayisi?: number;
  haftalikIzinGunu?: number;
  kayitTarihi?: string;
  /** Davet kabul edip hesap oluşturdu ama admin onayı bekliyor */
@@ -99,6 +103,14 @@ export interface Bildirim {
   * eklenmeden önce oluşturulmuş eski belgelerde bulunmayabilir.
   */
  cumaMi?: boolean;
+ /**
+  * Bu görev bir vekalet (görev devri) kabulüyle mi el değiştirdi —
+  * vekaletServisi.ts `vekaletKabulEt` tarafından yazılır. `durum` bu
+  * geçişte değişmediğinden (hâlâ 'bekliyor' olabilir), planServisi.ts
+  * bu alan olmadan slotu korumasız sanıp bir sonraki plan yeniden
+  * üretiminde eski sahibine geri döndürebiliyordu (bkz. mimari denetim K5).
+  */
+ vekaletDevredildi?: boolean;
 }
 
 export interface VekaletTalebi {

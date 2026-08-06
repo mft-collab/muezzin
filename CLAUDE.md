@@ -144,8 +144,11 @@ npm run build             # production build
 npm run test:unit         # vitest (tests/unit/**/*.test.{ts,tsx})
 npm run test:e2e          # playwright (Firebase emülatörü gerektirir)
 npm run test:rules        # firestore.rules testleri (emülatör)
-npm run test:all           # typecheck + lint + smoke + unit + rules + sw-config
+npm run test:all           # typecheck + typecheck:scripts + lint + smoke + unit + rules + sw-config
 ```
+
+**`npm test` `test:all`'ın takma adı DEĞİL** — sadece `test:smoke`'u çalıştırır.
+Tam doğrulama için her zaman `npm run test:all` kullan.
 
 Bir değişiklikten sonra en az `typecheck && lint && build && test:unit`
 çalıştır; commit'ten önce mümkünse `test:all`.

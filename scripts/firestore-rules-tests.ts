@@ -31,8 +31,13 @@ type TestCase = {
 };
 
 const testUser = (env: RulesTestEnvironment, uid: string, role?: string): RulesTestContext => {
+  // email_verified: true — gercek kullanicilar yalnizca Google ile giris
+  // yaptigi icin token'da her zaman dogrulanmis gelir; isSignedIn() bunu
+  // zorunlu kildigi icin (bkz. mimari denetim K1) test fixture'i da ayni
+  // varsayimi tasimali.
   return env.authenticatedContext(uid, {
     email: `${uid}@example.test`,
+    email_verified: true,
     role
   });
 };
@@ -207,6 +212,16 @@ const tests: TestCase[] = [
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
       await assertSucceeds(getDoc(doc(db, 'duyurular/publicNotice')));
+    }
+  },
+  {
+    name: 'dogrulanmamis e-posta ile hicbir seye erisilemez (K1 regresyonu)',
+    run: async (env) => {
+      const db = env.authenticatedContext('sahtekullanici', {
+        email: 'sahtekullanici@example.test',
+        email_verified: false
+      }).firestore();
+      await assertFails(getDoc(doc(db, 'duyurular/publicNotice')));
     }
   },
   {
@@ -450,6 +465,30 @@ const tests: TestCase[] = [
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
       await assertSucceeds(updateDoc(doc(db, 'bildirimler/ownPendingAsil'), {
+        durum: 'reddedildi',
+        pendingAck: false,
+        retSebebi: 'Hastalik',
+        devirSonucu: 'alarm_bekliyor',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // `ownPendingAsil` kasitli olarak cumaMi alani OLMADAN olusturuldu (bkz.
+    // yukaridaki setup) — bu, alan eklenmeden once yazilmis GERCEK belgeleri
+    // temsil eder. `existing().cumaMi != true` (guard'siz) rules engine'de
+    // eksik anahtara erisim hatasi firlatiyor ve bu, mazeret/vekalet
+    // gecislerini ALAN EKSIK olan HER belgede kalici olarak reddediyordu —
+    // "eksikse Cuma degil say" (fail-open) niyetinin tam tersi. Bu test bir
+    // ustteki testle ayni senaryoyu kapsiyor ama niyeti acikca isimlendiriyor
+    // ki regresyon sessizce geri gelmesin (bkz. firestore.rules
+    // `cumaMiIsaretli`).
+    name: 'cumaMi alani hic olmayan (backfill oncesi) bir bildirimde mazeret reddi calisir',
+    run: async (env) => {
+      // otherPendingAsil, ownPendingAsil'den bagimsiz ikinci bir cumaMi'siz
+      // belge — sahibi muezzin2.
+      const db = testUser(env, 'muezzin2').firestore();
+      await assertSucceeds(updateDoc(doc(db, 'bildirimler/otherPendingAsil'), {
         durum: 'reddedildi',
         pendingAck: false,
         retSebebi: 'Hastalik',
@@ -780,6 +819,88 @@ const tests: TestCase[] = [
         });
         transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
           uid: 'muezzin2',
+          vekaletDevredildi: true,
+          sonGuncelleme: Timestamp.now()
+        });
+      }));
+    }
+  },
+  {
+    name: 'vekaletDevredildi isareti olmadan bildirim devralinamaz (K5 regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+          bildirimId: 'ownPendingAsil',
+          haftaId: 'W2026-05-18',
+          gonderenUid: 'muezzin1',
+          gonderenIsim: 'Muezzin One',
+          aliciUid: 'muezzin2',
+          aliciIsim: 'Muezzin Two',
+          tarih: '2026-05-22',
+          vakit: 'ogle',
+          saat: '12:45',
+          tip: 'asil',
+          durum: 'beklemede',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'muezzin2').firestore();
+      await assertFails(runTransaction(db, async (transaction) => {
+        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+          durum: 'kabul_edildi',
+          sonGuncelleme: Timestamp.now()
+        });
+        // vekaletDevredildi eksik — planServisi.ts'in bu slotu korumasi icin
+        // gerekli isaret yok, kural bu geciste bunu zorunlu kilmali (bkz.
+        // mimari denetim K5).
+        transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
+          uid: 'muezzin2',
+          sonGuncelleme: Timestamp.now()
+        });
+      }));
+    }
+  },
+  {
+    name: 'arşivlenmiş alıcı, bekleyen vekalet teklifini kabul edemez (O9 regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'muezzins/muezzin2'), {
+          displayName: 'Muezzin Two',
+          email: 'muezzin2@example.test',
+          role: 'muezzin',
+          aktif: false, // talep beklerken admin tarafından arşivlendi
+          photoURL: '',
+          fcmToken: null,
+          aylikVakitSayisi: 0
+        });
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+          bildirimId: 'ownPendingAsil',
+          haftaId: 'W2026-05-18',
+          gonderenUid: 'muezzin1',
+          gonderenIsim: 'Muezzin One',
+          aliciUid: 'muezzin2',
+          aliciIsim: 'Muezzin Two',
+          tarih: '2026-05-22',
+          vakit: 'ogle',
+          saat: '12:45',
+          tip: 'asil',
+          durum: 'beklemede',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'muezzin2').firestore();
+      await assertFails(runTransaction(db, async (transaction) => {
+        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+          durum: 'kabul_edildi',
+          sonGuncelleme: Timestamp.now()
+        });
+        transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
+          uid: 'muezzin2',
+          vekaletDevredildi: true,
           sonGuncelleme: Timestamp.now()
         });
       }));
@@ -1092,6 +1213,28 @@ const tests: TestCase[] = [
       await assertFails(setDoc(doc(db, 'duyurular/unauthorizedNotice'), {
         baslik: 'Test',
         mesaj: 'Yetkisiz deneme'
+      }));
+    }
+  },
+  {
+    name: 'siradan admin config/bootstrap yazamaz (K2 regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'config/bootstrap'), {
+          superAdminEmails: ['gercekSuperAdmin@example.test']
+        });
+        await setDoc(doc(db, 'muezzins/siradanAdmin'), {
+          displayName: 'Siradan Admin',
+          aktif: true,
+          role: 'admin',
+          email: 'siradanadmin@example.test'
+        });
+      });
+
+      const db = testUser(env, 'siradanAdmin').firestore();
+      await assertFails(setDoc(doc(db, 'config/bootstrap'), {
+        superAdminEmails: ['siradanadmin@example.test']
       }));
     }
   }
