@@ -100,7 +100,7 @@ export async function personelOnayla(m: MuezzinDoc): Promise<{ planRefreshed: bo
       await deleteDoc(doc(db, 'invites', m.email.toLowerCase()));
     }
     const planRefreshed = await haftaPlaniniGuvenliYenile(m);
-    await telemetryService.logAudit('Personel Onaylama', m.displayName, 'Sisteme katılım talebi onaylandı ve aktif kadroya dahil edildi.');
+    await telemetryService.logAudit('Personel Onaylama', m.displayName, 'Dizgeye katılım talebi onaylandı ve aktif kadroya dahil edildi.');
     return { planRefreshed };
   } catch (err) {
     throw handleFirestoreError(err, OperationType.UPDATE, path);

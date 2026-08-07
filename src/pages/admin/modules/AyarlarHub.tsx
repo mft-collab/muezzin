@@ -33,9 +33,9 @@ export default function AyarlarHub() {
   };
 
   const navItems = [
-    { id: 'ayarlar', label: 'Sistem Ayarları' },
+    { id: 'ayarlar', label: 'Dizge Ayarları' },
     { id: 'onbellek', label: 'Ezan Önbelleği' },
-    { id: 'loglar', label: 'Sistem Logları' }
+    { id: 'loglar', label: 'Dizge Logları' }
   ];
 
   return (
@@ -46,7 +46,7 @@ export default function AyarlarHub() {
           items={navItems}
           activeId={activeTab}
           onChange={setActiveTab}
-          ariaLabel="Sistem ayarları sekmeleri"
+          ariaLabel="Dizge ayarları sekmeleri"
           idPrefix="ayarlar"
           variant="pill"
         />

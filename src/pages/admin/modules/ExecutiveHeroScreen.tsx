@@ -125,7 +125,7 @@ export default function ExecutiveHeroScreen({
  <div className="flex flex-col gap-4">
  <div className="flex items-center gap-3">
  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
- <span className="authority-title !text-2xs !text-emerald-500 font-medium">CANLI SİSTEM DURUMU</span>
+ <span className="authority-title !text-2xs !text-emerald-500 font-medium">CANLI DİZGE DURUMU</span>
  </div>
  <h1 className="text-3xl lg:text-5xl font-light text-[var(--text-primary)] tracking-tight leading-none max-w-2xl group-hover:font-medium transition-all duration-1000">
  Yönetim <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Senkronize</span> ve <span className="font-normal group-hover:font-bold transition-all duration-1000">Aktif.</span>

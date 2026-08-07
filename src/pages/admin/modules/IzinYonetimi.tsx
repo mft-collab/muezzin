@@ -236,7 +236,7 @@ export default function IzinYonetimi() {
  <div className={`px-4 sm:px-6 py-2 rounded-full text-2xs font-bold uppercase tracking-wide border shadow-sm ${
  izin.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
- {izin.durum === 'onaylandi' ? 'SİSTEM TARAFINDAN ONAYLI' : 'TALEP REDDEDİLDİ'}
+ {izin.durum === 'onaylandi' ? 'DİZGE TARAFINDAN ONAYLI' : 'TALEP REDDEDİLDİ'}
  </div>
  )}
 

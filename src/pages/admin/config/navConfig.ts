@@ -23,7 +23,7 @@ export function getAdminNavItems(counts: { cozulmamisSayisi: number; pendingIzin
     { id: 'dashboard', shortLabel: 'Özet', fullLabel: 'Genel Bakış', icon: LayoutDashboard, badge: counts.cozulmamisSayisi },
     { id: 'planlama', shortLabel: 'Cetvel', fullLabel: 'Hizmet Cetveli', icon: CalendarDays, badge: 0 },
     { id: 'ekip', shortLabel: 'Kadro', fullLabel: 'Kadro Yönetimi', icon: Users, badge: counts.pendingIzinler },
-    { id: 'ayarlar', shortLabel: 'Sistem', fullLabel: 'Sistem Ayarları', icon: Settings, badge: 0 },
+    { id: 'ayarlar', shortLabel: 'Dizge', fullLabel: 'Dizge Ayarları', icon: Settings, badge: 0 },
   ];
 }
 

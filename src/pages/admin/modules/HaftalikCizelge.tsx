@@ -49,7 +49,7 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
             🤖
           </div>
           <div className="text-left">
-            <span className="text-2xs font-black uppercase tracking-wider block">Sistem Otomatik</span>
+            <span className="text-2xs font-black uppercase tracking-wider block">Dizge Otomatik</span>
             <span className="text-2xs opacity-60 block leading-tight">{systemSubLabel}</span>
           </div>
         </button>
@@ -229,7 +229,7 @@ export default function HaftalikCizelge() {
 
  const getMuezzinName = useCallback((uid: string) => {
  if (!uid) return 'Bilinmiyor';
- if (uid === 'Sistem' || uid === 'SISTEM') return 'Sistem';
+ if (uid === 'Sistem' || uid === 'SISTEM') return 'Dizge';
  const person = muezzinMap[uid];
  if (!person) return 'Bilinmiyor';
  if (person.role !== 'muezzin' || person.aktif !== true) return 'Geçersiz Atama';
@@ -411,7 +411,7 @@ export default function HaftalikCizelge() {
  label: (
  <>
  <Zap size={18} className="text-amber-500 fill-amber-500" />
- SİSTEMİ ŞİMDİ PLANLA
+ DİZGEYİ ŞİMDİ PLANLA
  </>
  ),
  onClick: handlePlanOlustur,

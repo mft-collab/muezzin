@@ -160,7 +160,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
     // setTimeout + throw, React ErrorBoundary'yi atlatarak tarayıcıyı çökertir;
     // bunun yerine gerçek hata objesini oluşturup Firestore'a kaydediyoruz.
     const simulatedError = new Error(
-      `Sistem Teşhisi Simülasyon Hatası - Saat: ${new Date().toLocaleTimeString('tr-TR')}`
+      `Dizge Teşhisi Simülasyon Hatası - Saat: ${new Date().toLocaleTimeString('tr-TR')}`
     );
     simulatedError.stack = `Error: Simülasyon\n    at executeSimulateError (SistemTestleriSekmesi.tsx:260)\n    at onClick (SistemTestleriSekmesi.tsx:530)`;
     telemetryService.addBreadcrumb('Admin: Hata simülasyonu tetiklendi', 'user_action');
@@ -176,9 +176,9 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       <div className="spatial-glass border border-[var(--glass-border)] p-4 sm:p-6 rounded-card bg-gradient-to-r from-[var(--text-primary)]/[0.01] to-[var(--dynamic-aura,var(--aura-indigo))]/[0.02] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div className="space-y-1">
           <span className="premium-label !text-2xs text-[var(--dynamic-aura,var(--aura-indigo))] font-bold tracking-wide uppercase flex items-center gap-1.5">
-            <Sparkles size={10} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" /> SİSTEM SAĞLIK MODÜLÜ
+            <Sparkles size={10} className="text-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" /> DİZGE SAĞLIK MODÜLÜ
           </span>
-          <h4 className="text-sm font-semibold text-[var(--text-primary)]">İnteraktif Sistem Teşhis Paneli</h4>
+          <h4 className="text-sm font-semibold text-[var(--text-primary)]">İnteraktif Dizge Teşhis Paneli</h4>
           <p className="text-xs text-[var(--text-secondary)]/60 max-w-xl leading-relaxed">
             Uygulamanın kritik altyapı katmanlarını, veritabanı okuma verimliliğini ve senkronizasyon durumunu gerçek zamanlı test edin.
           </p>

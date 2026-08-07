@@ -118,7 +118,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
           <BellRing size={16} />
         </div>
         <div className="space-y-1">
-          <h5 className="text-2xs font-bold uppercase tracking-wider text-[var(--text-primary)]">SİSTEM DURUM TANI</h5>
+          <h5 className="text-2xs font-bold uppercase tracking-wider text-[var(--text-primary)]">DİZGE DURUM TANI</h5>
           <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
             {userData?.fcmToken 
               ? 'Anlık bildirim alıcınız başarıyla Google sunucularına bağlandı ve bu cihaz yetkilendirildi.' 

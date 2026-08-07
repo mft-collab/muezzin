@@ -139,7 +139,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Duyuru Panosu</h2>
- <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">SİSTEM GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
+ <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">DİZGE GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
  </div>
  
  <motion.button 

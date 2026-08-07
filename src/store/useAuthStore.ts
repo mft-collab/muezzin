@@ -134,7 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
  if (!inviteData) {
  set({ 
- error: `Sistemde kaydınız bulunamadı. Lütfen yöneticiye e-postanızı (${currentEmail}) bildirin.`,
+ error: `Dizgede kaydınız bulunamadı. Lütfen yöneticiye e-postanızı (${currentEmail}) bildirin.`,
  loading: false,
  initialized: true
  });

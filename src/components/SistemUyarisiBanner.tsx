@@ -9,7 +9,7 @@ interface SistemUyarisiBannerProps {
 
 const BASLIKLAR: Record<AdminUyarisi['tip'], string> = {
   zincirTukendi: 'NÖBET ZİNCİRİ KESİNTİSİ',
-  apiHatasi: 'SİSTEM BAĞLANTI ARIZASI',
+  apiHatasi: 'DİZGE BAĞLANTI ARIZASI',
   planOlusturulamadi: 'PLANLAMA UYARISI',
 };
 
@@ -47,7 +47,7 @@ export const SistemUyarisiBanner = React.memo<SistemUyarisiBannerProps>(({ uyari
               <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
                 {getIcon(uyari.tip)}
                 <h3 className="text-2xs sm:text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
-                  {BASLIKLAR[uyari.tip] ?? 'SİSTEM UYARISI'}
+                  {BASLIKLAR[uyari.tip] ?? 'DİZGE UYARISI'}
                 </h3>
               </div>
               <p className="text-2xs sm:text-2xs leading-relaxed mt-2 font-medium text-[var(--text-secondary)]">

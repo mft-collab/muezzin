@@ -16,7 +16,7 @@ type UiMessage = { type: 'success' | 'error'; text: string } | null;
 
 function formatCacheDate(value: unknown) {
   const date = toJsDate(value);
-  if (!date) return 'Sistem kaydı yok';
+  if (!date) return 'Dizge kaydı yok';
   return format(date, 'dd MMMM yyyy - HH:mm', { locale: tr });
 }
 
@@ -243,7 +243,7 @@ export default function EzanOnbellegi() {
     <div className="flex flex-col gap-1">
      <p className="authority-title !text-2xs font-bold text-[var(--text-primary)] tracking-wide uppercase opacity-70">Senkronizasyon protokolü</p>
      <p className="text-xs font-medium text-[var(--text-secondary)]/85 leading-relaxed max-w-3xl">
-      Sistem önce Diyanet kaynağını kullanır; erişim sorunu olursa Aladhan yedek kaynağına geçer. Manuel işlem mevcut ve gelecek ay kayıtlarını birlikte günceller.
+      Dizge önce Diyanet kaynağını kullanır; erişim sorunu olursa Aladhan yedek kaynağına geçer. Manuel işlem mevcut ve gelecek ay kayıtlarını birlikte günceller.
      </p>
     </div>
    </div>

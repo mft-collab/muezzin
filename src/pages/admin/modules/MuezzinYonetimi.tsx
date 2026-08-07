@@ -246,7 +246,7 @@ export default function MuezzinYonetimi() {
  </div>
  <div>
  <h3 className="text-sm font-medium text-rose-500/80 tracking-tight">Bekleyen Onaylar & Davetler</h3>
- <p className="authority-title !text-2xs opacity-45 mt-1 font-medium tracking-wide">SİSTEME ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
+ <p className="authority-title !text-2xs opacity-45 mt-1 font-medium tracking-wide">DİZGEYE ERİŞİM BEKLEYEN {pendingUsers.length} KAYIT VAR</p>
  </div>
  </div>
 
@@ -497,7 +497,7 @@ export default function MuezzinYonetimi() {
  );
  }) : (
  <div className="col-span-full py-20 text-center spatial-glass !rounded-card border-dashed border-[var(--glass-border)]">
- <p className="premium-label !opacity-20 italic">SİSTEME KAYITLI PERSONEL BULUNAMADI</p>
+ <p className="premium-label !opacity-20 italic">DİZGEYE KAYITLI PERSONEL BULUNAMADI</p>
  </div>
  )}
  </div>

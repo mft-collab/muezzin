@@ -75,7 +75,7 @@ export default function HaftalikTakvim() {
 
  const getMuezzinName = (uid: string) => {
  if (!uid) return 'Atanmamış';
- if (uid === 'SISTEM' || uid === 'Sistem') return 'Sistem';
+ if (uid === 'SISTEM' || uid === 'Sistem') return 'Dizge';
  return muezzinMap[uid]?.displayName || 'Bilinmiyor';
  };
 
