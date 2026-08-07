@@ -2,6 +2,7 @@ import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, auth, FieldValue } from './lib/firebaseAdminInit.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
+import { gunlukKredileriHesapla } from '../src/lib/gunlukKrediHesaplama.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -10,7 +11,7 @@ function formatDateLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-async function main() {
+export async function processYatsiSonuIslemleri() {
   console.log("Günlük yatsı sonrası işlemleri başladı...");
   
   // Debug info
@@ -44,55 +45,17 @@ async function main() {
     return; // handleFirestoreError throws, but for TS completeness
   }
 
-  const uyariUids: string[] = [];
   const batch = db.batch();
 
-  // Herkesin o günkü yükünü bulalım
-  const asilKredi: Record<string, number> = {};
-  // Cuma vakitlerinde asil olunan gün sayısı — aylikVakitSayisi'ndan ayrı
-  // tutulur ki Cuma adaleti ay ilerledikçe aylık toplam tarafından
-  // bastırılmasın (bkz. src/utils/tieBreaker.ts, algoritma denetimi).
-  const cumaKredi: Record<string, number> = {};
-  // Yedek olarak tamamlanan gün sayısı — kalıcı bir sayaca işlenmezse SOS +
-  // haftalık-yük-sıfırlama etkileşimi, sürekli yedek kalan birini süresiz
-  // kilitleyebiliyordu (bkz. src/utils/tieBreaker.ts, mimari denetim K6).
-  const yedekKredi: Record<string, number> = {};
+  // Kredi hesaplaması saf bir çekirdekte yapılır (bkz. src/lib/gunlukKrediHesaplama.ts)
+  // — planlamaCekirdegi.ts'teki "saf çekirdek, ince I/O sarmalayıcı" deseniyle
+  // aynı, mantık burada birim testle doğrulanabilir.
+  const bildirimVerileri = bildirimler.docs.map(doc => doc.data());
+  const { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri } =
+    gunlukKredileriHesapla(bildirimVerileri as { tip: string; durum: string; uid: string; cumaMi?: boolean }[]);
 
-  bildirimler.docs.forEach(doc => {
-    const data = doc.data();
-
-    if (data.tip === 'asil') {
-      if (data.durum === 'bekliyor') {
-        // Asil kişi mazeret bildirmemiş ve kendi de onaylamamış: görevi yapmış sayılır
-        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
-        asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
-      } else if (data.durum === 'onaylandi') {
-        // Kendi "Okudum" onayını gün içinde vermiş
-        asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
-      }
-      // durum === 'reddedildi' (mazeret bildirildi) → kredi yok
-    } else if (data.tip === 'gorev_cagrisi') {
-      if (data.durum === 'bekliyor') {
-        // Görev yedeğe devredilmiş ama yedek onaylamamış!
-        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
-        uyariUids.push(data.uid);
-      }
-    } else if (data.tip === 'yedek') {
-      if (data.durum === 'bekliyor') {
-        // Yedek kişi sadece yedekti, yapması gereken bir şey yoktu — yine de
-        // kalıcı bir sayaca işlenmezse tieBreaker'da sürekli yedek kalma
-        // kilidine yol açıyordu (bkz. mimari denetim K6).
-        batch.update(doc.ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
-        yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
-      } else if (data.durum === 'onaylandi') {
-        // Kendi "Okudum" onayını gün içinde vermiş (okudumOnayla tip
-        // ayrımı yapmıyor, yedek de çağırabiliyor).
-        yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
-      }
-      // durum === 'reddedildi' (mazeret bildirildi) → kredi yok
-    }
+  okunduVarsayilanIndeksleri.forEach((i) => {
+    batch.update(bildirimler.docs[i].ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
   });
 
   // Asil ve yedek kişilere puanlarını ver
@@ -264,7 +227,13 @@ async function main() {
   }
 
   console.log("İşlemler tamam.");
-  process.exit(0);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === __filename) {
+  processYatsiSonuIslemleri()
+    .then(() => process.exit(0))
+    .catch((err) => { console.error(err); process.exit(1); });
+}
