@@ -253,7 +253,7 @@ export default function HaftalikTakvim() {
  </div>
  <h3 className="text-4xl font-light text-[var(--text-primary)] mb-6 tracking-tight apple-thin">Plan Henüz Hazır Değil</h3>
  <p className="text-[var(--text-secondary)]/75 text-sm font-light leading-relaxed max-w-sm mx-auto mb-12">
- Seçilen haftaya ait görev dağılımı henüz onaylanmamış veya sisteme girilmemiş olabilir.
+ Seçilen haftaya ait görev dağılımı henüz onaylanmamış veya dizgeye girilmemiş olabilir.
  </p>
  <motion.button 
  whileHover={{ scale: 1.02 }}

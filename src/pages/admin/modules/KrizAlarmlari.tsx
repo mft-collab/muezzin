@@ -43,7 +43,7 @@ export default function KrizAlarmlari() {
     try {
       const success = await kriziBaslat(alarm.tarih, alarm.vakit, []);
       if (success) {
-        await alarmCoz(alarm.id, 'Otomatik Nöbet Onarımı', 'Eşik dışı nöbet zinciri sistem tarafından otomatik onarıldı ve yedek görevli devraldı.');
+        await alarmCoz(alarm.id, 'Otomatik Nöbet Onarımı', 'Eşik dışı nöbet zinciri dizge tarafından otomatik onarıldı ve yedek görevli devraldı.');
       }
     } catch (err) {
       console.error("Retry error:", err);

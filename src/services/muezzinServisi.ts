@@ -148,7 +148,7 @@ export async function davetSil(inviteEmail: string): Promise<void> {
   const path = `invites/${inviteEmail}`;
   try {
     await deleteDoc(doc(db, 'invites', inviteEmail));
-    await telemetryService.logAudit('Davetiye İptal', inviteEmail, 'Gönderilmiş sistem katılım davetiyesi iptal edildi ve silindi.');
+    await telemetryService.logAudit('Davetiye İptal', inviteEmail, 'Gönderilmiş dizge katılım davetiyesi iptal edildi ve silindi.');
   } catch (err) {
     throw handleFirestoreError(err, OperationType.DELETE, path);
   }

@@ -146,7 +146,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'vacation',
  severity: 'critical',
  message: `Yetkisiz / Silinmiş Personele ait Yetim İzin!`,
- details: `İzin ID: ${v.id} sistemde bulunmayan bir personele (UID: ${v.uid}) ait.`,
+ details: `İzin ID: ${v.id} dizgede bulunmayan bir personele (UID: ${v.uid}) ait.`,
  repairData: { type: 'delete_doc', collectionName: 'izinler', docId: v.id }
  });
  }
@@ -171,7 +171,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'critical',
  message: `Nöbette bulunamayan asil görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti asil görevlisi (UID: ${asil}) sistemde kayıtlı değil.`,
+ details: `${gun} ${vakit.toUpperCase()} vakti asil görevlisi (UID: ${asil}) dizgede kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
  });
  } else if (asilUser.aktif === false || asilUser.role !== 'muezzin') {
@@ -194,7 +194,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'critical',
  message: `Nöbette bulunamayan yedek görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti yedek görevlisi (UID: ${yedek}) sistemde kayıtlı değil.`,
+ details: `${gun} ${vakit.toUpperCase()} vakti yedek görevlisi (UID: ${yedek}) dizgede kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
  });
  } else if (yedekUser.aktif === false || yedekUser.role !== 'muezzin') {
@@ -256,7 +256,7 @@ export async function veriHatalariniOnar(errors: AuditError[], onLog: (message: 
  operations.push({ ref: doc(db, data.collectionName, data.docId), type: 'delete' });
  }
  else if (data.type === 'schedule_reset') {
- onLog(`DÜZELTİLİYOR: Plan ${data.planId} -> ${data.gun} -> ${data.vakit} -> ${data.field} sistem olarak sıfırlanıyor.`);
+ onLog(`DÜZELTİLİYOR: Plan ${data.planId} -> ${data.gun} -> ${data.vakit} -> ${data.field} dizge olarak sıfırlanıyor.`);
  if (!scheduleEdits[data.planId]) {
  // Yalnızca ilgili plan dokümanı çekilir — tüm koleksiyonu indirmek
  // yerine tek bir getDoc yeterli.
