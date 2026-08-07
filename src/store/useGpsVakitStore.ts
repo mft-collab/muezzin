@@ -10,6 +10,14 @@ interface GpsVakitState {
   gpsCoords: { latitude: number; longitude: number } | null;
   gpsVakitler: GunlukVakit | null;
   gpsKonumAdi: string | null;
+  /** GunlukVakit.tarih'ten (sorgulanan konumun KENDİ yerel takvim günü —
+   *  bkz. gpsVakitServisi.ts mantık denetimi) KASITLI olarak ayrı tutulur:
+   *  bu alan yalnızca "bugün zaten taze veri çektik mi" önbellek kilididir
+   *  ve Türkiye'nin takvim gününe göre karşılaştırılır (aşağıdaki
+   *  refreshGpsVakitler). Konumun yerel günü Türkiye'den farklıysa (uzak
+   *  bir saat diliminden GPS sorgusu), ikisini karıştırmak önbellek
+   *  kilidini hiç eşleşmeyip her çağrıda gereksiz API isteği atmasına
+   *  yol açardı. */
   lastFetchDate: string | null;
   enableGps: () => Promise<void>;
   disableGps: () => void;
@@ -51,7 +59,9 @@ export const useGpsVakitStore = create<GpsVakitState>()(
             gpsCoords: { latitude, longitude },
             gpsVakitler: result.vakitler,
             gpsKonumAdi: result.konumAdi,
-            lastFetchDate: result.date
+            // Türkiye takvim günü — result.date (konumun kendi yerel günü)
+            // DEĞİL, bkz. yukarıdaki alan yorumu.
+            lastFetchDate: getTurkeyDateString()
           });
         } catch (err) {
           set({ gpsLoading: false });
@@ -84,7 +94,9 @@ export const useGpsVakitStore = create<GpsVakitState>()(
             gpsLoading: false,
             gpsVakitler: result.vakitler,
             gpsKonumAdi: result.konumAdi,
-            lastFetchDate: result.date
+            // Türkiye takvim günü — result.date (konumun kendi yerel günü)
+            // DEĞİL, bkz. lastFetchDate alan yorumu.
+            lastFetchDate: bugunStr
           });
         } catch (err) {
           console.error('GPS vakitleri güncellenemedi:', err);
