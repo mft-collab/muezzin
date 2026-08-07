@@ -151,7 +151,14 @@ service cloud.firestore {
       return data.keys().hasAll(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
              data.keys().hasOnly(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
              data.ilceId is string && data.ilceId.size() >= 3 && data.ilceId.size() <= 8 &&
-             data.gunler is map && data.gunler.size() >= 28 && data.gunler.size() <= 32 &&
+             // Alt sınır önceden 28'di ("her zaman tam bir ay yazılır" varsayımı) ama
+             // src/services/ezanVaktiServisi.ts aylikVakitleriGrupla, API'nin bugünden
+             // itibaren döndürdüğü kayan pencereyi gerçek takvim ayına göre böldüğünden,
+             // İÇİNDE BULUNULAN ay için kasıtlı olarak PARTIAL bir grup üretir (ör. ayın
+             // 10'unda senkronize edilirse o ay yalnızca ~20 gün içerir). Bu, ilk kez
+             // senkronize edilen bir ilçede (bkz. SistemAyarlari.tsx ilçe değişikliği)
+             // ayın neredeyse HER gününde bu yazımı reddediyordu (bkz. mantık denetimi).
+             data.gunler is map && data.gunler.size() >= 1 && data.gunler.size() <= 32 &&
              data.kaynakApi in ['diyanet', 'aladhan'] &&
              data.guncellenmeTarihi is timestamp;
     }

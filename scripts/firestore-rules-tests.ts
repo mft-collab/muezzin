@@ -752,6 +752,27 @@ const tests: TestCase[] = [
     }
   },
   {
+    // aylikVakitleriGrupla, API'nin kayan penceresini gerçek takvim ayına göre
+    // böldüğünden içinde bulunulan ay için kasıtlı olarak PARTIAL bir grup
+    // üretir (ayın ortasında senkronize edilirse o ay yalnızca kalan günleri
+    // içerir) — alt sınır bunu artık reddetmemeli (bkz. mantık denetimi).
+    name: 'admin vakit onbellegine ayin kismi (partial) gununu de yazabilir',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+
+      await assertSucceeds(setDoc(doc(db, 'vakitler/9148_2026-07'), {
+        ilceId: '9148',
+        gunler: {
+          '2026-07-28': { sabah: '04:10', gunes: '05:42', ogle: '12:45', ikindi: '16:30', aksam: '19:51', yatsi: '21:18' },
+          '2026-07-29': { sabah: '04:10', gunes: '05:42', ogle: '12:45', ikindi: '16:30', aksam: '19:51', yatsi: '21:18' },
+          '2026-07-30': { sabah: '04:10', gunes: '05:42', ogle: '12:45', ikindi: '16:30', aksam: '19:51', yatsi: '21:18' }
+        },
+        kaynakApi: 'diyanet',
+        guncellenmeTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
     name: 'giris yapan kullanici kendi denetim kaydini olusturabilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
