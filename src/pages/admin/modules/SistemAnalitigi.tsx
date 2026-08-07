@@ -6,6 +6,7 @@ import { db } from '../../../lib/firebase';
 import { format, subDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
+import { getTurkeyNow } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { telemetryService } from '../../../services/telemetryService';
 
@@ -42,7 +43,12 @@ export default function SistemAnalitigi() {
   }
 
   useEffect(() => {
-    const today = new Date();
+    // new Date() cihazın kendi saat dilimini kullanır — bildirimler'in
+    // `tarih` alanı her zaman Türkiye takvim gününe göre yazıldığından
+    // (bkz. dateUtils.ts getTurkeyNow), admin Türkiye dışı bir saat
+    // diliminden bakıyorsa istatistik aralığı bir gün kayabiliyordu
+    // (bkz. mantık denetimi).
+    const today = getTurkeyNow();
     const days: { dateStr: string; dayName: string }[] = [];
 
     for (let i = periodDays - 1; i >= 0; i--) {

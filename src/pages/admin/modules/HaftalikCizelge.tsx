@@ -14,7 +14,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Muezzin, Vakit, VakitAtama } from '../../../types';
 import { AlertCircle, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import { telemetryService } from '../../../services/telemetryService';
-import { getHaftaIdFromDate } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyNow } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
@@ -86,7 +86,10 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
 export default function HaftalikCizelge() {
  const shouldAnimate = useOneShotAnimation('haftalik-cizelge');
 
- const [currentDate, setCurrentDate] = useState(new Date());
+ // new Date() cihazın kendi saat dilimini kullanır — Türkiye dışı bir saat
+ // diliminde açıldığında başlangıç haftası (ve "bugün" vurgusu) yanlış güne
+ // kayabiliyordu (bkz. mantık denetimi, dateUtils.ts getTurkeyNow).
+ const [currentDate, setCurrentDate] = useState(getTurkeyNow());
  const haftaId = getHaftaIdFromDate(format(currentDate, 'yyyy-MM-dd'));
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
@@ -247,7 +250,7 @@ export default function HaftalikCizelge() {
         <AnimatePresence mode="popLayout">
           {Object.keys(plan.gunler).sort().map((tarih, idx) => {
             const gunObj = plan.gunler[tarih];
-            const isToday = isSameDay(parseISO(tarih), new Date());
+            const isToday = isSameDay(parseISO(tarih), getTurkeyNow());
             const gunAdi = format(parseISO(tarih), 'EEEE', { locale: tr });
             const parsedDate = parseISO(tarih);
             

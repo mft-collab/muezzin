@@ -11,7 +11,7 @@ import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate } from '../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyNow } from '../lib/dateUtils';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
@@ -32,7 +32,10 @@ function pickCanonicalUid(values: string[]): string | null {
 }
 
 export default function HaftalikTakvim() {
- const [currentDate, setCurrentDate] = useState(new Date());
+ // new Date() cihazın kendi saat dilimini kullanır — Türkiye dışı bir saat
+ // diliminde açıldığında başlangıç haftası (ve "bugün" vurgusu) yanlış güne
+ // kayabiliyordu (bkz. mantık denetimi, dateUtils.ts getTurkeyNow).
+ const [currentDate, setCurrentDate] = useState(getTurkeyNow());
  const haftaId = getHaftaIdFromDate(format(currentDate, 'yyyy-MM-dd'));
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
@@ -89,7 +92,11 @@ export default function HaftalikTakvim() {
       const parsedDate = addDays(currentWeekStart, idx);
       const tarih = format(parsedDate, 'yyyy-MM-dd');
       const gunObj = plan.gunler[tarih] || {};
-      const isToday = isSameDay(parsedDate, new Date());
+      // new Date() cihazın kendi saat dilimini kullanır — uygulama Türkiye'ye
+      // özel bir hizmet olduğundan (bkz. dateUtils.ts getTurkeyNow), "bugün"
+      // vurgusu cihaz Türkiye dışı bir saat diliminde olduğunda yanlış güne
+      // düşebiliyordu (bkz. mantık denetimi).
+      const isToday = isSameDay(parsedDate, getTurkeyNow());
       const gunAdi = format(parsedDate, 'EEEE', { locale: tr });
       const gunAyi = format(parsedDate, 'MMMM', { locale: tr });
 
