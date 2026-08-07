@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriCek } from '../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriCek, aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
 import { getTurkeyNow, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 /**
@@ -51,15 +51,13 @@ async function main() {
 
   const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
 
-  const aylar: Record<string, Record<string, unknown>> = {};
-  for (const [tarih, vakit] of Object.entries(vakitData.gunler)) {
-    const [y, m] = tarih.split('-');
-    const ayId = `${y}-${m}`;
-    if (!aylar[ayId]) aylar[ayId] = {};
-    aylar[ayId][tarih] = vakit;
-  }
+  // Kayan pencereyi gerçek takvim ayına göre bölen paylaşılan çekirdek
+  // (bkz. vakitCacheServisi.ts, scripts/aylikEzanTakvimiGuncelle.ts,
+  // useVakitStore.ts — mimari/mantık denetimi O5) — burada elle yeniden
+  // yazılmış aynı mantığın yerine geçer.
+  const gruplar = aylikVakitleriGrupla(vakitData);
 
-  for (const [ayId, gunlerForMonth] of Object.entries(aylar)) {
+  for (const [ayId, grup] of Object.entries(gruplar)) {
     const docId = `${ilceId}_${ayId}`;
     // NOT: `gunler` gerçek bir iç içe (nested) obje olarak gönderilmeli —
     // `{'gunler.2026-07-30': ...}` gibi nokta içeren düz anahtarlar
@@ -69,13 +67,13 @@ async function main() {
     await db.collection('vakitler').doc(docId).set(
       {
         ilceId,
-        kaynakApi: vakitData.kaynakApi,
+        kaynakApi: grup.kaynakApi,
         guncellenmeTarihi: Timestamp.now(),
-        gunler: gunlerForMonth,
+        gunler: grup.gunler,
       },
       { merge: true }
     );
-    console.log(`Tazelendi: ${docId} (${Object.keys(gunlerForMonth).length} gün yazıldı)`);
+    console.log(`Tazelendi: ${docId} (${Object.keys(grup.gunler).length} gün yazıldı)`);
   }
 
   await db.collection('adminUyarilari').add({
