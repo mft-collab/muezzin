@@ -554,13 +554,62 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Izinler
     // ---------------------------------------------------------
+    // İzin (leave) tarih aralığının bir Cuma içerip içermediğini saf tarih
+    // aritmetiğiyle hesaplar. Bu kısıtlamanın istemci tarafı karşılığı
+    // (VacationRequestCard.tsx'teki `hasFriday` döngüsü) daha önce SUNUCU
+    // tarafında hiç doğrulanmıyordu — bildirimler/vekalet_talepleri'ndeki
+    // Cuma kısıtlamasının aksine (bkz. cumaMiIsaretli), izin oluşturma
+    // isteğini gönderen taraf ile kısıtlamadan kaçınmak isteyen taraf AYNI
+    // kişi olduğundan, bildirimler'deki gibi istemcinin hesapladığı bir
+    // bayrağa (`cumaMi` benzeri) güvenmek gerçek bir doğrulama olmazdı — o
+    // bayrağı DevTools'tan trivially `false` göndererek kısıtlama tamamen
+    // atlatılabilirdi.
+    //
+    // Firestore Rules'ta ne döngü ne de bir `timestamp(string)` ayrıştırıcısı
+    // var (denendi, emülatörde "Function not found" ile reddedildi) — bu
+    // yüzden "YYYY-MM-DD" güne, Howard Hinnant'ın bilinen "days_from_civil"
+    // takvim formülüyle (yalnızca +,-,*,/ operatörleri) saf tamsayı
+    // aritmetiğiyle epoch-gün sayısına çevrilir. 1970-01-01 bir Perşembe
+    // olduğundan epoch-gün sayısının mod 7'si 1 olması o günün Cuma
+    // olduğu anlamına gelir; aralığın başlangıcından bir sonraki Cuma'ya
+    // kalan gün sayısı aralık uzunluğunu aşmıyorsa aralık bir Cuma içerir.
+    function epochGunSayisi(tarihStr) {
+      let parcalar = tarihStr.split('-');
+      let y0 = int(parcalar[0]);
+      let m0 = int(parcalar[1]);
+      let d0 = int(parcalar[2]);
+      // Şubat'ı yılın son ayı sayan takvim kaydırması (Hinnant formülü) —
+      // gerçekçi tarihler (y0 > 0) için era/yoe hep pozitif kalır.
+      let y = y0 - (m0 <= 2 ? 1 : 0);
+      let era = y / 400;
+      let yoe = y - era * 400;
+      let mAdj = m0 + (m0 > 2 ? -3 : 9);
+      let doy = (153 * mAdj + 2) / 5 + d0 - 1;
+      let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+      return era * 146097 + doe - 719468;
+    }
+
+    function izinAraligiCumaIceriyorMu(baslangic, bitis) {
+      let startDay = epochGunSayisi(baslangic);
+      let endDay = epochGunSayisi(bitis);
+      let rangeDays = endDay - startDay;
+      let gunlerCumayaKadar = (1 - (startDay % 7) + 7) % 7;
+      return rangeDays >= 0 && gunlerCumayaKadar <= rangeDays;
+    }
+
     function isValidIzin(data) {
       return data.keys().hasAll(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi']) &&
              data.uid == request.auth.uid &&
              data.tip in ['haftalik', 'yillik', 'mazeret'] &&
              data.durum == 'onay_bekliyor' &&
              data.baslangic is string && data.baslangic.size() == 10 &&
-             data.bitis is string && data.bitis.size() == 10;
+             data.bitis is string && data.bitis.size() == 10 &&
+             // Ters çevrilmiş aralık (bitis < baslangic) mantıksız veri —
+             // planlamaCekirdegi.ts'in string karşılaştırmasında zararsız
+             // kalsa da (hiçbir güne eşleşmez) sunucu tarafında reddedilmesi
+             // daha temiz.
+             data.bitis >= data.baslangic &&
+             !izinAraligiCumaIceriyorMu(data.baslangic, data.bitis);
     }
 
     match /izinler/{docId} {

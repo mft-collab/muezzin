@@ -25,5 +25,5 @@ if (import.meta.env.VITE_USE_EMULATOR === '1') {
   // fonksiyon olarak dışa açılıyor çünkü page.evaluate() içine enjekte
   // edilen kod, uygulamanın kendi modül grafiğindeki bare import'ları
   // (ör. 'firebase/auth') çözemez.
-  (window as any).__testSignIn = (token: string) => signInWithCustomToken(auth, token);
+  window.__testSignIn = (token: string) => signInWithCustomToken(auth, token);
 }

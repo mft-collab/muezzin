@@ -190,7 +190,7 @@ export const AnaEkranHero = React.memo(({
  initial={{ opacity: 0 }}
  animate={{ opacity: 1 }}
  exit={{ opacity: 0 }}
- className="w-full flex-1 min-h-[520px] sm:min-h-[600px] lg:min-h-0 flex items-center justify-center bg-[var(--surface-medium)] rounded-[28px] border border-[var(--glass-border)]"
+ className="w-full flex-1 min-h-[520px] sm:min-h-[600px] lg:min-h-0 flex items-center justify-center bg-[var(--surface-medium)] rounded-card border border-[var(--glass-border)]"
  >
  <div className="w-12 h-12 rounded-full border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
  </motion.div>
@@ -203,10 +203,10 @@ export const AnaEkranHero = React.memo(({
  className="w-full flex-1 flex flex-col justify-between min-h-[520px] sm:min-h-[600px] lg:min-h-0 p-4 sm:p-6 xl:p-8 bg-[var(--spatial-glass-bg)] backdrop-blur-xl rounded-card border border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]"
  >
  {/* Top specular highlight */}
- <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none z-0 rounded-[28px]" />
+ <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none z-0 rounded-card" />
  {/* Single deep sirkadiyen aura — subtle, non-competing */}
  <div
- className="absolute inset-0 rounded-[28px] pointer-events-none transition-all duration-1000"
+ className="absolute inset-0 rounded-card pointer-events-none transition-all duration-1000"
  style={{
  background: `radial-gradient(ellipse 80% 50% at 50% 100%, color-mix(in srgb, ${auraColor} 12%, transparent), transparent)`,
  }}

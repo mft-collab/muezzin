@@ -213,7 +213,7 @@ export default function SistemAnalitigi() {
         {/* CHART: Weekly Luminous Pillars — sadece 7 günlük görünümde günlük kırılım anlamlı */}
         <motion.div
           variants={itemVariants}
-          className="lg:col-span-12 spatial-glass !rounded-card p-10 sm:p-12 flex flex-col justify-between min-h-[420px] relative overflow-hidden group shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
+          className="lg:col-span-12 spatial-glass !rounded-card p-6 sm:p-10 lg:p-12 flex flex-col justify-between min-h-[420px] relative overflow-hidden group shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
         >
           {/* Living Glow */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--dynamic-aura,var(--aura-indigo))]/20 to-transparent" />
@@ -224,12 +224,17 @@ export default function SistemAnalitigi() {
                 <Activity size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
                 SON {periodDays} GÜN — GÖREV TAMAMLANMA ORANI
               </p>
-              <div className="flex items-baseline gap-6">
-                <h3 className="text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
+              {/* healthScore rakamı sabit text-9xl idi — dar telefon genişliklerinde
+                  (örn. 320-375px) yanındaki %/STATÜ etiketiyle aynı satırda sarmadan
+                  çakışıyordu (bkz. görsel tasarım denetimi: KPI kart çakışması).
+                  ExecutiveHeroScreen'deki eşdeğer büyük-rakam paterniyle (text-6xl lg:text-8xl)
+                  aynı mantıkla duyarlı hale getirildi ve flex-wrap güvenlik ağı eklendi. */}
+              <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
+                <h3 className="text-6xl sm:text-7xl lg:text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
                   {healthScore}
                 </h3>
                 <div className="flex flex-col">
-                  <span className="text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
+                  <span className="text-xl sm:text-2xl lg:text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
                   <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
                     healthScore >= 80 ? 'text-emerald-500' :
                     healthScore >= 60 ? 'text-amber-500' :

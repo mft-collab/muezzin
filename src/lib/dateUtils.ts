@@ -33,8 +33,8 @@ export function toTurkishUpperCase(text: string): string {
 export function getTurkeyNow(): Date {
  const now = new Date();
  // Add server time offset to correct device clock skew
- const offset = typeof globalThis !== 'undefined' && (globalThis as any).__timeOffset !== undefined
-   ? (globalThis as any).__timeOffset
+ const offset = typeof globalThis !== 'undefined' && globalThis.__timeOffset !== undefined
+   ? globalThis.__timeOffset
    : 0;
  const syncedNow = new Date(now.getTime() + offset);
 
@@ -152,8 +152,8 @@ export function calculateVakitProgress(baslangic: Date, bitis: Date, suan: Date)
 
 export function getHijriDate(date: Date): string {
   // Read Hicri offset from globalThis (safe for SSR, testing environments and decoupling module loads)
-  const offsetDays = typeof globalThis !== 'undefined' && (globalThis as any).__hicriOffset !== undefined
-    ? (globalThis as any).__hicriOffset
+  const offsetDays = typeof globalThis !== 'undefined' && globalThis.__hicriOffset !== undefined
+    ? globalThis.__hicriOffset
     : 0;
   
   // Timezone-safe local day count (immune to UTC midnight shifts)

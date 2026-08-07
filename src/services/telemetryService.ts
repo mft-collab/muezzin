@@ -5,14 +5,14 @@ import { useAuthStore } from '../store/useAuthStore';
 export interface TelemetryEvent {
   eventType: 'page_view' | 'click' | 'error' | 'performance';
   eventName: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /** Breadcrumb kırıntısı — kullanıcının son eylemlerinin izi */
 export interface Breadcrumb {
   action: string;
   category: 'navigation' | 'user_action' | 'network' | 'system';
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   timestamp: number; // performance.now()
   wallTime: string;  // ISO tarih
 }
@@ -49,8 +49,40 @@ export interface EnrichedErrorLog {
   };
   breadcrumbs: Breadcrumb[];
   stateSnapshot: StateSnapshot;
-  timestamp: any;
+  timestamp: Timestamp;
 }
+
+/** Network Information API — deneysel, TS'in lib.dom.d.ts'inde yok. */
+interface NetworkInformationLike {
+  effectiveType?: string;
+  type?: string;
+  rtt?: number;
+}
+
+/** performance.memory — yalnızca Chromium, TS'in lib.dom.d.ts'inde yok. */
+interface PerformanceMemoryLike {
+  usedJSHeapSize: number;
+}
+
+/** navigator.userAgentData — deneysel Client Hints API, TS'in lib.dom.d.ts'inde yok. */
+interface NavigatorUADataLike {
+  platform?: string;
+}
+
+/** Kuyruğa alınmış, henüz Firestore'a yazılmamış olay. */
+type QueuedTelemetryEvent = {
+  eventType: TelemetryEvent['eventType'];
+  eventName: string;
+  userId: string;
+  metadata: Record<string, unknown>;
+  timestamp: Timestamp;
+};
+
+/** localStorage yedeğinden geri okunan olay — JSON serileştirme Timestamp
+ *  sınıfını sıradan {seconds,nanoseconds} nesnesine indirger. */
+type BackedUpTelemetryEvent = Omit<QueuedTelemetryEvent, 'timestamp'> & {
+  timestamp?: { seconds: number; nanoseconds: number } | null;
+};
 
 // ─── Breadcrumb Halka Tamponu ─────────────────────────────────────────────────
 const MAX_BREADCRUMBS = 25;
@@ -91,7 +123,8 @@ async function getSwInfo(): Promise<{ version: string | null; state: string | nu
 
 // ─── Ağ Durumu ───────────────────────────────────────────────────────────────
 function getNetworkInfo(): { type: string; rtt: number | null } {
-  const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+  const nav = navigator as Navigator & Record<'connection' | 'mozConnection' | 'webkitConnection', NetworkInformationLike | undefined>;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
   if (!conn) return { type: navigator.onLine ? 'online' : 'offline', rtt: null };
   return {
     type: conn.effectiveType || conn.type || (navigator.onLine ? 'online' : 'offline'),
@@ -102,7 +135,7 @@ function getNetworkInfo(): { type: string; rtt: number | null } {
 // ─── Bellek Kullanımı ─────────────────────────────────────────────────────────
 function getMemoryMb(): number | null {
   try {
-    const mem = (performance as any).memory;
+    const mem = (performance as Performance & { memory?: PerformanceMemoryLike }).memory;
     if (!mem) return null;
     return Math.round(mem.usedJSHeapSize / 1024 / 1024);
   } catch {
@@ -162,8 +195,8 @@ async function captureStateSnapshot(): Promise<StateSnapshot> {
 // ─── TelemetryService Sınıfı ─────────────────────────────────────────────────
 class TelemetryService {
   private isEnabled: boolean = true;
-  private eventQueue: any[] = [];
-  private flushTimeout: any = null;
+  private eventQueue: QueuedTelemetryEvent[] = [];
+  private flushTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly BATCH_SIZE = 5;
   private readonly FLUSH_INTERVAL_MS = 10000; // 10 saniye
 
@@ -241,9 +274,9 @@ class TelemetryService {
       const saved = localStorage.getItem('muezzin-telemetry-backup');
       if (saved) {
         localStorage.removeItem('muezzin-telemetry-backup');
-        const restored = JSON.parse(saved);
+        const restored = JSON.parse(saved) as BackedUpTelemetryEvent[];
         if (Array.isArray(restored) && restored.length > 0) {
-          const restoredEvents = restored.map((evt: any) => {
+          const restoredEvents: QueuedTelemetryEvent[] = restored.map((evt) => {
             let timestampVal = Timestamp.now();
             if (evt.timestamp) {
               if (typeof evt.timestamp.seconds === 'number' && typeof evt.timestamp.nanoseconds === 'number') {
@@ -283,13 +316,13 @@ class TelemetryService {
   /**
    * Bir breadcrumb kırıntısı ekle (dışarıdan çağrılabilir)
    */
-  addBreadcrumb(action: string, category: Breadcrumb['category'], data?: Record<string, any>) {
+  addBreadcrumb(action: string, category: Breadcrumb['category'], data?: Breadcrumb['data']) {
     pushBreadcrumb({ action, category, data });
   }
 
   private getDeviceMetadata() {
     return {
-      os: (navigator as any).userAgentData?.platform || navigator.platform || 'Bilinmeyen OS',
+      os: (navigator as Navigator & { userAgentData?: NavigatorUADataLike }).userAgentData?.platform || navigator.platform || 'Bilinmeyen OS',
       browser: this.getBrowserName(),
       screenSize: `${window.innerWidth}x${window.innerHeight}`,
       pwaMode: window.matchMedia('(display-mode: standalone)').matches,
@@ -372,7 +405,7 @@ class TelemetryService {
       const [stateSnapshot] = await Promise.all([captureStateSnapshot()]);
       const crumbs = getBreadcrumbs();
 
-      const payload: Omit<EnrichedErrorLog, 'timestamp'> & { timestamp: any } = {
+      const payload: EnrichedErrorLog = {
         errorMessage: error.message,
         errorStack: error.stack || '',
         componentStack: componentStack || '',

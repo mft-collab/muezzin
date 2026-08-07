@@ -71,7 +71,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  {loading ? (
  <div className="grid grid-cols-1 gap-6">
  {[1, 2].map(i => (
- <div key={i} className="skeleton-shimmer h-36 rounded-[32px] flex items-center px-8 gap-6 border border-[var(--text-primary)]/[0.04] relative overflow-hidden">
+ <div key={i} className="skeleton-shimmer h-36 rounded-card flex items-center px-8 gap-6 border border-[var(--text-primary)]/[0.04] relative overflow-hidden">
  <div className="w-12 h-12 rounded-2xl bg-[var(--text-primary)]/5" />
  <div className="flex-1 space-y-3">
  <div className="w-1/3 h-2 bg-[var(--text-primary)]/5 rounded-full" />

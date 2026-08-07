@@ -76,7 +76,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 150 }}
       transition={{ type: "spring", stiffness: 320, damping: 28, mass: 1 }}
-      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-[40px] rounded-b-none sm:rounded-card outline-none ${contentClassName}`}
+      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-card rounded-b-none sm:rounded-card outline-none ${contentClassName}`}
     >
       {/* Drag Handle Indicator for Mobile */}
       <div className="w-12 h-1 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-full mx-auto mb-4 sm:hidden shrink-0 pointer-events-none transition-colors" />

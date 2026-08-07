@@ -101,6 +101,45 @@ describe('haftalikPlanUret', () => {
     expect(ogle).toEqual(plan['2026-08-03'].ikindi);
   });
 
+  it('art arda yedek sayacı, korunmuş atama bir günün vakitlerini böldüğünde günün SADECE son vaktine değil tüm güne bakar (mantık denetimi regresyonu)', () => {
+    // 2 kişilik kadro: 'a' iki gün üst üste, günün ÇOĞUNDA asil ama SADECE
+    // yatsıda yedek kalıyor (korunmusAtama ile zorlanıyor). Eski hatalı kod
+    // yalnızca günün SON vaktine (yatsı) bakıp 'a'yı iki gün de "o gün
+    // sadece yedek kaldı" sayıp streak'ini 2'ye (ARD_ARDA_YEDEK_ESIGI)
+    // çıkarıyordu — oysa 'a' o günlerin çoğunda fiilen asildi. Ağırlıklı
+    // haftalık yük bilinçli olarak iki günün sonunda TAM EŞİT olacak
+    // şekilde kurgulandı (a: 2 asil+3 yedek gün1, 3 asil+2 yedek gün2 =
+    // 3.5+4.0 = 7.5; b tam tersi = 4.0+3.5 = 7.5) — böylece 3. günün
+    // sonucunu yalnızca streak kilidi (varsa) ya da id-hash belirler.
+    const muezzinler = [muezzin('a'), muezzin('b')];
+    const forced: Record<string, Partial<Record<Vakit, { asil: string; yedek: string }>>> = {
+      '2026-08-03': {
+        sabah: { asil: 'a', yedek: 'b' },
+        ogle: { asil: 'a', yedek: 'b' },
+        ikindi: { asil: 'b', yedek: 'a' },
+        aksam: { asil: 'b', yedek: 'a' },
+        yatsi: { asil: 'b', yedek: 'a' }, // 'a' bu günün SON vaktinde yedek
+      },
+      '2026-08-04': {
+        sabah: { asil: 'a', yedek: 'b' },
+        ogle: { asil: 'a', yedek: 'b' },
+        ikindi: { asil: 'a', yedek: 'b' },
+        aksam: { asil: 'b', yedek: 'a' },
+        yatsi: { asil: 'b', yedek: 'a' }, // 'a' yine SON vakitte yedek
+      },
+    };
+    const korunmusAtama = (gun: string, vakit: Vakit) => forced[gun]?.[vakit] ?? null;
+
+    const plan = haftalikPlanUret(['2026-08-03', '2026-08-04', '2026-08-05'], muezzinler, [], korunmusAtama);
+
+    // 3. gün (korunmusAtama yok, taze hesaplama): ağırlıklı yükler eşit
+    // olduğundan eski koddaki hatalı streak kilidi devrede olsaydı 'a'
+    // yanlışlıkla yedek yarışından çıkarılıp 'b' asil olurdu. Doğru
+    // davranışta streak her iki günün sonunda da sıfırlanır (ikisi de o
+    // gün asil olmuştu), karar id-hash kademesine düşer ve 'a' asil olur.
+    expect(plan['2026-08-05'].sabah).toEqual({ asil: 'a', yedek: 'b' });
+  });
+
   it('haftalık yükü, iki müsait kişi arasında dengeli biçimde dağıtır', () => {
     const muezzinler = [muezzin('a'), muezzin('b')];
 

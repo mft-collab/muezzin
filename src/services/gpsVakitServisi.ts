@@ -26,6 +26,19 @@ function isValidAladhanTimings(value: unknown): value is AladhanTimings {
 }
 
 /**
+ * Aladhan'ın "DD-MM-YYYY" biçimli gregorian tarihini "YYYY-MM-DD"ye çevirir.
+ * Beklenmeyen bir biçim gelirse null döner (çağıran taraf Türkiye tarihine düşer).
+ */
+function aladhanGregorianTarihiCevir(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const parcalar = value.split('-');
+  if (parcalar.length !== 3) return null;
+  const [d, m, y] = parcalar;
+  if (!/^\d{2}$/.test(d) || !/^\d{2}$/.test(m) || !/^\d{4}$/.test(y)) return null;
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * GPS COORDINATE PRAYER SERVICE
  * Fetches high-resolution location based prayer times using T.C. Diyanet method (method=13)
  */
@@ -33,13 +46,14 @@ export async function konumVakitleriniCek(
   latitude: number,
   longitude: number
 ): Promise<GpsVakitResult> {
-  const simdi = getTurkeyNow();
-  const dateStr = getTurkeyDateString(simdi);
   // Dikkat: getTurkeyNow() uygulama içi gösterim için gerçek olmayan (Türkiye saatine
   // kaydırılmış) bir epoch üretir — dış API'ye ham "şu an" epoch'u olarak gönderilirse
   // cihaz Türkiye dışında bir saat diliminde olduğunda yanlış takvim gününün vakitleri
   // dönebilir. Aladhan'a her zaman gerçek Unix zaman damgasını gönderiyoruz.
   const timestamp = Math.floor(Date.now() / 1000);
+  // Türkiye'nin güncel takvim günü — yalnızca API'nin döndürdüğü gerçek yerel
+  // tarih (aşağıda) beklenmedik biçimde eksik/bozuksa yedek olarak kullanılır.
+  const turkiyeTarihYedek = getTurkeyDateString(getTurkeyNow());
 
   // Fetch timings and geocoding in parallel to minimize network latency
   const timingsPromise = (async () => {
@@ -53,7 +67,13 @@ export async function konumVakitleriniCek(
     if (!isValidAladhanTimings(timings)) {
       throw new Error('Ezan vakti servisi beklenmeyen bir yanıt döndü.');
     }
-    return timings;
+    // Sonucu Türkiye'nin güncel takvim günüyle DEĞİL, API'nin sorgulanan
+    // koordinat için hesapladığı gerçek yerel takvim günüyle etiketle —
+    // cihaz Türkiye'den çok farklı bir saat diliminde bir konumu sorguluyorsa
+    // (ör. seyahatteyken), Türkiye'nin "bugün"ü ile GPS konumunun yerel
+    // "bugün"ü farklı takvim günlerine denk gelebilir (bkz. mantık denetimi).
+    const yerelTarih = aladhanGregorianTarihiCevir(result?.data?.date?.gregorian?.date) ?? turkiyeTarihYedek;
+    return { timings, yerelTarih };
   })();
 
   const cacheKey = `gps_geo_${latitude.toFixed(3)}_${longitude.toFixed(3)}`;
@@ -89,10 +109,10 @@ export async function konumVakitleriniCek(
     return null;
   })();
 
-  const [timings, geoResult] = await Promise.all([timingsPromise, geoPromise]);
+  const [{ timings, yerelTarih }, geoResult] = await Promise.all([timingsPromise, geoPromise]);
 
   const parsedVakitler: GunlukVakit = {
-    tarih: dateStr,
+    tarih: yerelTarih,
     sabah: timings.Imsak.split(' ')[0],
     gunes: timings.Sunrise.split(' ')[0],
     ogle: timings.Dhuhr.split(' ')[0],
@@ -117,7 +137,7 @@ export async function konumVakitleriniCek(
 
   return {
     coords: { latitude, longitude },
-    date: dateStr,
+    date: yerelTarih,
     vakitler: parsedVakitler,
     konumAdi
   };

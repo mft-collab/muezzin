@@ -175,9 +175,27 @@ export function sonrakiVaktiHesapla(bugunVakitler: GunlukVakit, yarinVakitler?: 
 
 // --- Yardımcı Parsers ---
 
-function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
+/** Diyanet (e-mushaf proxy) API'sinin ham gün kaydı şekli — alan adları
+ *  API'nin kendi Türkçe/PascalCase adlandırmasını birebir izler. */
+interface DiyanetGunRaw {
+  MiladiTarihKisa?: unknown;
+  Imsak?: unknown;
+  Gunes?: unknown;
+  Ogle?: unknown;
+  Ikindi?: unknown;
+  Aksam?: unknown;
+  Yatsi?: unknown;
+}
+
+/** Aladhan API'sinin ham gün kaydı şekli (calendarByCity uç noktası). */
+interface AladhanGunRaw {
+  date?: { gregorian?: { date?: unknown } };
+  timings?: Record<string, unknown>;
+}
+
+function parseDiyanetResponse(data: DiyanetGunRaw[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
- data.forEach((gun: any) => {
+ data.forEach((gun) => {
  const rawDate = gun?.MiladiTarihKisa;
  if (typeof rawDate !== 'string' || !rawDate) {
  console.warn('Diyanet API: gün verisi eksik/bozuk, atlandı:', gun);
@@ -195,7 +213,7 @@ function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
  ikindi: gun.Ikindi,
  aksam: gun.Aksam,
  yatsi: gun.Yatsi
- };
+ } as VakitKaydi;
  });
  return {
  ilceId,
@@ -205,9 +223,9 @@ function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
  };
 }
 
-function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
+function parseAladhanResponse(data: AladhanGunRaw[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
- data.forEach((gun: any) => {
+ data.forEach((gun) => {
  const tarih = gun?.date?.gregorian?.date; // 20-04-2026
  const timings = gun?.timings;
  if (typeof tarih !== 'string' || !timings) {
@@ -217,7 +235,7 @@ function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
  const [d, m, y] = tarih.split('-');
  const formattedDate = `${y}-${m}-${d}`;
  const vaktiAyikla = (key: string): string | undefined =>
- typeof timings[key] === 'string' ? timings[key].split(' ')[0] : undefined;
+ typeof timings[key] === 'string' ? (timings[key] as string).split(' ')[0] : undefined;
  gunler[formattedDate] = {
  sabah: vaktiAyikla('Fajr'),
  gunes: vaktiAyikla('Sunrise'),
