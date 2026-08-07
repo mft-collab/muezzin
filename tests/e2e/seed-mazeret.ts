@@ -49,7 +49,15 @@ async function seed(): Promise<string> {
   } catch {
     // kullanıcı yoktu, sorun değil
   }
-  await auth.createUser({ uid: UID, email: `${UID}@example.test`, displayName: 'E2E Asil' });
+  // emailVerified: true zorunlu — firestore.rules'taki isSignedIn() artık
+  // request.auth.token.email_verified == true şartını arıyor (K1 güvenlik
+  // düzeltmesi, gerçek kullanıcılar yalnızca doğrulanmış e-postayla gelen
+  // Google girişi kullandığından). Bu alan olmadan createCustomToken'dan
+  // üretilen oturumun email_verified'ı false kalıyor, isSignedIn() HER
+  // Firestore isteğinde false dönüyor, dinleyiciler sessizce (yeniden
+  // denemeden) hata alıp kapanıyor — seed edilen görev hiç görünmüyordu
+  // (bkz. E2E flakiness soruşturması).
+  await auth.createUser({ uid: UID, email: `${UID}@example.test`, displayName: 'E2E Asil', emailVerified: true });
 
   await db.collection('muezzins').doc(UID).set({
     displayName: 'E2E Asil',
