@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Vakitler, GunlukVakit } from '../types';
-import { aylikVakitleriCek } from '../services/ezanVaktiServisi';
+import { aylikVakitleriCek, aylikVakitleriGrupla } from '../services/ezanVaktiServisi';
 import { getTurkeyNow, getTurkeyDateString } from '../lib/dateUtils';
 import { useSystemSettingsStore } from './useSystemSettingsStore';
 import { useAuthStore } from './useAuthStore';
@@ -118,10 +118,23 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  // permission-denied ile reddediliyordu; gereksiz yazma denemesi ve
  // telemetri gürültüsü önlenir.
  if (useAuthStore.getState().isAdmin) {
- const docId = `${settings.ilceId}_${yil}-${String(ay).padStart(2, '0')}`;
- setDoc(doc(db, 'vakitler', docId), data).catch((e) =>
+ // `data` (birincil Diyanet kaynağı) yil/ay parametrelerini yok sayıp
+ // bugünden itibaren ~30-32 günlük kayan bir pencere döner — bu, istenen
+ // aydan FAZLASINI (bir sonraki ayın günlerini) içerebilir. aylikVakitleriGrupla
+ // ile gerçek takvim ayına göre bölünüp yalnızca istenen ay'a denk gelen
+ // günler yazılır — aksi halde (eski davranış) pencerenin TAMAMI `yil-ay`
+ // doc'una yazılıyor, bir sonraki ayın günleri YANLIŞ doc'a gömülüp o ayın
+ // KENDİ doc'unda hiç görünmüyordu (bkz. O5 ile aynı sınıf bug, mantık
+ // denetiminde bu üçüncü — daha önce kaçırılmış — çağrı noktasında bulundu).
+ const ayId = `${yil}-${String(ay).padStart(2, '0')}`;
+ const gruplar = aylikVakitleriGrupla(data);
+ const grup = gruplar[ayId];
+ if (grup) {
+ const docId = `${settings.ilceId}_${ayId}`;
+ setDoc(doc(db, 'vakitler', docId), { ...grup, guncellenmeTarihi: Timestamp.now() }, { merge: true }).catch((e) =>
  console.warn('Auto-cache failed:', e)
  );
+ }
  }
  } catch (err) {
  console.error('VakitStore Fallback API Hatası:', err);
