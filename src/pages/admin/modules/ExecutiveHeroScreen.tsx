@@ -70,8 +70,11 @@ export default function ExecutiveHeroScreen({
  durationMs: 8000
  }
  );
- } catch {
- showNotification('İşlem Başarısız', 'İzin kararı işlenemedi. Bağlantı veya yetki durumunu kontrol edin.', 'error');
+ } catch (err) {
+ // Yıllık izin kotasını aşan bir onay burada anlamlı bir hata mesajıyla
+ // (bkz. useAdminIzinlerStore.ts izinGuncelle) reddedilir — genel mesaj
+ // bu bilgiyi gizleyip admin'in nedeni anlamasını engellerdi.
+ showNotification('İşlem Başarısız', err instanceof Error ? err.message : 'İzin kararı işlenemedi. Bağlantı veya yetki durumunu kontrol edin.', 'error');
  } finally {
  setProcessingId(null);
  }

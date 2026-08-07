@@ -1335,6 +1335,62 @@ const tests: TestCase[] = [
         superAdminEmails: ['siradanadmin@example.test']
       }));
     }
+  },
+  {
+    // Yıllık izin onayı, izinler.durum ve muezzins.yillikIzinKullanilanGun'u
+    // AYNI transaction'da atomik günceller (bkz. useAdminIzinlerStore.ts
+    // izinGuncelle). Kota dahilindeyse (20 + 5 gün = 25 <= 30) her iki yazım
+    // da başarılı olmalı.
+    name: 'yillik izin onayi kota dahilindeyse muezzins sayacini da atomik gunceller',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'muezzins/muezzin1'), { yillikIzinKullanilanGun: 20 }, { merge: true });
+        await setDoc(doc(db, 'izinler/yillikTalebi1'), {
+          uid: 'muezzin1',
+          baslangic: '2026-08-10',
+          bitis: '2026-08-14', // 5 gün (dahil)
+          tip: 'yillik',
+          durum: 'onay_bekliyor',
+          sebep: 'Test',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      await assertSucceeds(runTransaction(db, async (transaction) => {
+        transaction.update(doc(db, 'izinler/yillikTalebi1'), { durum: 'onaylandi' });
+        transaction.update(doc(db, 'muezzins/muezzin1'), { yillikIzinKullanilanGun: 25 });
+      }));
+    }
+  },
+  {
+    // Kotayı aşan bir onay (28 + 5 gün = 33 > 30) SUNUCU tarafında
+    // tamamen reddedilmeli — admin override'ı yok (kullanıcı kararı).
+    // isValidMuezzin'deki <=30 sert sınırı muezzins yazımını reddeder,
+    // bu da TÜM transaction'ı (izinler.durum dahil) başarısız kılar.
+    name: 'yillik izin onayi kotayi asiyorsa sunucu tarafinda tamamen reddedilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'muezzins/muezzin2'), { yillikIzinKullanilanGun: 28 }, { merge: true });
+        await setDoc(doc(db, 'izinler/yillikTalebi2'), {
+          uid: 'muezzin2',
+          baslangic: '2026-09-01',
+          bitis: '2026-09-05', // 5 gün (dahil)
+          tip: 'yillik',
+          durum: 'onay_bekliyor',
+          sebep: 'Test',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      await assertFails(runTransaction(db, async (transaction) => {
+        transaction.update(doc(db, 'izinler/yillikTalebi2'), { durum: 'onaylandi' });
+        transaction.update(doc(db, 'muezzins/muezzin2'), { yillikIzinKullanilanGun: 33 });
+      }));
+    }
   }
 ];
 

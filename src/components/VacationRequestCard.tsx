@@ -4,10 +4,16 @@ import { Calendar, AlertCircle, CheckCircle2, Hourglass, Trash2, Send } from 'lu
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
-import { getTurkeyDateString, isFriday } from '../lib/dateUtils';
+import { getTurkeyDateString, isFriday, izinGunSayisi } from '../lib/dateUtils';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from './ui/Modal';
+import { useMuezzinStore } from '../store/useMuezzinStore';
+
+/** Yıllık izin kotası (takvim yılı başına gün) — bkz. useAdminIzinlerStore.ts
+ *  YILLIK_IZIN_KOTASI ve firestore.rules isValidMuezzin. Sunucu tarafı sert
+ *  sınırı orada uygulanır; burası yalnızca erken, kullanıcı dostu bir uyarı. */
+const YILLIK_IZIN_KOTASI = 30;
 
 interface VacationRequestCardProps {
   user: FirebaseUser | null;
@@ -33,6 +39,9 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const yillikKullanilan = useMuezzinStore(s => (user ? s.muezzinMap[user.uid]?.yillikIzinKullanilanGun : undefined)) || 0;
+  const yillikKalanKota = Math.max(0, YILLIK_IZIN_KOTASI - yillikKullanilan);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const [talepler, setTalepler] = useState<IzinTalep[]>([]);
@@ -100,6 +109,21 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
     if (end < start) {
       setErrorMessage('Bitiş tarihi başlangıç tarihinden önce olamaz.');
       return;
+    }
+
+    // Yıllık izin kotası: erken, kullanıcı dostu uyarı — asıl sert sınır
+    // onay anında sunucu tarafında uygulanır (bkz. useAdminIzinlerStore.ts
+    // izinGuncelle, firestore.rules isValidMuezzin). Bekleyen (henüz
+    // onaylanmamış) diğer yıllık izin talepleri bu hesaba katılmaz —
+    // kota yalnızca ONAYLANMIŞ günler üzerinden işler.
+    if (tip === 'yillik') {
+      const talepGunSayisi = izinGunSayisi(baslangic, bitis);
+      if (talepGunSayisi > yillikKalanKota) {
+        setErrorMessage(
+          `Bu talep (${talepGunSayisi} gün) kalan yıllık izin kotanızı (${yillikKalanKota} gün) aşıyor. Bu yıl için ${yillikKullanilan}/${YILLIK_IZIN_KOTASI} gün kullanılmış durumda.`
+        );
+        return;
+      }
     }
 
     // Friday exclusion validation
@@ -261,6 +285,11 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                   </button>
                 ))}
               </div>
+              {tip === 'yillik' && (
+                <p className="text-2xs text-[var(--text-secondary)]/50 font-light pt-1">
+                  Bu yıl için kalan yıllık izin kotanız: <span className="font-bold text-[var(--text-primary)]/70">{yillikKalanKota} / {YILLIK_IZIN_KOTASI} gün</span>
+                </p>
+              )}
             </div>
 
             {/* Reason Text Area */}

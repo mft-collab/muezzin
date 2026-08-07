@@ -26,6 +26,11 @@ export interface Muezzin {
   * sürekli yedek kalan biri her hafta yeniden "en az yüklü" ölçülüp tekrar
   * yedeğe atanabiliyordu (bkz. src/utils/tieBreaker.ts, mimari denetim K6). */
  aylikYedekSayisi?: number;
+ /** Bu takvim yılında ONAYLANMIŞ yıllık izin olarak kullanılan gün sayısı
+  * (yıllık 30 gün kotasının kalıcı sayacı) — her 1 Ocak'ta
+  * scripts/yatsiSonuIslemleri.ts tarafından sıfırlanır (bkz.
+  * src/lib/dateUtils.ts izinGunSayisi, firestore.rules isValidMuezzin). */
+ yillikIzinKullanilanGun?: number;
  haftalikIzinGunu?: number;
  kayitTarihi?: string;
  /** Davet kabul edip hesap oluşturdu ama admin onayı bekliyor */
