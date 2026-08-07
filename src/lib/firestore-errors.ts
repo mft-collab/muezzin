@@ -38,7 +38,7 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   'already-exists': 'Bu kayıt zaten mevcut.',
   'failed-precondition': 'Bu işlem şu anda gerçekleştirilemez. Sayfayı yenileyip tekrar deneyin.',
   'aborted': 'İşlem bir çakışma nedeniyle iptal edildi. Lütfen tekrar deneyin.',
-  'internal': 'Beklenmeyen bir sistem hatası oluştu.',
+  'internal': 'Beklenmeyen bir dizge hatası oluştu.',
   'unknown': 'Beklenmeyen bir hata oluştu.',
 };
 const DEFAULT_FRIENDLY_MESSAGE = 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';

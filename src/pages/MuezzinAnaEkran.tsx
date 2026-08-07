@@ -90,7 +90,7 @@ export default function MuezzinAnaEkran() {
         showNotification('İşlem Başlatıldı', 'Göreviniz onaylanıyor...', 'info');
         try {
           await okudumOnayla(bildirimId);
-          showNotification('Görev Onaylandı', 'Göreviniz başarıyla sisteme işlendi. Allah kabul etsin.', 'success');
+          showNotification('Görev Onaylandı', 'Göreviniz başarıyla dizgeye işlendi. Allah kabul etsin.', 'success');
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
           if (errMsg.includes('ezan vakti')) {

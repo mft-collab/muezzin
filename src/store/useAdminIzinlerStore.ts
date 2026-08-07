@@ -212,7 +212,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
     const path = `izinler/${id}`;
     try {
       await deleteDoc(doc(db, 'izinler', id));
-      await telemetryService.logAudit('İzin Talebi Silme', id, 'İzin kaydı sistemden kalıcı olarak silindi.');
+      await telemetryService.logAudit('İzin Talebi Silme', id, 'İzin kaydı dizgeden kalıcı olarak silindi.');
     } catch (err) {
       throw handleFirestoreError(err, OperationType.DELETE, path);
     }

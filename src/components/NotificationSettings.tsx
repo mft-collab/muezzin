@@ -24,7 +24,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
 
   const handleRequestNotificationPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      setUiMessage('Bu tarayıcı anlık bildirim sistemini desteklemiyor.');
+      setUiMessage('Bu tarayıcı anlık bildirim dizgesini desteklemiyor.');
       return;
     }
     
@@ -51,7 +51,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
     }
     if (Notification.permission === 'granted') {
       new Notification('Müezzin Hizmet Dizgesi', {
-        body: 'Bu bir sistem tanı test bildirimidir. Bağlantınız başarıyla sağlandı!',
+        body: 'Bu bir dizge tanı test bildirimidir. Bağlantınız başarıyla sağlandı!',
         icon: '/favicon.ico'
       });
       setUiMessage(null);
@@ -123,7 +123,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
             {userData?.fcmToken 
               ? 'Anlık bildirim alıcınız başarıyla Google sunucularına bağlandı ve bu cihaz yetkilendirildi.' 
               : typeof window !== 'undefined' && !('Notification' in window)
-              ? 'Bu cihazın tarayıcısı Web-Push anlık bildirim sistemini desteklemiyor.'
+              ? 'Bu cihazın tarayıcısı Web-Push anlık bildirim dizgesini desteklemiyor.'
               : typeof window !== 'undefined' && Notification.permission === 'denied'
               ? 'Tarayıcı bildirim izinleri kalıcı olarak engellenmiş. Lütfen adres çubuğundaki kilit simgesinden izin verin.'
               : 'İzin verilmemiş veya cihaz kaydı yok. Bildirimleri etkinleştirerek görev ve duyuru uyarılarını alabilirsiniz.'}

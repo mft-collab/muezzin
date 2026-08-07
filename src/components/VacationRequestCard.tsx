@@ -165,7 +165,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
       }, 3000);
     } catch (err) {
       console.error('İzin talebi oluşturulamadı:', err);
-      setErrorMessage('Talep gönderilirken sistemsel bir hata oluştu.');
+      setErrorMessage('Talep gönderilirken dizgesel bir hata oluştu.');
     } finally {
       setIsSubmitting(false);
     }
