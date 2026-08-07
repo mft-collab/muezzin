@@ -131,7 +131,11 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  severity: 'critical',
  message: `Hatalı izin tarih aralığı!`,
  details: `İzin ID: ${v.id} için başlangıç tarihi (${v.baslangic}) bitiş tarihinden (${v.bitis}) sonra olamaz.`,
- repairData: { type: 'vacation_date', docId: v.id, start: v.bitis, end: v.bitis } // Auto swap or align
+ // Gerçek bir swap: iki alan da 'bitis'e eşitlenirse (eski davranış)
+ // orijinal 'baslangic' değeri tamamen kaybolup izin tek güne (bitis'in
+ // kendisine) çöküyordu. Alanları yer değiştirerek asıl iki tarih de
+ // korunur, yalnızca kronolojik sırası düzeltilir.
+ repairData: { type: 'vacation_date', docId: v.id, start: v.bitis, end: v.baslangic }
  });
  }
 
