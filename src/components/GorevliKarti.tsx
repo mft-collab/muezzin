@@ -145,13 +145,18 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
               </div>
             )}
             {durum === 'bekliyor' && (
-              <motion.div
+              // MuezzinAnaEkran.tsx:217-222'deki aynı "gorev-akisi'ne kaydır"
+              // eylemiyle aynı desen — burada bare bir <div onClick> kullanılıyordu,
+              // klavye/ekran okuyucu ile erişilemiyordu (bkz. mimari denetim —
+              // üçüncü tur).
+              <motion.button
+                type="button"
                 onClick={() => document.getElementById('gorev-akisi')?.scrollIntoView({ behavior: 'smooth' })}
                 className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-amber-500/10 border border-amber-500/20 shadow-sm cursor-pointer hover:bg-amber-500/15 transition-all"
               >
                 <Hourglass size={11} className="text-amber-400 animate-spin" style={{ animationDuration: '4s' }} />
                 <span className="text-2xs font-bold uppercase tracking-wide text-amber-400">BEKLEYİŞTE</span>
-              </motion.div>
+              </motion.button>
             )}
             {izinde && (
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-rose-500/10 border border-rose-500/20 shadow-sm">

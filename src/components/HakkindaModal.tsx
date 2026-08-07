@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Code, Cpu, Globe, CheckCircle2 } from 'lucide-react';
 import { Logo } from './ui/Logo';
@@ -19,10 +20,18 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
     playSuccess();
   };
 
-  return (
+  // Diğer tüm modal/overlay bileşenleri (Modal.tsx, ConfirmModal, GpsHelpModal,
+  // AdminPanel'in çekmecesi — "Portaled for Mobile Stability") document.body'ye
+  // portallanıyor; bu bileşen tek istisnaydı. `<main>` (`Layout.tsx`) kendi
+  // `relative z-10` stacking context'ini kurduğundan, inline render edilen bu
+  // modalin z-[100]'ü yalnızca o context içinde anlamlıydı — <main>'in kardeşi
+  // olan alt gezinme dock'u (z-[100]) her zaman üstte kalıp dokunuşları
+  // kapıyordu (bkz. mimari denetim — üçüncü tur). z-index de paylaşılan
+  // Modal.tsx ile aynı katmana (z-[500]) çekildi.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-0">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center px-4 sm:px-0">
           {/* Deep Backdrop Blur */}
           <motion.div
             initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
@@ -147,6 +156,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
