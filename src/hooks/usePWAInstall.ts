@@ -16,7 +16,7 @@ function detectPwaEnvironment() {
  return { isStandalone: false, isIos: false };
  }
  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
- ('standalone' in window.navigator && (window.navigator as any).standalone === true);
+ ('standalone' in window.navigator && (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
  const userAgent = window.navigator.userAgent.toLowerCase();
  const isIos = /iphone|ipad|ipod/.test(userAgent);
  return { isStandalone, isIos };

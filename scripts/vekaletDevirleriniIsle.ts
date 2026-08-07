@@ -8,7 +8,7 @@ type BildirimData = {
   tip: 'asil' | 'yedek' | 'gorev_cagrisi';
   durum: string;
   vekaletDevredildi?: boolean;
-  planSenkronEdildi?: boolean;
+  vekaletPlanSenkronEdildi?: boolean;
 };
 
 /**
@@ -25,8 +25,12 @@ type BildirimData = {
  * `oncekiHaftaSonEkibi` (SOS/dinlenme kuralının hafta sınırını taşıyan
  * girdisi) yanlış kişiye uygulanabilir.
  *
- * İşlenen belge `planSenkronEdildi: true` ile işaretlenir ki bu iş tekrar
- * tekrar aynı kaydı işlemesin (idempotent).
+ * İşlenen belge `vekaletPlanSenkronEdildi: true` ile işaretlenir ki bu iş
+ * tekrar tekrar aynı kaydı işlemesin (idempotent).
+ *
+ * NOT: bu bayrak, `mazeretDevirleriniIsle.ts`'in kullandığı
+ * `mazeretPlanSenkronEdildi`'den KASITLI OLARAK AYRI bir alandır — bkz. o
+ * dosyadaki NOT ve mimari denetim Y2.
  */
 export async function processVekaletDevirleri(dryRun = false) {
   console.log(`Vekalet devirleri uzlaştırılıyor${dryRun ? ' (dry-run)' : ''}...`);
@@ -37,7 +41,7 @@ export async function processVekaletDevirleri(dryRun = false) {
 
   const islenecekler = devirSnap.docs.filter((docSnap) => {
     const data = docSnap.data() as BildirimData;
-    return data.planSenkronEdildi !== true;
+    return data.vekaletPlanSenkronEdildi !== true;
   });
 
   let planSenkronlandi = 0;
@@ -54,14 +58,14 @@ export async function processVekaletDevirleri(dryRun = false) {
       const freshDevir = await transaction.get(devirDoc.ref);
       if (!freshDevir.exists) return;
       const freshDevirData = freshDevir.data() as BildirimData;
-      if (freshDevirData.planSenkronEdildi === true) return;
+      if (freshDevirData.vekaletPlanSenkronEdildi === true) return;
 
       const planRef = db.collection('haftaPlanlari').doc(devir.haftaId);
       const planSnap = await transaction.get(planRef);
       if (!planSnap.exists) {
         // Plan belgesi (henüz) yoksa senkronize edilecek bir şey yok — yine
         // de işaretle ki bu iş sonsuza kadar aynı belgeyi denemesin.
-        transaction.update(devirDoc.ref, { planSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
+        transaction.update(devirDoc.ref, { vekaletPlanSenkronEdildi: true, sonGuncelleme: Timestamp.now() });
         return;
       }
 
@@ -69,7 +73,7 @@ export async function processVekaletDevirleri(dryRun = false) {
         [`gunler.${devir.tarih}.${devir.vakit}.${devir.tip}`]: freshDevirData.uid
       });
       transaction.update(devirDoc.ref, {
-        planSenkronEdildi: true,
+        vekaletPlanSenkronEdildi: true,
         sonGuncelleme: Timestamp.now()
       });
     });

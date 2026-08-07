@@ -68,6 +68,32 @@ export async function aylikVakitleriCek(
  }
 }
 
+/** Tek bir aya ait, `guncellenmeTarihi` içermeyen vakit grubu — bu alan
+ * yazım anında (client SDK'sı client, admin SDK'sı `firebase-admin/firestore`
+ * Timestamp'ı kullandığından) her çağıran tarafından ayrıca eklenir. */
+export type AylikVakitGrubu = Pick<Vakitler, 'ilceId' | 'kaynakApi'> & { gunler: Vakitler['gunler'] };
+
+/**
+ * `aylikVakitleriCek`'in döndürdüğü (Diyanet kaynağı için `yil`/`ay`
+ * parametrelerini yok sayan, bugünden itibaren ~30-32 günlük kayan bir
+ * pencere döndüren — bkz. yukarıdaki fonksiyon) veriyi gerçek takvim ayına
+ * göre gruplar. Hem `scripts/aylikEzanTakvimiGuncelle.ts` (gece cron'u) hem
+ * `src/services/vakitCacheServisi.ts` (istemci senkronu) bunu kullanır —
+ * eskiden istemci tarafı bu gruplamayı YAPMIYORDU, aynı karışık pencereyi
+ * hem "bu ay" hem "gelecek ay" doc'una kopyalıyordu (bkz. mimari denetim O5).
+ */
+export function aylikVakitleriGrupla(vakitler: Vakitler): Record<string, AylikVakitGrubu> {
+  const aylar: Record<string, AylikVakitGrubu> = {};
+  Object.entries(vakitler.gunler).forEach(([tarih, kayit]) => {
+    const ayId = tarih.slice(0, 7); // YYYY-MM
+    if (!aylar[ayId]) {
+      aylar[ayId] = { ilceId: vakitler.ilceId, kaynakApi: vakitler.kaynakApi, gunler: {} };
+    }
+    aylar[ayId].gunler[tarih] = kayit;
+  });
+  return aylar;
+}
+
 /**
  * Mevcut namaz vaktini hesaplar.
  */
@@ -149,9 +175,27 @@ export function sonrakiVaktiHesapla(bugunVakitler: GunlukVakit, yarinVakitler?: 
 
 // --- Yardımcı Parsers ---
 
-function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
+/** Diyanet (e-mushaf proxy) API'sinin ham gün kaydı şekli — alan adları
+ *  API'nin kendi Türkçe/PascalCase adlandırmasını birebir izler. */
+interface DiyanetGunRaw {
+  MiladiTarihKisa?: unknown;
+  Imsak?: unknown;
+  Gunes?: unknown;
+  Ogle?: unknown;
+  Ikindi?: unknown;
+  Aksam?: unknown;
+  Yatsi?: unknown;
+}
+
+/** Aladhan API'sinin ham gün kaydı şekli (calendarByCity uç noktası). */
+interface AladhanGunRaw {
+  date?: { gregorian?: { date?: unknown } };
+  timings?: Record<string, unknown>;
+}
+
+function parseDiyanetResponse(data: DiyanetGunRaw[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
- data.forEach((gun: any) => {
+ data.forEach((gun) => {
  const rawDate = gun?.MiladiTarihKisa;
  if (typeof rawDate !== 'string' || !rawDate) {
  console.warn('Diyanet API: gün verisi eksik/bozuk, atlandı:', gun);
@@ -169,7 +213,7 @@ function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
  ikindi: gun.Ikindi,
  aksam: gun.Aksam,
  yatsi: gun.Yatsi
- };
+ } as VakitKaydi;
  });
  return {
  ilceId,
@@ -179,9 +223,9 @@ function parseDiyanetResponse(data: any[], ilceId: string): Vakitler {
  };
 }
 
-function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
+function parseAladhanResponse(data: AladhanGunRaw[], ilceId: string): Vakitler {
  const gunler: Record<string, VakitKaydi> = {};
- data.forEach((gun: any) => {
+ data.forEach((gun) => {
  const tarih = gun?.date?.gregorian?.date; // 20-04-2026
  const timings = gun?.timings;
  if (typeof tarih !== 'string' || !timings) {
@@ -191,7 +235,7 @@ function parseAladhanResponse(data: any[], ilceId: string): Vakitler {
  const [d, m, y] = tarih.split('-');
  const formattedDate = `${y}-${m}-${d}`;
  const vaktiAyikla = (key: string): string | undefined =>
- typeof timings[key] === 'string' ? timings[key].split(' ')[0] : undefined;
+ typeof timings[key] === 'string' ? (timings[key] as string).split(' ')[0] : undefined;
  gunler[formattedDate] = {
  sabah: vaktiAyikla('Fajr'),
  gunes: vaktiAyikla('Sunrise'),

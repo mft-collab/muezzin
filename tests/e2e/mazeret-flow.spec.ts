@@ -5,7 +5,26 @@ import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * seed-mazeret.ts her zaman BUGÜN için bir görev seed eder ("Kişisel
+ * Görevlerim" ekranı yalnızca bugünün görevlerini gösterdiğinden başka bir
+ * gün seçilemez — bkz. useBugunkuGorevlerim.ts). mazeretKurallari.ts'teki
+ * kural ise Cuma günleri mazeret bildirimini asil/yedek fark etmeksizin HER
+ * ZAMAN kapatır (bkz. CLAUDE.md "Mazeret / Cuma kısıtlaması"). Bu ikisi bir
+ * araya gelince: bu test her Cuma günü, production kodunda hiçbir hata
+ * olmadan, salt kuralın doğru çalışması yüzünden "KAYDI TAMAMLA" adımında
+ * başarısız oluyordu (bkz. E2E flakiness soruşturması). Kalıcı çözüm için
+ * seed'in başka bir günü hedeflemesi mümkün değil (görev bugün olmak
+ * zorunda) — bu yüzden akış yalnızca Cuma günleri atlanıyor.
+ */
+function turkeyIsFridayNow(): boolean {
+  const turkeyMs = Date.now() + 3 * 60 * 60 * 1000; // UTC+3 sabit ofset (bkz. seed-mazeret.ts turkeyTodayStr)
+  return new Date(turkeyMs).getUTCDay() === 5; // 0=Pazar ... 5=Cuma
+}
+
 test.describe('Mazeret Akışı E2E', () => {
+  test.skip(turkeyIsFridayNow(), 'Mazeret bildirimi Cuma günleri kural gereği her zaman kapalı — seed bugün için görev oluşturduğundan bu akış Cuma günü test edilemez.');
+
   let customToken: string;
 
   test.beforeAll(() => {

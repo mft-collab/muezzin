@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { NotificationType } from '../components/ui/NotificationToast';
-import { playSuccess, playWarning } from '../lib/sounds';
+import { playSuccess, playWarning, getAudioContext } from '../lib/sounds';
 
 interface NotificationAction {
  label: string;
@@ -50,24 +50,12 @@ export const normalizeNotificationType = (type: unknown): NotificationType => {
  : 'info';
 };
 
-// Global reference for the AudioContext
-let globalAudioCtx: AudioContext | null = null;
-const getAudioContext = () => {
- if (!globalAudioCtx && typeof window !== 'undefined') {
- const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
- if (AudioContextClass) {
- globalAudioCtx = new AudioContextClass();
- }
- }
- return globalAudioCtx;
-};
-
 export const unlockAudioContext = async () => {
  const audioCtx = getAudioContext();
  if (audioCtx && audioCtx.state === 'suspended') {
  try {
  await audioCtx.resume();
- } catch (e) {
+ } catch {
  // Silently fail
  }
  }
@@ -149,15 +137,10 @@ const speakNotification = (text: string) => {
 
 const playNotificationSound = async () => {
  try {
- let audioCtx = getAudioContext();
+ // getAudioContext() 'closed' durumunu kendi içinde tespit edip yeniden
+ // oluşturuyor (bkz. lib/sounds.ts) — burada ayrıca ele almaya gerek yok.
+ const audioCtx = getAudioContext();
  if (!audioCtx) return;
-
- // Handle closed or suspended state
- if (audioCtx.state === 'closed') {
- globalAudioCtx = null;
- audioCtx = getAudioContext();
- if (!audioCtx) return;
- }
 
  if (audioCtx.state === 'suspended') {
  try {

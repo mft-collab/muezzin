@@ -19,7 +19,7 @@ export function initTimeSync() {
       const offset = snap.val() || 0;
       // Store in globalThis so it can be synchronously accessed by dateUtils
       // without needing React state or store subscriptions (avoids re-renders).
-      (globalThis as any).__timeOffset = offset;
+      globalThis.__timeOffset = offset;
     });
   } catch (err) {
     console.warn('Time synchronization failed to initialize:', err);

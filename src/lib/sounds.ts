@@ -9,10 +9,16 @@ import { hapticLight, hapticSuccess, hapticWarning } from './haptic';
 // Lazily initialized global AudioContext
 let audioCtx: AudioContext | null = null;
 
-const getAudioContext = (): AudioContext | null => {
+export const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
+  // 'closed' bir kez ulaşılınca geri dönüşü olmayan bir durumdur — önbelleklenen
+  // context'i atıp yeniden oluşturuyoruz, aksi halde tüm sonraki çağrılar sessizce
+  // ölü bir context üzerinde çalışıp hiçbir şey çalmaz.
+  if (audioCtx && audioCtx.state === 'closed') {
+    audioCtx = null;
+  }
   if (!audioCtx) {
-    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }

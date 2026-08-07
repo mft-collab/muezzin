@@ -43,7 +43,7 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
 };
 const DEFAULT_FRIENDLY_MESSAGE = 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
 
-function isFirebaseSdkError(error: unknown): error is { code: string; message: string } {
+export function isFirebaseSdkError(error: unknown): error is { code: string; message: string } {
   return typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string';
 }
 

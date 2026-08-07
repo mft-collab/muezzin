@@ -5,6 +5,7 @@ import {
  getRedirectResult
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { isFirebaseSdkError } from '../lib/firestore-errors';
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { SplashLoader } from './SplashLoader';
@@ -45,8 +46,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         if (result?.user) {
           // Redirect login successful
         }
-      } catch (err: any) {
-        if (err.code === 'auth/unauthorized-domain') {
+      } catch (err: unknown) {
+        if (isFirebaseSdkError(err) && err.code === 'auth/unauthorized-domain') {
           setError('Bu alan adı (domain) henüz Firebase panelinde yetkilendirilmemiş. Lütfen yöneticiye başvurun.');
         } else {
           setError('Giriş yapılırken bir sorun oluştu. Lütfen tekrar deneyin.');
@@ -100,19 +101,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  // Try popup first (faster experience)
  try {
  await signInWithPopup(auth, provider);
- } catch (popupErr: any) {
+ } catch (popupErr: unknown) {
   // If popup is blocked or fails, fallback to redirect
-  if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
+  if (isFirebaseSdkError(popupErr) && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request')) {
     sessionStorage.setItem('muezzin:auth_redirect_pending', 'true');
     await signInWithRedirect(auth, provider);
   } else {
     throw popupErr;
   }
  }
- } catch (e: any) { 
- if (e.code === 'auth/unauthorized-domain') {
+ } catch (e: unknown) {
+ if (isFirebaseSdkError(e) && e.code === 'auth/unauthorized-domain') {
  setError('Bu alan adı (domain) yetkilendirilmemiş. Lütfen localhost veya kayıtlı alan adını kullanın.');
- } else if (e.code !== 'auth/popup-closed-by-user') {
+ } else if (!isFirebaseSdkError(e) || e.code !== 'auth/popup-closed-by-user') {
  setError('Giriş yapılamadı. Lütfen internet bağlantınızı ve Google hesabınızı kontrol edin.');
  }
  } finally {

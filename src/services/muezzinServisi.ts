@@ -43,13 +43,13 @@ export function invitesAbone(
  * atanmış kalmaya devam ediyordu, hiçbir uyarı da üretilmiyordu. */
 const GUVENLI_YENILEME_HAFTA_SAYISI = 3;
 
-/** Kadro değişikliğinin mevcut VE gece cron'unun ürettiği kadar ileri
- * haftaları (bu hafta + sonraki 2 hafta) etkileyip etkilemediğine
- * bakılmaksızın, her biri için güvenli bir yeniden hesaplama dener.
- * Başarısızlık sessizce raporlanır — asıl işlemi engellemez; bir haftanın
- * başarısız olması diğerlerinin denenmesini engellemez. */
-async function haftaPlaniniGuvenliYenile(m: MuezzinDoc): Promise<boolean> {
-  if (m.role !== 'muezzin') return true;
+/** Mevcut VE gece cron'unun ürettiği kadar ileri haftaların (bu hafta +
+ * sonraki 2 hafta) her biri için güvenli bir yeniden hesaplama dener —
+ * `role==='muezzin'` guard'ı YOK, çağıran taraf bu kararı verir (bkz.
+ * `haftaPlaniniGuvenliYenile` ve mimari denetim O1). Başarısızlık sessizce
+ * raporlanır — asıl işlemi engellemez; bir haftanın başarısız olması
+ * diğerlerinin denenmesini engellemez. */
+async function haftalikPlanlariYenile(): Promise<boolean> {
   const bugun = getTurkeyDateString();
   let hepsiBasarili = true;
   for (let haftaOffset = 0; haftaOffset < GUVENLI_YENILEME_HAFTA_SAYISI; haftaOffset++) {
@@ -65,6 +65,16 @@ async function haftaPlaniniGuvenliYenile(m: MuezzinDoc): Promise<boolean> {
     }
   }
   return hepsiBasarili;
+}
+
+/** Kadro değişikliğinin (aktiflik/onay/arşiv geçişleri) plan yenilemesi
+ * gerektirip gerektirmediğine `role==='muezzin'` bakarak karar verir —
+ * `personelAktiflikDegistir`/`personelOnayla`/`personelGeriYukle`/
+ * `personelArsivle` bu geçişlerin hepsinde kişinin rolü zaten 'muezzin'
+ * olarak sabit kalır, yalnızca `aktif`/`onayBekliyor`/`arsivlendi` değişir. */
+async function haftaPlaniniGuvenliYenile(m: MuezzinDoc): Promise<boolean> {
+  if (m.role !== 'muezzin') return true;
+  return haftalikPlanlariYenile();
 }
 
 export async function personelAktiflikDegistir(m: MuezzinDoc, muezzinler: MuezzinDoc[]): Promise<{ planRefreshed: boolean }> {
@@ -173,7 +183,12 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<void
         haftalikIzinGunu: haftalikIzinGunu > 0 ? haftalikIzinGunu : deleteField(),
       });
       if (impactsDutyPlan) {
-        await haftalikPlanOlustur(getHaftaIdFromDate(getTurkeyDateString()));
+        // haftalikPlanlariYenile (guard'sız) kullanılır — haftaPlaniniGuvenliYenile
+        // DEĞİL: o, geçirilen nesnenin YENİ rolüne bakıp 'muezzin' değilse
+        // hiç yenilemiyordu, oysa rol muezzin'den BAŞKA bir şeye değiştiğinde
+        // de (kişi rotasyondan çıkıyor) +1/+2 haftaların yenilenmesi gerekir
+        // (bkz. mimari denetim O1).
+        await haftalikPlanlariYenile();
       }
       await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${role.toUpperCase()}, İzin günü: ${haftalikIzinGunu > 0 ? haftalikIzinGunu : 'Yok'}`);
     } catch (err) {

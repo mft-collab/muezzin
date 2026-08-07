@@ -355,7 +355,39 @@ const tests: TestCase[] = [
         aktif: true,
         photoURL: '',
         fcmToken: null,
-        aylikVakitSayisi: 0
+        aylikVakitSayisi: 0,
+        // useAuthStore.ts her zaman bunu ayarlar (admin haric) — bkz.
+        // mimari denetim Y4 / isInvitedSelfMuezzinCreate.
+        onayBekliyor: true
+      }));
+    }
+  },
+  {
+    name: 'davetli kullanici onayBekliyor:false ile kendi profilini olusturamaz (Y4 regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'invites/invited2@example.test'), {
+          email: 'invited2@example.test',
+          displayName: 'Invited User 2',
+          role: 'muezzin',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'invited2').firestore();
+      // onayBekliyor:false (ya da hic gonderilmemesi) ile kendi profilini
+      // olusturmaya calisan bir kullanici, admin onayini atlayip dogrudan
+      // nobete atanabilir hale gelmemeli.
+      await assertFails(setDoc(doc(db, 'muezzins/invited2'), {
+        displayName: 'Invited User 2',
+        email: 'invited2@example.test',
+        role: 'muezzin',
+        aktif: true,
+        photoURL: '',
+        fcmToken: null,
+        aylikVakitSayisi: 0,
+        onayBekliyor: false
       }));
     }
   },
@@ -580,9 +612,10 @@ const tests: TestCase[] = [
     name: 'izin talebinde kullanici sadece kendisi adina kayit acabilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
+      // 2026-05-18 Pazartesi, 2026-05-19 Sali — Cuma icermeyen bir aralik.
       const base = {
-        baslangic: '2026-05-22',
-        bitis: '2026-05-23',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
         tip: 'mazeret',
         durum: 'onay_bekliyor',
         sebep: 'Aile',
@@ -596,6 +629,50 @@ const tests: TestCase[] = [
       await assertFails(setDoc(doc(db, 'izinler/otherLeave'), {
         ...base,
         uid: 'muezzin2'
+      }));
+    }
+  },
+  {
+    name: 'izin talebi Cuma iceren bir araligi sunucu tarafinda reddeder',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      const base = {
+        uid: 'muezzin1',
+        tip: 'mazeret',
+        durum: 'onay_bekliyor',
+        sebep: 'Aile',
+        olusturmaTarihi: Timestamp.now()
+      };
+
+      // 2026-05-22 tek basina bir Cuma.
+      await assertFails(setDoc(doc(db, 'izinler/tekGunCuma'), {
+        ...base,
+        baslangic: '2026-05-22',
+        bitis: '2026-05-22'
+      }));
+      // 2026-05-18 (Pzt) - 2026-05-24 (Paz) araligi 2026-05-22 Cuma'yi kapsiyor.
+      await assertFails(setDoc(doc(db, 'izinler/araligaCumaGiriyor'), {
+        ...base,
+        baslangic: '2026-05-18',
+        bitis: '2026-05-24'
+      }));
+      // 7+ gunluk her aralik istatistiksel olarak bir Cuma icerir.
+      await assertFails(setDoc(doc(db, 'izinler/haftalikArayaCumaGirer'), {
+        ...base,
+        baslangic: '2026-05-19',
+        bitis: '2026-05-26'
+      }));
+      // Cuma icermeyen kisa bir araligin gecmesi gerekir (regresyon kontrolu).
+      await assertSucceeds(setDoc(doc(db, 'izinler/cumasizAralik'), {
+        ...base,
+        baslangic: '2026-05-18',
+        bitis: '2026-05-21'
+      }));
+      // Ters cevrilmis aralik (bitis < baslangic) reddedilmeli.
+      await assertFails(setDoc(doc(db, 'izinler/tersAralik'), {
+        ...base,
+        baslangic: '2026-05-25',
+        bitis: '2026-05-20'
       }));
     }
   },

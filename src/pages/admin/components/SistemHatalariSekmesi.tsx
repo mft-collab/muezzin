@@ -8,7 +8,6 @@ interface ErrorLog extends Partial<EnrichedErrorLog> {
   id: string;
   errorMessage: string;
   userId: string;
-  timestamp: unknown;
   device: { os: string; browser: string; screenSize: string; pwaMode: boolean; language: string };
 }
 

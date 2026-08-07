@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriCek } from '../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriCek, aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
@@ -19,21 +19,10 @@ async function main() {
     // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren)
     const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
 
-    // Verileri aylara göre grupla
-    const aylar: Record<string, any> = {};
-
-    Object.entries(vakitData.gunler).forEach(([tarih, vakitler]) => {
-      const [y, m] = tarih.split('-');
-      const ayId = `${y}-${m}`;
-      if (!aylar[ayId]) {
-        aylar[ayId] = {
-          ilceId: vakitData.ilceId,
-          kaynakApi: vakitData.kaynakApi,
-          gunler: {}
-        };
-      }
-      aylar[ayId].gunler[tarih] = vakitler;
-    });
+    // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
+    // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama
+    // mantığı, mimari denetim O5).
+    const aylar = aylikVakitleriGrupla(vakitData);
 
     // Gruplanmış verileri Firestore'a yaz
     for (const [ayId, data] of Object.entries(aylar)) {

@@ -15,6 +15,20 @@ export interface OnayliIzin {
   bitis: string;
 }
 
+/**
+ * Bir personelin nöbete atanabilir olup olmadığını belirler — çağıran
+ * taraflar (scripts/haftalikPlanOlustur.ts, src/services/planServisi.ts)
+ * `haftalikPlanUret`'e geçirdikleri `muezzinler` listesini bununla filtreler.
+ * `onayBekliyor: true` olan (admin henüz onaylamamış) bir davetli, kendi
+ * profilini oluşturduğu andan itibaren `aktif: true` olsa da nöbete
+ * atanmamalı — `AuthGuard` ona zaten bir bekleme ekranı gösterdiğinden,
+ * atandığı vakit kimsenin göremeyeceği şekilde sessizce boş kalıyordu (bkz.
+ * mimari denetim Y4).
+ */
+export function nobeteAtanabilirMi(m: Pick<Muezzin, 'role' | 'onayBekliyor'>): boolean {
+  return m.role === 'muezzin' && m.onayBekliyor !== true;
+}
+
 export type MuezzinAday = Muezzin & { id: string };
 
 /**
@@ -93,7 +107,13 @@ export function haftalikPlanUret(
     }
 
     let gununSonEkibi: string[] = [];
-    let gununSonAtama: VakitAtama = gunlukTazeAtama;
+    // O gün en az bir vakitte asil/yedek olanların kümesi — normal (taze)
+    // üretimde gün boyu tek bir ekip kullanıldığından bu iki küme pratikte
+    // ya boş ya da tek bir kişilik olur; yalnızca korunmusAtama bir günün
+    // vakitlerini birbirinden farklı atadığında (self-healing kenar durumu)
+    // gerçek fark yaratır (bkz. aşağıdaki ardArdaYedekSayilari güncellemesi).
+    const gunAsilUidleri = new Set<string>();
+    const gunYedekUidleri = new Set<string>();
 
     for (const vakit of VAKITLER) {
       const atama = korunmusAtama?.(gun, vakit) ?? gunlukTazeAtama;
@@ -101,20 +121,27 @@ export function haftalikPlanUret(
 
       if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM') {
         buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + 1;
+        gunAsilUidleri.add(atama.asil);
       }
       if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM') {
         buHaftakiYukler[atama.yedek] = (buHaftakiYukler[atama.yedek] || 0) + YEDEK_YUK_CARPANI;
+        gunYedekUidleri.add(atama.yedek);
       }
       gununSonEkibi = sistemDisiUidler(atama);
-      gununSonAtama = atama;
     }
 
     oncekiVakitUidler = gununSonEkibi;
 
-    // Art arda yedek sayacını güncelle: o gün yedek olan kişi için artır,
-    // asil ya da tamamen boşta kalan için sıfırla (bkz. ARD_ARDA_YEDEK_ESIGI).
+    // Art arda yedek sayacını güncelle: o gün EN AZ BİR vakitte yedek olup
+    // HİÇBİR vakitte asil olmayan kişi için artır, diğerleri (o gün asil
+    // olan ya da hiç görev almayan) için sıfırla (bkz. ARD_ARDA_YEDEK_ESIGI).
+    // Önceden yalnızca günün SON vaktine (yatsı) bakılıyordu — korunmusAtama
+    // bir günün vakitlerini birbirinden farklı atadığında (self-healing
+    // kenar durumu) bu, kişinin o günkü gerçek yükünü yanlış yansıtabiliyordu
+    // (bkz. görsel/mantık denetimi).
     muezzinler.forEach((m) => {
-      ardArdaYedekSayilari[m.id] = gununSonAtama.yedek === m.id
+      const sadeceYedekKaldi = gunYedekUidleri.has(m.id) && !gunAsilUidleri.has(m.id);
+      ardArdaYedekSayilari[m.id] = sadeceYedekKaldi
         ? (ardArdaYedekSayilari[m.id] || 0) + 1
         : 0;
     });

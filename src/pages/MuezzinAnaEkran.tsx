@@ -119,7 +119,7 @@ export default function MuezzinAnaEkran() {
     try {
       await enableGps();
       setIsGpsConsentOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('GPS Vakit Hatası:', err);
       setIsGpsConsentOpen(false);
       setIsGpsHelpOpen(true);
@@ -243,7 +243,7 @@ export default function MuezzinAnaEkran() {
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: 0.2, duration: 0.45 }}
-    className="w-full p-3 spatial-glass rounded-[24px] border border-[var(--glass-border)] grid grid-cols-2 gap-2 shadow-[var(--spatial-shadow)]"
+    className="w-full p-3 spatial-glass rounded-card border border-[var(--glass-border)] grid grid-cols-2 gap-2 shadow-[var(--spatial-shadow)]"
   >
     {/* GPS Senkronizasyonu */}
     <button
@@ -320,7 +320,7 @@ export default function MuezzinAnaEkran() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.45, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
  >
- <Suspense fallback={<div className="h-40 rounded-[32px] fluid-skeleton" />}>
+ <Suspense fallback={<div className="h-40 rounded-card fluid-skeleton" />}>
  <VacationRequestCard user={currentUser} />
  </Suspense>
  </motion.div>
@@ -443,7 +443,7 @@ export default function MuezzinAnaEkran() {
           initial={{ opacity: 0, y: -10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
-          className="p-6 spatial-glass border-emerald-500/25 bg-emerald-500/[0.015] shadow-lg shadow-emerald-500/5 rounded-[30px] flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
+          className="p-6 spatial-glass border-emerald-500/25 bg-emerald-500/[0.015] shadow-lg shadow-emerald-500/5 rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden"
         >
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center animate-pulse shrink-0">
@@ -467,8 +467,8 @@ export default function MuezzinAnaEkran() {
                 try {
                   await vekaletKabulEt(talep.id);
                   showNotification('Vekalet Devralındı', 'Göreviniz planınıza başarıyla işlendi.', 'success');
-                } catch (err: any) {
-                  showNotification('Hata', err.message || 'Vekalet kabul edilemedi.', 'error');
+                } catch (err: unknown) {
+                  showNotification('Hata', err instanceof Error ? err.message : 'Vekalet kabul edilemedi.', 'error');
                 } finally {
                   setProcessingVekaletId(null);
                 }
@@ -490,8 +490,8 @@ export default function MuezzinAnaEkran() {
                   try {
                     await vekaletReddet(talep.id);
                     showNotification('Reddedildi', 'Vekalet teklifi reddedildi.', 'info');
-                  } catch (err: any) {
-                    showNotification('Hata', err.message || 'İşlem başarısız.', 'error');
+                  } catch (err: unknown) {
+                    showNotification('Hata', err instanceof Error ? err.message : 'İşlem başarısız.', 'error');
                   } finally {
                     setProcessingVekaletId(null);
                   }

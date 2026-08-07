@@ -93,8 +93,11 @@ export interface Bildirim {
  devirSonucu?: 'yedek_atandi' | 'alarm_bekliyor' | 'alarm_uretildi';
  /** Terfi eden bir yedek bildirimi üzerinde: mazereti bildiren asil görevlinin uid'si */
  asilMazeretUid?: string;
- /** admin-SDK uzlaştırma işi (scripts/mazeretDevirleriniIsle.ts) haftaPlanlari'nı senkronize etti mi */
- planSenkronEdildi?: boolean;
+ /** admin-SDK uzlaştırma işi (scripts/mazeretDevirleriniIsle.ts) haftaPlanlari'nı bir MAZERET olayı için senkronize etti mi */
+ mazeretPlanSenkronEdildi?: boolean;
+ /** admin-SDK uzlaştırma işi (scripts/vekaletDevirleriniIsle.ts) haftaPlanlari'nı bir VEKALET olayı için senkronize etti mi.
+  * Bu iki alan kasıtlı olarak AYRI — bkz. mimari denetim Y2. */
+ vekaletPlanSenkronEdildi?: boolean;
  /**
   * Görevin tarihi bir Cuma'ya denk geliyor mu — oluşturulma anında hesaplanır.
   * Cuma günleri mazeret/görev devri kullanılamaz kuralının sunucu tarafı

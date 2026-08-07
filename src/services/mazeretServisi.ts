@@ -244,12 +244,23 @@ export async function kriziBaslat(tarih: string, vakit: string, haricUidler: str
       }
 
       const haftaId = getHaftaIdFromDate(tarih);
+      const planRef = doc(db, 'haftaPlanlari', haftaId);
 
       await runTransaction(db, async (transaction) => {
         const yedekRef = doc(db, 'bildirimler', yedekDoc.id);
-        const currentYedekSnap = await transaction.get(yedekRef);
+        // Firestore kuralı: tüm okumalar tüm yazımlardan önce yapılmalı —
+        // plan belgesi burada okunmazsa yoksa (nadir ama olası — bu manuel
+        // bir admin müdahale yolu) transaction.update ham bir NOT_FOUND
+        // fırlatıyordu (bkz. mimari denetim O2).
+        const [currentYedekSnap, planSnap] = await Promise.all([
+          transaction.get(yedekRef),
+          transaction.get(planRef)
+        ]);
         if (!currentYedekSnap.exists() || currentYedekSnap.data()?.durum === 'reddedildi') {
           throw new Error('Yedek görevli artık uygun değil.');
+        }
+        if (!planSnap.exists()) {
+          throw new Error('Bu haftaya ait plan belgesi bulunamadı.');
         }
 
         transaction.update(yedekRef, {
@@ -259,8 +270,14 @@ export async function kriziBaslat(tarih: string, vakit: string, haricUidler: str
           sonGuncelleme: serverTimestamp()
         });
 
-        transaction.update(doc(db, 'haftaPlanlari', haftaId), {
-          [`gunler.${tarih}.${vakit}.asil`]: yedekData.uid
+        // `.yedek` alanı 'Sistem'e çekilmezse, terfi eden kişi planda hem
+        // asil hem yedek olarak görünmeye devam ediyordu — bu yüzden
+        // tekKisiliGunleriBul bu günü yanlışlıkla yedekli sanıp hiçbir uyarı
+        // üretmiyordu (bkz. mazeretDevirleriniIsle.ts'in aynı işi yaparken
+        // her iki alanı da yazması, mimari denetim O2).
+        transaction.update(planRef, {
+          [`gunler.${tarih}.${vakit}.asil`]: yedekData.uid,
+          [`gunler.${tarih}.${vakit}.yedek`]: 'Sistem'
         });
       });
 

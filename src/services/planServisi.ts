@@ -1,7 +1,7 @@
 import { collection, query, where, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
 import { isFriday, getOncekiHafta } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
@@ -161,7 +161,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const muezzinSnapshot = await getDocs(query(collection(db, 'muezzins'), where('aktif', '==', true)));
  const muezzinler = muezzinSnapshot.docs
  .map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }))
- .filter(m => m.role === 'muezzin');
+ .filter(m => nobeteAtanabilirMi(m));
 
  if (muezzinler.length < 1) {
  throw new Error('Planlama için en az 1 aktif müezzin gereklidir.');
@@ -210,9 +210,15 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const mevcutAtama = mevcutGunler[gun]?.[vakit];
  const asilBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'asil');
  const yedekBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'yedek');
+ // Öncelik `bildirimler`'de (canlı gerçek) — `mevcutAtama` bu fonksiyon
+ // başında okunan `haftaPlanlari` ÖNBELLEĞİnden gelir ve bir vekalet/mazeret
+ // devri sonrası uzlaştırma cron'u çalışana kadar bayat kalabilir. Önceki
+ // sıralama (önbellek > bildirim) bayat değeri tercih edip devredilen bir
+ // slotu sessizce eski sahibine geri döndürebiliyordu (bkz. mimari denetim
+ // O8). `mevcutAtama` yalnızca hiçbir bildirim belgesi yoksa devreye girer.
  return {
- asil: mevcutAtama?.asil || asilBildirim?.data()?.uid || 'Sistem',
- yedek: mevcutAtama?.yedek || yedekBildirim?.data()?.uid || 'Sistem'
+ asil: asilBildirim?.data()?.uid || mevcutAtama?.asil || 'Sistem',
+ yedek: yedekBildirim?.data()?.uid || mevcutAtama?.yedek || 'Sistem'
  };
  }, oncekiHaftaSonEkibi);
 

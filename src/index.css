@@ -111,26 +111,35 @@
    * yüzlerce component çağrı noktasını tek tek değiştirmeden aynı otomatik-remap
    * davranışını sağlıyor. Uzun kuyruktaki nadir renkler (blue/purple/yellow/teal/slate/
    * zinc/green, ≤4 kullanım) kapsam dışı bırakıldı. */
+  /* -400 katmanı (rose/emerald/amber/purple), ölçüldüğünde gerçek app-bg
+     (hsl(38,20%,94.5%)) üzerinde WCAG AA'nın (4.5:1) altındaydı — sırasıyla
+     rose-400 ~3.5:1 (30 metin çağrısı), emerald-400 ~2.3:1 (47 çağrı,
+     amber-400'den bile kötü), amber-400 ~2.85:1, purple-400 ~3.6:1.
+     -500/-600 katmanları zaten önceki denetimde düzeltilmişti (≥5:1); aynı
+     "koyulaştır, tonu koru" mantığıyla yalnızca L değeri ayarlanıp
+     ≥4.5:1'e çekildi (bkz. görsel tasarım denetimi). -200/-300 katmanları
+     kapsam dışı bırakıldı: yalnızca dekoratif dolgu/arka plan olarak
+     kullanılıyorlar, gerçek metin olarak kullanılmıyorlar. */
   --color-rose-300: hsl(343, 70%, 78%);
-  --color-rose-400: hsl(343, 80%, 58%);
+  --color-rose-400: hsl(343, 80%, 44%);
   --color-rose-500: hsl(343, 88%, 38%);
   --color-rose-600: hsl(343, 88%, 30%);
-  --color-red-400: hsl(343, 80%, 58%);
+  --color-red-400: hsl(343, 80%, 44%);
   --color-red-500: hsl(343, 88%, 38%);
 
   --color-emerald-200: hsl(162, 70%, 80%);
-  --color-emerald-400: hsl(162, 80%, 40%);
+  --color-emerald-400: hsl(162, 80%, 27%);
   --color-emerald-500: hsl(162, 85%, 24%);
   --color-emerald-600: hsl(162, 85%, 19%);
-  --color-green-400: hsl(162, 80%, 40%);
+  --color-green-400: hsl(162, 80%, 27%);
 
   --color-amber-200: hsl(38, 90%, 82%);
   --color-amber-300: hsl(38, 95%, 66%);
-  --color-amber-400: hsl(38, 100%, 42%);
+  --color-amber-400: hsl(38, 100%, 30%);
   --color-amber-500: hsl(38, 100%, 28%);
   --color-amber-600: hsl(38, 100%, 22%);
   --color-amber-700: hsl(38, 100%, 18%);
-  --color-yellow-400: hsl(38, 100%, 42%);
+  --color-yellow-400: hsl(38, 100%, 30%);
   --color-yellow-600: hsl(38, 100%, 22%);
 
   --color-orange-400: hsl(25, 90%, 50%);
@@ -141,7 +150,7 @@
   --color-violet-500: hsl(262, 62%, 44%);
   --color-violet-600: hsl(262, 62%, 36%);
   --color-violet-700: hsl(262, 62%, 30%);
-  --color-purple-400: hsl(272, 62%, 62%);
+  --color-purple-400: hsl(272, 62%, 56%);
   --color-purple-500: hsl(272, 62%, 44%);
   --color-purple-600: hsl(272, 62%, 36%);
   --color-indigo-500: hsl(244, 62%, 48%);
@@ -232,7 +241,12 @@
   background: var(--spatial-glass-bg) !important;
   backdrop-filter: blur(28px) saturate(175%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(175%) !important;
-  border-radius: 24px;
+  /* --radius-card standardı: sabit 24px, dokümante edilen "hiçbir varyant
+     override etmiyor" sözleşmesini kırıyordu — spatial-glass'a rounded-card
+     eklemeyi unutan her tüketici (bkz. ChunkErrorFallback) sessizce eski
+     24px'e düşüyordu. Token'a bağlanarak sözleşme fiilen doğru hale getirildi
+     (bkz. görsel tasarım denetimi). */
+  border-radius: var(--radius-card);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border) !important;
@@ -292,7 +306,7 @@
 
 @utility spatial-glass-flat {
   background: var(--spatial-glass-bg);
-  border-radius: 24px;
+  border-radius: var(--radius-card);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border);
@@ -305,7 +319,7 @@
   background: var(--spatial-glass-bg);
   border: 1px solid var(--glass-border);
   transition: box-shadow 0.6s var(--spring-easing), background 0.6s var(--spring-easing), border-color 0.6s var(--spring-easing), font-weight 0.4s var(--spring-easing), transform 0.5s var(--spring-easing);
-  border-radius: 24px !important;
+  border-radius: var(--radius-card) !important;
   cursor: pointer;
   will-change: transform;
   

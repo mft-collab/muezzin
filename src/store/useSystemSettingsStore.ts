@@ -19,7 +19,7 @@ const defaultSettings: SystemSettings = {
 };
 
 if (typeof globalThis !== 'undefined') {
-  (globalThis as any).__hicriOffset = 0;
+  globalThis.__hicriOffset = 0;
 }
 
 export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => ({
@@ -33,7 +33,7 @@ export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => 
  if (docSnap.exists()) {
     const data = docSnap.data() as SystemSettings;
     if (typeof globalThis !== 'undefined') {
-      (globalThis as any).__hicriOffset = data.hicriDuzeltme ?? 0;
+      globalThis.__hicriOffset = data.hicriDuzeltme ?? 0;
     }
     set({ settings: { ...defaultSettings, ...data }, loading: false, initialized: true });
  } else {
@@ -50,7 +50,7 @@ export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => 
  try {
  const merged = { ...get().settings, ...newSettings };
     if (typeof globalThis !== 'undefined' && merged.hicriDuzeltme !== undefined) {
-      (globalThis as any).__hicriOffset = merged.hicriDuzeltme;
+      globalThis.__hicriOffset = merged.hicriDuzeltme;
     }
  await setDoc(doc(db, 'settings', 'system'), merged, { merge: true });
  return true;
