@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -77,6 +77,55 @@ export async function registerFcmToken(requestPermission = false): Promise<{
  }
 
  return { token: currentToken, permission };
+}
+
+/**
+ * Çıkış (logout) sırasında bu cihazın push aboneliğini iptal eder ve
+ * Firestore'daki `fcmTokens` haritasından bu cihaza ait girdiyi siler.
+ *
+ * Önceden `logout()` yalnızca `auth.signOut()` çağırıyordu — cihazın FCM
+ * token'ı hem tarayıcıda hem Firestore'da kayıtlı kalıyordu. Paylaşılan/ortak
+ * bir cihazda (ör. cami ofisindeki tablet) bir müezzin çıkış yaptıktan sonra
+ * bir başkası giriş yapsa bile, eski kullanıcının push aboneliği hâlâ aktif
+ * kalıyor ve nöbet hatırlatıcı/mazeret bildirimleri o cihaza gelmeye devam
+ * edebiliyordu. Ayrıca `fcmTokens` haritası yalnızca GÖNDERİM BAŞARISIZ
+ * olduğunda sunucu tarafında budanıyor (bkz. scripts/haftalikPlanOlustur.ts,
+ * scripts/yatsiSonuIslemleri.ts) — çıkış yapılsa da token teknik olarak
+ * hâlâ geçerli olduğundan bu şekilde asla temizlenmiyordu ve
+ * firestore.rules'taki `isValidFcmTokens` 20 girdi tavanına (bkz. mimari
+ * denetim) zamanla çarpılabiliyordu.
+ *
+ * Firestore güncellemesi `auth.signOut()`'tan ÖNCE çağrılmalı — kendi
+ * `muezzins/{uid}` belgesini güncelleme izni yalnızca oturum açıkken var.
+ */
+export async function unregisterFcmToken(uid: string | undefined): Promise<void> {
+  if (!uid) return;
+  if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return;
+  if (!VAPID_KEY) return;
+
+  try {
+    const [{ getMessaging, getToken, deleteToken }, registration] = await Promise.all([
+      import('firebase/messaging'),
+      navigator.serviceWorker.getRegistration(),
+    ]);
+    if (!registration) return;
+
+    const messaging = getMessaging(app);
+    const currentToken = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    }).catch(() => null);
+
+    await deleteToken(messaging).catch(() => {});
+
+    if (currentToken) {
+      await updateDoc(doc(db, 'muezzins', uid), {
+        [`fcmTokens.${currentToken}`]: deleteField(),
+      }).catch(() => {});
+    }
+  } catch {
+    // Çıkış akışını asla engellemesin — en iyi çaba (best-effort) temizlik.
+  }
 }
 
 export function useFcmToken() {
