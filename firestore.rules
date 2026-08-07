@@ -235,7 +235,26 @@ service cloud.firestore {
                  retSebebi is string &&
                  retSebebi.size() > 0 &&
                  retSebebi.size() <= 500 &&
-                 devirSonucu in ['yedek_atandi', 'alarm_bekliyor']
+                 (
+                   devirSonucu == 'alarm_bekliyor' ||
+                   // Önceden `devirSonucu == 'yedek_atandi'` bu TEK belge
+                   // güncellemesinde hiçbir şekilde doğrulanmıyordu — yedeğin
+                   // GERÇEKTEN terfi ettiğini gösteren eşleşen bir yazım aynı
+                   // commit'te olmasa bile bu değer kabul ediliyordu.
+                   // src/services/mazeretServisi.ts (mazeretBildir) ikisini
+                   // her zaman AYNI transaction'da yazsa da, bu kuralı
+                   // atlayıp doğrudan updateDoc çağıran biri yedek belgesini
+                   // hiç terfi ettirmeden "yedek_atandi" diyebiliyordu —
+                   // scripts/mazeretDevirleriniIsle.ts bu durumda sessizce
+                   // atlıyor (ne admin alarmı ne mazeretPlanSenkronEdildi),
+                   // vakit kapsamsız kalıyor ama "halledildi" sanılıyordu
+                   // (bkz. mimari denetim — üçüncü tur). isBackupPromotionFromMazeret
+                   // ile simetrik: yedeğin deterministik belge ID'si
+                   // (haftaId_tarih_vakit_yedek) üzerinden bu COMMIT'te
+                   // gerçekten 'asil'e terfi ettiği getAfter() ile doğrulanır.
+                   (devirSonucu == 'yedek_atandi' &&
+                    getAfter(/databases/$(database)/documents/bildirimler/$(existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_yedek')).data.tip == 'asil')
+                 )
                ) ||
                (
                  // Yedek görevli kendi mazeretini bildiriyor — devralacak bir
@@ -610,19 +629,39 @@ service cloud.firestore {
       return rangeDays >= 0 && gunlerCumayaKadar <= rangeDays;
     }
 
-    function isValidIzin(data) {
-      return data.keys().hasAll(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi']) &&
-             data.uid == request.auth.uid &&
-             data.tip in ['haftalik', 'yillik', 'mazeret'] &&
-             data.durum == 'onay_bekliyor' &&
-             data.baslangic is string && data.baslangic.size() == 10 &&
-             data.bitis is string && data.bitis.size() == 10 &&
+    // Tarih-aralığı şekil/iş-kuralı doğrulamasını `isValidIzin`'den ayrı bir
+    // fonksiyona çıkarır — `isValidIzin`'in uid/durum sabitleri (kendi
+    // isteğini oluşturan/düzenleyen kullanıcıya özgü) admin onarım yoluna
+    // (bkz. `izinler` update kuralı, admin disjunct'ı) uygulanamaz; admin
+    // veriOnarimServisi.ts üzerinden BAŞKASININ ters-tarihli izin kaydını
+    // düzeltirken ne kendi uid'i eşleşir ne kayıt 'onay_bekliyor' durumunda
+    // olmak zorundadır (bkz. mimari denetim — üçüncü tur).
+    function isValidIzinTarihAraligi(baslangic, bitis) {
+      return baslangic is string && baslangic.size() == 10 &&
+             bitis is string && bitis.size() == 10 &&
              // Ters çevrilmiş aralık (bitis < baslangic) mantıksız veri —
              // planlamaCekirdegi.ts'in string karşılaştırmasında zararsız
              // kalsa da (hiçbir güne eşleşmez) sunucu tarafında reddedilmesi
              // daha temiz.
-             data.bitis >= data.baslangic &&
-             !izinAraligiCumaIceriyorMu(data.baslangic, data.bitis);
+             bitis >= baslangic &&
+             !izinAraligiCumaIceriyorMu(baslangic, bitis);
+    }
+
+    function isValidIzin(data) {
+      return data.keys().hasAll(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi']) &&
+             // Diğer tüm şema doğrulayıcıları (isValidMuezzin, isValidBildirim,
+             // isValidVekaletTalebi vb.) alan setini hasOnly ile sınırlıyor —
+             // isValidIzin bunu atlıyordu, VacationRequestCard.tsx'in
+             // gönderdiği `sebep` dahil herhangi bir ekstra/sınırsız-uzunlukta
+             // alan sessizce kabul ediliyordu (bkz. mimari denetim — üçüncü
+             // tur). `redSebebi` opsiyonel (admin red gerekçesi) ama izinler
+             // update kuralının self-update dalı isValidIzin'i çağırdığından
+             // burada da izinli olmalı.
+             data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'sebep', 'durum', 'olusturmaTarihi', 'redSebebi']) &&
+             data.uid == request.auth.uid &&
+             data.tip in ['haftalik', 'yillik', 'mazeret'] &&
+             data.durum == 'onay_bekliyor' &&
+             isValidIzinTarihAraligi(data.baslangic, data.bitis);
     }
 
     match /izinler/{docId} {
@@ -633,7 +672,18 @@ service cloud.firestore {
       // bilerek okuyabiliyordu (bkz. mimari denetim O10).
       allow get: if isAdmin() || (isSignedIn() && (resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       allow create: if isSignedIn() && isValidIzin(incoming());
-      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi'])) || 
+      // Admin disjunct'ı önceden yalnızca durum/redSebebi'ye izin veriyordu —
+      // src/services/veriOnarimServisi.ts'in ters-tarihli bir izin kaydını
+      // düzeltmek için yazdığı baslangic/bitis alanları bu kapsama hiç
+      // girmiyordu, yani "Veri Sağlığı" ekranındaki bu onarım her zaman
+      // PERMISSION_DENIED ile başarısız oluyordu (bkz. mimari denetim —
+      // üçüncü tur). baslangic/bitis'e dokunulduğunda isValidIzinTarihAraligi
+      // ile şekil/iş-kuralı korunuyor; dokunulmadığında (yalnızca durum/
+      // redSebebi kararı) eskisi gibi serbest.
+      allow update: if (isAdmin() &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis']) &&
+                        (!incoming().diff(existing()).affectedKeys().hasAny(['baslangic', 'bitis']) ||
+                         isValidIzinTarihAraligi(incoming().baslangic, incoming().bitis))) ||
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));
       allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor');
     }

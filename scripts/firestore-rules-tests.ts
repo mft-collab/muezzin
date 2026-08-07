@@ -677,6 +677,106 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Ucuncu denetim turu bulgusu: veriOnarimServisi.ts'in "Veri Sagligi"
+    // onarim akisi ters-tarihli bir izin kaydini admin olarak duzeltmek icin
+    // SADECE baslangic/bitis yaziyor (durum/redSebebi'ye dokunmuyor) — bu
+    // onceden izinler update kuralinin admin disjunct'inin (hasOnly yalnizca
+    // durum/redSebebi) disinda kaliyordu, her zaman PERMISSION_DENIED
+    // aliyordu.
+    name: 'admin ters-tarihli bir izin kaydini baslangic/bitis yazarak onarabilir (veriOnarimServisi regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        // 2026-05-18 (Pzt) - 2026-05-19 (Sal), Cuma icermeyen bir aralik —
+        // ama ters kaydedilmis: baslangic=19, bitis=18.
+        await setDoc(doc(db, 'izinler/tersTarihliKayit'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-19',
+          bitis: '2026-05-18',
+          tip: 'mazeret',
+          durum: 'onaylandi',
+          sebep: 'Aile',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/tersTarihliKayit');
+
+      // veriOnarimServisi.ts'in gercek onarim yazimi: iki tarihi yer
+      // degistirir, baska hicbir alana dokunmaz.
+      await assertSucceeds(updateDoc(ref, { baslangic: '2026-05-18', bitis: '2026-05-19' }));
+    }
+  },
+  {
+    // Onarim yolu sonsuz esneklige acilmamali — duzeltilmis aralik da
+    // isValidIzinTarihAraligi'nin sekil/is-kurallarina (ters aralik, Cuma
+    // icerme) tabi olmali.
+    name: 'admin izin onarimi gecersiz bir tarih araligina yazilamaz',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izinler/gecersizOnarimDenemesi'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-19',
+          bitis: '2026-05-18',
+          tip: 'mazeret',
+          durum: 'onaylandi',
+          sebep: 'Aile',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/gecersizOnarimDenemesi');
+
+      // Duzeltme sonrasi da hala ters aralik (bitis < baslangic) — reddedilmeli.
+      await assertFails(updateDoc(ref, { baslangic: '2026-05-20', bitis: '2026-05-15' }));
+    }
+  },
+  {
+    // Admin izin onarim yolu yalnizca durum/redSebebi/baslangic/bitis
+    // yazabilmeli — uid gibi kimlik alanlarina sizmamali.
+    name: 'admin izin onarimi kimlik alanlarini (uid) degistiremez',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izinler/kimlikDenemesi'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-18',
+          bitis: '2026-05-19',
+          tip: 'mazeret',
+          durum: 'onaylandi',
+          sebep: 'Aile',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/kimlikDenemesi');
+
+      await assertFails(updateDoc(ref, { uid: 'muezzin2' }));
+    }
+  },
+  {
+    // isValidIzin artik hasOnly ile sinirli — sema disi ekstra bir alan
+    // (ornegin sinirsiz uzunlukta rastgele bir alan) create'te reddedilmeli.
+    name: 'izin talebi sema disi ekstra alan icermemeli (isValidIzin hasOnly)',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(setDoc(doc(db, 'izinler/ekstraAlanli'), {
+        uid: 'muezzin1',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onay_bekliyor',
+        sebep: 'Aile',
+        olusturmaTarihi: Timestamp.now(),
+        yetkisizAlan: 'sizma denemesi'
+      }));
+    }
+  },
+  {
     name: 'admin duyuru yazabilir ve silebilir',
     run: async (env) => {
       const db = testUser(env, 'admin').firestore();
@@ -1188,6 +1288,56 @@ const tests: TestCase[] = [
           durum: 'bekliyor',
           pendingAck: true,
           asilMazeretUid: 'muezzin2',
+          sonGuncelleme: Timestamp.now()
+        });
+      }));
+    }
+  },
+  {
+    // Ucuncu denetim turu bulgusu: 'yedek_atandi' TEK basina (yedegin
+    // gercekten terfi ettigine dair eslesen bir yazim olmadan) kabul
+    // ediliyordu. Yedek belge dokunulmamis (hala tip:'yedek') halde birakilip
+    // yalniz asil belge guncellenirse artik reddedilmeli.
+    name: 'K2 guvenlik: devirSonucu=yedek_atandi, yedek GERCEKTEN terfi etmeden tek basina yazilamaz',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
+      await assertFails(updateDoc(asilRef, {
+        durum: 'reddedildi',
+        retSebebi: 'Sahte terfi denemesi',
+        pendingAck: false,
+        devirSonucu: 'yedek_atandi',
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // Yedek belge de AYNI transaction'da gercekten 'asil'e terfi ederse
+    // (mazeretServisi.ts'in gercek davranisi) kabul edilmeye devam etmeli —
+    // yukaridaki testin bir regresyona yol acmadigini dogrular (bu senaryo
+    // zaten 'K2: mazeret bildirimi uygun yedegi ayni transaction icinde asil
+    // rolune terfi ettirir' testinde de kapsanıyor, burada devirSonucu
+    // korelasyon kontrolunun POZITIF yolu ayrica adlandirilarak dogrulanir).
+    name: 'K2 guvenlik: devirSonucu=yedek_atandi, yedek ayni committe gercekten terfi ederse kabul edilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
+      const yedekRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_yedek');
+      await assertSucceeds(runTransaction(db, async (transaction) => {
+        await transaction.get(asilRef);
+        await transaction.get(yedekRef);
+        transaction.update(asilRef, {
+          durum: 'reddedildi',
+          retSebebi: 'Hastalik',
+          pendingAck: false,
+          devirSonucu: 'yedek_atandi',
+          sonGuncelleme: Timestamp.now()
+        });
+        transaction.update(yedekRef, {
+          tip: 'asil',
+          durum: 'bekliyor',
+          pendingAck: true,
+          asilMazeretUid: 'muezzin1',
           sonGuncelleme: Timestamp.now()
         });
       }));
