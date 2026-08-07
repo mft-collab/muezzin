@@ -226,6 +226,19 @@ export async function processYatsiSonuIslemleri() {
     console.log("Skorlar sıfırlandı.");
   }
 
+  // ADIM 5: Yıllık izin kotası sıfırlama — yalnızca 1 Ocak'ta (ayın 1'i
+  // OLUP ayrıca ayın Ocak olması gerekir; yukarıdaki aylık sıfırlama her
+  // ayın 1'inde çalışır ama bu yalnızca takvim yılının başında). Kota
+  // yıllikIzinKullanilanGun sert üst sınırı firestore.rules'ta tanımlıdır
+  // (bkz. src/store/useAdminIzinlerStore.ts).
+  if (yarın.getDate() === 1 && yarın.getMonth() === 0) {
+    const muezzins = await db.collection('muezzins').get();
+    const yillikResetBatch = db.batch();
+    muezzins.docs.forEach(doc => yillikResetBatch.update(doc.ref, { yillikIzinKullanilanGun: 0 }));
+    await yillikResetBatch.commit();
+    console.log("Yıllık izin kotaları sıfırlandı (yeni takvim yılı).");
+  }
+
   console.log("İşlemler tamam.");
 }
 

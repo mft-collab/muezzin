@@ -6,7 +6,7 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, Calendar, User, Trash2, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { isFriday } from '../../../lib/dateUtils';
+import { isFriday, izinGunSayisi } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
  const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinlerStore();
@@ -29,8 +29,11 @@ export default function IzinYonetimi() {
  setProcessingIzinId(id);
  try {
  await izinGuncelle(id, durum);
- } catch {
- setUiMessage('İzin kararı işlenemedi. Bağlantı veya yetki durumunu kontrol edin.');
+ } catch (err) {
+ // Yıllık izin kotasını aşan bir onay burada anlamlı bir hata mesajıyla
+ // (bkz. useAdminIzinlerStore.ts izinGuncelle) reddedilir — genel mesaj
+ // bu bilgiyi gizleyip admin'in nedeni anlamasını engellerdi.
+ setUiMessage(err instanceof Error ? err.message : 'İzin kararı işlenemedi. Bağlantı veya yetki durumunu kontrol edin.');
  } finally {
  setProcessingIzinId(null);
  }
@@ -153,11 +156,16 @@ export default function IzinYonetimi() {
  <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight leading-none mb-2">{getMuezzinName(izin.uid)}</h3>
  <div className="flex items-center gap-2">
  <span className={`text-2xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-md border border-[var(--text-primary)]/5 ${
- izin.durum === 'onay_bekliyor' ? 'text-amber-500/60' : 
+ izin.durum === 'onay_bekliyor' ? 'text-amber-500/60' :
  izin.durum === 'onaylandi' ? 'text-emerald-500/60' : 'text-rose-500/60'
  }`}>
  {izin.tip === 'yillik' ? 'Yıllık İzin' : izin.tip === 'haftalik' ? 'Haftalık İzin' : 'Mazeret İzni'}
  </span>
+ {izin.tip === 'yillik' && (
+ <span className="text-2xs font-medium text-[var(--text-secondary)]/40">
+ {izinGunSayisi(izin.baslangic, izin.bitis)} gün · bu yıl kullanılan {muezzinler.find(m => m.id === izin.uid)?.yillikIzinKullanilanGun || 0}/30
+ </span>
+ )}
  </div>
  </div>
  </div>

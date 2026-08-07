@@ -103,6 +103,19 @@ export function isFriday(date: Date): boolean {
  return date.getDay() === 5;
 }
 
+/**
+ * Bir izin aralığının ([baslangic, bitis], her ikisi de dahil) kaç gün
+ * sürdüğünü hesaplar — yıllık izin 30 gün/yıl kotası için (bkz.
+ * useAdminIzinlerStore.ts izinOnayla, firestore.rules isValidMuezzin).
+ */
+export function izinGunSayisi(baslangic: string, bitis: string): number {
+ const [by, bm, bd] = baslangic.split('-').map(Number);
+ const [ey, em, ed] = bitis.split('-').map(Number);
+ const start = new Date(by, bm - 1, bd);
+ const end = new Date(ey, em - 1, ed);
+ return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+}
+
 export function getHaftaIdFromDate(dateStr: string): string {
  const date = parseISO(dateStr);
  const pazartesi = startOfWeek(date, { weekStartsOn: 1 });
