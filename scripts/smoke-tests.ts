@@ -45,6 +45,10 @@ function withFakeNow<T>(isoDate: string, run: () => T): T {
   const fixedTime = new RealDate(isoDate).getTime();
 
   class FakeDate extends RealDate {
+    // Date'in çoklu overload'lı constructor'ını rest-param ile birebir
+    // tiplemek pratik değil (ConstructorParameters<typeof Date> son
+    // overload'a daralıyor ve args.length karşılaştırmasını bozuyor) —
+    // bu yalnızca test-zamanı bir mock, `any[]` + spread-cast bilinçli.
     constructor(...args: any[]) {
       if (args.length === 0) {
         super(fixedTime);

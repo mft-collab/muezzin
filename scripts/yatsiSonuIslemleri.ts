@@ -14,12 +14,16 @@ function formatDateLocal(date: Date): string {
 export async function processYatsiSonuIslemleri() {
   console.log("Günlük yatsı sonrası işlemleri başladı...");
   
-  // Debug info
+  // Debug info — `_databaseId` Admin SDK'nın Firestore tipinde public olarak
+  // açıklanmamış dahili bir alan (yalnızca hedef proje/veritabanını loglamak
+  // için okunuyor); public bir getter olmadığından yapısal bir tip ile
+  // daraltılıyor, blanket `any` yerine.
   try {
-    const projId = (db as any)._databaseId?.projectId || 'unknown';
-    const dbId = (db as any)._databaseId?.databaseId || 'unknown';
+    const internalDb = db as unknown as { _databaseId?: { projectId?: string; databaseId?: string } };
+    const projId = internalDb._databaseId?.projectId || 'unknown';
+    const dbId = internalDb._databaseId?.databaseId || 'unknown';
     console.log(`Hedef Proje: ${projId}, Hedef Veritabanı: ${dbId}`);
-  } catch (e) {
+  } catch {
     console.log("Debug bilgisi alınamadı.");
   }
 
