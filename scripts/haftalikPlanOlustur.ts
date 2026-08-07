@@ -1,6 +1,6 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
@@ -82,7 +82,7 @@ async function main() {
   const izinSnapshot = await db.collection('izinler')
     .where('durum', '==', 'onaylandi')
     .get();
-  const onayliIzinler = izinSnapshot.docs.map(doc => doc.data());
+  const onayliIzinler = izinSnapshot.docs.map(doc => doc.data() as OnayliIzin);
 
   // 3. Dinamik Tarih Hesaplama (Türkiye takvim gününe göre — runner UTC'de çalışır)
   const simdi = getTurkeyNow();

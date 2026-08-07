@@ -51,7 +51,7 @@ const dbId = (firebaseConfig.firestoreDatabaseId === "(default)" || !firebaseCon
   : firebaseConfig.firestoreDatabaseId;
 
 export const db = dbId
-  ? (getFirestore as any)(app, dbId)
+  ? getFirestore(app, dbId)
   : getFirestore(app);
 export const auth = getAuth(app);
 export { Timestamp, FieldValue };

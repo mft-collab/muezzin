@@ -34,15 +34,16 @@ async function main() {
       console.log(`Başarılı: ${docId} (${Object.keys(data.gunler).length} gün güncellendi)`);
     }
 
-  } catch (err: any) {
-    if (err.message.includes('permission') || err.message.includes('NOT_FOUND') || err.message.includes('code: 5') || err.message.includes('code: 7')) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('permission') || message.includes('NOT_FOUND') || message.includes('code: 5') || message.includes('code: 7')) {
        handleFirestoreError(err, OperationType.WRITE, `vakitler`);
     }
-    
-    console.error(`Hata:`, err.message);
+
+    console.error(`Hata:`, message);
     await db.collection('adminUyarilari').add({
       tip: 'apiHatasi',
-      mesaj: `Vakit güncelleme hatası: ${err.message}`,
+      mesaj: `Vakit güncelleme hatası: ${message}`,
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });
