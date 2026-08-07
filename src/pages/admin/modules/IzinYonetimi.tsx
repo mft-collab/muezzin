@@ -39,6 +39,19 @@ export default function IzinYonetimi() {
  }
  };
 
+ const handleDelete = async (id: string) => {
+ setDeleteConfirm({ open: false, id: null });
+ try {
+ await izinSil(id);
+ } catch (err) {
+ // Önceden bu çağrı await/catch olmadan (fire-and-forget) yapılıyordu —
+ // silme yetkisiz/offline nedeniyle başarısız olsa bile modal hemen
+ // kapandığından admin kaydın silindiğini sanıp hiçbir geri bildirim
+ // almıyordu (bkz. mimari denetim — üçüncü tur).
+ setUiMessage(err instanceof Error ? err.message : 'İzin kaydı silinemedi. Bağlantı veya yetki durumunu kontrol edin.');
+ }
+ };
+
  if (loading) return (
  <div className="flex h-[500px] items-center justify-center">
  <div className="flex flex-col items-center gap-6">
@@ -260,8 +273,7 @@ export default function IzinYonetimi() {
  isOpen={deleteConfirm.open}
  onClose={() => setDeleteConfirm({ open: false, id: null })}
  onConfirm={() => {
- if (deleteConfirm.id) izinSil(deleteConfirm.id);
- setDeleteConfirm({ open: false, id: null });
+ if (deleteConfirm.id) handleDelete(deleteConfirm.id);
  }}
  title="KAYDI SİL"
  message="Bu izin kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz."
