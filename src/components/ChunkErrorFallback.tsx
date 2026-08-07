@@ -76,7 +76,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           </h3>
           <p className="text-2xs text-[var(--text-secondary)]/70 leading-relaxed mb-6">
             {isChunkError
-              ? 'Sistemde yeni bir güncelleme yayınlandığı için bu modülün yeniden yüklenmesi gerekiyor.'
+              ? 'Dizgede yeni bir güncelleme yayınlandığı için bu modülün yeniden yüklenmesi gerekiyor.'
               : 'Seçilen modül yüklenirken geçici bir hata oluştu.'}
           </p>
           <motion.button
@@ -140,7 +140,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
         <div className="w-20 h-20 bg-[var(--status-error)]/10 rounded-[30px] flex items-center justify-center mb-8 mx-auto border border-[var(--status-error)]/20 shadow-[var(--spatial-shadow)]">
           <span className="text-[var(--status-error)] text-4xl">!</span>
         </div>
-        <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">Sistemsel Bir Aksama Oluştu</h1>
+        <h1 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4 apple-thin">Dizgesel Bir Aksama Oluştu</h1>
         <p className="premium-label !text-2xs !opacity-20 mb-8">HATA AYRINTILARI</p>
         <pre className="text-2xs font-mono bg-[var(--text-primary)]/[0.03] p-6 rounded-3xl border border-[var(--glass-border)] text-[var(--status-error)]/80 overflow-auto w-full text-left leading-relaxed mb-10">
           {error.message}

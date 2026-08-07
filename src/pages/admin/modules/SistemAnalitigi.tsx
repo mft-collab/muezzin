@@ -190,7 +190,7 @@ export default function SistemAnalitigi() {
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-            <span className="authority-title !text-2xs !text-emerald-400 font-bold tracking-wide uppercase">SİSTEM SAĞLIK PARAMETRELERİ • CANLI</span>
+            <span className="authority-title !text-2xs !text-emerald-400 font-bold tracking-wide uppercase">DİZGE SAĞLIK PARAMETRELERİ • CANLI</span>
           </div>
           <h2 className="text-4xl md:text-6xl font-light text-[var(--text-primary)] tracking-tight leading-none">
             Hizmet <span className="text-[var(--dynamic-aura,var(--aura-indigo))] italic">Verimliliği</span>

@@ -20,7 +20,7 @@ export function PendingApprovalScreen({ logout }: PendingApprovalScreenProps) {
  </div>
  <h1 className="text-2xl font-semibold mb-3 text-[var(--text-primary)] tracking-tight">Onay Bekleniyor</h1>
  <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
- Sisteme kaydınız yapıldı fakat hesabınız henüz yönetici tarafından aktif edilmedi.
+ Dizgeye kaydınız yapıldı fakat hesabınız henüz yönetici tarafından aktif edilmedi.
  </p>
  <div className="bg-blue-500/5 p-5 rounded-2xl text-xs text-blue-600 mb-10 text-left border border-blue-500/10 space-y-1">
  <div className="flex justify-between border-b border-blue-500/10 pb-1 mb-1">

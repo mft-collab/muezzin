@@ -50,7 +50,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
               <Shield size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Kayıt Bulunmuyor</p>
-            <p className="premium-label !text-2xs !opacity-30 mt-1">SİSTEMDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
+            <p className="premium-label !text-2xs !opacity-30 mt-1">DİZGEDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
           </div>
         ) : (
           logs.map((log) => (

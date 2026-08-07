@@ -179,7 +179,7 @@ export default function AdminPanel() {
  case 'dashboard': return 'Genel Bakış';
  case 'planlama': return 'Hizmet Cetveli';
  case 'ekip': return 'Kadro Yönetimi';
- case 'ayarlar': return 'Sistem Ayarları';
+ case 'ayarlar': return 'Dizge Ayarları';
  default: return '';
  }
  }, [activeTab]);

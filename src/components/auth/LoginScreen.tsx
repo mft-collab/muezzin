@@ -76,7 +76,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-12">
  <div className="px-4 py-1.5 rounded-full bg-[var(--app-bg)]/80 backdrop-blur-md border border-[var(--glass-border)] flex items-center gap-2 shadow-[var(--spatial-shadow)]">
  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_var(--status-success)]" />
- <span className="text-2xs font-bold tracking-wide uppercase text-[var(--text-secondary)]">SİSTEM ÇEVRİMİÇİ</span>
+ <span className="text-2xs font-bold tracking-wide uppercase text-[var(--text-secondary)]">DİZGE ÇEVRİMİÇİ</span>
  </div>
  </div>
  </motion.div>
@@ -91,7 +91,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  Müezzin <span className="text-[var(--aura-indigo)] font-light">Hizmet Dizgesi</span>
  </h1>
  <p className="text-[var(--text-secondary)]/75 mb-14 font-bold tracking-wide uppercase text-2xs">
- CAMİ VE DİN GÖREVLİLERİ HİZMET PLANLAMA SİSTEMİ
+ CAMİ VE DİN GÖREVLİLERİ HİZMET PLANLAMA DİZGESİ
  </p>
  </motion.div>
  
@@ -156,7 +156,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
 
  {/* Footer Decoration */}
  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 opacity-10">
- <span className="text-2xs tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP SİSTEMİ v2.2</span>
+ <span className="text-2xs tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP DİZGESİ v2.2</span>
  </div>
  </div>
  );

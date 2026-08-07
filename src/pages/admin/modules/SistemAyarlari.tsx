@@ -83,12 +83,12 @@ export default function SistemAyarlari() {
       setStatusMessage({ type: 'warning', text: 'Ayarlar kaydedildi; vakit önbelleği daha sonra Ezan Önbelleği ekranından yenilenmelidir.' });
     }
   } else {
-    setStatusMessage({ type: 'success', text: 'Sistem ayarları kaydedildi.' });
+    setStatusMessage({ type: 'success', text: 'Dizge ayarları kaydedildi.' });
   }
 
   playSuccess();
   setTimeout(() => setStatusMessage(null), 5000);
-  await telemetryService.logAudit('Sistem Ayarı Güncelleme', 'Vakit Bölgesi', `Diyanet İlçe Kodu: ${cleanedIlceId}, İlçe Adı: ${cleanedIlceAdi}, Hicri Düzeltme: ${normalizedHicriDuzeltme}`);
+  await telemetryService.logAudit('Dizge Ayarı Güncelleme', 'Vakit Bölgesi', `Diyanet İlçe Kodu: ${cleanedIlceId}, İlçe Adı: ${cleanedIlceAdi}, Hicri Düzeltme: ${normalizedHicriDuzeltme}`);
   } catch (error) {
   console.error("Ayar kaydetme hatası:", error);
   setStatusMessage({ type: 'error', text: 'Ayarlar kaydedilemedi. Yetki ve bağlantı durumunu kontrol edin.' });

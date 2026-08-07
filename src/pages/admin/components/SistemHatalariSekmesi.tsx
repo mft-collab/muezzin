@@ -22,7 +22,7 @@ const categoryLabels: Record<Breadcrumb['category'], string> = {
   navigation: 'NAVİGASYON',
   user_action: 'KULLANICI',
   network: 'AĞ',
-  system: 'SİSTEM',
+  system: 'DİZGE',
 };
 
 function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
@@ -145,7 +145,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
           <ShieldAlert size={16} className="text-rose-500" />
-          Aktif Sistem Hataları
+          Aktif Dizge Hataları
         </h4>
         <motion.button
           whileHover={{ y: -2, scale: 1.02 }}
@@ -165,7 +165,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
               <CheckCircle size={20} />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-light">Mükemmel Durum!</p>
-            <p className="premium-label !text-2xs !opacity-30 mt-1">SİSTEMDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR.</p>
+            <p className="premium-label !text-2xs !opacity-30 mt-1">DİZGEDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR.</p>
           </div>
         ) : (
           errorLogs.map((log) => {

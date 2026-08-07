@@ -179,7 +179,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  disabled={isSubmitting}
  className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 transition-all disabled:opacity-50"
  >
- {isSubmitting ? 'İŞLENİYOR...' : (editingUser ? 'PROFİLİ GÜNCELLE' : 'PERSONELİ SİSTEME EKLE')}
+ {isSubmitting ? 'İŞLENİYOR...' : (editingUser ? 'PROFİLİ GÜNCELLE' : 'PERSONELİ DİZGEYE EKLE')}
  </motion.button>
  <motion.button 
  whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}

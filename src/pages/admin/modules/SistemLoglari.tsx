@@ -13,8 +13,8 @@ export type LogTab = 'errors' | 'diagnostics' | 'health' | 'audit';
 const LOG_TAB_IDS: LogTab[] = ['errors', 'diagnostics', 'health', 'audit'];
 
 const LOG_TABS = [
- { id: 'errors', label: 'Sistem Hataları', icon: ShieldAlert, activeIconClassName: 'text-rose-500' },
- { id: 'diagnostics', label: 'Sistem Teşhisi (Self-Check)', icon: Cpu },
+ { id: 'errors', label: 'Dizge Hataları', icon: ShieldAlert, activeIconClassName: 'text-rose-500' },
+ { id: 'diagnostics', label: 'Dizge Teşhisi (Self-Check)', icon: Cpu },
  { id: 'health', label: 'Veri Sağlığı ve Onarım', icon: HeartPulse, activeIconClassName: 'text-rose-400' },
  { id: 'audit', label: 'Denetim İzleri (Audit Logs)', icon: ClipboardList },
 ];
@@ -47,7 +47,7 @@ export default function SistemLoglari() {
  {/* Header Info Banner */}
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
  <div className="flex flex-col gap-1">
- <h3 className="text-lg font-light tracking-tight text-[var(--text-primary)]">Sistem Teşhis ve Hata Raporları</h3>
+ <h3 className="text-lg font-light tracking-tight text-[var(--text-primary)]">Dizge Teşhis ve Hata Raporları</h3>
  <p className="premium-label !text-2xs !opacity-35 tracking-wide">AKTİF KULLANIM DETAYLARI VE UYGULAMA SAĞLIĞI</p>
  </div>
  </div>
@@ -57,7 +57,7 @@ export default function SistemLoglari() {
  items={LOG_TABS}
  activeId={activeTab}
  onChange={(id) => setActiveTab(id as LogTab)}
- ariaLabel="Sistem teşhis sekmeleri"
+ ariaLabel="Dizge teşhis sekmeleri"
  idPrefix="log"
  variant="underline"
  />

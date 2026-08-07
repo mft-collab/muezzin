@@ -29,7 +29,7 @@ const GOREV_LABELS = {
   goreviDevret:       'GÖREVİ DEVRET',
   mazeretGovDev:     'MAZERET NEDENİYLE GÖREV DEVRİ',
   resmiTebligat:     'RESMİ TEBLİĞAT',
-  beyanIslenecek:    'BEYANINIZ SİSTEME İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.',
+  beyanIslenecek:    'BEYANINIZ DİZGEYE İŞLENECEK VE GÖREV DEVRİ GERÇEKLEŞECEKTİR.',
   onayMetni:         'Mazeretimin geri alınamayacağını ve görev devrinin gerçekleşeceğini anladım.',
   vazgec:            'VAZGEÇ',
   otonomDevir:       'OTONOM VAKİT DEVRİ',
@@ -397,7 +397,7 @@ export const GorevKarti = React.memo(({
  <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-emerald-500/20">
  <CheckCircle2 size={18} strokeWidth={2} />
  </div>
- <span className="authority-title !text-2xs !text-inherit">SİSTEM TARAFINDAN TEYİT EDİLDİ</span>
+ <span className="authority-title !text-2xs !text-inherit">DİZGE TARAFINDAN TEYİT EDİLDİ</span>
  </div>
  <motion.button
  whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}

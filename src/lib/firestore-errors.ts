@@ -32,7 +32,7 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   'not-found': 'Aradığınız kayıt bulunamadı.',
   'unavailable': 'Sunucuya şu anda ulaşılamıyor. İnternet bağlantınızı kontrol edip tekrar deneyin.',
   'deadline-exceeded': 'İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.',
-  'resource-exhausted': 'Sistem şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin.',
+  'resource-exhausted': 'Dizge şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin.',
   'unauthenticated': 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.',
   'cancelled': 'İşlem iptal edildi.',
   'already-exists': 'Bu kayıt zaten mevcut.',

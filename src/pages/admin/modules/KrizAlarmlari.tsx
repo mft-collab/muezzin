@@ -247,7 +247,7 @@ export default function KrizAlarmlari() {
  className={`${styles.buttonBg} text-[var(--text-primary)] px-8 py-5 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-4 disabled:opacity-50`}
  >
  <RefreshCcw size={16} className={isRetrying === alarm.id ? 'animate-spin' : ''} />
- {isRetrying === alarm.id ? 'ONARILIYOR...' : 'SİSTEMİ ONAR'}
+ {isRetrying === alarm.id ? 'ONARILIYOR...' : 'DİZGEYİ ONAR'}
  </motion.button>
  )}
  

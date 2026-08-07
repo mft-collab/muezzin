@@ -198,7 +198,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  <User size={10} className="text-[var(--aura-ruby)]" />
  )}
  <span>
- {isAdmin ? 'SİSTEM YÖNETİCİSİ' : isObserver ? 'MÜFTÜLÜK GÖZLEMCİSİ' : 'GÖREVLİ MÜEZZİN'}
+ {isAdmin ? 'DİZGE YÖNETİCİSİ' : isObserver ? 'MÜFTÜLÜK GÖZLEMCİSİ' : 'GÖREVLİ MÜEZZİN'}
  </span>
  </div>
  </div>
