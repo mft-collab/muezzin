@@ -49,9 +49,30 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Duyurular
     // ---------------------------------------------------------
+    // Diğer tüm yazılabilir varlıkların (muezzins, invites, vakitler,
+    // bildirimler, vekalet_talepleri, error_logs, audit_logs,
+    // telemetry_logs, settings, izinler) kendi şema doğrulayıcısı varken
+    // duyurular hiç doğrulanmıyordu — yalnızca admin yazabildiğinden bir
+    // yetki açığı değil, ama savunma derinliği tutarsızlığıydı (bkz. mimari
+    // denetim — üçüncü tur). src/services/duyuruServisi.ts'in gerçek
+    // create payload'ıyla (baslik, icerik, tip, tarih) birebir eşleşir;
+    // `yazar` src/hooks/useDuyurular.ts'teki Duyuru tipinde opsiyonel
+    // olarak tanımlı (henüz hiçbir yazım yolu kullanmıyor) — ileride
+    // kullanılırsa reddedilmesin diye şemaya izinli alan olarak dahil edildi.
+    function isValidDuyuru(data) {
+      return data.keys().hasAll(['baslik', 'icerik', 'tip', 'tarih']) &&
+             data.keys().hasOnly(['baslik', 'icerik', 'tip', 'tarih', 'yazar']) &&
+             data.baslik is string && data.baslik.size() > 0 && data.baslik.size() <= 200 &&
+             data.icerik is string && data.icerik.size() > 0 && data.icerik.size() <= 5000 &&
+             data.tip in ['onemli', 'bilgi', 'duyuru'] &&
+             data.tarih is timestamp &&
+             (!data.keys().hasAny(['yazar']) || data.yazar is string);
+    }
+
     match /duyurular/{duyuruId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isValidDuyuru(incoming());
+      allow delete: if isAdmin();
     }
 
     // ENTITY: Muezzins
@@ -215,6 +236,11 @@ service cloud.firestore {
              incoming().vakit == existing().vakit &&
              incoming().tip == existing().tip &&
              changed.hasOnly(['durum', 'pendingAck', 'retSebebi', 'sonGuncelleme', 'devirSonucu']) &&
+             // Diğer zaman damgası alanları gibi (bkz. isValidBildirim)
+             // sonGuncelleme burada da tiplenmemişti — gerçek çağıranlar
+             // zaten serverTimestamp() gönderiyor ama sema doğrulaması
+             // tutarlı olmalı (bkz. mimari denetim — üçüncü tur).
+             incoming().sonGuncelleme is timestamp &&
              (
                (
                  existing().durum == 'bekliyor' &&
@@ -307,6 +333,7 @@ service cloud.firestore {
              incoming().vakit == existing().vakit &&
              incoming().get('asilMazeretUid', '') == request.auth.uid &&
              changed.hasOnly(['tip', 'durum', 'pendingAck', 'sonGuncelleme', 'asilMazeretUid']) &&
+             incoming().sonGuncelleme is timestamp &&
              asilAfter.tip == 'asil' &&
              asilAfter.durum == 'reddedildi' &&
              asilAfter.uid == request.auth.uid &&
@@ -407,6 +434,7 @@ service cloud.firestore {
              // sahibine geri dondurebiliyordu (bkz. mimari denetim K5).
              incoming().get('vekaletDevredildi', false) == true &&
              changed.hasOnly(['uid', 'vekaletDevredildi', 'sonGuncelleme']) &&
+             incoming().sonGuncelleme is timestamp &&
              talep.bildirimId == bildirimId &&
              talep.haftaId == existing().haftaId &&
              talep.tarih == existing().tarih &&
@@ -446,6 +474,15 @@ service cloud.firestore {
              data.tip in ['asil', 'yedek', 'gorev_cagrisi'] &&
              data.durum in ['bekliyor', 'onaylandi', 'reddedildi', 'sistem_atadi', 'iptal', 'okundu_varsayilan'] &&
              data.pendingAck is bool &&
+             // Diğer tüm zaman damgası alanları (isValidVakitCache
+             // guncellenmeTarihi, isValidErrorLog/isValidTelemetryLog
+             // timestamp) `is timestamp` ile tiplenirken bu ikisi hiç
+             // kontrol edilmiyordu — tüm gerçek çağıranlar serverTimestamp()
+             // gönderse de bu şema doğrulayıcısını çağıran yollarda (create,
+             // admin update) teorik olarak keyfi bir değer kabul ediliyordu
+             // (bkz. mimari denetim — üçüncü tur).
+             data.olusturmaTarihi is timestamp &&
+             data.sonGuncelleme is timestamp &&
              (!data.keys().hasAny(['retSebebi']) || data.retSebebi == null || (data.retSebebi is string && data.retSebebi.size() <= 500)) &&
              // mazeretPlanSenkronEdildi/vekaletPlanSenkronEdildi kasitli olarak
              // AYRI iki alan — ikisi eskiden tek bir paylasilan

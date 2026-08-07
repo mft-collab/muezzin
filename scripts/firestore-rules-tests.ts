@@ -782,12 +782,44 @@ const tests: TestCase[] = [
       const db = testUser(env, 'admin').firestore();
       const ref = doc(db, 'duyurular/adminNotice');
 
+      // Gercek servis (duyuruServisi.ts duyuruYayinla) her zaman 'tip'
+      // gonderiyor — isValidDuyuru eklenmeden once bu alan sema disi
+      // kaldigindan bu test fixture'i eksikti (bkz. asagidaki yeni testler).
       await assertSucceeds(setDoc(ref, {
         baslik: 'Admin',
         icerik: 'Metin',
+        tip: 'duyuru',
         tarih: Timestamp.now()
       }));
       await assertSucceeds(deleteDoc(ref));
+    }
+  },
+  {
+    // Ucuncu denetim turu bulgusu: duyurular hic sema dogrulamasi
+    // yapmiyordu (diger tum yazilabilir varliklarin aksine) — yetki acigi
+    // degildi (yalnizca admin yazabiliyor) ama tutarsizlikti.
+    name: 'admin duyurusuna sema disi ekstra alan ekleyemez (isValidDuyuru hasOnly)',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+      await assertFails(setDoc(doc(db, 'duyurular/extraFieldNotice'), {
+        baslik: 'Admin',
+        icerik: 'Metin',
+        tip: 'duyuru',
+        tarih: Timestamp.now(),
+        yetkisizAlan: 'sizma denemesi'
+      }));
+    }
+  },
+  {
+    name: 'admin duyurusu gecersiz tip degeriyle olusturulamaz',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+      await assertFails(setDoc(doc(db, 'duyurular/invalidTipNotice'), {
+        baslik: 'Admin',
+        icerik: 'Metin',
+        tip: 'gecersiz_kategori',
+        tarih: Timestamp.now()
+      }));
     }
   },
   {
@@ -1441,9 +1473,13 @@ const tests: TestCase[] = [
       });
 
       const db = testUser(env, 'superadmin').firestore();
+      // isValidDuyuru eklendikten sonra gecerli sema gonderilmeli — bu
+      // testin amaci yetki (bootstrap admin), sema degil.
       await assertSucceeds(setDoc(doc(db, 'duyurular/bootstrapNotice'), {
         baslik: 'Test',
-        mesaj: 'Bootstrap admin testi'
+        icerik: 'Bootstrap admin testi',
+        tip: 'duyuru',
+        tarih: Timestamp.now()
       }));
     }
   },
@@ -1458,9 +1494,13 @@ const tests: TestCase[] = [
       });
 
       const db = testUser(env, 'digerkullanici').firestore();
+      // Sema gecerli olsa bile (isValidDuyuru) yetki eksikliginden
+      // reddedilmeli — bu testin amaci tam olarak bu.
       await assertFails(setDoc(doc(db, 'duyurular/unauthorizedNotice'), {
         baslik: 'Test',
-        mesaj: 'Yetkisiz deneme'
+        icerik: 'Yetkisiz deneme',
+        tip: 'duyuru',
+        tarih: Timestamp.now()
       }));
     }
   },
