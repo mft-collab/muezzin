@@ -111,6 +111,14 @@
         { "fieldPath": "vakit", "order": "ASCENDING" },
         { "fieldPath": "cozuldu", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "adminUyarilari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cozuldu", "order": "ASCENDING" },
+        { "fieldPath": "olusturmaTarihi", "order": "DESCENDING" }
+      ]
     }
   ]
 }

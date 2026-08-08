@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import { AuthGuard } from './components/AuthGuard';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -17,6 +18,33 @@ const Profil = lazy(() => import('./pages/Profil'));
 const MuezzinAyarlari = lazy(() => import('./pages/MuezzinAyarlari'));
 
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
+
+// Müezzin ekranları ↔ admin paneli arası route değişiminde sert kesme yerine
+// kısa bir cross-fade — location.pathname'i key yapıp AnimatePresence'a
+// veriyoruz, Routes'a da aynı location'ı geçiyoruz ki eskisi çıkış animasyonu
+// oynarken router zaten yeni sayfaya geçmiş olmasın.
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18, ease: 'easeInOut' }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<MuezzinAnaEkran />} />
+          <Route path="/takvim" element={<HaftalikTakvim />} />
+          <Route path="/profil" element={<Profil />} />
+          <Route path="/ayarlar" element={<MuezzinAyarlari />} />
+          <Route path="/admin" element={<AdminPanel />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export default function App() {
   // İlk açılışta zaman senkronizasyonunu başlat (arka planda çalışır)
@@ -54,13 +82,7 @@ export default function App() {
             <div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" />
           </div>
         }>
- <Routes>
- <Route path="/" element={<MuezzinAnaEkran />} />
- <Route path="/takvim" element={<HaftalikTakvim />} />
- <Route path="/profil" element={<Profil />} />
- <Route path="/ayarlar" element={<MuezzinAyarlari />} />
- <Route path="/admin" element={<AdminPanel />} />
- </Routes>
+ <AnimatedRoutes />
  </Suspense>
  </Layout>
  </AuthGuard>
