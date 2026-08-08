@@ -195,9 +195,14 @@ export const AnaEkranHero = React.memo(({
  <div className="w-12 h-12 rounded-full border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
  </motion.div>
  ) : (
- <>
+ // AnimatePresence'ın doğrudan çocuğu tek, kararlı `key`+`exit`'i olan bir
+ // motion bileşeni olmalı — burada bir Fragment (`<>`) idi, bu da her
+ // saniye (GeriSayim tick'iyle) React'in "Invalid prop `ref` supplied to
+ // React.Fragment" uyarısını konsola basmasına yol açıyordu (Fragment ref
+ // kabul edemez). Presence takibini bu dıştaki motion.div üstleniyor,
+ // içteki kart kendi giriş animasyonunu (y kayması) ayrıca sürdürüyor.
+ <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full flex flex-col">
  <motion.div
- key="content"
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
  className="w-full flex-1 flex flex-col justify-between min-h-[520px] sm:min-h-[600px] lg:min-h-0 p-4 sm:p-6 xl:p-8 bg-[var(--spatial-glass-bg)] backdrop-blur-xl rounded-card border border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]"
@@ -372,13 +377,13 @@ export const AnaEkranHero = React.memo(({
  )}
  </div>
  </motion.div>
- 
+
  {/* Özel Vakit Banner — Kerahat / Teheccüd / Bayram / Teşrik */}
  <OzelVakitBanner durum={ozelVakitDurumu} />
- 
+
  {/* Ramazan Ayı Özel Hub Bileşeni */}
  {isRamazan && <RamazanHub />}
- </>
+ </motion.div>
  )}
  </AnimatePresence>
  </div>

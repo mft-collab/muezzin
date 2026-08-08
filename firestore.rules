@@ -704,7 +704,16 @@ service cloud.firestore {
              data.uid == request.auth.uid &&
              data.tip in ['haftalik', 'yillik', 'mazeret'] &&
              data.durum == 'onay_bekliyor' &&
-             isValidIzinTarihAraligi(data.baslangic, data.bitis);
+             isValidIzinTarihAraligi(data.baslangic, data.bitis) &&
+             // `sebep` (VacationRequestCard.tsx'in her zaman gönderdiği izin
+             // gerekçesi) hasOnly'de listeleniyordu ama dosyadaki HER diğer
+             // serbest metin alanının aksine (baslik, icerik, retSebebi,
+             // yazar vb.) hiç tip/uzunluk doğrulaması yoktu — sınırsız
+             // uzunlukta veya string olmayan bir değer sessizce kabul
+             // ediliyordu (bkz. mimari denetim — altıncı tur, form
+             // doğrulama bulguları). Diğer opsiyonel serbest metin
+             // alanlarıyla aynı "yoksa serbest, varsa tipli" kalıbı.
+             (!data.keys().hasAny(['sebep']) || (data.sebep is string && data.sebep.size() <= 1000));
     }
 
     match /izinler/{docId} {

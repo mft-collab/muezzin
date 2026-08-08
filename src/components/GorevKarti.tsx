@@ -450,6 +450,7 @@ export const GorevKarti = React.memo(({
       <textarea
         className="w-full bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
         rows={3}
+        maxLength={500}
         placeholder="Nedenini kısaca belirtin..."
         value={mazeretSebebi}
         onChange={(e) => setMazeretSebebi(e.target.value)}

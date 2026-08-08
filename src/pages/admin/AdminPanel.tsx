@@ -20,15 +20,9 @@ import { playClick } from '../../lib/sounds';
 import { ChunkErrorFallback } from '../../components/ChunkErrorFallback';
 
 import { SlimSidebar } from './components/SlimSidebar';
-import { MobileDock } from './components/MobileDock';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-import { type ActiveModule } from './config/navConfig';
-
-const ACTIVE_MODULES: ActiveModule[] = ['dashboard', 'planlama', 'ekip', 'ayarlar'];
-function toActiveModule(raw: string | null): ActiveModule {
- return ACTIVE_MODULES.includes(raw as ActiveModule) ? (raw as ActiveModule) : 'dashboard';
-}
+import { toActiveModule, type ActiveModule } from './config/navConfig';
 
 const HaftalikCizelge = lazy(() => import('./modules/HaftalikCizelge'));
 const KrizAlarmlari = lazy(() => import('./modules/KrizAlarmlari'));
@@ -241,16 +235,10 @@ export default function AdminPanel() {
  {/* Spiritüel Doku Bütünlüğü */}
  <IslamicGeometricBg />
 
- {/* Navigation Ecosystem */}
- <MobileDock 
- activeTab={activeTab} 
- setActiveTab={setActiveTab}
- pendingIzinler={pendingIzinler}
- cozulmamisSayisi={cozulmamisSayisi}
- onNavigateApp={navigateApp}
- />
-
- <SlimSidebar 
+ {/* Navigation Ecosystem — mobil dock artık Layout seviyesinde (bkz.
+     src/components/FloatingDock.tsx), müezzin dock'undan admin sekmelerine
+     kesintisiz morph olabilmesi için route değişiminde unmount olmuyor. */}
+ <SlimSidebar
  activeTab={activeTab} 
  setActiveTab={setActiveTab}
  onLogout={requestLogout}

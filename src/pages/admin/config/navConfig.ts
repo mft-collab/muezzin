@@ -8,11 +8,21 @@ type IconComponent = ComponentType<{ size?: number; strokeWidth?: number; classN
  * zamanında yakalamayı sağlar. */
 export type ActiveModule = 'dashboard' | 'planlama' | 'ekip' | 'ayarlar';
 
+export const ACTIVE_MODULES: ActiveModule[] = ['dashboard', 'planlama', 'ekip', 'ayarlar'];
+
+/** `?tab=` URL parametresini güvenli bir ActiveModule'e indirger — tanınmayan/eksik
+ * değerlerde 'dashboard'a düşer. AdminPanel ve FloatingDock aynı `tab` parametresini
+ * ayrı ayrı okuyup yazdığı için (tek doğruluk kaynağı URL'nin kendisi) bu fonksiyon
+ * ikisinde de aynı davranışı garantilemek için tek yerde tanımlı. */
+export function toActiveModule(raw: string | null): ActiveModule {
+  return ACTIVE_MODULES.includes(raw as ActiveModule) ? (raw as ActiveModule) : 'dashboard';
+}
+
 export interface AdminNavItemConfig {
   id: ActiveModule;
   /** Kısa görünür etiket (SlimSidebar'da metin olarak gösterilir) */
   shortLabel: string;
-  /** Tam betimleyici etiket (MobileDock'ta aria-label/title, SlimSidebar'da aria-label) */
+  /** Tam betimleyici etiket (FloatingDock'ta aria-label/title, SlimSidebar'da aria-label) */
   fullLabel: string;
   icon: IconComponent;
   badge: number;

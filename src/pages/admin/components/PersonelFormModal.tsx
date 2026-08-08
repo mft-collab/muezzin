@@ -68,12 +68,13 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <div className="space-y-4 group">
  <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
- <input 
- type="email" 
- required 
- value={formData.email} 
- onChange={e => setFormData({...formData, email: e.target.value})} 
- disabled={!!editingUser || isSubmitting} 
+ <input
+ type="email"
+ required
+ maxLength={100}
+ value={formData.email}
+ onChange={e => setFormData({...formData, email: e.target.value})}
+ disabled={!!editingUser || isSubmitting}
  className={`w-full spatial-glass-elevated p-6 rounded-3xl text-sm font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none transition-all duration-700 ${editingUser ? 'opacity-30 cursor-not-allowed' : 'focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:bg-[var(--text-primary)]/[0.05] focus:shadow-[0_0_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)]'}`} 
  placeholder="kurumsal@muezzin.app" 
  />
@@ -82,11 +83,12 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <div className="grid grid-cols-2 gap-6">
  <div className="space-y-3">
  <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
- <input 
- type="text" 
- required 
- value={formData.ad} 
- onChange={e => setFormData({...formData, ad: formatName(e.target.value)})} 
+ <input
+ type="text"
+ required
+ maxLength={100}
+ value={formData.ad}
+ onChange={e => setFormData({...formData, ad: formatName(e.target.value)})}
  disabled={isSubmitting}
  className="w-full spatial-glass-elevated p-5 rounded-2xl text-sm font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_10%,transparent)] transition-all duration-700" 
  placeholder="Örn: Ahmet" 
@@ -94,11 +96,12 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  </div>
  <div className="space-y-3">
  <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">SOYADI</label>
- <input 
- type="text" 
- required 
- value={formData.soyad} 
- onChange={e => setFormData({...formData, soyad: formatName(e.target.value)})} 
+ <input
+ type="text"
+ required
+ maxLength={100}
+ value={formData.soyad}
+ onChange={e => setFormData({...formData, soyad: formatName(e.target.value)})}
  disabled={isSubmitting}
  className="w-full spatial-glass-elevated p-5 rounded-2xl text-sm font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_10%,transparent)] transition-all duration-700" 
  placeholder="Örn: Yılmaz" 
