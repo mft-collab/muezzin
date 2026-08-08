@@ -96,6 +96,19 @@ export default defineConfig(({ mode }) => ({
         // Fonts CDN runtimeCaching kuralları bu nedenle kaldırıldı (artık hiçbir istek
         // fonts.googleapis.com/fonts.gstatic.com'a gitmiyor).
         globPatterns: ['**/*.{js,css,html,png,svg,woff2,woff}'],
+        // @fontsource-variable/inter ve jetbrains-mono paketleri (opsz.css/wght.css)
+        // her zaman TÜM script alt kümelerini (latin, latin-ext, cyrillic,
+        // cyrillic-ext, greek, greek-ext, vietnamese) ayrı @font-face + unicode-range
+        // kuralları olarak üretir — tarayıcı normalde yalnızca sayfada gerçekten
+        // kullanılan unicode-range'i indirir (bu kısım zaten optimal), ama workbox'ın
+        // globPatterns'ı unicode-range'i anlamaz ve DIST'teki her font dosyasını
+        // körü körüne precache eder. Uygulama yalnızca Türkçe (lang: "tr") olduğundan
+        // kiril/yunan/vietnamca alt kümeleri hiçbir zaman render edilmiyor ama yine de
+        // her PWA kurulumunda/güncellemesinde indirilip önbelleğe alınıyordu (~330KB,
+        // toplam font payload'ının ~%33'ü — bkz. performans analizi). Bu üç desen
+        // yalnızca precache'i hedefliyor; tarayıcının runtime unicode-range
+        // davranışına dokunmuyor, bu yüzden işlevsel bir risk taşımıyor.
+        globIgnores: ['**/*-cyrillic-*', '**/*-greek-*', '**/*-vietnamese-*'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         importScripts: ['/firebase-messaging-sw.js']
       }
