@@ -1,7 +1,7 @@
 import React from 'react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
 import { AlertTriangle, ServerCrash, CalendarX, CheckCircle, RefreshCcw } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
@@ -224,7 +224,12 @@ export default function KrizAlarmlari() {
  <div className="flex items-center gap-2">
  <span className="authority-title !text-2xs opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
  <span className={`text-2xs font-bold tracking-wide ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : 'text-[var(--text-secondary)]/60'}`}>
- {alarm.tarih ? format(new Date(alarm.tarih), 'dd MMMM yyyy', { locale: tr }) : '--'}
+ {/* alarm.tarih bir "YYYY-MM-DD" tarih-anahtarı string'i — new Date(...)
+ UTC gece yarısı olarak ayrıştırır (Türkiye'nin sabit UTC+3'ü nedeniyle
+ bugün görünürde zararsız ama farklı bir TZ'de yanlış günü gösterir),
+ kod tabanının her yerde kullandığı parseISO kuralına aykırıydı (bkz.
+ MazeretGecmisi.tsx, beşinci denetim turu). */}
+ {alarm.tarih ? format(parseISO(alarm.tarih), 'dd MMMM yyyy', { locale: tr }) : '--'}
  {alarm.vakit ? ` • ${VAKIT_GORA_ISIMLERI[alarm.vakit as Vakit]}` : ''}
  </span>
  </div>

@@ -8,6 +8,7 @@ import { Modal } from './ui/Modal';
 import { Bildirim, Vakit } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
 import { mazeretBildir } from '../services/mazeretServisi';
+import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
 import {
  getTurkeyNow,
  parseVakitToDate,
@@ -193,12 +194,20 @@ export const GorevKarti = React.memo(({
  setUiMessage(null);
  setIsSubmitting(true);
  try {
- await mazeretBildir(bildirim.id as string, mazeretSebebi, saat);
+ // mazeretBildir bir runTransaction kullanır — çevrimdışıyken sonsuza dek
+ // askıda kalabildiğinden zamanAsimiIle ile sarmalanır (bkz. timeoutUtils.ts
+ // yorumu, beşinci denetim turu).
+ await zamanAsimiIle(mazeretBildir(bildirim.id as string, mazeretSebebi, saat));
  setIsMazeretModalOpen(false);
  const text = 'Mazeretiniz kaydedildi. Yedek görevli kendi nöbet kaydı üzerinden devralabilir.';
  setUiMessage({ type: 'success', text });
  showNotification('Mazeret Kaydedildi', text, 'info');
  } catch (error: unknown) {
+ if (error instanceof IslemZamanAsimi) {
+ setUiMessage({ type: 'error', text: error.message });
+ showNotification('Bağlantı Sorunu', error.message, 'warning');
+ return;
+ }
  const text = error instanceof Error ? error.message : 'Mazeret kaydedilirken hata oluştu.';
  setUiMessage({ type: 'error', text });
  showNotification('Hata Oluştu', text, 'error');

@@ -4,7 +4,13 @@ import { WifiOff } from 'lucide-react';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export function OfflineBanner() {
-  const isOnline = useNetworkStatus();
+  // useNetworkStatus() bir { isOnline } nesnesi döndürüyor — burada
+  // destructure edilmeden doğrudan bir değişkene atanmıştı, bu yüzden
+  // `isOnline` her zaman (nesneler her zaman truthy olduğundan) doluydu ve
+  // `show` her zaman false kalıyordu: bu banner GERÇEKTE HİÇBİR ZAMAN
+  // render olmuyordu, ağ durumu ne olursa olsun (bkz. beşinci denetim
+  // turu — uygulamadaki TEK genel "çevrimdışısın" göstergesi).
+  const { isOnline } = useNetworkStatus();
   const show = !isOnline;
 
   return (

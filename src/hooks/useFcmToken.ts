@@ -3,6 +3,7 @@ import { doc, serverTimestamp, setDoc, updateDoc, deleteField } from 'firebase/f
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { zamanAsimiIle } from '../lib/timeoutUtils';
 
 // NOT: Bu değer Firebase Console → Proje Ayarları → Cloud Messaging →
 // Web push sertifikaları'ndan alınan GERÇEK VAPID public key olmalı.
@@ -140,9 +141,23 @@ export async function unregisterFcmToken(uid: string | undefined): Promise<void>
  * düğmesi bu düzeltmeyi hiç görmüyordu (bkz. code-review, dördüncü denetim
  * turu). Yeni bir çıkış noktası eklenirse aynı sınıf regresyonu tekrarlamamak
  * için doğrudan `auth.signOut()` yerine bu fonksiyon çağrılmalı.
+ *
+ * `unregisterFcmToken` içindeki Firestore yazımı çevrimdışıyken (SDK'nın
+ * persistentLocalCache'i etkinken) sonsuza dek askıda kalabiliyordu — bu da
+ * `await`'in hiç dönmemesine, dolayısıyla `auth.signOut()`'un hiç
+ * çağrılmamasına yol açıyordu: kullanıcı çevrimdışıyken "çıkış yapamaz"
+ * halde kalıyordu (bkz. beşinci denetim turu). `unregisterFcmToken` zaten
+ * en-iyi-çaba (best-effort) bir temizlik olduğundan, kısa bir zaman aşımı
+ * sonrası beklemeden `auth.signOut()`'a devam edilir — Firestore'un kendi
+ * offline kuyruğu token temizliğini arka planda tamamlar.
  */
 export async function performLogout(): Promise<void> {
-  await unregisterFcmToken(auth.currentUser?.uid);
+  try {
+    await zamanAsimiIle(unregisterFcmToken(auth.currentUser?.uid), 4000);
+  } catch {
+    // Zaman aşımı ya da başka bir hata — temizlik en iyi çabaydı, çıkışı
+    // engellemeden devam et.
+  }
   await auth.signOut();
 }
 

@@ -8,6 +8,33 @@ export interface GpsVakitResult {
   konumAdi: string;
 }
 
+export type GpsHataTuru = 'izin_reddi' | 'konum_belirlenemedi' | 'zaman_asimi' | 'desteklenmiyor' | 'bilinmeyen';
+
+function geolocationPositionErrorMu(err: unknown): err is GeolocationPositionError {
+  return typeof err === 'object' && err !== null && 'code' in err && 'PERMISSION_DENIED' in err;
+}
+
+/**
+ * `useGpsVakitStore.ts` `enableGps()`'in fırlatabileceği hata, tek bir
+ * "tarayıcı ayarlarından izin verin" mesajına indirgeniyordu — ama üç
+ * FARKLI kaynaktan gelebilir: tarayıcı desteklemiyor, GeolocationPositionError
+ * (kod 1=izin reddi, 2=konum belirlenemedi, 3=zaman aşımı — yalnızca kod 1
+ * gerçekten "tarayıcı ayarı" sorunudur), veya `konumVakitleriniCek`'in
+ * API/ağ hatası. Kod 2/3 veya API hatasında "tarayıcı ayarlarından izin
+ * verin" demek yanlış ve işe yaramaz bir talimat (bkz. beşinci denetim
+ * turu). `src/pages/MuezzinAnaEkran.tsx`'in `handleGpsConfirm`'i bu
+ * sınıflandırmaya göre doğru mesajı seçer.
+ */
+export function gpsHataTuruBelirle(err: unknown): GpsHataTuru {
+  if (geolocationPositionErrorMu(err)) {
+    if (err.code === err.PERMISSION_DENIED) return 'izin_reddi';
+    if (err.code === err.POSITION_UNAVAILABLE) return 'konum_belirlenemedi';
+    if (err.code === err.TIMEOUT) return 'zaman_asimi';
+  }
+  if (err instanceof Error && err.message.includes('desteklemiyor')) return 'desteklenmiyor';
+  return 'bilinmeyen';
+}
+
 interface AladhanTimings {
   Imsak: string;
   Sunrise: string;

@@ -13,6 +13,7 @@ import { GpsConsentModal } from '../components/GpsConsentModal';
 import { GpsHelpModal } from '../components/GpsHelpModal';
 
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
+import { gpsHataTuruBelirle, GpsHataTuru } from '../services/gpsVakitServisi';
 import { KiblePusulasiModal } from '../components/KiblePusulasiModal';
 import { useGelenVekaletler } from '../hooks/useGelenVekaletler';
 import { useHaftalikGorevOzeti } from '../hooks/useHaftalikGorevOzeti';
@@ -24,6 +25,7 @@ import { Vakit } from '../types';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
+import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
 
 const VacationRequestCard = lazy(() => import('../components/VacationRequestCard'));
 
@@ -62,6 +64,7 @@ export default function MuezzinAnaEkran() {
   const [autoOpenMazeretId, setAutoOpenMazeretId] = useState<string | null>(null);
   const [isGpsConsentOpen, setIsGpsConsentOpen] = useState(false);
   const [isGpsHelpOpen, setIsGpsHelpOpen] = useState(false);
+  const [gpsHataTuru, setGpsHataTuru] = useState<GpsHataTuru>('izin_reddi');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const showNotification = useNotificationStore(s => s.showNotification);
@@ -89,9 +92,16 @@ export default function MuezzinAnaEkran() {
       if (action === 'onayla') {
         showNotification('İşlem Başlatıldı', 'Göreviniz onaylanıyor...', 'info');
         try {
-          await okudumOnayla(bildirimId);
+          // okudumOnayla bir runTransaction kullanır — çevrimdışıyken sonsuza
+          // dek askıda kalabildiğinden zamanAsimiIle ile sarmalanır (bkz.
+          // timeoutUtils.ts yorumu, beşinci denetim turu).
+          await zamanAsimiIle(okudumOnayla(bildirimId));
           showNotification('Görev Onaylandı', 'Göreviniz başarıyla dizgeye işlendi. Allah kabul etsin.', 'success');
         } catch (error) {
+          if (error instanceof IslemZamanAsimi) {
+            showNotification('Bağlantı Sorunu', error.message, 'warning');
+            return;
+          }
           const errMsg = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
           if (errMsg.includes('ezan vakti')) {
             showNotification('Henüz Erken', 'Görev vakti gelmeden onay veremezsiniz. Lütfen vakit girdikten sonra onaylayın.', 'warning');
@@ -122,6 +132,12 @@ export default function MuezzinAnaEkran() {
     } catch (err: unknown) {
       console.error('GPS Vakit Hatası:', err);
       setIsGpsConsentOpen(false);
+      // Önceden err ayrımsız her zaman aynı "tarayıcı ayarlarından izin
+      // verin" mesajını gösteriyordu — GeolocationPositionError'ın izin
+      // reddi DIŞINDAKİ kodlarında (konum belirlenemedi, zaman aşımı) veya
+      // API/ağ hatasında bu talimat yanlış ve işe yaramazdı (bkz.
+      // gpsHataTuruBelirle yorumu, beşinci denetim turu).
+      setGpsHataTuru(gpsHataTuruBelirle(err));
       setIsGpsHelpOpen(true);
     }
   };
@@ -465,10 +481,18 @@ export default function MuezzinAnaEkran() {
                 if (processingVekaletId) return;
                 setProcessingVekaletId(talep.id);
                 try {
-                  await vekaletKabulEt(talep.id);
+                  // vekaletKabulEt bir runTransaction kullanır — çevrimdışıyken
+                  // sonsuza dek askıda kalabildiğinden (bkz. timeoutUtils.ts
+                  // yorumu, beşinci denetim turu) zamanAsimiIle ile sarmalanır;
+                  // düğme sonsuza dek "İŞLENİYOR" durumunda kilitli kalmasın.
+                  await zamanAsimiIle(vekaletKabulEt(talep.id));
                   showNotification('Vekalet Devralındı', 'Göreviniz planınıza başarıyla işlendi.', 'success');
                 } catch (err: unknown) {
-                  showNotification('Hata', err instanceof Error ? err.message : 'Vekalet kabul edilemedi.', 'error');
+                  if (err instanceof IslemZamanAsimi) {
+                    showNotification('Bağlantı Sorunu', err.message, 'warning');
+                  } else {
+                    showNotification('Hata', err instanceof Error ? err.message : 'Vekalet kabul edilemedi.', 'error');
+                  }
                 } finally {
                   setProcessingVekaletId(null);
                 }
@@ -488,10 +512,14 @@ export default function MuezzinAnaEkran() {
                   setProcessingVekaletId(talep.id);
                   setPendingRejectId(null);
                   try {
-                    await vekaletReddet(talep.id);
+                    await zamanAsimiIle(vekaletReddet(talep.id));
                     showNotification('Reddedildi', 'Vekalet teklifi reddedildi.', 'info');
                   } catch (err: unknown) {
-                    showNotification('Hata', err instanceof Error ? err.message : 'İşlem başarısız.', 'error');
+                    if (err instanceof IslemZamanAsimi) {
+                      showNotification('Bağlantı Sorunu', err.message, 'warning');
+                    } else {
+                      showNotification('Hata', err instanceof Error ? err.message : 'İşlem başarısız.', 'error');
+                    }
                   } finally {
                     setProcessingVekaletId(null);
                   }
@@ -624,6 +652,7 @@ export default function MuezzinAnaEkran() {
   <GpsHelpModal
     isOpen={isGpsHelpOpen}
     onClose={() => setIsGpsHelpOpen(false)}
+    hataTuru={gpsHataTuru}
     onRetry={() => {
       setIsGpsHelpOpen(false);
       setIsGpsConsentOpen(true);
