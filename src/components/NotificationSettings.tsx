@@ -35,10 +35,21 @@ export default function NotificationSettings({ userData, user }: NotificationSet
 
     setIsRequesting(true);
     try {
-      await registerFcmToken(true);
-      setUiMessage(null);
+      const { token } = await registerFcmToken(true);
+      // registerFcmToken izin reddedilmediği halde (ör. VAPID anahtarı
+      // yapılandırılmamış, tarayıcı getToken()'ı sessizce başarısız kılmış)
+      // hata fırlatmadan token:null ile de dönebiliyor — önceden bu durumda
+      // da uiMessage koşulsuz temizleniyordu, kullanıcı "etkinleştirdim"
+      // sanıp hiçbir bildirim almadığını hiç fark etmiyordu (bkz.
+      // code-review, dördüncü denetim turu).
+      if (token) {
+        setUiMessage(null);
+      } else {
+        setUiMessage('Bildirim aboneliği tamamlanamadı. Lütfen tekrar deneyin veya tarayıcı ayarlarınızı kontrol edin.');
+      }
     } catch (err) {
       console.error('Bildirim izni istenirken hata:', err);
+      setUiMessage('Bildirim aboneliği tamamlanamadı. Lütfen tekrar deneyin veya tarayıcı ayarlarınızı kontrol edin.');
     } finally {
       setIsRequesting(false);
     }

@@ -116,6 +116,34 @@ export function izinGunSayisi(baslangic: string, bitis: string): number {
  return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
+/**
+ * Bir izin aralığının ([baslangic, bitis], her ikisi de dahil) bir Cuma günü
+ * içerip içermediğini kontrol eder — "Cuma günü kapsayan yıllık/haftalık izin
+ * onaylanamaz" kuralı için tek kaynak. Önceden bu mantık yalnızca
+ * IzinYonetimi.tsx'in onay düğmesinde satır içi bir döngü olarak vardı;
+ * ExecutiveHeroScreen.tsx'teki aynı izni onaylayan hızlı-onay yolu bu
+ * kontrolü hiç yapmıyordu (bkz. code-review, dördüncü denetim turu) — iki
+ * yer de artık bu fonksiyonu çağırıyor. firestore.rules'taki
+ * izinAraligiCumaIceriyorMu ile aynı iş kuralının istemci tarafı karşılığı
+ * (CEL kuralları TS import edemediği için ayrı ayrı tutuluyor — birini
+ * değiştirirsen diğerini de güncelle).
+ */
+export function izinAraligiCumaIceriyorMu(baslangic: string, bitis: string): boolean {
+ const [by, bm, bd] = baslangic.split('-').map(Number);
+ const [ey, em, ed] = bitis.split('-').map(Number);
+ const gun = new Date(by, bm - 1, bd);
+ const sonGun = new Date(ey, em - 1, ed);
+ // Güvenlik sayacı: ters/aşırı uzun aralıklarda sonsuz döngüyü önler
+ // (bkz. useAdminIzinlerStore.ts izinAraligindakiHaftaIdleri aynı desen).
+ let guvenlikSayaci = 0;
+ while (gun <= sonGun && guvenlikSayaci < 3650) {
+ if (isFriday(gun)) return true;
+ gun.setDate(gun.getDate() + 1);
+ guvenlikSayaci++;
+ }
+ return false;
+}
+
 export function getHaftaIdFromDate(dateStr: string): string {
  const date = parseISO(dateStr);
  const pazartesi = startOfWeek(date, { weekStartsOn: 1 });

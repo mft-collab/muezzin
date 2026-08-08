@@ -195,7 +195,11 @@ export default function HaftalikTakvim() {
  <ChevronLeft size={18} />
  </motion.button>
  <div className="px-6 py-2 text-2xs font-bold tracking-wide text-[var(--text-secondary)] uppercase min-w-[180px] text-center">
- {weekLabel} – {format(addWeeks(currentWeekStart, 1), 'd MMMM', { locale: tr })}
+ {/* gunlukVeriler Pazartesi (+0) - Pazar (+6) aralığını render ediyor;
+ önceden burada addWeeks(currentWeekStart, 1) (+7, bir sonraki Pazartesi)
+ kullanılıyordu — başlık her zaman aşağıdaki tablonun son gününden bir
+ gün ileriyi gösteriyordu (bkz. code-review, dördüncü denetim turu). */}
+ {weekLabel} – {format(addDays(currentWeekStart, 6), 'd MMMM', { locale: tr })}
  </div>
  <motion.button
  whileTap={{ scale: 0.9 }}

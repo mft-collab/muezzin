@@ -37,6 +37,28 @@ function haftaGunleri(haftaId: string) {
  });
 }
 
+// İyimser eşzamanlılık denetiminin (haftalikPlanOlusturTekSeferlik) tek
+// başına haftaPlanlari.sonGuncelleme'yi karşılaştırması yeterli değildi —
+// mazeretBildir/vekaletKabulEt kendi bildirimler yazımlarını YALNIZCA o
+// belgede yapar, haftaPlanlari'na hiç dokunmaz (bunu yalnızca ayrı,
+// asenkron bir uzlaştırma cron'u — mazeretDevirleriniIsle.ts/
+// vekaletDevirleriniIsle.ts — daha sonra yapar). Bu yüzden eskiBildirimler
+// okunduktan (T1) SONRA ama commit'ten (T2) ÖNCE bir müezzin mazeret
+// bildirirse, haftaPlanlari.sonGuncelleme değişmediğinden freshness
+// kontrolü çakışmayı hiç görmüyor, ve commit T1'deki BAYAT bildirim
+// durumuna göre hesaplanmış bir plan yazıp mazeretin az önce güncellediği
+// bildirim belgesini (delete+set ile) sessizce üzerine yazıyordu — mazeret
+// reddi ve varsa yedek terfisi kayboluyordu (bkz. code-review, dördüncü
+// denetim turu). Bu parmak izi haftaPlanlari.sonGuncelleme kontrolüne EK
+// olarak bildirimler koleksiyonunun da T1-T2 arasında değişmediğini
+// doğrular.
+function bildirimlerParmakIzi(docs: BildirimQueryDoc[]): string {
+  return docs
+    .map((d) => `${d.id}:${(d.data().sonGuncelleme as Timestamp | undefined)?.toMillis() ?? 'null'}`)
+    .sort()
+    .join('|');
+}
+
 function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
  return docs.reduce((acc, bildirimDoc) => {
  const data = bildirimDoc.data();
@@ -198,6 +220,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
 
  const eskiBildirimler = await getDocs(query(collection(db, 'bildirimler'), where('haftaId', '==', haftaId)));
  const bildirimlerBySlot = bildirimleriSlotlaraAyir(eskiBildirimler.docs);
+ const okunanBildirimlerParmakIzi = bildirimlerParmakIzi(eskiBildirimler.docs);
 
  // Korunan (zaten onaylanmış/reddedilmiş/görev-çağrılı) slotlar için taze
  // hesaplama atlanır — mevcut atama aynen korunur. Diğer tüm slotlar,
@@ -229,11 +252,17 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
 
  // Commit'ten hemen önce eşzamanlılık kontrolü yapılıp SONRA batch kurulur —
- // aradaki pencere olabildiğince küçük tutulur.
+ // aradaki pencere olabildiğince küçük tutulur. haftaPlanlari VE
+ // bildirimler'in ikisi de yeniden kontrol edilir (bkz. bildirimlerParmakIzi
+ // yorumu — yalnızca haftaPlanlari yeterli değildi).
  const tazeKontrolSnap = await getDoc(planRef);
  const tazeSonGuncelleme = tazeKontrolSnap.exists() ? tazeKontrolSnap.data().sonGuncelleme?.toMillis() ?? null : null;
  if (tazeSonGuncelleme !== okunanSonGuncelleme) {
  throw new PlanEszamanlilikCakismasi('Plan bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
+ }
+ const tazeBildirimlerSnap = await getDocs(query(collection(db, 'bildirimler'), where('haftaId', '==', haftaId)));
+ if (bildirimlerParmakIzi(tazeBildirimlerSnap.docs) !== okunanBildirimlerParmakIzi) {
+ throw new PlanEszamanlilikCakismasi('Bu hafta için bildirimler bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
  }
 
  const batch = writeBatch(db);

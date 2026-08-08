@@ -6,7 +6,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { isFirebaseSdkError } from '../lib/firestore-errors';
-import { unregisterFcmToken } from '../hooks/useFcmToken';
+import { performLogout } from '../hooks/useFcmToken';
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { SplashLoader } from './SplashLoader';
@@ -82,11 +82,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
  const logout = async () => {
  try {
- // Push aboneliğini ve Firestore'daki bu cihaza ait fcmTokens girdisini
- // signOut'tan ÖNCE temizle — kendi profilini güncelleme izni yalnızca
- // oturum açıkken var (bkz. unregisterFcmToken yorumu, mimari denetim).
- await unregisterFcmToken(auth.currentUser?.uid);
- await auth.signOut();
+ await performLogout();
  window.location.reload(); // Hard reset on logout
  } catch (err) {
  }

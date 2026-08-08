@@ -1,4 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { isFriday } from '../src/lib/dateUtils.ts';
 
 type Role = 'muezzin' | 'admin' | 'gozlemci' | string;
 type MuezzinDoc = { displayName?: string; role?: Role; aktif?: boolean };
@@ -131,6 +132,17 @@ async function main() {
         }
       });
 
+      // scripts/haftalikPlanOlustur.ts ve src/services/planServisi.ts'in
+      // her bildirim oluşturma yolu cumaMi'yi hesaplayıp yazıyor —
+      // burada eksikti. firestore.rules'taki cumaMiIsaretli() eksik alanda
+      // "Cuma değil" sayarak fail-open olduğundan, bu onarım scripti bir
+      // Cuma gününün bildirimlerini dokunursa (ör. arşivlenmiş bir
+      // müezzinin bayat atamasını düzeltmek için) o Cuma'nın sunucu
+      // tarafı mazeret/vekalet kısıtlaması sessizce devre dışı kalıyordu
+      // (bkz. code-review, dördüncü denetim turu).
+      const [cY, cM, cD] = tarih.split('-').map(Number);
+      const cumaMi = isFriday(new Date(cY, cM - 1, cD));
+
       for (const vakit of VAKITLER) {
         const base = {
           haftaId: planDoc.id,
@@ -139,6 +151,7 @@ async function main() {
           durum: 'bekliyor',
           pendingAck: true,
           retSebebi: null,
+          cumaMi,
           olusturmaTarihi: Timestamp.now(),
           sonGuncelleme: Timestamp.now(),
         };

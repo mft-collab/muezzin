@@ -128,6 +128,24 @@ export async function unregisterFcmToken(uid: string | undefined): Promise<void>
   }
 }
 
+/**
+ * Uygulamadaki HER "Oturumu Kapat" düğmesinin çağırması gereken tek
+ * çıkış yolu — `unregisterFcmToken` + `auth.signOut()` sırasını garanti eder.
+ *
+ * Bu tek fonksiyon olmadan üç ayrı ekran (AuthGuard.tsx, MuezzinAyarlari.tsx,
+ * admin/AdminPanel.tsx) kendi `auth.signOut()` çağrısını doğrudan yapıyordu;
+ * FCM token temizliği yalnızca AuthGuard'a eklenmişti (bkz. yukarıdaki
+ * unregisterFcmToken yorumu) — normal kullanıcıların günlük akışta asıl
+ * kullandığı MuezzinAyarlari.tsx'in çıkış düğmesi ve admin panelinin çıkış
+ * düğmesi bu düzeltmeyi hiç görmüyordu (bkz. code-review, dördüncü denetim
+ * turu). Yeni bir çıkış noktası eklenirse aynı sınıf regresyonu tekrarlamamak
+ * için doğrudan `auth.signOut()` yerine bu fonksiyon çağrılmalı.
+ */
+export async function performLogout(): Promise<void> {
+  await unregisterFcmToken(auth.currentUser?.uid);
+  await auth.signOut();
+}
+
 export function useFcmToken() {
  const [token, setToken] = useState<string | null>(null);
  const [notificationPermissionStatus, setNotificationPermissionStatus] =

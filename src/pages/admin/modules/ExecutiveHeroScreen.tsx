@@ -10,7 +10,7 @@ import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate, getTurkeyDateString } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, izinAraligiCumaIceriyorMu } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { type ActiveModule } from '../config/navConfig';
 
@@ -93,20 +93,30 @@ export default function ExecutiveHeroScreen({
       : 'Yayında'
     : 'Plan yok';
 
- const combinedOperations = [
+ const combinedOperations: {
+ id: string; title: string; status: string; time: string; type: 'alarm' | 'izin';
+ // Cuma-kapsayan yıllık/haftalık izin onayını engelleyebilmek için
+ // yalnızca 'izin' tipindeki kayıtlarda dolu (bkz. onay düğmesi onClick'i)
+ // — IzinYonetimi.tsx'in dedike ekranı bu kontrolü zaten yapıyordu, bu
+ // hızlı-onay yolu yapmıyordu (bkz. code-review, dördüncü denetim turu).
+ tip?: string; baslangic?: string; bitis?: string;
+ }[] = [
  ...alarmlar.slice(0, 5).map(a => ({
  id: a.id,
  title: a.mesaj,
  status: a.cozuldu ? 'completed' : 'active',
  time: a.olusturmaTarihi ? formatDistanceToNow(a.olusturmaTarihi.toDate(), { addSuffix: true, locale: tr }) : 'Az önce',
- type: 'alarm'
+ type: 'alarm' as const
  })),
  ...izinler.filter(i => i.durum === 'onay_bekliyor').slice(0, 5).map(i => ({
  id: i.id,
  title: `${muezzinMap[i.uid]?.displayName || 'Bilinmiyor'} - İzin Talebi`,
  status: 'pending',
  time: i.olusturmaTarihi ? formatDistanceToNow(i.olusturmaTarihi.toDate(), { addSuffix: true, locale: tr }) : 'Az önce',
- type: 'izin'
+ type: 'izin' as const,
+ tip: i.tip,
+ baslangic: i.baslangic,
+ bitis: i.bitis
  }))
  ].sort((a, b) => {
  // Nöbet uyarıları izin taleplerinden önce görünür.
@@ -432,7 +442,14 @@ export default function ExecutiveHeroScreen({
  whileHover={{ y: -2, backgroundColor: 'rgba(16,185,129,0.15)' }}
  whileTap={{ scale: 0.98 }}
  disabled={processingId === record.id}
- onClick={(e) => { e.stopPropagation(); setDecisionConfirm({ open: true, id: record.id, durum: 'onaylandi', title: record.title }); }}
+ onClick={(e) => {
+ e.stopPropagation();
+ if (record.tip && record.tip !== 'mazeret' && record.baslangic && record.bitis && izinAraligiCumaIceriyorMu(record.baslangic, record.bitis)) {
+ showNotification('Onaylanamaz', 'Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri İzin Yönetimi ekranından işlenebilir.', 'warning');
+ return;
+ }
+ setDecisionConfirm({ open: true, id: record.id, durum: 'onaylandi', title: record.title });
+ }}
  className="px-6 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-2xs uppercase tracking-wide font-bold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-wait"
  >
  <Check size={14} strokeWidth={3} /> ONAYLA

@@ -25,7 +25,14 @@ export async function okudumOnayla(bildirimId: string): Promise<void> {
  const buAyYYYYMM = bildirim.tarih.slice(0, 7);
  const buAyDocId = `${ilceId}_${buAyYYYYMM}`;
  const vakitDoc = await transaction.get(doc(db, 'vakitler', buAyDocId));
- const vakitSaati = vakitDoc.data()?.gunler[bildirim.tarih][bildirim.vakit];
+ // Yalnızca ilk `?.` ile zincirlenmişti — belge varsa ama `gunler` alanı
+ // eksikse ya da `gunler`de bu tarih anahtarı yoksa (offline-first PWA
+ // soğuk başlangıcı, admin henüz önbellek senkronu yapmadıysa) bu satır
+ // aşağıdaki temiz 'Vakit bilgisi bulunamadı' hatası yerine yakalanmamış
+ // ham bir TypeError fırlatıyordu — kullanıcı toast'ta anlaşılmaz teknik
+ // bir mesaj görüyordu. mazeretServisi.ts'teki aynı okuma zaten tam
+ // zincirleme kullanıyor (bkz. code-review, dördüncü denetim turu).
+ const vakitSaati = vakitDoc.data()?.gunler?.[bildirim.tarih]?.[bildirim.vakit];
  
  if (!vakitSaati) throw new Error('Vakit bilgisi bulunamadı');
 
