@@ -82,6 +82,19 @@ async function seed(): Promise<string> {
   const todayStr = turkeyTodayStr();
   const haftaId = `W${todayStr}`;
 
+  // mazeret_detaylari (bkz. firestore.rules) doc ID'leri bildirimler ile
+  // AYNI (deterministik: haftaId_tarih_vakit_tip) ve kural gereği sabit/
+  // değişmez (`allow update, delete: if false`). Bu ID'ler bugünün tarihine
+  // bağlı olduğundan, aynı CI koşusunda birden fazla Playwright projesi
+  // (chromium, mobile-chrome) aynı emülatöre karşı art arda seed çalıştırınca
+  // önceki projenin başarılı mazeret denemesinden kalan kayıt burada hâlâ
+  // duruyor olabilir — bildirimler'i "bekliyor"a resetlemek yeterli değil,
+  // sonraki mazeretBildir() çağrısındaki `set()` bu eski kaydı bir UPDATE
+  // sayılıp kural tarafından reddediliyordu ("Bu işlem için yetkiniz yok.").
+  // Admin SDK kuralları atladığından burada temiz bir silme her zaman güvenli.
+  await db.collection('mazeret_detaylari').doc(`${haftaId}_${todayStr}_yatsi_asil`).delete();
+  await db.collection('mazeret_detaylari').doc(`${haftaId}_${todayStr}_yatsi_yedek`).delete();
+
   await db.collection('bildirimler').doc(`${haftaId}_${todayStr}_yatsi_asil`).set({
     haftaId,
     tarih: todayStr,
