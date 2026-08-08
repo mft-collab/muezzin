@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { MAZERET_SON_BASVURU_DAKIKA } from '../../src/lib/mazeretKurallari';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,48 @@ function turkeyIsFridayNow(): boolean {
   return new Date(turkeyMs).getUTCDay() === 5; // 0=Pazar ... 5=Cuma
 }
 
+/**
+ * Aynı sınıftan ikinci bir zaman-bağımlı kırılganlık: seed her zaman bugünün
+ * YATSI görevini hedefliyor, mazeretKurallari.ts'teki kural ise sabah dışı
+ * vakitlerde pencereyi ezana MAZERET_SON_BASVURU_DAKIKA (60dk) kala kapatıyor.
+ * Yani günün son ~birkaç saatinde (bugünün gerçek Yatsı ezanına 1 saatten az
+ * kala/sonrasında) bu akış, kodda hiçbir hata olmadan, kuralın doğru
+ * çalışması yüzünden "Mazeretiniz kaydedildi" adımında başarısız oluyordu
+ * (bkz. 2026-08-08 CI koşusu — dock CSS değişikliğiyle hiç ilgisi olmayan bu
+ * test, sırf Yatsı'ya 1 saatten az kaldığı için kırmızı verdi). Uygulamanın
+ * kendisinin kullandığı aynı Diyanet API'sinden (varsayılan ilçe: Ceyhan/9148,
+ * bkz. useSystemSettingsStore) bugünün gerçek Yatsı saatini çekip AYNI kuralı
+ * burada da uyguluyoruz — sabit bir saat aralığı tahmin etmek yerine.
+ */
+async function yatsiPenceresiKapaliMi(): Promise<boolean> {
+  try {
+    const res = await fetch('https://ezanvakti.emushaf.net/vakitler/9148');
+    if (!res.ok) return false; // API'ye erişilemiyorsa mevcut (kısıtlamasız) davranışa düş
+    const data: unknown = await res.json();
+    if (!Array.isArray(data)) return false;
+
+    const turkeyMs = Date.now() + 3 * 60 * 60 * 1000;
+    const turkey = new Date(turkeyMs);
+    const bugunGun = data.find((gun) => {
+      const raw = (gun as { MiladiTarihKisa?: string })?.MiladiTarihKisa;
+      if (typeof raw !== 'string' || !raw.includes('.')) return false;
+      const [d, m, y] = raw.split('.').map(Number);
+      return d === turkey.getUTCDate() && m === turkey.getUTCMonth() + 1 && y === turkey.getUTCFullYear();
+    }) as { Yatsi?: string } | undefined;
+
+    const yatsiStr = bugunGun?.Yatsi;
+    if (!yatsiStr) return false;
+    const [h, m] = yatsiStr.split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return false;
+
+    const yatsiDakika = h * 60 + m;
+    const suAnDakika = turkey.getUTCHours() * 60 + turkey.getUTCMinutes();
+    return suAnDakika >= yatsiDakika - MAZERET_SON_BASVURU_DAKIKA;
+  } catch {
+    return false; // Ağ hatası vb. — testi olduğu gibi (eski davranış) çalıştır
+  }
+}
+
 test.describe('Mazeret Akışı E2E', () => {
   test.skip(turkeyIsFridayNow(), 'Mazeret bildirimi Cuma günleri kural gereği her zaman kapalı — seed bugün için görev oluşturduğundan bu akış Cuma günü test edilemez.');
 
@@ -40,6 +83,11 @@ test.describe('Mazeret Akışı E2E', () => {
   });
 
   test('Muezzin Asil can reject (mazeret) a pending assignment', async ({ page }) => {
+    test.skip(
+      await yatsiPenceresiKapaliMi(),
+      'Bugünün gerçek Yatsı ezanına 1 saatten az kaldı veya geçti — mazeretKurallari.ts kuralı gereği pencere kapalı, seed her zaman bugünün Yatsı görevini hedeflediğinden bu aralıkta test edilemez.'
+    );
+
     await page.goto('/');
 
     // Gerçek bir Firebase Auth oturumu aç (emülatöre karşı) — window.__testSignIn
