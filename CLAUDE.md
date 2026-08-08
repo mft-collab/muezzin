@@ -1,9 +1,5 @@
 # CLAUDE.md
 
-Bu dosya, bu repoda çalışan bir AI ajanının (veya yeni bir geliştiricinin) ilk 10
-dakikada bilmesi gereken şeyleri özetler: proje ne, tasarım sistemi nasıl işliyor,
-hangi kalıplar kasıtlı, hangi komutlar neyi doğruluyor.
-
 ## Proje
 
 Bir cami/müezzin ekibi için nöbet çizelgeleme PWA'sı. Vite + React 19 + TypeScript +
@@ -31,12 +27,11 @@ modal/login/boş-durum kartları) tek bir standarda oturur: **12px**. Bu,
 --radius-card: 12px;
 ```
 
-Bu otomatik olarak `rounded-card` (ve `!rounded-card` important varyantı) utility
-sınıflarını üretir. **Yeni bir "ana kart" eklerken `rounded-[12px]` yazma —
-`rounded-card` kullan.** Değer değişirse tek satır (`--radius-card`) güncellenir,
-44+ dosyada arama-değiştirme gerekmez. Küçük katman öğeleri (butonlar, ikon
-daireleri, rozetler, toast'lar, nav chrome, tablo hücreleri, iç içe alt kartlar)
-bu standarda dahil değildir — onlar kendi ölçeğinde kalır (`rounded-[14px]`,
+**Yeni bir "ana kart" eklerken `rounded-[12px]` yazma — `rounded-card` kullan.**
+Değer değişirse tek satır (`--radius-card`) güncellenir, 44+ dosyada
+arama-değiştirme gerekmez. Küçük katman öğeleri (butonlar, ikon daireleri,
+rozetler, toast'lar, nav chrome, tablo hücreleri, iç içe alt kartlar) bu
+standarda dahil değildir — onlar kendi ölçeğinde kalır (`rounded-[14px]`,
 `rounded-[24px]` vb. hâlâ meşru).
 
 ### `.spatial-glass` ailesi
@@ -65,8 +60,7 @@ böylece "dinamik aura henüz hesaplanmadıysa" bile sabit bir renge düşer.
 
 `--text-2xs` (`0.6875rem`), standart Tailwind ölçeğinde olmayan ama uygulama
 genelinde (etiketler, `authority-title` sınıfı) 400+ kez kullanılan bir boyut
-olduğu için `@theme`'e token olarak eklendi — `rounded-card` ile aynı gerekçe:
-tekrar eden bir arbitrary value, tek bir isimlendirilmiş token'a taşındı.
+olduğu için `@theme`'e token olarak eklendi — `rounded-card` ile aynı gerekçe.
 
 ## Mimari kalıplar
 
@@ -137,14 +131,14 @@ olan yerlerde `getDocs`/`getDoc` kullanılır (bkz. `useDuyurular.ts`). Bir hook
 ## Komutlar
 
 ```bash
-npm run dev              # vite --port=3000 (Playwright bu portu bekliyor, değiştirme)
-npm run typecheck        # tsc --noEmit
-npm run lint              # eslint .
-npm run build             # production build
-npm run test:unit         # vitest (tests/unit/**/*.test.{ts,tsx})
-npm run test:e2e          # playwright (Firebase emülatörü gerektirir)
-npm run test:rules        # firestore.rules testleri (emülatör)
-npm run test:integration # admin-SDK uzlaştırma cron'ları (tests/integration, emülatör)
+npm run dev               # vite --port=3000 (Playwright bu portu bekliyor, değiştirme)
+npm run typecheck         # tsc --noEmit
+npm run lint               # eslint .
+npm run build              # production build
+npm run test:unit          # vitest (tests/unit/**/*.test.{ts,tsx})
+npm run test:e2e           # playwright (Firebase emülatörü gerektirir)
+npm run test:rules         # firestore.rules testleri (emülatör)
+npm run test:integration   # admin-SDK uzlaştırma cron'ları (tests/integration, emülatör)
 npm run test:all           # typecheck + typecheck:scripts + lint + smoke + unit + rules + integration + sw-config
 ```
 
