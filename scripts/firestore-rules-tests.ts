@@ -677,6 +677,40 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Altinci denetim turu, form dogrulama bulgulari: isValidIzin'in `sebep`
+    // alani hasOnly'de listeleniyordu ama hic tip/uzunluk dogrulamasi
+    // yapmiyordu — dosyadaki HER diger serbest metin alaniyla (baslik,
+    // icerik, retSebebi, yazar) tutarsizdi.
+    name: 'izin sebebi 1000 karakteri asarsa veya string degilse reddedilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      const base = {
+        uid: 'muezzin1',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onay_bekliyor',
+        olusturmaTarihi: Timestamp.now()
+      };
+
+      await assertFails(setDoc(doc(db, 'izinler/sebepCokUzun'), {
+        ...base,
+        sebep: 'a'.repeat(1001)
+      }));
+      await assertFails(setDoc(doc(db, 'izinler/sebepStringDegil'), {
+        ...base,
+        sebep: 12345
+      }));
+      // Tam sinirda (1000 karakter) ve sebep hic olmadan da gecmeli
+      // (regresyon kontrolu).
+      await assertSucceeds(setDoc(doc(db, 'izinler/sebepTamSinirda'), {
+        ...base,
+        sebep: 'a'.repeat(1000)
+      }));
+      await assertSucceeds(setDoc(doc(db, 'izinler/sebepsiz'), base));
+    }
+  },
+  {
     // Ucuncu denetim turu bulgusu: veriOnarimServisi.ts'in "Veri Sagligi"
     // onarim akisi ters-tarihli bir izin kaydini admin olarak duzeltmek icin
     // SADECE baslangic/bitis yaziyor (durum/redSebebi'ye dokunmuyor) — bu

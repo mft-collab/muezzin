@@ -27,6 +27,8 @@ export const DuyuruYonetimi: React.FC = () => {
  });
  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
  const [deletingId, setDeletingId] = useState<string | null>(null);
+ const [errorStatus, setErrorStatus] = useState<string | null>(null);
+ const [isSubmitting, setIsSubmitting] = useState(false);
 
  // Hazır duyuru şablonu önerici — anahtar kelime eşleştirmesiyle çalışan
  // basit bir şablon seçicidir, yapay zeka içermez.
@@ -98,12 +100,16 @@ export const DuyuruYonetimi: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
+      setErrorStatus(null);
       await duyuruYayinla(formData);
       setModalOpen(false);
       setFormData({ baslik: '', icerik: '', tip: 'duyuru' });
     } catch (error) {
-      console.error('Duyuru eklenemedi:', error);
+      setErrorStatus(error instanceof Error ? error.message : 'Duyuru yayınlanırken bir hata oluştu.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -142,10 +148,10 @@ export const DuyuruYonetimi: React.FC = () => {
  <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">DİZGE GENELİ BİLGİLENDİRME VE İLETİŞİM</p>
  </div>
  
- <motion.button 
+ <motion.button
  whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
  whileTap={{ scale: 0.98 }}
- onClick={() => setModalOpen(true)}
+ onClick={() => { setErrorStatus(null); setModalOpen(true); }}
  className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
  >
  <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
@@ -239,12 +245,13 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="space-y-3 group">
  <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
  <div className="relative">
- <input 
- required 
+ <input
+ required
+ maxLength={200}
  placeholder="Duyuru başlığını giriniz..."
- value={formData.baslik} 
- onChange={e => setFormData({...formData, baslik: e.target.value})} 
- className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 placeholder:text-[var(--text-secondary)]" 
+ value={formData.baslik}
+ onChange={e => setFormData({...formData, baslik: e.target.value})}
+ className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 placeholder:text-[var(--text-secondary)]"
  />
  </div>
  </div>
@@ -252,13 +259,14 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="space-y-3 group">
  <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
  <div className="relative">
- <textarea 
- required 
- rows={5} 
+ <textarea
+ required
+ rows={5}
+ maxLength={5000}
  placeholder="İçerik metnini buraya yazınız..."
- value={formData.icerik} 
- onChange={e => setFormData({...formData, icerik: e.target.value})} 
- className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 resize-none placeholder:text-[var(--text-secondary)]" 
+ value={formData.icerik}
+ onChange={e => setFormData({...formData, icerik: e.target.value})}
+ className="w-full spatial-glass bg-[var(--text-primary)]/[0.01] p-5 rounded-2xl text-base font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none focus:bg-[var(--text-primary)]/[0.04] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:shadow-[0_0_35px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)] transition-all duration-700 resize-none placeholder:text-[var(--text-secondary)]"
  />
  </div>
  </div>
@@ -395,13 +403,14 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
 
  <div className="pt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
- <motion.button 
+ <motion.button
  whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)' }}
  whileTap={{ scale: 0.98 }}
- type="submit" 
- className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center"
+ type="submit"
+ disabled={isSubmitting}
+ className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center disabled:opacity-50"
  >
- DUYURUYU ŞİMDİ YAYINLA
+ {isSubmitting ? 'YAYINLANIYOR...' : 'DUYURUYU ŞİMDİ YAYINLA'}
  </motion.button>
  <motion.button 
  whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
@@ -424,6 +433,20 @@ export const DuyuruYonetimi: React.FC = () => {
  isDanger={true}
  confirmText="EVET, KALICI OLARAK SİL"
  />
+
+ <AnimatePresence>
+ {errorStatus && (
+ <motion.div
+ initial={{ opacity: 0, y: 10 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0 }}
+ className="fixed bottom-6 right-6 z-50 spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
+ >
+ <AlertCircle size={20} />
+ {errorStatus}
+ </motion.div>
+ )}
+ </AnimatePresence>
  </div>
  );
 };
