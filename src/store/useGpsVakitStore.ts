@@ -10,14 +10,16 @@ interface GpsVakitState {
   gpsCoords: { latitude: number; longitude: number } | null;
   gpsVakitler: GunlukVakit | null;
   gpsKonumAdi: string | null;
-  /** GunlukVakit.tarih'ten (sorgulanan konumun KENDİ yerel takvim günü —
-   *  bkz. gpsVakitServisi.ts mantık denetimi) KASITLI olarak ayrı tutulur:
-   *  bu alan yalnızca "bugün zaten taze veri çektik mi" önbellek kilididir
-   *  ve Türkiye'nin takvim gününe göre karşılaştırılır (aşağıdaki
-   *  refreshGpsVakitler). Konumun yerel günü Türkiye'den farklıysa (uzak
-   *  bir saat diliminden GPS sorgusu), ikisini karıştırmak önbellek
-   *  kilidini hiç eşleşmeyip her çağrıda gereksiz API isteği atmasına
-   *  yol açardı. */
+  /** "Bugün zaten taze veri çektik mi" önbellek kilidi — Türkiye'nin
+   *  takvim gününe göre karşılaştırılır (aşağıdaki refreshGpsVakitler).
+   *  GunlukVakit.tarih (konum bazlı vakitlerin `tarih` alanı) de artık
+   *  HER ZAMAN Türkiye tarihini taşıyor (bkz. gpsVakitServisi.ts —
+   *  konumun kendi yerel günü DEĞİL; bu oturumda önceki bir "yerel gün"
+   *  denemesi useEzanVakitleri.ts'in tazelik kontrolünü bozduğu için geri
+   *  alınmıştı), yani ikisi artık fiilen aynı kaynağı yansıtıyor —
+   *  yine de her biri kendi `getTurkeyDateString()` çağrısıyla bağımsız
+   *  hesaplanır (birbirine türetilmiş değildir), bu yüzden ayrı alanlar
+   *  olarak tutulmaya devam ediyor. */
   lastFetchDate: string | null;
   enableGps: () => Promise<void>;
   disableGps: () => void;
@@ -59,8 +61,8 @@ export const useGpsVakitStore = create<GpsVakitState>()(
             gpsCoords: { latitude, longitude },
             gpsVakitler: result.vakitler,
             gpsKonumAdi: result.konumAdi,
-            // Türkiye takvim günü — result.date (konumun kendi yerel günü)
-            // DEĞİL, bkz. yukarıdaki alan yorumu.
+            // result.date'ten TÜRETİLMEDEN bağımsızca hesaplanır — bkz.
+            // yukarıdaki lastFetchDate alan yorumu.
             lastFetchDate: getTurkeyDateString()
           });
         } catch (err) {

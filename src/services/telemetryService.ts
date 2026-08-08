@@ -248,9 +248,16 @@ class TelemetryService {
         this.logError(error, 'Global Unhandled Promise Rejection');
       });
 
-      // Çevrimiçi/çevrimdışı durum değişikliklerini breadcrumb olarak kaydet
+      // Çevrimiçi/çevrimdışı durum değişikliklerini breadcrumb olarak kaydet.
+      // Önceden 'online' yalnızca breadcrumb kaydediyor, flushEvents()'i hiç
+      // tetiklemiyordu — bir flush denemesi gerçek bir hatayla (yalnızca düz
+      // offline değil) başarısız olup kullanıcı sayfada gezinmiyorsa (yeni
+      // logEvent tetiklenmiyorsa), kuyruk bağlantı geri geldiğinde bile
+      // kendiliğinden boşalmıyordu (bkz. flushEvents'in catch bloğu — beşinci
+      // denetim turu).
       window.addEventListener('online', () => {
         pushBreadcrumb({ action: 'Ağ Bağlantısı Sağlandı', category: 'network' });
+        this.flushEvents();
       });
       window.addEventListener('offline', () => {
         pushBreadcrumb({ action: 'Ağ Bağlantısı Kesildi', category: 'network' });
@@ -363,6 +370,15 @@ class TelemetryService {
       console.warn('Telemetry toplu log hatası:', err);
       // Hata durumunda olayları geri alıp kaybolmasını önleyelim
       this.eventQueue = [...eventsToFlush, ...this.eventQueue].slice(0, 50);
+      // Önceden burada yeni bir flushTimeout kurulmuyordu — bir sonraki
+      // otomatik deneme yalnızca YENİ bir logEvent() çağrısının (satır
+      // ~391) zamanlayıcıyı yeniden kurmasına bağlıydı. Sayfada gezinme/
+      // tıklama olmayan bir oturumda kuyruk süresiz askıda kalabiliyordu
+      // (bkz. beşinci denetim turu). Kuyruk yeniden dolu kaldığından
+      // burada da bir zamanlayıcı kurulur.
+      if (this.eventQueue.length > 0 && !this.flushTimeout) {
+        this.flushTimeout = setTimeout(() => this.flushEvents(), this.FLUSH_INTERVAL_MS);
+      }
     }
   }
 
@@ -405,10 +421,16 @@ class TelemetryService {
       const [stateSnapshot] = await Promise.all([captureStateSnapshot()]);
       const crumbs = getBreadcrumbs();
 
+      // firestore.rules isValidErrorLog errorMessage<=2000, errorStack/
+      // componentStack<=8000 karakter şartı koyuyor — istemci tarafında
+      // kırpma yapılmıyordu, bu sınırları aşan bir payload TAMAMEN
+      // reddediliyor ve dıştaki catch bloğu bunu yalnızca console.warn ile
+      // yutuyordu. En ciddi çökmelerin (en uzun stack'lerin) tam da
+      // loglanamayan tür olması riski vardı (bkz. beşinci denetim turu).
       const payload: EnrichedErrorLog = {
-        errorMessage: error.message,
-        errorStack: error.stack || '',
-        componentStack: componentStack || '',
+        errorMessage: error.message.slice(0, 2000),
+        errorStack: (error.stack || '').slice(0, 8000),
+        componentStack: (componentStack || '').slice(0, 8000),
         userId: auth.currentUser.uid,
         device: this.getDeviceMetadata(),
         breadcrumbs: crumbs,
