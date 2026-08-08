@@ -11,8 +11,8 @@ import {
   runTransaction,
   serverTimestamp,
   Timestamp,
-  updateDoc,
-  where
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Bildirim, Vakit } from '../types';
@@ -154,13 +154,26 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
       // Doğrudan kendi belgesini reddedildi yapar; admin uyarısı (bu vakit
       // artık yedeksiz kaldı) scripts/mazeretDevirleriniIsle.ts tarafından
       // devirSonucu:'alarm_bekliyor' üzerinden işlenir.
-      await updateDoc(bildirimRef, {
+      //
+      // retSebebi artık `bildirimler` belgesine YAZILMAZ — ayrı,
+      // yalnızca kendisi+admin'in okuyabildiği mazeret_detaylari
+      // koleksiyonuna gider (bkz. firestore.rules isSelfBildirimUpdate
+      // yorumu, mimari denetim — altıncı tur). İki yazım AYNI batch'te
+      // atomik olmalı — firestore.rules bu belgenin GERÇEKTEN aynı
+      // commit'te yazıldığını getAfter() ile doğruluyor.
+      const batch = writeBatch(db);
+      batch.update(bildirimRef, {
         durum: 'reddedildi',
-        retSebebi,
         pendingAck: false,
         devirSonucu: 'alarm_bekliyor',
         sonGuncelleme: serverTimestamp()
       });
+      batch.set(doc(db, 'mazeret_detaylari', bildirimId), {
+        uid: currentUid,
+        retSebebi,
+        olusturmaTarihi: serverTimestamp()
+      });
+      await batch.commit();
       return;
     }
 
@@ -190,10 +203,19 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
 
       transaction.update(bildirimRef, {
         durum: 'reddedildi',
-        retSebebi,
         pendingAck: false,
         devirSonucu: yedekUygun ? 'yedek_atandi' : 'alarm_bekliyor',
         sonGuncelleme: serverTimestamp()
+      });
+
+      // retSebebi artık `bildirimler` belgesine YAZILMAZ — ayrı,
+      // yalnızca kendisi+admin'in okuyabildiği mazeret_detaylari
+      // koleksiyonuna, AYNI transaction içinde (bkz. firestore.rules
+      // isSelfBildirimUpdate yorumu, mimari denetim — altıncı tur).
+      transaction.set(doc(db, 'mazeret_detaylari', bildirimId), {
+        uid: currentUid,
+        retSebebi,
+        olusturmaTarihi: serverTimestamp()
       });
 
       if (yedekUygun) {
