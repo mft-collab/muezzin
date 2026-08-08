@@ -67,7 +67,7 @@ const AppNavItem = memo(({ item, isActive }: { item: typeof ALL_NAV_ITEMS[0], is
         {isActive && (
           <motion.div
             layoutId="activeNavIndicator"
-            className="absolute inset-[6px] sm:inset-0 bg-[var(--text-primary)]/[0.06] rounded-2xl sm:rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] border transition-all duration-1000"
+            className="absolute inset-[6px] sm:inset-0 bg-[var(--text-primary)]/[0.06] rounded-card shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] border transition-all duration-1000"
             style={{
               borderColor: 'color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 20%, transparent)',
               boxShadow: '0 0 25px -4px color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 15%, transparent)'
@@ -307,7 +307,7 @@ export function FloatingDock() {
                     <>
                       <motion.div
                         layoutId="active-dock-tab"
-                        className="absolute inset-0 bg-[var(--surface-medium)] rounded-[22px] -z-10 border border-[var(--glass-border)]"
+                        className="absolute inset-0 bg-[var(--surface-medium)] rounded-card -z-10 border border-[var(--glass-border)]"
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                       <motion.div
