@@ -20,7 +20,8 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
-  where
+  where,
+  writeBatch
 } from 'firebase/firestore';
 
 const projectId = 'demo-muezzin-rules';
@@ -41,6 +42,35 @@ const testUser = (env: RulesTestEnvironment, uid: string, role?: string): RulesT
     role
   });
 };
+
+/**
+ * src/services/mazeretServisi.ts'in gercek davranisini taklit eder:
+ * bildirimler'deki reddi VE mazeret_detaylari'ndaki retSebebi'yi AYNI
+ * batch icinde atomik yazar (bkz. firestore.rules isSelfBildirimUpdate
+ * yorumu, mimari denetim — altinci tur). `dbInstance` cagiran testin
+ * kendi kimlikli Firestore handle'i olmali (testUser(...).firestore()).
+ */
+function mazeretRetBatch(
+  dbInstance: ReturnType<RulesTestContext['firestore']>,
+  bildirimId: string,
+  uid: string,
+  retSebebi: string,
+  ekAlanlar: Record<string, unknown>
+) {
+  const batch = writeBatch(dbInstance);
+  batch.update(doc(dbInstance, 'bildirimler', bildirimId), {
+    durum: 'reddedildi',
+    pendingAck: false,
+    sonGuncelleme: Timestamp.now(),
+    ...ekAlanlar
+  });
+  batch.set(doc(dbInstance, 'mazeret_detaylari', bildirimId), {
+    uid,
+    retSebebi,
+    olusturmaTarihi: Timestamp.now()
+  });
+  return batch.commit();
+}
 
 async function seedBaseData(env: RulesTestEnvironment) {
   await env.withSecurityRulesDisabled(async (context) => {
@@ -496,13 +526,10 @@ const tests: TestCase[] = [
     name: 'muezzin kendi asil gorevine mazeret yazabilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertSucceeds(updateDoc(doc(db, 'bildirimler/ownPendingAsil'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Hastalik',
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      // retSebebi artik bildirimler'e degil, ayni batch'teki
+      // mazeret_detaylari'na yaziliyor (bkz. mazeretRetBatch, mimari
+      // denetim — altinci tur).
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingAsil', 'muezzin1', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
@@ -520,26 +547,16 @@ const tests: TestCase[] = [
       // otherPendingAsil, ownPendingAsil'den bagimsiz ikinci bir cumaMi'siz
       // belge — sahibi muezzin2.
       const db = testUser(env, 'muezzin2').firestore();
-      await assertSucceeds(updateDoc(doc(db, 'bildirimler/otherPendingAsil'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Hastalik',
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertSucceeds(mazeretRetBatch(db, 'otherPendingAsil', 'muezzin2', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
     name: 'muezzin cuma gorevine mazeret bildiremez',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertFails(updateDoc(doc(db, 'bildirimler/fridayPendingAsil'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Hastalik',
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      // Eslesen mazeret_detaylari yazimi DAHIL edildi ki test yalnizca
+      // Cuma kisitlamasini izole etsin (baska bir nedenle degil).
+      await assertFails(mazeretRetBatch(db, 'fridayPendingAsil', 'muezzin1', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
@@ -562,38 +579,21 @@ const tests: TestCase[] = [
       // devirSonucu eksik (asil dalindaki gibi eski/eksik bir istemci yuku
       // taklit ediyor) — bkz. asagidaki "devirSonucu ile" testi, dogru
       // sekilde bicimlendirilmis bir yedek mazereti bunun aksine basarili olur.
-      await assertFails(updateDoc(doc(db, 'bildirimler/ownPendingYedek'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Uygun degilim',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertFails(mazeretRetBatch(db, 'ownPendingYedek', 'muezzin1', 'Uygun degilim', {}));
     }
   },
   {
     name: 'yedek gorevli kendi mazeretini (devirSonucu ile) bildirebilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertSucceeds(updateDoc(doc(db, 'bildirimler/ownPendingYedek'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Uygun degilim',
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingYedek', 'muezzin1', 'Uygun degilim', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
     name: 'yedek gorevli Cuma gorevi icin mazeret bildiremez',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertFails(updateDoc(doc(db, 'bildirimler/fridayPendingYedek'), {
-        durum: 'reddedildi',
-        pendingAck: false,
-        retSebebi: 'Uygun degilim',
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertFails(mazeretRetBatch(db, 'fridayPendingYedek', 'muezzin1', 'Uygun degilim', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
@@ -1288,10 +1288,16 @@ const tests: TestCase[] = [
         await transaction.get(yedekRef);
         transaction.update(asilRef, {
           durum: 'reddedildi',
-          retSebebi: 'Hastalik',
           pendingAck: false,
           devirSonucu: 'yedek_atandi',
           sonGuncelleme: Timestamp.now()
+        });
+        // retSebebi artik bildirimler'e degil, ayni transaction'daki
+        // mazeret_detaylari'na yaziliyor (bkz. mazeretRetBatch yorumu).
+        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
+          uid: 'muezzin1',
+          retSebebi: 'Hastalik',
+          olusturmaTarihi: Timestamp.now()
         });
         transaction.update(yedekRef, {
           tip: 'asil',
@@ -1307,13 +1313,7 @@ const tests: TestCase[] = [
     name: 'K2: yedegi olmayan/uygun olmayan mazeret sadece alarm_bekliyor ile reddedilebilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertSucceeds(updateDoc(doc(db, 'bildirimler/ownPendingAsil'), {
-        durum: 'reddedildi',
-        retSebebi: 'Hastalik',
-        pendingAck: false,
-        devirSonucu: 'alarm_bekliyor',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingAsil', 'muezzin1', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
@@ -1344,10 +1344,14 @@ const tests: TestCase[] = [
         await transaction.get(yedekRef);
         transaction.update(asilRef, {
           durum: 'reddedildi',
-          retSebebi: 'Sahte',
           pendingAck: false,
           devirSonucu: 'yedek_atandi',
           sonGuncelleme: Timestamp.now()
+        });
+        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
+          uid: 'muezzin2',
+          retSebebi: 'Sahte',
+          olusturmaTarihi: Timestamp.now()
         });
         transaction.update(yedekRef, {
           tip: 'asil',
@@ -1363,18 +1367,13 @@ const tests: TestCase[] = [
     // Ucuncu denetim turu bulgusu: 'yedek_atandi' TEK basina (yedegin
     // gercekten terfi ettigine dair eslesen bir yazim olmadan) kabul
     // ediliyordu. Yedek belge dokunulmamis (hala tip:'yedek') halde birakilip
-    // yalniz asil belge guncellenirse artik reddedilmeli.
+    // yalniz asil belge guncellenirse artik reddedilmeli. Eslesen
+    // mazeret_detaylari yazimi DAHIL edildi ki test yalnizca yedek terfisi
+    // eksikligini izole etsin.
     name: 'K2 guvenlik: devirSonucu=yedek_atandi, yedek GERCEKTEN terfi etmeden tek basina yazilamaz',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
-      await assertFails(updateDoc(asilRef, {
-        durum: 'reddedildi',
-        retSebebi: 'Sahte terfi denemesi',
-        pendingAck: false,
-        devirSonucu: 'yedek_atandi',
-        sonGuncelleme: Timestamp.now()
-      }));
+      await assertFails(mazeretRetBatch(db, 'W2026-06-01_2026-06-03_yatsi_asil', 'muezzin1', 'Sahte terfi denemesi', { devirSonucu: 'yedek_atandi' }));
     }
   },
   {
@@ -1394,10 +1393,14 @@ const tests: TestCase[] = [
         await transaction.get(yedekRef);
         transaction.update(asilRef, {
           durum: 'reddedildi',
-          retSebebi: 'Hastalik',
           pendingAck: false,
           devirSonucu: 'yedek_atandi',
           sonGuncelleme: Timestamp.now()
+        });
+        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
+          uid: 'muezzin1',
+          retSebebi: 'Hastalik',
+          olusturmaTarihi: Timestamp.now()
         });
         transaction.update(yedekRef, {
           tip: 'asil',
@@ -1487,13 +1490,61 @@ const tests: TestCase[] = [
     name: 'K2: devirSonucu sema disi bir deger olamaz',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
+      // Eslesen mazeret_detaylari yazimi DAHIL edildi ki test yalnizca
+      // gecersiz devirSonucu degerini izole etsin.
+      await assertFails(mazeretRetBatch(db, 'ownPendingAsil', 'muezzin1', 'Hastalik', { devirSonucu: 'gecersiz_deger' }));
+    }
+  },
+  {
+    // Altinci denetim turu bulgusu (regresyon kaniti): eslesen bir
+    // mazeret_detaylari yazimi olmadan salt bildirimler guncellemesi artik
+    // basarisiz olmali — retSebebi'nin dogrudan bildirimler'e yazilabildigi
+    // ESKI davranisin geri gelmedigini dogrular.
+    name: 'mazeret_detaylari eslesen kaydi olmadan asil mazeret reddi basarisiz olur',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
       await assertFails(updateDoc(doc(db, 'bildirimler/ownPendingAsil'), {
         durum: 'reddedildi',
-        retSebebi: 'Hastalik',
         pendingAck: false,
-        devirSonucu: 'gecersiz_deger',
+        devirSonucu: 'alarm_bekliyor',
         sonGuncelleme: Timestamp.now()
       }));
+    }
+  },
+  {
+    // Altinci denetim turu bulgusu (asil guvenlik acigi regresyon kaniti):
+    // retSebebi tasindiktan sonra ayri koleksiyon yalnizca ilgili kisi veya
+    // admin tarafindan okunabilmeli — herhangi bir baska giris yapmis
+    // kullanici OKUYAMAMALI (onceden bildirimler uzerinden herkese acikti).
+    name: 'mazeret_detaylari yalnizca ilgili kisi veya admin tarafindan okunabilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'mazeret_detaylari/ozelMazeretKaydi'), {
+          uid: 'muezzin1',
+          retSebebi: 'Cok ozel bir saglik durumu',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const digerKullanici = testUser(env, 'muezzin2').firestore();
+      await assertFails(getDoc(doc(digerKullanici, 'mazeret_detaylari/ozelMazeretKaydi')));
+
+      const sahibi = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(getDoc(doc(sahibi, 'mazeret_detaylari/ozelMazeretKaydi')));
+
+      const adminDb = testUser(env, 'admin').firestore();
+      await assertSucceeds(getDoc(doc(adminDb, 'mazeret_detaylari/ozelMazeretKaydi')));
+    }
+  },
+  {
+    name: 'mazeret_detaylari yalnizca admin tarafindan listelenebilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(getDocs(collection(db, 'mazeret_detaylari')));
+
+      const adminDb = testUser(env, 'admin').firestore();
+      await assertSucceeds(getDocs(collection(adminDb, 'mazeret_detaylari')));
     }
   },
   {

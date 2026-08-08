@@ -225,23 +225,61 @@ service cloud.firestore {
     // request.auth.uid` — başkasının belgesini güncellemeye çalışan HER
     // istek burada hiç Firestore okumadan elenir) en başta, pahalı
     // `isAssignableDutyUid()` çağrısı en sonda olmalı.
-    function isSelfBildirimUpdate() {
+    // `existing().uid == request.auth.uid` sarmalayıcı bir FONKSİYON ÇAĞRISI
+    // sınırında kontrol edilir (ayrı bir `let` değil) — bildirimler
+    // update kuralı aynı transaction içinde İKİ belgeyi (asil+yedek)
+    // güncelleyebildiğinden (bkz. mazeretBildir), yedek belgenin update'i
+    // için bu fonksiyon çağrıldığında `existing().uid != request.auth.uid`
+    // olduğundan buradaki `&&` HİÇ isSelfBildirimUpdateIcin'e girmeden
+    // kısa devre yapar — içindeki `getAfter(mazeret_detaylari/...)` ve
+    // `incoming().diff(existing())` gibi pahalı işlemler o belge için hiç
+    // çalışmaz. Bu ayrım eklenmeden önce (blanket `let` fonksiyonun en
+    // başında), aynı transaction'daki 2 bildirimler yazımı + yeni
+    // mazeret_detaylari yazımının TOPLAM ifade sayısı emülatörün 1000
+    // ifade tavanını aşıp mazeret bildirimini üretimde kırıyordu (bkz.
+    // mimari denetim — altıncı tur, E2E regresyonu).
+    function isSelfBildirimUpdate(docId) {
+      return existing().uid == request.auth.uid && isSelfBildirimUpdateIcin(docId);
+    }
+
+    function isSelfBildirimUpdateIcin(docId) {
       let changed = incoming().diff(existing()).affectedKeys();
-      // Her ikisi de opsiyonel alan (bkz. isValidBildirim) — mazeret
+      // devirSonucu opsiyonel alan (bkz. isValidBildirim) — mazeret
       // reddi/onayı dışındaki hiçbir bildirimde hiç set edilmemiş olabilir.
       // `.get(key, default)` ile okunmazlarsa alan tümüyle eksikken doğrudan
-      // `incoming().retSebebi`/`incoming().devirSonucu` erişimi rules
-      // motorunda "Property is undefined" hatası fırlatıyordu (bkz.
-      // `cumaMiIsaretli`/`isBackupPromotionFromMazeret` ile aynı kalıp).
-      let retSebebi = incoming().get('retSebebi', null);
+      // `incoming().devirSonucu` erişimi rules motorunda "Property is
+      // undefined" hatası fırlatıyordu (bkz. `cumaMiIsaretli`/
+      // `isBackupPromotionFromMazeret` ile aynı kalıp).
       let devirSonucu = incoming().get('devirSonucu', null);
+      // mazeret_detaylari koleksiyonunda BU belgeyle AYNI ID'ye (docId —
+      // match bloğunun kendi wildcard'ı, isAcceptedVekaletBildirimTransfer
+      // ile aynı desen) sahip bir kayıt, reddi bildiren tarafın özel
+      // mazeret gerekçesini (retSebebi) taşır. Önceden retSebebi doğrudan
+      // BU belgede (bildirimler) tutuluyordu; bildirimler `allow read, list:
+      // if isSignedIn()` ile (haftalık çizelgeyi TÜM ekibin görebilmesi
+      // için GEREKLİ) açık kalmak zorunda olduğundan, bu da retSebebi'yi
+      // istemeden herkese açıyordu — normal haftalık çizelge sorgusunda
+      // bile pasif olarak sızıyordu, ve admin-only "Mazeret Geçmişi"
+      // ekranının sorgusu herhangi bir kullanıcı tarafından konsoldan
+      // birebir tekrarlanabiliyordu (bkz. mimari denetim — altıncı tur).
+      // retSebebi artık ayrı, yalnızca ilgili kişi+admin'in okuyabildiği
+      // mazeret_detaylari koleksiyonuna taşındı; isBackupPromotionFromMazeret'teki
+      // desenle SİMETRİK bir getAfter() korelasyonu bu belgenin GERÇEKTEN
+      // aynı commit'te yazıldığını doğrular (eşleşen belge yoksa/uid
+      // uyuşmazsa değerlendirme hatasıyla fail-closed reddeder — dosyada
+      // zaten kurulu bir desen). NOT: docId, bildirimler'in kendi
+      // belgesinin GERÇEK ID'sidir — üretimde her zaman deterministik
+      // (haftaId_tarih_vakit_tip) olsa da, bu alanlardan yeniden hesaplamak
+      // yerine doğrudan kullanmak daha güvenilir (ör. test fixture'ları
+      // gibi bu kalıba uymayan ID'lerde de doğru çalışır).
+      let mazeretDetay = getAfter(/databases/$(database)/documents/mazeret_detaylari/$(docId)).data;
       return existing().uid == request.auth.uid &&
              incoming().uid == existing().uid &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
              incoming().vakit == existing().vakit &&
              incoming().tip == existing().tip &&
-             changed.hasOnly(['durum', 'pendingAck', 'retSebebi', 'sonGuncelleme', 'devirSonucu']) &&
+             changed.hasOnly(['durum', 'pendingAck', 'sonGuncelleme', 'devirSonucu']) &&
              // Diğer zaman damgası alanları gibi (bkz. isValidBildirim)
              // sonGuncelleme burada da tiplenmemişti — gerçek çağıranlar
              // zaten serverTimestamp() gönderiyor ama sema doğrulaması
@@ -264,9 +302,7 @@ service cloud.firestore {
                  !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
-                 retSebebi is string &&
-                 retSebebi.size() > 0 &&
-                 retSebebi.size() <= 500 &&
+                 mazeretDetay.uid == request.auth.uid &&
                  (
                    devirSonucu == 'alarm_bekliyor' ||
                    // Önceden `devirSonucu == 'yedek_atandi'` bu TEK belge
@@ -298,9 +334,7 @@ service cloud.firestore {
                  !cumaMiIsaretli(existing()) &&
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
-                 retSebebi is string &&
-                 retSebebi.size() > 0 &&
-                 retSebebi.size() <= 500 &&
+                 mazeretDetay.uid == request.auth.uid &&
                  devirSonucu == 'alarm_bekliyor'
                )
              ) &&
@@ -510,8 +544,37 @@ service cloud.firestore {
     match /bildirimler/{docId} {
       allow read, list: if isSignedIn();
       allow create: if isAdmin() && isValidBildirim(incoming());
-      allow update: if isSignedIn() && ((isAdmin() && isValidBildirim(incoming())) || isSelfBildirimUpdate() || isAcceptedVekaletBildirimTransfer(docId) || isBackupPromotionFromMazeret());
+      allow update: if isSignedIn() && ((isAdmin() && isValidBildirim(incoming())) || isSelfBildirimUpdate(docId) || isAcceptedVekaletBildirimTransfer(docId) || isBackupPromotionFromMazeret());
       allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // ENTITY: Mazeret Detayları
+    // ---------------------------------------------------------
+    // bildirimler.retSebebi (özel mazeret/ret gerekçesi metni) buradan
+    // taşındı (bkz. isSelfBildirimUpdate yorumu, mimari denetim — altıncı
+    // tur) — Firestore alan bazında değil BELGE bazında güvenlik
+    // sağladığından, bildirimler `allow read: if isSignedIn()` ile (haftalık
+    // çizelgeyi TÜM ekibin görebilmesi için GEREKLİ) açık kalmak zorundaydı,
+    // bu da retSebebi'yi de istemeden herkese açıyordu. Bu koleksiyon
+    // yalnızca ilgili kişi + admin tarafından okunabilir; doc ID karşılık
+    // geldiği bildirimler belgesiyle AYNI deterministik ID'yi kullanır
+    // (haftaId_tarih_vakit_tip) — src/services/mazeretServisi.ts'in zaten
+    // sahip olduğu bildirimId parametresi doğrudan kullanılır.
+    function isValidMazeretDetay(data) {
+      return data.keys().hasAll(['uid', 'retSebebi', 'olusturmaTarihi']) &&
+             data.keys().hasOnly(['uid', 'retSebebi', 'olusturmaTarihi']) &&
+             data.uid is string &&
+             data.retSebebi is string && data.retSebebi.size() > 0 && data.retSebebi.size() <= 500 &&
+             data.olusturmaTarihi is timestamp;
+    }
+
+    match /mazeret_detaylari/{bildirimId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidMazeretDetay(incoming()) && incoming().uid == request.auth.uid;
+      // Sabit kayıt — mazeret bir kez bildirilir, değişmez.
+      allow update, delete: if false;
     }
 
     // ---------------------------------------------------------
