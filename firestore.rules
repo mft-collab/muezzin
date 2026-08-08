@@ -66,7 +66,13 @@ service cloud.firestore {
              data.icerik is string && data.icerik.size() > 0 && data.icerik.size() <= 5000 &&
              data.tip in ['onemli', 'bilgi', 'duyuru'] &&
              data.tarih is timestamp &&
-             (!data.keys().hasAny(['yazar']) || data.yazar is string);
+             // yazar diğer tüm serbest metin alanları (baslik, icerik) gibi
+             // uzunluk sınırı olmadan bırakılmıştı — bugün yalnızca admin
+             // yazabildiğinden sömürülebilir değil, ama bu alan ileride
+             // (yorumda belirtildiği gibi) doldurulmaya başlarsa hiçbir şey
+             // sınırsız uzunlukta bir değeri engellemiyordu (bkz. code-review,
+             // dördüncü denetim turu).
+             (!data.keys().hasAny(['yazar']) || (data.yazar is string && data.yazar.size() <= 100));
     }
 
     match /duyurular/{duyuruId} {
