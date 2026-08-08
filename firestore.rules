@@ -225,7 +225,24 @@ service cloud.firestore {
     // request.auth.uid` — başkasının belgesini güncellemeye çalışan HER
     // istek burada hiç Firestore okumadan elenir) en başta, pahalı
     // `isAssignableDutyUid()` çağrısı en sonda olmalı.
+    // `existing().uid == request.auth.uid` sarmalayıcı bir FONKSİYON ÇAĞRISI
+    // sınırında kontrol edilir (ayrı bir `let` değil) — bildirimler
+    // update kuralı aynı transaction içinde İKİ belgeyi (asil+yedek)
+    // güncelleyebildiğinden (bkz. mazeretBildir), yedek belgenin update'i
+    // için bu fonksiyon çağrıldığında `existing().uid != request.auth.uid`
+    // olduğundan buradaki `&&` HİÇ isSelfBildirimUpdateIcin'e girmeden
+    // kısa devre yapar — içindeki `getAfter(mazeret_detaylari/...)` ve
+    // `incoming().diff(existing())` gibi pahalı işlemler o belge için hiç
+    // çalışmaz. Bu ayrım eklenmeden önce (blanket `let` fonksiyonun en
+    // başında), aynı transaction'daki 2 bildirimler yazımı + yeni
+    // mazeret_detaylari yazımının TOPLAM ifade sayısı emülatörün 1000
+    // ifade tavanını aşıp mazeret bildirimini üretimde kırıyordu (bkz.
+    // mimari denetim — altıncı tur, E2E regresyonu).
     function isSelfBildirimUpdate(docId) {
+      return existing().uid == request.auth.uid && isSelfBildirimUpdateIcin(docId);
+    }
+
+    function isSelfBildirimUpdateIcin(docId) {
       let changed = incoming().diff(existing()).affectedKeys();
       // devirSonucu opsiyonel alan (bkz. isValidBildirim) — mazeret
       // reddi/onayı dışındaki hiçbir bildirimde hiç set edilmemiş olabilir.
