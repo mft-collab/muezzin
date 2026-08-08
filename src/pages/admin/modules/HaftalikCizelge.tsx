@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
@@ -130,8 +130,22 @@ export default function HaftalikCizelge() {
     }
   };
 
+  // Self-healing'in her haftaId için EN FAZLA bir kez otomatik tetiklenmesini
+  // garanti eden kilit — bkz. useBugunPlanDurumu.ts'teki aynı desen
+  // (selfHealingFiredRef). Önceden `generating` (gerçek React state, effect
+  // bağımlılık dizisinde) hem kilit hem tetikleyici olarak kullanılıyordu:
+  // handlePlanOlustur başarısız olduğunda `finally` içinde generating
+  // false'a dönüyor, bu da effect'i AYNI ANDA yeniden tetikleyip (plan hâlâ
+  // yok) sonsuz bir yeniden-deneme döngüsüne (her başarısızlıkta art arda
+  // Firestore yazımı + hata toast'ı) yol açıyordu (bkz. code-review,
+  // dördüncü denetim turu). Ref, plan başarıyla gelene ya da haftaId
+  // değişene kadar tekrar denemeyi engeller — admin "PLANLARI GÜNCELLE"
+  // düğmesiyle hâlâ manuel deneyebilir.
+  const selfHealingFiredHaftaIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!plan && !planLoading && isAdmin && haftaId && !generating) {
+    if (!plan && !planLoading && isAdmin && haftaId && !generating && selfHealingFiredHaftaIdRef.current !== haftaId) {
+      selfHealingFiredHaftaIdRef.current = haftaId;
       if (import.meta.env.DEV) {
         console.log(`[Self-Healing] Cizelge sayfasında plan bulunamadı (${haftaId}). Otomatik oluşturma tetikleniyor...`);
       }

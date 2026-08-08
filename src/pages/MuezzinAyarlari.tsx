@@ -2,12 +2,12 @@ import React, { Suspense, lazy, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Info, Settings, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
-import { auth } from '../lib/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { HakkindaModal } from '../components/HakkindaModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { playClick } from '../lib/sounds';
+import { performLogout } from '../hooks/useFcmToken';
 
 const NotificationSettings = lazy(() => import('../components/NotificationSettings'));
 
@@ -34,7 +34,12 @@ export default function MuezzinAyarlari() {
 
   const confirmLogout = async () => {
     setLogoutConfirmOpen(false);
-    await auth.signOut();
+    // Bu ekranın kendi "Oturumu Kapat" düğmesi önceden auth.signOut()'u
+    // doğrudan çağırıyordu — normal kullanıcıların günlük akışta asıl
+    // kullandığı çıkış yolu bu olduğundan, AuthGuard.tsx'e eklenen FCM token
+    // temizliği düzeltmesi buradan hiç geçmiyordu (bkz. performLogout
+    // yorumu, code-review — dördüncü denetim turu).
+    await performLogout();
     navigate('/');
   };
 

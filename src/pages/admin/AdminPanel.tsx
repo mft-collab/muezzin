@@ -3,7 +3,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Moon, Sun, X } from 'lucide-react';
-import { auth } from '../../lib/firebase';
+import { performLogout } from '../../hooks/useFcmToken';
 import { useKrizAlarmlariStore } from '../../store/useKrizAlarmlariStore';
 import { useAdminIzinlerStore } from '../../store/useAdminIzinlerStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -199,7 +199,11 @@ export default function AdminPanel() {
  const confirmLogout = async () => {
  setLogoutConfirmOpen(false);
  try {
- await auth.signOut();
+ // Admin panelinin kendi "Oturumu Kapat" düğmesi önceden auth.signOut()'u
+ // doğrudan çağırıyordu, bu yüzden AuthGuard.tsx'e eklenen FCM token
+ // temizliği düzeltmesi buradan hiç geçmiyordu (bkz. performLogout
+ // yorumu, code-review — dördüncü denetim turu).
+ await performLogout();
  window.location.reload();
  } catch {
  showNotification('Çıkış Başarısız', 'Oturum kapatılırken bir hata oluştu. Lütfen tekrar deneyin.', 'error');

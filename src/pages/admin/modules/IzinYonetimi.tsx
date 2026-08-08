@@ -6,7 +6,7 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, Calendar, User, Trash2, AlertCircle } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { isFriday, izinGunSayisi } from '../../../lib/dateUtils';
+import { izinGunSayisi, izinAraligiCumaIceriyorMu } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
  const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinlerStore();
@@ -213,20 +213,12 @@ export default function IzinYonetimi() {
  whileHover={{ y: -4, scale: 1.05, backgroundColor: 'rgba(16,185,129,0.2)' }}
  whileTap={{ scale: 0.95 }}
  onClick={() => {
- const start = new Date(izin.baslangic);
- const end = new Date(izin.bitis);
- let hasFriday = false;
- for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
- if (isFriday(d)) { hasFriday = true; break; }
+ if (izin.tip !== 'mazeret' && izinAraligiCumaIceriyorMu(izin.baslangic, izin.bitis)) {
+ setUiMessage('Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri yönetici kararıyla işlenebilir.');
+ return;
  }
-  if (hasFriday) {
-  if (izin.tip !== 'mazeret') {
-  setUiMessage('Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri yönetici kararıyla işlenebilir.');
-  return;
-  }
-  }
-  kararVer(izin.id!, 'onaylandi');
-  }}
+ kararVer(izin.id!, 'onaylandi');
+ }}
   disabled={isProcessing}
   aria-label="İzni onayla"
   className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 text-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-lg shadow-emerald-500/5 transition-colors"
