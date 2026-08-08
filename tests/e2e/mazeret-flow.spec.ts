@@ -37,16 +37,22 @@ function turkeyIsFridayNow(): boolean {
  * kapanma kararı `mazeretServisi.ts`'teki gerçek uygulama kodunda TARAYICI
  * içinde, GorevKarti'nin zaten canlı çektiği (useVakitStore → gerçek Diyanet
  * API'si) `saat` prop'una göre veriliyor; testin kendi ayrı fetch'i CI
- * ortamında bu gerçek kararla senkron kalmayabiliyordu. Kalıcı çözüm: testin
- * KENDİSİ zamana göre tahmin yapmak yerine, sayfanın "şimdi"sini
- * (`Date.now()`/`new Date()`) sabit, güvenli bir saate dondurmak —
- * `getTurkeyNow()` (bkz. src/lib/dateUtils.ts) yalnızca `new Date()`'e
- * dayandığından, Playwright'in `clock.setFixedTime` (yalnızca Date'i sabitler,
- * setTimeout/setInterval/animasyonları veya ağ isteklerini ETKİLEMEZ — bkz.
- * Playwright Clock API) ile "bugün saat 10:00 (Türkiye)"ye dondurulunca
- * `mazeretZamanKontrolYap`'ın karşılaştırdığı `suAn` her zaman günün gerçek
- * Yatsı saatinden (~akşam) çok önce kalıyor, pencere HER ZAMAN açık oluyor —
- * gerçek saat kaça olursa olsun (gece yarısına yakın push'lar dahil).
+ * ortamında bu gerçek kararla senkron kalmayabiliyordu.
+ *
+ * İkinci deneme (yalnızca `page.clock.setFixedTime` ile "bugün saat 10:00"a
+ * dondurmak) da YETERSİZ kaldı — bu sefer BAŞKA bir mekanizma yüzünden:
+ * `src/lib/timeSync.ts`'teki `initTimeSync()`, Firebase Realtime Database'in
+ * `.info/serverTimeOffset`'ini dinleyip cihaz saat kaymasını düzeltmek için
+ * `globalThis.__timeOffset`'i GERÇEK sunucu saatiyle senkronize ediyor
+ * (bkz. `getTurkeyNow()` bu offset'i her zaman ekliyor). RTDB emülatörü CI'da
+ * ÇALIŞMIYOR (yalnızca firestore+auth emüle ediliyor — bkz. test.yml), yani
+ * bu senkron GERÇEK production RTDB'ye bağlanıp donmuş saatimizi anında
+ * gerçek saate geri düzeltiyordu (CI logundaki başarısız koşuda sayfa hâlâ
+ * gerçek "20:50" gösteriyordu, dondurma hiç işe yaramamıştı). Kalıcı çözüm:
+ * dondurmayı işe yaramaz kılan bu senkronu, RTDB'ye giden isteği/WebSocket
+ * bağlantısını engelleyerek devre dışı bırakmak — `__timeOffset` hiç
+ * atanmadığı için `dateUtils.ts`'teki `!== undefined` kontrolü sayesinde 0
+ * kabul ediliyor ve dondurduğumuz saat artık gerçekten kalıcı oluyor.
  */
 function turkeyFixedMorning(): Date {
   const turkeyMs = Date.now() + 3 * 60 * 60 * 1000; // seed-mazeret.ts turkeyTodayStr ile aynı "bugün"
@@ -54,6 +60,9 @@ function turkeyFixedMorning(): Date {
   // 10:00 Türkiye saati (UTC+3) == 07:00 UTC, aynı Türkiye takvim günü içinde.
   return new Date(Date.UTC(turkey.getUTCFullYear(), turkey.getUTCMonth(), turkey.getUTCDate(), 7, 0, 0));
 }
+
+/** src/lib/timeSync.ts'in bağlandığı gerçek RTDB host'u (bkz. firebase-applet-config.json databaseURL). */
+const RTDB_HOST_PATTERN = /firebasedatabase\.app|firebaseio\.com/;
 
 test.describe('Mazeret Akışı E2E', () => {
   test.skip(turkeyIsFridayNow(), 'Mazeret bildirimi Cuma günleri kural gereği her zaman kapalı — seed bugün için görev oluşturduğundan bu akış Cuma günü test edilemez.');
@@ -76,6 +85,10 @@ test.describe('Mazeret Akışı E2E', () => {
     // Sayfa yüklenmeden ÖNCE dondurulmalı — uygulamanın ilk render'ından
     // itibaren tüm `getTurkeyNow()` çağrıları bu sabit saati görmeli.
     await page.clock.setFixedTime(turkeyFixedMorning());
+    // initTimeSync()'in gerçek RTDB sunucu saatiyle bu dondurmayı geri
+    // düzeltmesini engelle (bkz. yukarıdaki yorum).
+    await page.route((url) => RTDB_HOST_PATTERN.test(url.hostname), (route) => route.abort());
+    await page.routeWebSocket((url) => RTDB_HOST_PATTERN.test(url.hostname), () => {});
 
     await page.goto('/');
 
