@@ -633,6 +633,19 @@ const tests: TestCase[] = [
     }
   },
   {
+    // izinler'in `list` kuralinda (yukarida, ayni match blogu) zaten
+    // `resource == null` dali var (O10 yorumuyla belgelenmis), ama komsu
+    // `get` kuralinda bu dal eksikti: admin olmayan bir kullanici var
+    // olmayan bir izin ID'sine getDoc atarsa `resource.data.durum`
+    // null-deref hatasiyla reddediliyordu (bkz. vekalet_talepleri'ndeki
+    // ayni sinif bug, e2e denetimi).
+    name: 'muezzin henuz var olmayan bir izin kaydini get ile sorgulayabilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(getDoc(doc(db, 'izinler/hicOlusturulmamisIzin')));
+    }
+  },
+  {
     name: 'izin talebi Cuma iceren bir araligi sunucu tarafinda reddeder',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
@@ -1052,6 +1065,21 @@ const tests: TestCase[] = [
         durum: 'beklemede',
         olusturmaTarihi: Timestamp.now()
       }));
+    }
+  },
+  {
+    // O10 regresyonu: vekaletTeklifEt (src/services/vekaletServisi.ts), yeni
+    // bir teklif olusturmadan once ayni deterministik ID'de daha once
+    // reddedilmis bir talep var mi diye getDoc ile bakar. Talep henuz HIC
+    // olusturulmamissa `resource` null olur; eskiden `isVekaletParticipant`
+    // bu durumda `null.gonderenUid` erisimiyle degerlendirme hatasi
+    // firlatiyordu ve admin OLMAYAN hicbir kullanici ilk teklifini
+    // gonderemiyordu (getDoc adimi her zaman reddediliyordu). `izinler`
+    // L783'teki `resource == null` deseniyle simetrik sekilde duzeltildi.
+    name: 'muezzin henuz var olmayan bir vekalet talebini get ile sorgulayabilir (O10 regresyonu)',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(getDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_yatsi_asil_muezzin2')));
     }
   },
   {
@@ -1545,6 +1573,18 @@ const tests: TestCase[] = [
 
       const adminDb = testUser(env, 'admin').firestore();
       await assertSucceeds(getDocs(collection(adminDb, 'mazeret_detaylari')));
+    }
+  },
+  {
+    // vekalet_talepleri'ndeki ayni sinif bug (bkz. o kuraldaki O10 yorumu):
+    // var olmayan bir mazeret_detaylari ID'sine getDoc atmak, admin OLMAYAN
+    // bir kullanici icin `resource.data.uid` null-deref hatasiyla
+    // reddediliyordu. Bu koleksiyonda henuz gercek bir non-admin cagiran yok
+    // ama kural tutarliligi/savunma derinligi icin duzeltildi.
+    name: 'muezzin henuz var olmayan bir mazeret_detaylari kaydini get ile sorgulayabilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(getDoc(doc(db, 'mazeret_detaylari/hicOlusturulmamisKayit')));
     }
   },
   {

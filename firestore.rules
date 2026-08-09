@@ -570,7 +570,13 @@ service cloud.firestore {
     }
 
     match /mazeret_detaylari/{bildirimId} {
-      allow get: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      // `resource == null` dali: admin olmayan bir kullanici var olmayan bir
+      // mazeret_detaylari ID'sine getDoc atarsa `resource` null olur;
+      // eskiden `resource.data.uid` null-deref hatasiyla reddediliyordu
+      // (bkz. vekalet_talepleri/izinler get kurallarindaki ayni sinif bug,
+      // e2e denetimi — bu koleksiyonda henuz gercek bir non-admin cagiran
+      // yok ama desen tutarliligi ve savunma derinligi icin duzeltildi).
+      allow get: if isAdmin() || resource == null || (isSignedIn() && resource.data.uid == request.auth.uid);
       allow list: if isAdmin();
       allow create: if isSignedIn() && isValidMazeretDetay(incoming()) && incoming().uid == request.auth.uid;
       // Sabit kayıt — mazeret bir kez bildirilir, değişmez.
@@ -581,7 +587,20 @@ service cloud.firestore {
     // ENTITY: Vekalet Talepleri
     // ---------------------------------------------------------
     match /vekalet_talepleri/{talepId} {
-      allow get, list: if isAdmin() || isVekaletParticipant(existing());
+      // `resource == null` dalı şart: vekaletTeklifEt henüz var olmayan bir
+      // talep ID'sine (ilk teklif) `getDoc` ile önceden reddedilmiş bir kaydı
+      // temizlemek için bakar (bkz. vekaletServisi.ts). Belge yoksa `resource`
+      // null olur; eskiden `isVekaletParticipant(existing())` bu durumda
+      // `null.gonderenUid` erişimiyle hata fırlatıp isteği reddediyordu —
+      // admin olmayan HİÇBİR kullanıcı ilk kez teklif gönderemiyordu (bu
+      // sadece bir emülatör kusuru değil: PRODUCTION'da da `isAdmin()` false
+      // dönüp `existing()` null-deref hatasıyla sonuçlanınca istek reddedilir
+      // — talep henüz yokken varlığını kontrol etmek dahi engelleniyordu).
+      // Bir talebin YOK OLMASI hassas bilgi değil (`izinler` L783'teki aynı
+      // `resource == null` deseniyle simetrik) — bu yüzden yok-belge durumu
+      // koşulsuz izinli, yalnızca VAR OLAN bir talep katılımcı kısıtına tabi.
+      allow get: if isAdmin() || resource == null || isVekaletParticipant(existing());
+      allow list: if isAdmin() || isVekaletParticipant(existing());
       allow create: if isSignedIn() && isValidVekaletCreate(talepId);
       allow update: if isAdmin() || isRecipientVekaletStatusUpdate();
       // 'reddedildi' de silinebilir olmalı: talep ID'si deterministik
@@ -785,7 +804,14 @@ service cloud.firestore {
       // 'onaylandi' durumu kontrol ediliyordu, yani giris yapmamis biri
       // durumu 'onaylandi' olan HERHANGI bir izin belgesini ID'sini
       // bilerek okuyabiliyordu (bkz. mimari denetim O10).
-      allow get: if isAdmin() || (isSignedIn() && (resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
+      // `resource == null` dali komsu `list` kuraliyla (yukarida) SIMETRIK
+      // olmasi icin eklendi — bu satirda eskiden eksikti: admin olmayan bir
+      // kullanici var olmayan bir izin ID'sine getDoc attiginda `resource`
+      // null oldugundan `resource.data.durum` null-deref hatasiyla
+      // reddediliyordu (bkz. vekalet_talepleri get kuralindaki ayni sinif
+      // bug, e2e denetimi — bu koleksiyonda henuz gercek bir cagiran yok
+      // ama desen tutarliligi ve savunma derinligi icin duzeltildi).
+      allow get: if isAdmin() || (isSignedIn() && (resource == null || resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       allow create: if isSignedIn() && isValidIzin(incoming());
       // Admin disjunct'ı önceden yalnızca durum/redSebebi'ye izin veriyordu —
       // src/services/veriOnarimServisi.ts'in ters-tarihli bir izin kaydını
