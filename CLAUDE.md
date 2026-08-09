@@ -38,12 +38,9 @@ standarda dahil değildir — onlar kendi ölçeğinde kalır (`rounded-[14px]`,
 
 `.spatial-glass` (`src/index.css`), tüm kartların temel katmanıdır: cam efektli
 arka plan (`--spatial-glass-bg`, temaya göre değişir), kenarlık, gölge. Üzerine
-inşa eden varyantlar hiçbiri köşe yarıçapını override etmez, hepsi
-`--radius-card`'ı miras alır:
-- `.apple-card`, `.apple-card-elevated`, `.apple-card-flat`,
-  `.apple-card-flat-active` — hover/aktif durumları farklılaşan kart varyantları.
-- `.spatial-glass-elevated`, `.spatial-glass-flat` — gölge/yükseklik varyantları.
-- `.tactile-card` — dokunma geri bildirimi olan (basılabilir) kartlar.
+inşa eden varyantlar (`.apple-card*`, `.spatial-glass-elevated/flat`,
+`.tactile-card`) hiçbiri köşe yarıçapını override etmez, hepsi
+`--radius-card`'ı miras alır.
 
 ### Aura / circadian renk sistemi
 
@@ -143,10 +140,7 @@ npm run test:all           # typecheck + typecheck:scripts + lint + smoke + unit
 ```
 
 **`npm test` `test:all`'ın takma adı DEĞİL** — sadece `test:smoke`'u çalıştırır.
-Tam doğrulama için her zaman `npm run test:all` kullan.
-
-Bir değişiklikten sonra en az `typecheck && lint && build && test:unit`
-çalıştır; commit'ten önce mümkünse `test:all`.
+Tam doğrulama için `npm run test:all` kullan.
 
 ## Bundle bölme
 
