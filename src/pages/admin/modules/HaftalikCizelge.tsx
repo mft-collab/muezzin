@@ -364,7 +364,8 @@ export default function HaftalikCizelge() {
  <motion.button 
  whileHover={{ scale: 1.1 }}
  whileTap={{ scale: 0.9 }}
- onClick={() => setCurrentDate(subWeeks(currentDate, 1))} 
+ onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+ aria-label="Önceki hafta"
  className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--text-primary)]/5 transition-all shadow-lg"
  >
  <ChevronLeft size={20} />
@@ -380,7 +381,8 @@ export default function HaftalikCizelge() {
  <motion.button 
  whileHover={{ scale: 1.1 }}
  whileTap={{ scale: 0.9 }}
- onClick={() => setCurrentDate(addWeeks(currentDate, 1))} 
+ onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+ aria-label="Sonraki hafta"
  className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)] rounded-2xl hover:text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--text-primary)]/5 transition-all shadow-lg"
  >
  <ChevronRight size={20} />
