@@ -96,6 +96,14 @@
       ]
     },
     {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "vekalet_talepleri",
       "queryScope": "COLLECTION",
       "fields": [
