@@ -29,7 +29,7 @@ export default function PersonelHub() {
  ];
 
  return (
- <div className="flex flex-col gap-10 relative min-h-[70vh] min-w-0 w-full max-w-full">
+ <div className="flex flex-col gap-10 relative min-h-[70dvh] min-w-0 w-full max-w-full">
  
  {/* Sub-Page Navigation - Spatial Glass Pill */}
  <div className="sticky top-0 z-40 py-2">

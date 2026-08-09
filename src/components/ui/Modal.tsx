@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 
 interface ModalProps {
  isOpen: boolean;
@@ -16,6 +16,7 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
  const titleId = useId();
  const dialogRef = useRef<HTMLDivElement>(null);
  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+ const dragControls = useDragControls();
 
  useEffect(() => {
  if (isOpen) {
@@ -65,6 +66,8 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       aria-labelledby={titleId}
       tabIndex={-1}
       drag="y"
+      dragListener={false}
+      dragControls={dragControls}
       dragConstraints={{ top: 0 }}
       dragElastic={{ top: 0.02, bottom: 0.85 }}
       onDragEnd={(e, info) => {
@@ -76,10 +79,16 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 150 }}
       transition={{ type: "spring", stiffness: 320, damping: 28, mass: 1 }}
-      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-card rounded-b-none sm:rounded-card outline-none ${contentClassName}`}
+      className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-card rounded-b-none sm:rounded-card outline-none ${contentClassName}`}
+      style={{ paddingBottom: 'max(var(--phi-space), env(safe-area-inset-bottom, 0px))' }}
     >
-      {/* Drag Handle Indicator for Mobile */}
-      <div className="w-12 h-1 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-full mx-auto mb-4 sm:hidden shrink-0 pointer-events-none transition-colors" />
+      {/* Drag Handle Indicator for Mobile — only this handle starts the sheet drag
+          (dragListener={false} above), so touch-scrolling the content below doesn't
+          fight the dismiss gesture. */}
+      <div
+        onPointerDown={(e) => dragControls.start(e)}
+        className="w-12 h-1 bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/20 rounded-full mx-auto mb-4 sm:hidden shrink-0 cursor-grab active:cursor-grabbing touch-none transition-colors"
+      />
 
       <div className="flex justify-between items-start mb-6 sm:mb-10 shrink-0">
         <div>

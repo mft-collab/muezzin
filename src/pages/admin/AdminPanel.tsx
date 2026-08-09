@@ -288,7 +288,7 @@ export default function AdminPanel() {
  </div>
  </header>
 
- <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70vh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-card`}>
+ <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70dvh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-card`}>
  <ErrorBoundary
  FallbackComponent={({ error, resetErrorBoundary }) => (
  <ChunkErrorFallback error={error} variant="inline" onReset={resetErrorBoundary} />
