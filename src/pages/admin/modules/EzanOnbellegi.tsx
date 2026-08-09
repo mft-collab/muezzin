@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, DatabaseZap, Info, RefreshCw } from 'lucide-
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 import {
   listeleVakitCacheleri,
   senkronizeGuncelVeGelecekAyCache,
@@ -28,7 +29,7 @@ export default function EzanOnbellegi() {
  const [uiMessage, setUiMessage] = useState<UiMessage>(null);
 
  const refreshList = async () => {
-  const data = await listeleVakitCacheleri();
+  const data = await listeleVakitCacheleri(settings.ilceId);
   setOnbellekler(data);
  };
 
@@ -43,7 +44,10 @@ export default function EzanOnbellegi() {
 
   const fetchVakitler = async () => {
    try {
-    const data = await listeleVakitCacheleri();
+    // Yalnızca aktif ilçenin kayıtları listelenir — aksi halde ilçe kodu
+    // daha önce değiştirilmişse eski ilçenin kalıcı olarak biriken önbellek
+    // kayıtları da bu listede görünür (bkz. mimari denetim).
+    const data = await listeleVakitCacheleri(settings.ilceId);
     if (mounted) {
      setOnbellekler(data);
      setLoading(false);
@@ -63,7 +67,7 @@ export default function EzanOnbellegi() {
    mounted = false;
    clearTimeout(timeoutId);
   };
- }, []);
+ }, [settings.ilceId]);
 
  const handleSenkronizeEt = async () => {
   setSyncing(true);
@@ -83,14 +87,7 @@ export default function EzanOnbellegi() {
   }
  };
 
- if (loading) return (
-  <div className="flex h-[500px] items-center justify-center">
-   <div className="flex flex-col items-center gap-6">
-    <div className="w-12 h-12 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin" />
-    <p className="authority-title !text-2xs opacity-35 tracking-wide uppercase">Önbellek kayıtları okunuyor</p>
-   </div>
-  </div>
- );
+ if (loading) return <AdminLoadingState label="Önbellek kayıtları okunuyor" />;
 
  return (
   <div className="flex flex-col gap-6">

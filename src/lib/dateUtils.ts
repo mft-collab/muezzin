@@ -144,6 +144,51 @@ export function izinAraligiCumaIceriyorMu(baslangic: string, bitis: string): boo
  return false;
 }
 
+/**
+ * Bir izin talebinin onaylanmasını Cuma kısıtlaması gerekçesiyle engelleyip
+ * engellemediğine karar verir; engelleniyorsa admin'e gösterilecek uyarı
+ * metnini, engellenmiyorsa `null` döner. Önceden IzinYonetimi.tsx ve
+ * ExecutiveHeroScreen.tsx'te birebir kopyalanmış, `tip !== 'mazeret'`
+ * istisnası taşıyan iki ayrı blok vardı — o istisna hiçbir zaman
+ * tetiklenemezdi çünkü VacationRequestCard.tsx (oluşturma anı) ve
+ * firestore.rules'taki isValidIzinTarihAraligi (sunucu) Cuma'yı kapsayan
+ * HERHANGİ bir izni, tipinden bağımsız, oluşturma anında zaten reddediyor —
+ * yani Cuma içeren bir mazeret-tipi izin kaydı hiçbir zaman var olamaz. Bu
+ * istisna admin'e olmayan bir yetkiyi ("mazeret izinleri Cuma'da da
+ * onaylanabilir") vaat eden yanıltıcı ölü koddu; kaldırıldı (bkz. mimari
+ * denetim).
+ */
+export function izinOnayCumaEngelMesaji(izin: { baslangic: string; bitis: string }): string | null {
+ if (!izinAraligiCumaIceriyorMu(izin.baslangic, izin.bitis)) return null;
+ return 'Cuma günü kapsayan bir izin onaylanamaz — haftalık mihrap koordinasyonu Cuma\'da her zaman dolu olmalıdır.';
+}
+
+/**
+ * Bir kişinin belirli bir tarihte göreve atanabilir olup olmadığını, onaylı
+ * izin kapsamı ve sabit haftalık izin günü kurallarına göre belirler.
+ * `planlamaCekirdegi.ts`'teki `haftalikPlanUret`'in (otomatik planlama
+ * motoru) `musaitMuezzinler` filtresiyle AYNI formülü kullanır — o dosya
+ * hassas/test kapsamlı olduğu için buraya taşınmadı, ama HaftalikCizelge.tsx
+ * (manuel atama) daha önce bu kuralı hiç bilmiyordu: bir admin, kendi
+ * onayladığı bir izinli günde veya kişinin sabit izin gününde kişiyi manuel
+ * olarak göreve atayabiliyordu — otomatik motorun mutlak saydığı bir kural
+ * manuel yolda tamamen atlanıyordu (bkz. mimari denetim). Bu formülü
+ * değiştirirsen `planlamaCekirdegi.ts`'teki karşılığını da güncelle.
+ */
+export function kisiGunIcinMusaitMi(
+ person: { id: string; haftalikIzinGunu?: number },
+ tarih: string,
+ onayliIzinler: { uid: string; baslangic: string; bitis: string }[]
+): boolean {
+ const isOnIzin = onayliIzinler.some((izin) => izin.uid === person.id && tarih >= izin.baslangic && tarih <= izin.bitis);
+ const [gY, gM, gD] = tarih.split('-').map(Number);
+ const gunTarihi = new Date(gY, gM - 1, gD);
+ // Pazartesi=1 ... Pazar=7 (haftalikIzinGunu ile aynı ölçek)
+ const gunIndex = (gunTarihi.getDay() + 6) % 7;
+ const isFixedDayOff = person.haftalikIzinGunu === gunIndex + 1;
+ return !isOnIzin && !isFixedDayOff;
+}
+
 export function getHaftaIdFromDate(dateStr: string): string {
  const date = parseISO(dateStr);
  const pazartesi = startOfWeek(date, { weekStartsOn: 1 });

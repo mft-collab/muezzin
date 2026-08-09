@@ -1,27 +1,16 @@
-import React, { useTransition } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
+import { useUrlTab } from '../../../hooks/admin/useUrlTab';
 
 const MuezzinYonetimi = lazy(() => import('./MuezzinYonetimi'));
 const IzinMazeretHub = lazy(() => import('./IzinMazeretHub'));
 
+const SUBTAB_IDS = ['kadro', 'mazeretler'] as const;
+type SubTab = typeof SUBTAB_IDS[number];
+
 export default function PersonelHub() {
- const [searchParams, setSearchParams] = useSearchParams();
- const activeTab = searchParams.get('subtab') || 'kadro';
-
- const [isPending, startTransition] = useTransition();
-
- const setActiveTab = (subtab: string) => {
- startTransition(() => {
- setSearchParams(prev => {
- const newParams = new URLSearchParams(prev);
- newParams.set('subtab', subtab);
- return newParams;
- });
- });
- };
+ const { activeTab, setActiveTab, isPending } = useUrlTab<SubTab>('subtab', SUBTAB_IDS, 'kadro');
 
  const navItems = [
  { id: 'kadro', label: 'Kadro Yönetimi' },
@@ -36,7 +25,7 @@ export default function PersonelHub() {
  <SegmentedTabs
  items={navItems}
  activeId={activeTab}
- onChange={setActiveTab}
+ onChange={(id) => setActiveTab(id as SubTab)}
  ariaLabel="Personel yönetimi sekmeleri"
  idPrefix="personel"
  variant="pill"

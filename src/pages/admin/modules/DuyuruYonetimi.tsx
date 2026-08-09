@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 import { duyurularAbone, duyuruYayinla, duyuruSil } from '../../../services/duyuruServisi';
 import { toJsDate } from '../../../lib/dateUtils';
 
@@ -130,14 +131,7 @@ export const DuyuruYonetimi: React.FC = () => {
     }
   };
 
- if (loading) return (
- <div className="flex h-96 items-center justify-center">
- <div className="flex flex-col items-center gap-6">
- <div className="w-12 h-12 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-lg" />
- <p className="authority-title !text-2xs opacity-30 tracking-wide">DUYURU HAVUZU SENKRONİZE EDİLİYOR</p>
- </div>
- </div>
- );
+ if (loading) return <AdminLoadingState label="Duyuru Havuzu Senkronize Ediliyor" heightClassName="h-96" />;
 
  return (
  <div className="flex flex-col gap-10">

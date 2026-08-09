@@ -1,36 +1,17 @@
-import React, { useTransition } from 'react';
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useSearchParams } from 'react-router-dom';
 import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
+import { useUrlTab } from '../../../hooks/admin/useUrlTab';
 
 const EzanOnbellegi = lazy(() => import('./EzanOnbellegi'));
 const SistemAyarlari = lazy(() => import('./SistemAyarlari'));
 const SistemLoglari = lazy(() => import('./SistemLoglari'));
 
-export default function AyarlarHub() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Aktif sekme tamamen URL'deki ?subtab= parametresinden türetilir — ayrı
-  // bir state + onu senkronize eden effect gerekmiyor (tek doğruluk kaynağı
-  // URL'dir; setActiveTab zaten URL'i güncelliyor, bu da bu değeri otomatik
-  // günceller).
-  const subtabParam = searchParams.get('subtab');
-  const activeTab = subtabParam === 'onbellek' || subtabParam === 'loglar' ? subtabParam : 'ayarlar';
-  const [isPending, startTransition] = useTransition();
+const SUBTAB_IDS = ['ayarlar', 'onbellek', 'loglar'] as const;
+type SubTab = typeof SUBTAB_IDS[number];
 
-  const setActiveTab = (tab: string) => {
-    startTransition(() => {
-      setSearchParams(prev => {
-        const next = new URLSearchParams(prev);
-        if (tab === 'ayarlar') {
-          next.delete('subtab');
-        } else {
-          next.set('subtab', tab);
-        }
-        return next;
-      });
-    });
-  };
+export default function AyarlarHub() {
+  const { activeTab, setActiveTab, isPending } = useUrlTab<SubTab>('subtab', SUBTAB_IDS, 'ayarlar');
 
   const navItems = [
     { id: 'ayarlar', label: 'Dizge Ayarları' },
@@ -45,7 +26,7 @@ export default function AyarlarHub() {
         <SegmentedTabs
           items={navItems}
           activeId={activeTab}
-          onChange={setActiveTab}
+          onChange={(id) => setActiveTab(id as SubTab)}
           ariaLabel="Dizge ayarları sekmeleri"
           idPrefix="ayarlar"
           variant="pill"

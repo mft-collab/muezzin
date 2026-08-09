@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
+import { useAdminIzinlerStore } from '../../../store/useAdminIzinlerStore';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 import { useAuthStore } from '../../../store/useAuthStore';
@@ -12,9 +13,9 @@ import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Muezzin, Vakit, VakitAtama } from '../../../types';
-import { AlertCircle, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
+import { AlertCircle, Bot, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import { telemetryService } from '../../../services/telemetryService';
-import { getHaftaIdFromDate, getTurkeyNow } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyNow, kisiGunIcinMusaitMi } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
@@ -27,9 +28,11 @@ interface PersonelSeciciProps {
   value: string;
   onSelect: (uid: string) => void;
   muezzinler: (Muezzin & { id: string })[];
+  /** O gün izinli/sabit izin gününde olduğu için atanamaz olan kişilerin uid'leri — bu kişiler seçilebilir ama görsel olarak işaretlenir ve devre dışı bırakılır. */
+  unavailableUids: Set<string>;
 }
 
-function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, muezzinler }: PersonelSeciciProps) {
+function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, muezzinler, unavailableUids }: PersonelSeciciProps) {
   return (
     <div className="space-y-4 mt-2 first:mt-0">
       <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide">{label}</label>
@@ -46,7 +49,7 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-2xs ${
             value === 'Sistem' ? 'bg-[var(--text-primary)]/20' : 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)]'
           }`}>
-            🤖
+            <Bot size={16} strokeWidth={1.7} />
           </div>
           <div className="text-left">
             <span className="text-2xs font-black uppercase tracking-wider block">Dizge Otomatik</span>
@@ -55,25 +58,30 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
         </button>
         {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
           const isSelected = value === m.id;
+          const isUnavailable = unavailableUids.has(m.id);
           return (
             <button
               key={m.id}
               type="button"
+              disabled={isUnavailable}
+              title={isUnavailable ? 'Bu tarihte onaylı izinli veya sabit izin gününde — atanamaz.' : undefined}
               onClick={() => onSelect(m.id)}
               className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
-                isSelected
-                  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
-                  : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
+                isUnavailable
+                  ? 'bg-[var(--text-primary)]/[0.01] text-[var(--text-secondary)]/30 border-[var(--text-primary)]/5 opacity-50 cursor-not-allowed'
+                  : isSelected
+                    ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+                    : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
               }`}
             >
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                isSelected ? 'bg-[var(--text-primary)]/20' : 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)]'
+                isSelected && !isUnavailable ? 'bg-[var(--text-primary)]/20' : 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)]'
               }`}>
                 {(m.displayName || 'M').charAt(0)}
               </div>
               <div className="text-left truncate">
                 <span className="text-2xs font-black uppercase tracking-wider block truncate">{(m.displayName || '').split(' ').slice(-1)[0]}</span>
-                <span className="text-2xs opacity-60 block leading-tight">{roleSubLabel}</span>
+                <span className="text-2xs opacity-60 block leading-tight">{isUnavailable ? 'İzinli / Müsait Değil' : roleSubLabel}</span>
               </div>
             </button>
           );
@@ -94,6 +102,8 @@ export default function HaftalikCizelge() {
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
+ const izinler = useAdminIzinlerStore(s => s.izinler);
+ const onayliIzinler = useMemo(() => izinler.filter(i => i.durum === 'onaylandi'), [izinler]);
  const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
  const showNotification = useNotificationStore(s => s.showNotification);
  const isAdmin = useAuthStore(s => s.isAdmin);
@@ -110,11 +120,26 @@ export default function HaftalikCizelge() {
  const [generating, setGenerating] = useState(false);
  const [confirmPlanRefreshOpen, setConfirmPlanRefreshOpen] = useState(false);
 
- const isAssignableMuezzin = useCallback((uid: string) => {
+ // `tarih` verildiğinde, otomatik planlama motorunun (planlamaCekirdegi.ts)
+ // mutlak saydığı "onaylı izinli/sabit izin gününde asla atama yok" kuralı
+ // burada da uygulanır — bkz. dateUtils.ts kisiGunIcinMusaitMi yorumu.
+ const isAssignableMuezzin = useCallback((uid: string, tarih?: string) => {
  if (!uid || uid === 'Sistem' || uid === 'SISTEM') return true;
  const person = muezzinler.find((m) => m.id === uid);
- return !!person && person.aktif === true && person.role === 'muezzin';
- }, [muezzinler]);
+ if (!person || person.aktif !== true || person.role !== 'muezzin') return false;
+ if (tarih && !kisiGunIcinMusaitMi(person, tarih, onayliIzinler)) return false;
+ return true;
+ }, [muezzinler, onayliIzinler]);
+
+ const unavailableUidsForEditingCell = useMemo(() => {
+ if (!editingCell) return new Set<string>();
+ const tarih = editingCell.tarih;
+ return new Set(
+ muezzinler
+ .filter((m) => m.aktif && m.role === 'muezzin' && !kisiGunIcinMusaitMi(m, tarih, onayliIzinler))
+ .map((m) => m.id)
+ );
+ }, [editingCell, muezzinler, onayliIzinler]);
 
   const handlePlanOlustur = async () => {
     try {
@@ -201,8 +226,15 @@ export default function HaftalikCizelge() {
  showNotification('Hata', 'Asil ve yedek görevli aynı kişi olamaz.', 'error');
  return;
  }
- if (!isAssignableMuezzin(editFormData.asil) || !isAssignableMuezzin(editFormData.yedek)) {
- showNotification('Hata', 'Sadece aktif müezzinler görevlendirilebilir. Admin ve gözlemci atanamaz.', 'error');
+ if (
+ !isAssignableMuezzin(editFormData.asil, editingCell.tarih) ||
+ !isAssignableMuezzin(editFormData.yedek, editingCell.tarih)
+ ) {
+ showNotification(
+ 'Atama Engellendi',
+ 'Seçilen personel bu tarihte onaylı izinli veya sabit haftalık izin gününde ya da aktif bir müezzin değil. Yalnızca o gün müsait aktif müezzinler görevlendirilebilir.',
+ 'error'
+ );
  return;
  }
 
@@ -485,6 +517,7 @@ export default function HaftalikCizelge() {
           value={editFormData.asil}
           onSelect={(uid) => setEditFormData({ ...editFormData, asil: uid })}
           muezzinler={muezzinler}
+          unavailableUids={unavailableUidsForEditingCell}
         />
         <PersonelSecici
           label="YEDEK PERSONEL ATAMASI"
@@ -493,6 +526,7 @@ export default function HaftalikCizelge() {
           value={editFormData.yedek}
           onSelect={(uid) => setEditFormData({ ...editFormData, yedek: uid })}
           muezzinler={muezzinler}
+          unavailableUids={unavailableUidsForEditingCell}
         />
       </div>
 

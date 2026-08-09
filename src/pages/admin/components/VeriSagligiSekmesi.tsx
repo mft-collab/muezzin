@@ -155,7 +155,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <CheckCircle2 size={18} />
  </div>
  <h5 className="text-xs font-semibold text-emerald-400">Veritabanı Tamamen Sağlıklı!</h5>
- <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Personeller, izinler and nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
+ <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Personeller, izinler ve nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
  </div>
  ) : (
  errors.map((err) => (

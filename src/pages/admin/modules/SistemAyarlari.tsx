@@ -4,6 +4,7 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { Save, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 import { playSuccess, playWarning } from '../../../lib/sounds';
 import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
 
@@ -78,15 +79,17 @@ export default function SistemAyarlari() {
     try {
       await senkronizeGuncelVeGelecekAyCache({ ilceId: cleanedIlceId, ilceAdi: cleanedIlceAdi });
       setStatusMessage({ type: 'success', text: 'Ayarlar kaydedildi ve vakit önbelleği güncellendi.' });
+      playSuccess();
     } catch (cacheError) {
       console.error('Vakit önbelleği senkronizasyon hatası:', cacheError);
       setStatusMessage({ type: 'warning', text: 'Ayarlar kaydedildi; vakit önbelleği daha sonra Ezan Önbelleği ekranından yenilenmelidir.' });
+      playWarning();
     }
   } else {
     setStatusMessage({ type: 'success', text: 'Dizge ayarları kaydedildi.' });
+    playSuccess();
   }
 
-  playSuccess();
   setTimeout(() => setStatusMessage(null), 5000);
   await telemetryService.logAudit('Dizge Ayarı Güncelleme', 'Vakit Bölgesi', `Diyanet İlçe Kodu: ${cleanedIlceId}, İlçe Adı: ${cleanedIlceAdi}, Hicri Düzeltme: ${normalizedHicriDuzeltme}`);
   } catch (error) {
@@ -98,7 +101,7 @@ export default function SistemAyarlari() {
  }
  };
 
- if (loading) return null;
+ if (loading) return <AdminLoadingState label="Dizge ayarları okunuyor" />;
 
  return (
   <motion.div 

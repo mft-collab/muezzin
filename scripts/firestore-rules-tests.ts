@@ -296,6 +296,26 @@ const tests: TestCase[] = [
     }
   },
   {
+    name: 'admin bir muezzinin haftalik izin gununu cuma yapamaz',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+
+      await assertFails(updateDoc(doc(db, 'muezzins/muezzin2'), {
+        haftalikIzinGunu: 5
+      }));
+    }
+  },
+  {
+    name: 'admin bir muezzinin haftalik izin gununu cuma disi bir gune ayarlayabilir',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+
+      await assertSucceeds(updateDoc(doc(db, 'muezzins/muezzin2'), {
+        haftalikIzinGunu: 3
+      }));
+    }
+  },
+  {
     name: 'muezzin fcm token haritasini sinirsiz buyutemez',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
@@ -316,6 +336,20 @@ const tests: TestCase[] = [
       await assertSucceeds(setDoc(doc(db, 'invites/valid@example.test'), {
         email: 'valid@example.test',
         displayName: 'Valid User',
+        role: 'muezzin',
+        haftalikIzinGunu: 3,
+        olusturmaTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'admin haftalik izin gunu cuma olan davet olusturamaz (Cuma kapsami hic bos kalmamali)',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+
+      await assertFails(setDoc(doc(db, 'invites/friday-leave@example.test'), {
+        email: 'friday-leave@example.test',
+        displayName: 'Friday Leave',
         role: 'muezzin',
         haftalikIzinGunu: 5,
         olusturmaTarihi: Timestamp.now()
@@ -441,6 +475,55 @@ const tests: TestCase[] = [
 
       await assertFails(setDoc(doc(muezzinDb, 'bildirimler/maliciousCreate'), payload));
       await assertSucceeds(setDoc(doc(adminDb, 'bildirimler/adminCreate'), payload));
+    }
+  },
+  {
+    // haftaGunuNumarasi/isValidBildirim (bkz. mimari denetim #6) — sabit
+    // haftalik izin gununde manuel atama artik sunucu tarafinda da
+    // reddediliyor. 2026-05-18 bir Pazartesi (haftalikIzinGunu olceginde 1).
+    name: 'admin sabit haftalik izin gununde nobet bildirimi olusturamaz',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await updateDoc(doc(db, 'muezzins/muezzin1'), { haftalikIzinGunu: 1 });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      await assertFails(setDoc(doc(db, 'bildirimler/fixedDayOffCreate'), {
+        haftaId: 'W2026-05-18',
+        tarih: '2026-05-18',
+        vakit: 'ogle',
+        uid: 'muezzin1',
+        tip: 'asil',
+        durum: 'bekliyor',
+        pendingAck: true,
+        retSebebi: null,
+        olusturmaTarihi: Timestamp.now(),
+        sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    name: 'admin haftalik izin gunu uyusmayan tarihte nobet bildirimi olusturabilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await updateDoc(doc(db, 'muezzins/muezzin1'), { haftalikIzinGunu: 2 });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      await assertSucceeds(setDoc(doc(db, 'bildirimler/nonFixedDayOffCreate'), {
+        haftaId: 'W2026-05-18',
+        tarih: '2026-05-18',
+        vakit: 'ogle',
+        uid: 'muezzin1',
+        tip: 'asil',
+        durum: 'bekliyor',
+        pendingAck: true,
+        retSebebi: null,
+        olusturmaTarihi: Timestamp.now(),
+        sonGuncelleme: Timestamp.now()
+      }));
     }
   },
   {

@@ -4,8 +4,9 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileDown, Filter, Trash2 } from 'lucide-react';
+import { AlertCircle, FileDown, Filter, Trash2, X } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 import { exportCsv } from '../../../lib/csvExport';
 import { mazeretKaydiSil } from '../../../services/mazeretServisi';
 
@@ -56,14 +57,7 @@ export default function MazeretGecmisi() {
  exportCsv(headers, rows, `mazeret-gecmisi-${format(new Date(), 'yyyy-MM-dd')}.csv`);
  };
 
- if (loading) return (
- <div className="flex h-96 items-center justify-center">
- <div className="flex flex-col items-center gap-6">
- <div className="w-12 h-12 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-lg" />
- <p className="authority-title !text-2xs opacity-30 tracking-wide">ARŞİV KAYITLARI SENKRONİZE EDİLİYOR</p>
- </div>
- </div>
- );
+ if (loading) return <AdminLoadingState label="Arşiv Kayıtları Senkronize Ediliyor" heightClassName="h-96" />;
 
  return (
  <div className="flex flex-col gap-8">
@@ -111,9 +105,10 @@ export default function MazeretGecmisi() {
  exit={{ opacity: 0, y: -8 }}
  className="spatial-glass !bg-rose-500/10 border-rose-500/30 p-4 flex items-center gap-3 text-rose-500 text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
  >
+ <AlertCircle size={18} className="shrink-0" />
  <span className="leading-relaxed">{errorStatus}</span>
- <button type="button" onClick={() => setErrorStatus(null)} className="ml-auto text-rose-500/50 hover:text-rose-500 transition-colors">
- KAPAT
+ <button type="button" onClick={() => setErrorStatus(null)} aria-label="Kapat" className="ml-auto text-rose-500/50 hover:text-rose-500 transition-colors">
+ <X size={14} />
  </button>
  </motion.div>
  )}

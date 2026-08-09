@@ -105,7 +105,12 @@ service cloud.firestore {
              // her 1 Ocak'ta scripts/yatsiSonuIslemleri.ts tarafından
              // sıfırlanır (bkz. src/store/useAdminIzinlerStore.ts izinGuncelle).
              (!data.keys().hasAny(['yillikIzinKullanilanGun']) || (data.yillikIzinKullanilanGun is int && data.yillikIzinKullanilanGun >= 0 && data.yillikIzinKullanilanGun <= 30)) &&
-             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 0 && data.haftalikIzinGunu <= 7)) &&
+             // 5 (Cuma) hariç — PersonelFormModal.tsx bu seçeneği bilinçli
+             // olarak devre dışı bırakır çünkü planlamaCekirdegi.ts
+             // haftalikIzinGunu'nu kalıcı bir "bu kişi asla Cuma'ya
+             // atanmaz" dışlaması olarak kullanır (bkz. isFixedDayOff);
+             // sunucu tarafında bu kısıt yoktu (bkz. mimari denetim).
+             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 0 && data.haftalikIzinGunu <= 7 && data.haftalikIzinGunu != 5)) &&
              (!data.keys().hasAny(['notificationSettings']) || isValidNotificationSettings(data.notificationSettings)) &&
              (!data.keys().hasAny(['onayBekliyor']) || data.onayBekliyor is bool) &&
              (!data.keys().hasAny(['kayitTarihi']) || data.kayitTarihi is string) &&
@@ -167,7 +172,10 @@ service cloud.firestore {
              data.email is string && data.email.size() <= 100 &&
              data.role in ['admin', 'muezzin', 'gozlemci'] &&
              (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 100)) &&
-             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 1 && data.haftalikIzinGunu <= 7));
+             // isValidMuezzin ile aynı Cuma (5) hariç tutması — bu alan
+             // kabul edilecek daveti self-registration'da doğrudan
+             // muezzins doc'una kopyalanır (bkz. useAuthStore.ts).
+             (!data.keys().hasAny(['haftalikIzinGunu']) || (data.haftalikIzinGunu is int && data.haftalikIzinGunu >= 1 && data.haftalikIzinGunu <= 7 && data.haftalikIzinGunu != 5));
     }
 
     match /invites/{emailId} {
@@ -184,6 +192,7 @@ service cloud.firestore {
       return data.keys().hasAll(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
              data.keys().hasOnly(['ilceId', 'gunler', 'kaynakApi', 'guncellenmeTarihi']) &&
              data.ilceId is string && data.ilceId.size() >= 3 && data.ilceId.size() <= 8 &&
+             data.ilceId.matches('^[0-9]+$') &&
              // Alt sınır önceden 28'di ("her zaman tam bir ay yazılır" varsayımı) ama
              // src/services/ezanVaktiServisi.ts aylikVakitleriGrupla, API'nin bugünden
              // itibaren döndürdüğü kayan pencereyi gerçek takvim ayına göre böldüğünden,
@@ -504,6 +513,17 @@ service cloud.firestore {
              get(muezzinDoc).data.get('onayBekliyor', false) != true;
     }
 
+    // Bir "YYYY-MM-DD" tarihinin haftanın hangi gününe denk geldiğini
+    // haftalikIzinGunu ile AYNI ölçekte (Pazartesi=1 ... Pazar=7) döner.
+    // epochGunSayisi mod 7'si 0 olması Perşembe demek (1970-01-01 bir
+    // Perşembe, bkz. izinAraligiCumaIceriyorMu yorumu) — bu, Pazartesi
+    // tabanlı 1-7 ölçeğine kaydırılır. `kisiGunIcinMusaitMi` (dateUtils.ts)
+    // ve planlamaCekirdegi.ts'teki `gunIndex + 1` ile aynı sonucu üretir.
+    function haftaGunuNumarasi(tarihStr) {
+      let gun = ((epochGunSayisi(tarihStr) % 7) + 7) % 7;
+      return ((gun + 3) % 7) + 1;
+    }
+
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
              data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi']) &&
@@ -511,6 +531,19 @@ service cloud.firestore {
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
              isAssignableDutyUid(data.uid) &&
+             // Sabit haftalık izin gününde asla atama yok — planlamaCekirdegi.ts
+             // (otomatik motor) bunu mutlak sayar, ama admin'in manuel atama
+             // yolu (HaftalikCizelge.tsx vakitAtamasiniGuncelle) sunucu
+             // tarafında hiç doğrulanmıyordu (bkz. mimari denetim). Onaylı
+             // izin KAPSAMI ayrı bir kısıttır ama "bu uid'in bugünü kapsayan
+             // onaylı bir izni var mı" sorusu bir koleksiyon sorgusu
+             // gerektirir — Security Rules yalnızca bilinen TEK bir doküman
+             // yoluna get() yapabilir, sorgu çalıştıramaz; bu yüzden yalnızca
+             // muezzins doc'unun kendi haftalikIzinGunu alanı (tek bilinen
+             // yoldan get() edilebilir) burada uygulanabiliyor — izin kapsamı
+             // istemci tarafı hard-block'a kalıyor.
+             !(data.tip in ['asil', 'yedek'] &&
+               get(/databases/$(database)/documents/muezzins/$(data.uid)).data.get('haftalikIzinGunu', 0) == haftaGunuNumarasi(data.tarih)) &&
              data.tip in ['asil', 'yedek', 'gorev_cagrisi'] &&
              data.durum in ['bekliyor', 'onaylandi', 'reddedildi', 'sistem_atadi', 'iptal', 'okundu_varsayilan'] &&
              data.pendingAck is bool &&
@@ -697,6 +730,7 @@ service cloud.firestore {
       return data.keys().hasAll(['ilceId', 'ilceAdi', 'hicriDuzeltme']) &&
              data.keys().hasOnly(['ilceId', 'ilceAdi', 'hicriDuzeltme']) &&
              data.ilceId is string && data.ilceId.size() >= 3 && data.ilceId.size() <= 8 &&
+             data.ilceId.matches('^[0-9]+$') &&
              data.ilceAdi is string && data.ilceAdi.size() >= 2 && data.ilceAdi.size() <= 80 &&
              data.hicriDuzeltme is int &&
              data.hicriDuzeltme >= -2 &&

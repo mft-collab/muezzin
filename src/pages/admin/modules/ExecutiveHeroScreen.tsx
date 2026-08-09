@@ -10,7 +10,7 @@ import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate, getTurkeyDateString, izinAraligiCumaIceriyorMu } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { type ActiveModule } from '../config/navConfig';
 
@@ -444,9 +444,12 @@ export default function ExecutiveHeroScreen({
  disabled={processingId === record.id}
  onClick={(e) => {
  e.stopPropagation();
- if (record.tip && record.tip !== 'mazeret' && record.baslangic && record.bitis && izinAraligiCumaIceriyorMu(record.baslangic, record.bitis)) {
- showNotification('Onaylanamaz', 'Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri İzin Yönetimi ekranından işlenebilir.', 'warning');
+ if (record.baslangic && record.bitis) {
+ const engelMesaji = izinOnayCumaEngelMesaji({ baslangic: record.baslangic, bitis: record.bitis });
+ if (engelMesaji) {
+ showNotification('Onaylanamaz', engelMesaji, 'warning');
  return;
+ }
  }
  setDecisionConfirm({ open: true, id: record.id, durum: 'onaylandi', title: record.title });
  }}

@@ -4,15 +4,17 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, X, Calendar, User, Trash2, AlertCircle } from 'lucide-react';
+import { Check, X, Calendar, User, Trash2, AlertCircle, Undo2 } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { izinGunSayisi, izinAraligiCumaIceriyorMu } from '../../../lib/dateUtils';
+import { AdminLoadingState } from '../components/AdminLoadingState';
+import { izinGunSayisi, izinOnayCumaEngelMesaji } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
- const { izinler, loading, error, izinGuncelle, izinSil } = useAdminIzinlerStore();
+ const { izinler, loading, error, izinGuncelle, izinGeriAl, izinSil } = useAdminIzinlerStore();
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const [filter, setFilter] = useState<'all' | 'onay_bekliyor' | 'onaylandi' | 'reddedildi'>('all');
  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+ const [undoConfirm, setUndoConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
  const [uiMessage, setUiMessage] = useState<string | null>(null);
  const [processingIzinId, setProcessingIzinId] = useState<string | null>(null);
 
@@ -39,6 +41,18 @@ export default function IzinYonetimi() {
  }
  };
 
+ const handleUndo = async (id: string) => {
+ setUndoConfirm({ open: false, id: null });
+ setProcessingIzinId(id);
+ try {
+ await izinGeriAl(id);
+ } catch (err) {
+ setUiMessage(err instanceof Error ? err.message : 'Karar geri alınamadı. Bağlantı veya yetki durumunu kontrol edin.');
+ } finally {
+ setProcessingIzinId(null);
+ }
+ };
+
  const handleDelete = async (id: string) => {
  setDeleteConfirm({ open: false, id: null });
  try {
@@ -52,14 +66,7 @@ export default function IzinYonetimi() {
  }
  };
 
- if (loading) return (
- <div className="flex h-[500px] items-center justify-center">
- <div className="flex flex-col items-center gap-6">
- <div className="w-14 h-14 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
- <p className="authority-title !text-2xs opacity-20 tracking-wide uppercase">Talep Verileri Senkronize Ediliyor</p>
- </div>
- </div>
- );
+ if (loading) return <AdminLoadingState label="Talep Verileri Senkronize Ediliyor" size="lg" />;
 
  if (error) return (
  <div className="spatial-glass p-12 rounded-card border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
@@ -213,8 +220,9 @@ export default function IzinYonetimi() {
  whileHover={{ y: -4, scale: 1.05, backgroundColor: 'rgba(16,185,129,0.2)' }}
  whileTap={{ scale: 0.95 }}
  onClick={() => {
- if (izin.tip !== 'mazeret' && izinAraligiCumaIceriyorMu(izin.baslangic, izin.bitis)) {
- setUiMessage('Cuma günü yıllık veya haftalık izin onaylanamaz. Zorunlu mazeret izinleri yönetici kararıyla işlenebilir.');
+ const engelMesaji = izinOnayCumaEngelMesaji(izin);
+ if (engelMesaji) {
+ setUiMessage(engelMesaji);
  return;
  }
  kararVer(izin.id!, 'onaylandi');
@@ -238,10 +246,23 @@ export default function IzinYonetimi() {
  </motion.button>
  </div>
  ) : (
+ <div className="flex items-center gap-2">
  <div className={`px-4 sm:px-6 py-2 rounded-full text-2xs font-bold uppercase tracking-wide border shadow-sm ${
  izin.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
  {izin.durum === 'onaylandi' ? 'DİZGE TARAFINDAN ONAYLI' : 'TALEP REDDEDİLDİ'}
+ </div>
+ <motion.button
+ whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.05)' }}
+ whileTap={{ scale: 0.9 }}
+ disabled={isProcessing}
+ onClick={() => setUndoConfirm({ open: true, id: izin.id! })}
+ aria-label="Kararı geri al"
+ title="Kararı geri al"
+ className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-[var(--text-secondary)]/30 rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all shadow-lg disabled:opacity-40"
+ >
+ <Undo2 className="w-4 h-4 sm:w-5 sm:h-5" />
+ </motion.button>
  </div>
  )}
 
@@ -271,6 +292,18 @@ export default function IzinYonetimi() {
  message="Bu izin kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz."
  isDanger={true}
  confirmText="EVET, SİL"
+ />
+
+ <ConfirmModal
+ isOpen={undoConfirm.open}
+ onClose={() => setUndoConfirm({ open: false, id: null })}
+ onConfirm={() => {
+ if (undoConfirm.id) handleUndo(undoConfirm.id);
+ }}
+ title="KARARI GERİ AL"
+ message="Bu talep tekrar 'ONAY BEKLİYOR' durumuna alınacaktır. Yıllık izinse kullanılan kota da otomatik geri düşülür."
+ isDanger={false}
+ confirmText="EVET, GERİ AL"
  />
  </div>
  );

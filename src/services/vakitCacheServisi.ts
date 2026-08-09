@@ -6,41 +6,25 @@ import { AylikVakitler, SystemSettings } from '../types';
 
 export type VakitCacheKaydi = AylikVakitler & { id: string };
 
-export async function listeleVakitCacheleri(): Promise<VakitCacheKaydi[]> {
+/**
+ * `vakitler` doc id'leri `${ilceId}_${yil-ay}` şeklindedir; koleksiyonda hiçbir
+ * zaman temizlenmeyen bir geçmiş birikir — cami ilçe kodu bir gün değişirse
+ * eski ilçenin kayıtları burada kalıcı olarak kalır. `ilceId` verildiğinde
+ * yalnızca o ilçeye ait kayıtlar döner; verilmezse (geriye dönük uyumluluk
+ * için) tüm kayıtlar döner.
+ */
+export async function listeleVakitCacheleri(ilceId?: string): Promise<VakitCacheKaydi[]> {
   const snapshot = await getDocs(collection(db, 'vakitler'));
-  const data = snapshot.docs.map((docSnap) => ({
+  let data = snapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...docSnap.data(),
   })) as VakitCacheKaydi[];
 
+  if (ilceId) {
+    data = data.filter((kayit) => kayit.id.startsWith(`${ilceId}_`));
+  }
+
   return data.sort((a, b) => b.id.localeCompare(a.id));
-}
-
-/**
- * Belirli bir ay için önbelleği senkronize eder. `aylikVakitleriCek`'in
- * birincil (Diyanet) kaynağı `yil`/`ay` parametrelerini yok sayıp bugünden
- * itibaren ~30-32 günlük kayan bir pencere döndürdüğünden (bkz. o
- * fonksiyonun yorumu), dönen pencere istenen aydan FAZLASINI (bir sonraki
- * ayın bir kısmını) içerebilir. `aylikVakitleriGrupla` ile gerçek takvim
- * ayına göre bölünüp yalnızca istenen `yil-ay`'a denk gelen günler bu doc'a
- * yazılır — aksi halde (eski davranış) pencerenin TAMAMI olduğu gibi bu
- * doc'a yazılıyordu ve içerik çapraz ay kirliliği taşıyordu (bkz. mimari
- * denetim O5).
- */
-export async function senkronizeVakitCacheAyi(
-  settings: Pick<SystemSettings, 'ilceId' | 'ilceAdi'>,
-  yil: number,
-  ay: number
-) {
-  const apiVerisi = await aylikVakitleriCek(yil, ay, settings.ilceId, settings.ilceAdi);
-  const gruplar = aylikVakitleriGrupla(apiVerisi);
-  const ayId = `${yil}-${String(ay).padStart(2, '0')}`;
-  const grup = gruplar[ayId] ?? { ilceId: apiVerisi.ilceId, kaynakApi: apiVerisi.kaynakApi, gunler: {} };
-
-  const docId = `${settings.ilceId}_${ayId}`;
-  const data = { ...grup, guncellenmeTarihi: Timestamp.now() };
-  await setDoc(doc(db, 'vakitler', docId), data, { merge: true });
-  return { docId, data };
 }
 
 /**

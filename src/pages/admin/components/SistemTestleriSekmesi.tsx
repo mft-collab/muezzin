@@ -497,7 +497,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         </div>
       </div>
 
-      {/* 🛠️ Developer Sandbox Panel (Collapsible Accordion) */}
+      {/* Developer Sandbox Panel (Collapsible Accordion) */}
       <div className="spatial-glass border border-[var(--glass-border)] rounded-card overflow-hidden">
         <button
           onClick={() => setShowSandbox(!showSandbox)}
@@ -505,7 +505,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         >
           <div className="flex items-center gap-2.5">
             <Terminal size={16} className="text-[var(--text-secondary)]/50" />
-            <h5 className="text-xs font-semibold text-[var(--text-secondary)]/70">🛠️ Geliştirici Sandbox & Test Araçları</h5>
+            <h5 className="text-xs font-semibold text-[var(--text-secondary)]/70">Geliştirici Sandbox & Test Araçları</h5>
           </div>
           <div className="text-[var(--text-secondary)]/40">
             {showSandbox ? <ChevronUp size={16} /> : <ChevronDown size={16} />}

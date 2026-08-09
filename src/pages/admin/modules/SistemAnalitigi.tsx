@@ -9,6 +9,7 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { getTurkeyNow } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { telemetryService } from '../../../services/telemetryService';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 
 const PERIOD_OPTIONS = [
   { days: 7, label: '7 Gün' },
@@ -168,14 +169,7 @@ export default function SistemAnalitigi() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[500px]">
-        <div className="flex flex-col items-center gap-8">
-          <div className="w-14 h-14 border-4 border-[var(--dynamic-aura,var(--aura-indigo))]/10 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
-          <p className="authority-title !text-2xs opacity-20 tracking-wide uppercase">VERİLER YÜKLENİYOR</p>
-        </div>
-      </div>
-    );
+    return <AdminLoadingState label="Veriler Yükleniyor" size="lg" />;
   }
 
   return (
