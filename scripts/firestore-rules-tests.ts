@@ -1201,6 +1201,57 @@ const tests: TestCase[] = [
     }
   },
   {
+    // isValidBildirim (admin create/manuel-update yolu) sabit haftalık izin
+    // gününde asla atama yapılmasın kısıtlamasını uygular, ama vekalet KABUL
+    // yolu (isAcceptedVekaletBildirimTransfer) bunu hiç kontrol etmiyordu —
+    // biri kendi haftalık izin gününe denk gelen bir nöbeti vekaletle
+    // "kabul ederek" bu kısıtlamayı atlatabiliyordu.
+    name: 'vekalet alicisi kendi sabit haftalik izin gunune denk gelen nobeti kabul edemez',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        // 2026-05-20 bir Carsamba (haftaGunuNumarasi -> 3); Cuma kisitlamasi
+        // (cumaMi) ile karismasin diye ayri bir bilinen gun kullanildi.
+        await setDoc(doc(db, 'muezzins/muezzin2'), { haftalikIzinGunu: 3 }, { merge: true });
+        await setDoc(doc(db, 'bildirimler/wednesdayPendingAsil'), {
+          haftaId: 'W2026-05-18',
+          tarih: '2026-05-20',
+          vakit: 'ogle',
+          uid: 'muezzin1',
+          tip: 'asil',
+          durum: 'bekliyor',
+          pendingAck: true,
+          retSebebi: null,
+          olusturmaTarihi: Timestamp.now(),
+          sonGuncelleme: Timestamp.now()
+        });
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
+          bildirimId: 'wednesdayPendingAsil',
+          haftaId: 'W2026-05-18',
+          gonderenUid: 'muezzin1',
+          gonderenIsim: 'Muezzin One',
+          aliciUid: 'muezzin2',
+          aliciIsim: 'Muezzin Two',
+          tarih: '2026-05-20',
+          vakit: 'ogle',
+          saat: '12:45',
+          tip: 'asil',
+          durum: 'kabul_edildi',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'muezzin2').firestore();
+      await assertFails(runTransaction(db, async (transaction) => {
+        transaction.update(doc(db, 'bildirimler/wednesdayPendingAsil'), {
+          uid: 'muezzin2',
+          vekaletDevredildi: true,
+          sonGuncelleme: Timestamp.now()
+        });
+      }));
+    }
+  },
+  {
     name: 'vekaletDevredildi isareti olmadan bildirim devralinamaz (K5 regresyonu)',
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {

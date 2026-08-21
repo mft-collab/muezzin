@@ -365,18 +365,34 @@ service cloud.firestore {
     // düşebiliyordu — alan tamamen eksikken doğrudan `.asilMazeretUid`
     // erişimi rules motorunda "Property is undefined" hatası fırlatıyordu
     // (bkz. `cumaMiIsaretli` ile aynı kalıp, aynı kök neden).
+    // NOT (ifade tavanı denetimi): `existing()/incoming()` alan karşılaştırması
+    // olan ucuz bir ön-kontrol, `getAfter()` içeren pahalı gövdeyi AYRI bir
+    // fonksiyona taşıdı — isSelfBildirimUpdate'teki AYNI teknik (bkz. o
+    // yorum). Önceden `let asilAfter = getAfter(...)` bu fonksiyonun EN
+    // BAŞINDAydı; CEL'de `let` bağlamaları fonksiyon girişinde HEMEN
+    // değerlendirildiğinden, `bildirimler` update kuralının OR zincirindeki
+    // diğer 3 dal (isAdmin/isValidBildirim, isSelfBildirimUpdate,
+    // isAcceptedVekaletBildirimTransfer) tutmayan HER güncelleme isteğinde bu
+    // fonksiyon da çağrılıyor ve `getAfter()` hiç ilgisi olmasa bile
+    // çalışıyordu — dört dalın toplamı emülatörün 1000 ifade tavanını
+    // aşıyordu (bkz. `npm run test:rules` çıktısındaki "Unable to evaluate
+    // the expression as the maximum of 1000 expressions" uyarıları).
     function isBackupPromotionFromMazeret() {
+      return existing().tip == 'yedek' &&
+             incoming().tip == 'asil' &&
+             incoming().uid == existing().uid &&
+             isBackupPromotionFromMazeretIcin();
+    }
+
+    function isBackupPromotionFromMazeretIcin() {
       let changed = incoming().diff(existing()).affectedKeys();
       let asilDocId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_asil';
       let asilAfter = getAfter(/databases/$(database)/documents/bildirimler/$(asilDocId)).data;
       return isSignedIn() &&
-             existing().tip == 'yedek' &&
              existing().durum != 'reddedildi' &&
              existing().uid != request.auth.uid &&
-             incoming().tip == 'asil' &&
              incoming().durum == 'bekliyor' &&
              incoming().pendingAck == true &&
-             incoming().uid == existing().uid &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
              incoming().vakit == existing().vakit &&
@@ -458,25 +474,47 @@ service cloud.firestore {
              incoming().durum in ['kabul_edildi', 'reddedildi'];
     }
 
+    // NOT (ifade tavanı denetimi): isBackupPromotionFromMazeret ile AYNI
+    // teknik — ucuz, salt `existing()/incoming()` alan karşılaştırmalarından
+    // oluşan bir ön-kontrol, `getAfter()` içeren pahalı gövdeyi ayrı bir
+    // fonksiyona taşıdı. Önceden `let talep = getAfter(...)` doğrudan bu
+    // fonksiyonun (OR zincirinin bir dalının) en başındaydı ve `bildirimler`
+    // update kuralına uymayan HER istekte (diğer 3 dal tutmasa bile)
+    // koşulsuz çalışıyordu — dört dalın toplam ifade sayısı emülatörün 1000
+    // tavanını aşıyordu (bkz. isBackupPromotionFromMazeret yorumu).
+    function isAcceptedVekaletBildirimTransfer(bildirimId) {
+      return existing().durum == 'bekliyor' &&
+             existing().uid != request.auth.uid &&
+             incoming().uid == request.auth.uid &&
+             isAcceptedVekaletBildirimTransferIcin(bildirimId);
+    }
+
     // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı — ucuz
     // `existing()`/`incoming()` alan karşılaştırmaları önce elenir, ek
     // Firestore okuması gerektiren doğrulama en son (bkz. isSelfBildirimUpdate
     // yorumu). `talep.*` karşılaştırmaları zaten fonksiyon girişindeki
     // `let talep = getAfter(...)`'e bağımlı olduğundan (bu okuma sıralamadan
     // bağımsız olarak zaten gerçekleşir) sıraları performansı etkilemez.
-    function isAcceptedVekaletBildirimTransfer(bildirimId) {
+    function isAcceptedVekaletBildirimTransferIcin(bildirimId) {
       let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
       let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
       let changed = incoming().diff(existing()).affectedKeys();
-      return existing().durum == 'bekliyor' &&
-             !cumaMiIsaretli(existing()) &&
+      // ifade tavanı denetimi: alıcının muezzins belgesi burada VE
+      // isAssignableDutyUid() içinde AYRI AYRI get() ediliyordu (aynı yol,
+      // aynı transaction). Tek `let` ile bir kez okunup hem
+      // isAssignableDutyUidVeri()'ye hem Cuma-izin kontrolüne aktarılıyor —
+      // bu dalın kendi (zaten pahalı: talep getAfter + diff + get) ifade
+      // maliyetini bir get() kadar düşürür (bkz. isAssignableDutyUidVeri
+      // yorumu, npm run test:rules'daki "1000 ifade tavanı" bulgusu).
+      let aliciMuezzinDoc = /databases/$(database)/documents/muezzins/$(request.auth.uid);
+      let aliciMuezzinVeri = exists(aliciMuezzinDoc) ? get(aliciMuezzinDoc).data : null;
+      return !cumaMiIsaretli(existing()) &&
              incoming().durum == existing().durum &&
              incoming().haftaId == existing().haftaId &&
              incoming().tarih == existing().tarih &&
              incoming().vakit == existing().vakit &&
              incoming().tip == existing().tip &&
              incoming().pendingAck == existing().pendingAck &&
-             incoming().uid == request.auth.uid &&
              // vekaletDevredildi: true zorunlu — durum bu gecişte degismedigi
              // icin (hala 'bekliyor' olabilir), bu isaret olmadan bir sonraki
              // plan yeniden uretimi bu slotu korumasiz sanip sessizce eski
@@ -497,20 +535,50 @@ service cloud.firestore {
              // admin alıcıyı arşivleyebilir/rolünü değiştirebilir — kabul
              // anında TEKRAR doğrulanmazsa arşivlenmiş biri çizelgeye geri
              // dönebiliyordu (bkz. mimari denetim O9).
-             isAssignableDutyUid(request.auth.uid);
+             isAssignableDutyUidVeri(request.auth.uid, aliciMuezzinVeri) &&
+             // Sabit haftalık izin gününde asla atama yok kısıtlaması
+             // (isValidBildirim'deki karşılığı) admin create/manuel-update
+             // yolunda uygulanıyordu ama vekalet KABUL yolu bunu hiç
+             // kontrol etmiyordu — biri kendi izin gününe denk gelen bir
+             // nöbeti vekaletle "kabul ederek" bu kısıtlamayı atlatabiliyordu
+             // (bkz. Cuma kısıtlaması için CLAUDE.md'nin uyardığı aynı desen:
+             // üç yerde de senkron tutulmalı). `existing().tip` zaten
+             // `talep.tip` ile eşleşmesi zorunlu tutulduğundan tekrar
+             // kontrol edilmiyor. `isAssignableDutyUidVeri` yukarıda `&&`
+             // ile önce geldiğinden, aliciMuezzinVeri null ise burası hiç
+             // değerlendirilmeden kısa devre yapar.
+             !(existing().tip in ['asil', 'yedek'] &&
+               aliciMuezzinVeri.get('haftalikIzinGunu', 0) == haftaGunuNumarasi(existing().tarih));
     }
 
+    // NOT (ifade tavanı denetimi): `get(muezzinDoc)` tek bir `let`'e alındı —
+    // önceden aynı doküman için 3 ayrı `get()` çağrısı vardı (role, aktif,
+    // onayBekliyor), üstelik bu fonksiyon `bildirimler` update kuralındaki
+    // 4 dalın HER birinden çağrılıyor (bkz. isSelfBildirimUpdate yorumu, aynı
+    // dosyada zaten belgeli 1000-ifade tavanı riski). `exists(muezzinDoc)`
+    // hâlâ && ile önce kısa devre yapıyor — CEL koşullu (`?:`) ifadeler yalnız
+    // seçilen dalı değerlendirdiğinden, doküman yoksa `get()` hiç çalışmıyor.
     function isAssignableDutyUid(uid) {
       let muezzinDoc = /databases/$(database)/documents/muezzins/$(uid);
+      let muezzinVeri = exists(muezzinDoc) ? get(muezzinDoc).data : null;
+      return isAssignableDutyUidVeri(uid, muezzinVeri);
+    }
+
+    // isAssignableDutyUid'in get()'siz hali — çağıran taraf muezzins verisini
+    // başka bir sebeple (ör. isAcceptedVekaletBildirimTransferIcin'deki Cuma-
+    // izin kontrolü) zaten okumuşsa AYNI belgeyi ikinci kez get() etmeden bu
+    // fonksiyona doğrudan veriyi geçebilir — ifade tavanına yakın dallarda
+    // tekrarlanan get() maliyetini önler.
+    function isAssignableDutyUidVeri(uid, muezzinVeri) {
       return uid is string &&
-             exists(muezzinDoc) &&
-             get(muezzinDoc).data.role == 'muezzin' &&
-             get(muezzinDoc).data.aktif == true &&
+             muezzinVeri != null &&
+             muezzinVeri.role == 'muezzin' &&
+             muezzinVeri.aktif == true &&
              // onayBekliyor: true olan (admin henüz onaylamamış) bir davetli
              // nöbete atanabilir sayılmamalı — AuthGuard ona zaten bir
              // bekleme ekranı gösterdiğinden, atandığı vakit kimse
              // göremiyordu (bkz. mimari denetim Y4).
-             get(muezzinDoc).data.get('onayBekliyor', false) != true;
+             muezzinVeri.get('onayBekliyor', false) != true;
     }
 
     // Bir "YYYY-MM-DD" tarihinin haftanın hangi gününe denk geldiğini
