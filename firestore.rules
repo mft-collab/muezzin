@@ -495,17 +495,16 @@ service cloud.firestore {
     // yorumu). `talep.*` karşılaştırmaları zaten fonksiyon girişindeki
     // `let talep = getAfter(...)`'e bağımlı olduğundan (bu okuma sıralamadan
     // bağımsız olarak zaten gerçekleşir) sıraları performansı etkilemez.
+    // ifade tavanı denetimi: alıcının muezzins belgesi burada VE
+    // isAssignableDutyUid() içinde AYRI AYRI get() ediliyordu (aynı yol,
+    // aynı transaction). Tek `let` ile bir kez okunup hem
+    // isAssignableDutyUidVeri()'ye hem Cuma-izin kontrolüne aktarılıyor —
+    // bu dalın kendi (zaten pahalı: talep getAfter + diff + get) ifade
+    // maliyetini bir get() kadar düşürür.
     function isAcceptedVekaletBildirimTransferIcin(bildirimId) {
       let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
       let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
       let changed = incoming().diff(existing()).affectedKeys();
-      // ifade tavanı denetimi: alıcının muezzins belgesi burada VE
-      // isAssignableDutyUid() içinde AYRI AYRI get() ediliyordu (aynı yol,
-      // aynı transaction). Tek `let` ile bir kez okunup hem
-      // isAssignableDutyUidVeri()'ye hem Cuma-izin kontrolüne aktarılıyor —
-      // bu dalın kendi (zaten pahalı: talep getAfter + diff + get) ifade
-      // maliyetini bir get() kadar düşürür (bkz. isAssignableDutyUidVeri
-      // yorumu, npm run test:rules'daki "1000 ifade tavanı" bulgusu).
       let aliciMuezzinDoc = /databases/$(database)/documents/muezzins/$(request.auth.uid);
       let aliciMuezzinVeri = exists(aliciMuezzinDoc) ? get(aliciMuezzinDoc).data : null;
       return !cumaMiIsaretli(existing()) &&
@@ -642,10 +641,33 @@ service cloud.firestore {
              (!data.keys().hasAny(['vekaletDevredildi']) || data.vekaletDevredildi is bool);
     }
 
+    // ifade tavanı denetimi (2. tur, İKİ AYRI deneme ölçüldü — ikisi de
+    // "1000 ifade" uyarı SAYISINI DEĞİŞTİRMEDİ, 13 → 13, hep aynı satırda):
+    // (1) get()'leri paylaştırma (isAdmin/isAssignableDutyUid'in AYNI
+    // muezzins belgesini tek `let`'e indirmesi), (2) admin dalını (kendi
+    // isSuperAdminEmail get()'i + muezzins get()'i ile en pahalı dal, OR
+    // zincirinin İLK dalıydı) EN SONA taşımak — ki bu, self-update/vekalet-
+    // kabul dallarından biri eşleştiğinde isAdmin()'in 2 get()'inin HİÇ
+    // ÇALIŞMAMASI gerekirdi (CEL `||` soldan sağa kısa devre yapar). İKİ
+    // FARKLI çalışma-zamanı optimizasyonunun de ölçülebilir etkisi SIFIR
+    // olması, tavanın çalışma-zamanı okuma/kısa-devre davranışıyla değil,
+    // muhtemelen kuralın DERLENMİŞ ifade ağacının TOPLAM boyutuyla (tüm 4
+    // dalın birleşik terim sayısı, hangi dalın gerçekte çalıştığından
+    // bağımsız) ilgili olduğuna işaret ediyor — bu durumda gerçek çözüm
+    // gerçek doğrulama mantığını azaltmak/şemayı yeniden tasarlamaktır, ayrı
+    // bir kapsamlı görev (bkz. commit mesajı). Admin dalının sona alınması
+    // yine de tutuluyor: matematiksel olarak sonucu değiştirmez, ama gerçek
+    // üretimde (emülatör dışı) her self-update/vekalet-kabul yazımında
+    // isAdmin()'in 2 gereksiz Firestore okumasını atlatır.
     match /bildirimler/{docId} {
       allow read, list: if isSignedIn();
       allow create: if isAdmin() && isValidBildirim(incoming());
-      allow update: if isSignedIn() && ((isAdmin() && isValidBildirim(incoming())) || isSelfBildirimUpdate(docId) || isAcceptedVekaletBildirimTransfer(docId) || isBackupPromotionFromMazeret());
+      allow update: if isSignedIn() && (
+        isSelfBildirimUpdate(docId) ||
+        isAcceptedVekaletBildirimTransfer(docId) ||
+        isBackupPromotionFromMazeret() ||
+        (isAdmin() && isValidBildirim(incoming()))
+      );
       allow delete: if isAdmin();
     }
 
