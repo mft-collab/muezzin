@@ -122,6 +122,34 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Devreye alma penceresi güvenliği: rules+istemci deploy'u ile bu
+    // script'in (cron, git push ile ayrı ayrı devreye giriyor) devreye alma
+    // anları tam çakışmayabilir. Eski istemci, henüz eski kurallar
+    // canlıyken, transferi ZATEN doğrudan tamamlamış olabilir (bildirim.uid
+    // zaten aliciUid) — script bunu "artık devralamıyor" sanıp yanlış admin
+    // uyarısı ÜRETMEMELİ, sessizce idempotent bir no-op yapmalı.
+    name: 'Eski istemcinin zaten tamamladigi transfer icin yanlis admin uyarisi uretilmez',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1 });
+      // Eski istemci/kural yolu: uid zaten flip edilmis.
+      await bildirimRef.update({ uid: 'muezzin2', vekaletDevredildi: true, vekaletDevriBekliyor: false });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin2');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+
+      const alarmSnap = await db.collection('adminUyarilari').get();
+      assert.equal(alarmSnap.size, 0);
+      const auditSnap = await db.collection('audit_logs').get();
+      assert.equal(auditSnap.size, 0);
+    }
+  },
+  {
     // Talep oluşturulduğunda alıcının aktif müezzin olduğu doğrulanmıştı
     // (isValidVekaletCreate), ama talep beklerken (ve script'in ~10-15 dk'lık
     // gecikme penceresinde) admin alıcıyı arşivleyebilir — script kabul

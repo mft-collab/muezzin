@@ -105,7 +105,7 @@ export async function processVekaletDevirleri(dryRun = false) {
     }
 
     const bildirimRef = db.collection('bildirimler').doc(talep.bildirimId);
-    let sonuc: 'uygulandi' | 'reddedildi' | 'atlandi' = 'atlandi';
+    let sonuc: 'uygulandi' | 'reddedildi' | 'zatenUygulanmis' | 'atlandi' = 'atlandi';
 
     await db.runTransaction(async (transaction) => {
       const freshTalep = await transaction.get(talepDoc.ref);
@@ -119,6 +119,19 @@ export async function processVekaletDevirleri(dryRun = false) {
         return;
       }
       const bildirim = freshBildirim.data() as BildirimData;
+
+      // Devreye alma penceresi güvenliği: rules+istemci deploy'u ile bu
+      // script'in (cron, git push ile ayrı ayrı devreye giriyor) devreye
+      // alma zamanları TAM aynı anda olmayabilir. Eski istemci (henüz eski
+      // kurallar canlıyken) transferi zaten DOĞRUDAN tamamlamış olabilir —
+      // bu durumda `bildirim.uid` zaten `talep.aliciUid`'dir. Bunu "transfer
+      // başarısız" sanıp yanlış admin uyarısı üretmek yerine "zaten
+      // uygulanmış" say (idempotent no-op).
+      if (bildirim.uid === talep.aliciUid) {
+        transaction.update(talepDoc.ref, { bildirimUygulandi: true, sonGuncelleme: Timestamp.now() });
+        sonuc = 'zatenUygulanmis';
+        return;
+      }
 
       const aliciRef = db.collection('muezzins').doc(talep.aliciUid);
       const aliciSnap = await transaction.get(aliciRef);
@@ -173,10 +186,12 @@ export async function processVekaletDevirleri(dryRun = false) {
     // closure içinde yeniden atanan bir `let` olduğundan TypeScript'in
     // kontrol akışı analizi burada değeri yanlışlıkla ilk atamaya
     // daraltıyor (bilinen bir TS closure-narrowing sınırlaması).
-    const finalSonuc = sonuc as 'uygulandi' | 'reddedildi' | 'atlandi';
+    const finalSonuc = sonuc as 'uygulandi' | 'reddedildi' | 'zatenUygulanmis' | 'atlandi';
     if (finalSonuc === 'uygulandi') {
       console.log(`${talep.tarih} ${talep.vakit}: vekalet transferi uygulandı (${talep.gonderenUid} -> ${talep.aliciUid}).`);
       transferUygulandi++;
+    } else if (finalSonuc === 'zatenUygulanmis') {
+      console.log(`${talep.tarih} ${talep.vakit}: transfer zaten uygulanmış (eski istemci/kural devreye alma penceresi) — yalnızca işaretlendi.`);
     } else if (finalSonuc === 'reddedildi') {
       console.log(`${talep.tarih} ${talep.vakit}: kabul edilmiş vekalet transferi artık uygulanamıyor (alıcı uygunluğu değişti) — admin uyarısı oluşturuluyor.`);
       transferReddedildi++;
