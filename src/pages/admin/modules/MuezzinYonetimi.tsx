@@ -49,7 +49,13 @@ export default function MuezzinYonetimi() {
  if (error.code === 'permission-denied') {
  setErrorStatus("Davetiyeleri görme yetkiniz yok.");
  } else {
- handleFirestoreError(error, OperationType.GET, 'invites');
+ // handleFirestoreError'ın dönüş değeri (kullanıcıya gösterilebilir mesaj)
+ // önceden atılıyordu — yalnızca yan-etki (console+telemetri) için
+ // çağrılıyordu. permission-denied DIŞI bir dinleme hatasında (ağ
+ // kopması, unavailable/deadline-exceeded) bekleyen davetler listesi
+ // ekranda hiçbir uyarı olmadan sessizce donuk/eksik kalıyordu.
+ const mesaj = handleFirestoreError(error, OperationType.GET, 'invites');
+ setErrorStatus(mesaj.message);
  }
  });
  return () => unsub();

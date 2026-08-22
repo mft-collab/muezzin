@@ -114,10 +114,12 @@ uygulanır — birini değiştirirken diğerlerini unutma:
 - `firestore.rules` `isSelfBildirimUpdate()` — sunucu tarafı, bildirim
   belgesindeki `cumaMi` alanına bakar (oluşturma anında hesaplanır, opsiyonel
   alan — eski belgelerde olmayabilir).
-- `firestore.rules` `isValidVekaletCreate`/`isAcceptedVekaletBildirimTransfer`
-  ve `src/services/vekaletServisi.ts` — vekalet (gönüllü görev devri) de aynı
-  Cuma kısıtlamasına tabi, aksi halde mazeret engelini bu yoldan atlatmak
-  mümkün olurdu (bkz. algoritma denetimi).
+- `firestore.rules` `isValidVekaletCreate` (talep oluşturma) ve
+  `scripts/vekaletDevirleriniIsle.ts` (GERÇEK transfer — "1000 ifade tavanı"
+  kök neden çözümü sonrası artık CEL'de değil, Admin SDK'da taze veriyle
+  yeniden doğrulanıyor) ve `src/services/vekaletServisi.ts` — vekalet
+  (gönüllü görev devri) de aynı Cuma kısıtlamasına tabi, aksi halde mazeret
+  engelini bu yoldan atlatmak mümkün olurdu (bkz. algoritma denetimi).
 
 ### Firestore dinleyici deseni
 

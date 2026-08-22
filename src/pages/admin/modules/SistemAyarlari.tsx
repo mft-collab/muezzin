@@ -5,6 +5,7 @@ import { Save, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
 import { AdminLoadingState } from '../components/AdminLoadingState';
+import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { playSuccess, playWarning } from '../../../lib/sounds';
 import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
 
@@ -21,6 +22,13 @@ export default function SistemAyarlari() {
  const [hicriDuzeltme, setHicriDuzeltme] = useState(0);
  const [saving, setSaving] = useState(false);
  const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
+ // İlçe kodu değişikliği, TÜM cemaatin ezan vakti kaynağını değiştiren
+ // sistem geneli bir etkiye sahip — DuyuruYonetimi.tsx'in çok daha düşük
+ // etkili silme işlemi için bile ConfirmModal kullanmasıyla karşılaştırılınca
+ // buradaki tek-tıkla-kaydet tutarsızdı (bkz. mimari denetim, görsel/premium).
+ const [pendingLocationChange, setPendingLocationChange] = useState<{
+   ilceId: string; ilceAdi: string; hicriDuzeltme: number;
+ } | null>(null);
 
  // Uzak ayar dokümanı değiştiğinde form alanlarını render sırasında
  // doldur — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
@@ -34,45 +42,14 @@ export default function SistemAyarlari() {
  }
  }
 
- const handleSave = async (e: React.FormEvent) => {
- e.preventDefault();
- 
-  const cleanedIlceId = ilceId.trim();
-  const cleanedIlceAdi = ilceAdi.trim();
-  const normalizedHicriDuzeltme = Number(hicriDuzeltme);
-  
-  if (!/^\d+$/.test(cleanedIlceId)) {
-    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu yalnızca rakamlardan oluşmalıdır.' });
-    playWarning();
-    return;
-  }
-
-  if (cleanedIlceId.length < 3 || cleanedIlceId.length > 8) {
-    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu geçerli uzunlukta olmalıdır.' });
-    playWarning();
-    return;
-  }
-
-  if (cleanedIlceAdi.length < 2 || cleanedIlceAdi.length > 80) {
-    setStatusMessage({ type: 'error', text: 'İlçe tanımı 2-80 karakter arasında olmalıdır.' });
-    playWarning();
-    return;
-  }
-
-  if (!Number.isInteger(normalizedHicriDuzeltme) || normalizedHicriDuzeltme < -2 || normalizedHicriDuzeltme > 2) {
-    setStatusMessage({ type: 'error', text: 'Hicri tarih düzeltmesi -2 ile +2 gün arasında olmalıdır.' });
-    playWarning();
-    return;
-  }
-  
+ const performSave = async (cleanedIlceId: string, cleanedIlceAdi: string, normalizedHicriDuzeltme: number, locationChanged: boolean) => {
   setSaving(true);
   setStatusMessage(null);
   try {
-  const locationChanged = cleanedIlceId !== settings.ilceId || cleanedIlceAdi !== settings.ilceAdi;
-  await updateSettings({ 
-    ilceId: cleanedIlceId, 
-    ilceAdi: cleanedIlceAdi, 
-    hicriDuzeltme: normalizedHicriDuzeltme 
+  await updateSettings({
+    ilceId: cleanedIlceId,
+    ilceAdi: cleanedIlceAdi,
+    hicriDuzeltme: normalizedHicriDuzeltme
   });
 
   if (locationChanged) {
@@ -101,12 +78,55 @@ export default function SistemAyarlari() {
  }
  };
 
+ const handleSave = async (e: React.FormEvent) => {
+ e.preventDefault();
+
+  const cleanedIlceId = ilceId.trim();
+  const cleanedIlceAdi = ilceAdi.trim();
+  const normalizedHicriDuzeltme = Number(hicriDuzeltme);
+
+  if (!/^\d+$/.test(cleanedIlceId)) {
+    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu yalnızca rakamlardan oluşmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (cleanedIlceId.length < 3 || cleanedIlceId.length > 8) {
+    setStatusMessage({ type: 'error', text: 'Diyanet ilçe kodu geçerli uzunlukta olmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (cleanedIlceAdi.length < 2 || cleanedIlceAdi.length > 80) {
+    setStatusMessage({ type: 'error', text: 'İlçe tanımı 2-80 karakter arasında olmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  if (!Number.isInteger(normalizedHicriDuzeltme) || normalizedHicriDuzeltme < -2 || normalizedHicriDuzeltme > 2) {
+    setStatusMessage({ type: 'error', text: 'Hicri tarih düzeltmesi -2 ile +2 gün arasında olmalıdır.' });
+    playWarning();
+    return;
+  }
+
+  const locationChanged = cleanedIlceId !== settings.ilceId || cleanedIlceAdi !== settings.ilceAdi;
+  if (locationChanged) {
+    // Sistem geneli etki (TÜM cemaatin ezan vakti kaynağı değişiyor) —
+    // doğrudan kaydetmek yerine önce onay istenir.
+    setPendingLocationChange({ ilceId: cleanedIlceId, ilceAdi: cleanedIlceAdi, hicriDuzeltme: normalizedHicriDuzeltme });
+    return;
+  }
+
+  await performSave(cleanedIlceId, cleanedIlceAdi, normalizedHicriDuzeltme, false);
+ };
+
  if (loading) return <AdminLoadingState label="Dizge ayarları okunuyor" />;
 
  return (
-  <motion.div 
-  initial={{ opacity: 0, y: 20 }} 
-  animate={{ opacity: 1, y: 0 }} 
+  <>
+  <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
   className="p-1 sm:p-8 relative overflow-hidden rounded-card border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent"
   >
   <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8 relative z-10">
@@ -207,5 +227,20 @@ export default function SistemAyarlari() {
   </div>
  </form>
  </motion.div>
+ <ConfirmModal
+   isOpen={pendingLocationChange !== null}
+   onClose={() => setPendingLocationChange(null)}
+   onConfirm={() => {
+     if (!pendingLocationChange) return;
+     const { ilceId: pId, ilceAdi: pAdi, hicriDuzeltme: pHicri } = pendingLocationChange;
+     setPendingLocationChange(null);
+     void performSave(pId, pAdi, pHicri, true);
+   }}
+   title="VAKİT BÖLGESİ DEĞİŞTİRİLECEK"
+   message={`İlçe kodu "${settings.ilceId}" → "${pendingLocationChange?.ilceId}" olarak değiştirilecek. Bu, TÜM cemaatin ezan vakti kaynağını etkiler ve vakit önbelleği yeniden senkronize edilecektir.`}
+   isDanger={false}
+   confirmText="EVET, DEĞİŞTİR"
+ />
+ </>
  );
 }

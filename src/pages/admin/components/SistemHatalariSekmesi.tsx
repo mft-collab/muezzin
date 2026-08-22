@@ -202,7 +202,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                         )}
                         {breadcrumbCount > 0 && (
                           <span className="px-2.5 py-1 bg-sky-400/10 text-sky-400 border border-sky-400/20 text-2xs font-bold tracking-wider rounded-lg uppercase">
-                            {breadcrumbCount} KIRINIK
+                            {breadcrumbCount} KIRINTI
                           </span>
                         )}
                         {hasSnapshot && (
@@ -294,7 +294,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                       {activePanel === 'breadcrumbs' && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="tabpanel" id="error-panel-breadcrumbs" aria-labelledby="error-tab-breadcrumbs">
                           <span className="premium-label !text-2xs !opacity-30 block mb-4">
-                            KULLANICI EYLEM KRİNTI İZLERİ — HATADAN ÖNCEKİ {breadcrumbCount} ADIM
+                            KULLANICI EYLEM KIRINTI İZLERİ — HATADAN ÖNCEKİ {breadcrumbCount} ADIM
                           </span>
                           <BreadcrumbTrail breadcrumbs={log.breadcrumbs || []} />
                         </motion.div>

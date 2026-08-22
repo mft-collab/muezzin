@@ -55,8 +55,11 @@ export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => 
  await setDoc(doc(db, 'settings', 'system'), merged, { merge: true });
  return true;
  } catch (error) {
- console.error("Ayar güncelleme hatası:", error);
- throw error;
+ // `init()`'teki onSnapshot hatası zaten handleFirestoreError'dan geçip
+ // telemetriye gidiyordu — bu catch yalnızca console.error yapıp ham
+ // hatayı fırlatıyordu, error_logs'a hiç düşmüyordu (bkz. mimari
+ // denetim, aynı dosyada iç tutarsızlık).
+ throw handleFirestoreError(error, OperationType.UPDATE, 'settings/system');
  }
  },
 }));

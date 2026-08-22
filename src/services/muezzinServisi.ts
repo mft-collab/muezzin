@@ -163,8 +163,13 @@ export interface PersonelKaydetParams {
   email: string;
 }
 
-/** Yeni personel daveti oluşturur veya mevcut bir personelin profilini günceller; rol/izin günü değişimi hafta planını güvenli şekilde yeniden dengeler. */
-export async function personelKaydet(params: PersonelKaydetParams): Promise<void> {
+/** Yeni personel daveti oluşturur veya mevcut bir personelin profilini günceller; rol/izin günü değişimi hafta planını güvenli şekilde yeniden dengeler.
+ * `planRefreshed: false` dönmesi, kaydın kendisinin BAŞARISIZ olduğu anlamına gelmez — yalnızca artçı plan
+ * yenilemesinin başarısız olduğunu (bkz. `haftalikPlanlariYenile`'in sessiz-raporlama deseni) belirtir; çağıran
+ * taraf `personelAktiflikDegistir`/`personelOnayla`/`personelGeriYukle`/`personelArsivle` ile AYNI şekilde
+ * `warnIfPlanNotRefreshed`-benzeri bir uyarı göstermeli (bkz. mimari denetim — bu alan bugüne kadar hiç
+ * çağırana geri bildirilmiyordu, yalnızca console.warn'a düşüyordu). */
+export async function personelKaydet(params: PersonelKaydetParams): Promise<{ planRefreshed: boolean }> {
   const { editingUser, muezzinler, fullName, role, haftalikIzinGunu } = params;
 
   if (editingUser) {
@@ -182,15 +187,17 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<void
         role,
         haftalikIzinGunu: haftalikIzinGunu > 0 ? haftalikIzinGunu : deleteField(),
       });
+      let planRefreshed = true;
       if (impactsDutyPlan) {
         // haftalikPlanlariYenile (guard'sız) kullanılır — haftaPlaniniGuvenliYenile
         // DEĞİL: o, geçirilen nesnenin YENİ rolüne bakıp 'muezzin' değilse
         // hiç yenilemiyordu, oysa rol muezzin'den BAŞKA bir şeye değiştiğinde
         // de (kişi rotasyondan çıkıyor) +1/+2 haftaların yenilenmesi gerekir
         // (bkz. mimari denetim O1).
-        await haftalikPlanlariYenile();
+        planRefreshed = await haftalikPlanlariYenile();
       }
       await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${role.toUpperCase()}, İzin günü: ${haftalikIzinGunu > 0 ? haftalikIzinGunu : 'Yok'}`);
+      return { planRefreshed };
     } catch (err) {
       throw handleFirestoreError(err, OperationType.UPDATE, path);
     }
@@ -213,6 +220,7 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<void
       }
       await setDoc(doc(db, 'invites', mail), inviteData);
       await telemetryService.logAudit('Personel Daveti', mail, `Kullanıcı adı: ${fullName}, Davet edilen rol: ${role.toUpperCase()}`);
+      return { planRefreshed: true };
     } catch (err) {
       throw handleFirestoreError(err, OperationType.CREATE, path);
     }

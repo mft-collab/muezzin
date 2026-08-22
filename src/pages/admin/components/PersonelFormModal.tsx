@@ -6,6 +6,7 @@ import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { personelKaydet } from '../../../services/muezzinServisi';
+import { useNotificationStore } from '../../../store/useNotificationStore';
 
 interface Props {
  isOpen: boolean;
@@ -20,6 +21,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  });
  const [errorStatus, setErrorStatus] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const showNotification = useNotificationStore(s => s.showNotification);
 
  useEffect(() => {
  if (isOpen) {
@@ -56,7 +58,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
     try {
       setErrorStatus(null);
       const fullName = `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim();
-      await personelKaydet({
+      const { planRefreshed } = await personelKaydet({
         editingUser,
         muezzinler,
         fullName,
@@ -65,6 +67,21 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
         email: formData.email,
       });
       onClose();
+      // Kayıt kendisi başarılı oldu (modal kapandı) — yalnızca artçı plan
+      // yenilemesi başarısız oldu. Bu, MuezzinYonetimi.tsx'teki kardeş
+      // işlemlerin (aktiflik/onay/geri yükle/arşivle) hepsinde zaten
+      // `warnIfPlanNotRefreshed` ile bildiriliyordu; personelKaydet aynı
+      // riski (rol/izin günü değişimi sonrası +1/+2 hafta yenilemesi)
+      // taşıdığı halde önceden hiç bildirmiyordu, yalnızca console.warn'a
+      // düşüyordu (bkz. mimari denetim). Toast kullanılıyor çünkü modal
+      // zaten kapandı — inline errorStatus burada görünmez olurdu.
+      if (!planRefreshed) {
+        showNotification(
+          'Plan Yenilenemedi',
+          'Kadro güncellendi; mevcut hafta planı otomatik yenilenemedi. Hizmet Cetveli üzerinden güvenli güncelleme yapabilirsiniz.',
+          'warning'
+        );
+      }
     } catch (err) {
       setErrorStatus(err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
     } finally {

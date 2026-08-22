@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import { getTurkeyNow } from '../lib/dateUtils';
 import { aylikVakitleriCek, aylikVakitleriGrupla } from './ezanVaktiServisi';
 import { AylikVakitler, SystemSettings } from '../types';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 export type VakitCacheKaydi = AylikVakitler & { id: string };
 
@@ -14,17 +15,26 @@ export type VakitCacheKaydi = AylikVakitler & { id: string };
  * için) tüm kayıtlar döner.
  */
 export async function listeleVakitCacheleri(ilceId?: string): Promise<VakitCacheKaydi[]> {
-  const snapshot = await getDocs(collection(db, 'vakitler'));
-  let data = snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  })) as VakitCacheKaydi[];
+  try {
+    const snapshot = await getDocs(collection(db, 'vakitler'));
+    let data = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    })) as VakitCacheKaydi[];
 
-  if (ilceId) {
-    data = data.filter((kayit) => kayit.id.startsWith(`${ilceId}_`));
+    if (ilceId) {
+      data = data.filter((kayit) => kayit.id.startsWith(`${ilceId}_`));
+    }
+
+    return data.sort((a, b) => b.id.localeCompare(a.id));
+  } catch (err) {
+    // Önceden hatalar sarmalanmadan (handleFirestoreError'dan geçmeden)
+    // doğrudan fırlatılıyordu — çağıran (EzanOnbellegi.tsx) sabit bir
+    // Türkçe mesajla yutuyordu ama telemetryService.logError'a hiç
+    // ulaşmıyordu; en yüksek "blast-radius"lı ekranlardan birinde üretim
+    // hataları admin'in kendi "Sistem Logları" ekranında görünmüyordu.
+    throw handleFirestoreError(err, OperationType.LIST, 'vakitler');
   }
-
-  return data.sort((a, b) => b.id.localeCompare(a.id));
 }
 
 /**
@@ -38,16 +48,20 @@ export async function listeleVakitCacheleri(ilceId?: string): Promise<VakitCache
 export async function senkronizeGuncelVeGelecekAyCache(
   settings: Pick<SystemSettings, 'ilceId' | 'ilceAdi'>
 ) {
-  const bugun = getTurkeyNow();
-  const apiVerisi = await aylikVakitleriCek(bugun.getFullYear(), bugun.getMonth() + 1, settings.ilceId, settings.ilceAdi);
-  const gruplar = aylikVakitleriGrupla(apiVerisi);
+  try {
+    const bugun = getTurkeyNow();
+    const apiVerisi = await aylikVakitleriCek(bugun.getFullYear(), bugun.getMonth() + 1, settings.ilceId, settings.ilceAdi);
+    const gruplar = aylikVakitleriGrupla(apiVerisi);
 
-  return Promise.all(
-    Object.entries(gruplar).map(async ([ayId, grup]) => {
-      const docId = `${settings.ilceId}_${ayId}`;
-      const data = { ...grup, guncellenmeTarihi: Timestamp.now() };
-      await setDoc(doc(db, 'vakitler', docId), data, { merge: true });
-      return { docId, data };
-    })
-  );
+    return await Promise.all(
+      Object.entries(gruplar).map(async ([ayId, grup]) => {
+        const docId = `${settings.ilceId}_${ayId}`;
+        const data = { ...grup, guncellenmeTarihi: Timestamp.now() };
+        await setDoc(doc(db, 'vakitler', docId), data, { merge: true });
+        return { docId, data };
+      })
+    );
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.WRITE, `vakitler/${settings.ilceId}_*`);
+  }
 }

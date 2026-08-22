@@ -1,6 +1,7 @@
 import { collection, getDoc, getDocs, writeBatch, doc, type DocumentData, type UpdateData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Muezzin, Izin, HaftaPlan, Vakit } from '../types';
+import { telemetryService } from './telemetryService';
 
 // Denetlenen belgeler tanım gereği güvenilmez olabilir (eksik/bozuk alanlar
 // aranan şey) — bu yüzden `Muezzin`/`Izin`/`HaftaPlan` yerine bunların
@@ -285,4 +286,16 @@ export async function veriHatalariniOnar(errors: AuditError[], onLog: (message: 
  await batch.commit();
  }
  onLog(`Tebrikler! Tüm veri uyuşmazlıkları başarıyla giderildi ve onarıldı.`);
+
+ // Diğer tüm ayrıcalıklı admin mutasyonları (izin onayı/geri alma/silme,
+ // alarm çözme, manuel senkron) audit_logs'a yazarken bu toplu onarım hiç
+ // yazmıyordu — potansiyel olarak çok sayıda kayıt sessizce değiştirilip/
+ // silinip hiçbir iz bırakmıyordu (bkz. mimari denetim).
+ const tipSayaclari = errors.reduce((acc, err) => {
+ if (!err.repairData) return acc;
+ acc[err.repairData.type] = (acc[err.repairData.type] || 0) + 1;
+ return acc;
+ }, {} as Record<string, number>);
+ const ozet = Object.entries(tipSayaclari).map(([tip, sayi]) => `${tip}: ${sayi}`).join(', ') || 'işlem yok';
+ await telemetryService.logAudit('Otomatik Veri Onarımı', `${operations.length} işlem uygulandı`, ozet);
 }

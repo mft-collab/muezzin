@@ -215,7 +215,37 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
   izinSil: async (id) => {
     const path = `izinler/${id}`;
     try {
-      await deleteDoc(doc(db, 'izinler', id));
+      const izinSnap = await getDoc(doc(db, 'izinler', id));
+      if (!izinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
+      const izinData = izinSnap.data() as Izin;
+
+      // Onaylanmış bir yıllık izin doğrudan silinirse, daha önce sayaca
+      // eklenen gün sayısı da aynı transaction içinde geri düşülmeli —
+      // aksi halde kaynak kayıt (baslangic/bitis) artık yok olduğundan bu
+      // hiçbir zaman düzeltilemez (bkz. izinGeriAl'daki AYNI desen; bu
+      // koruma önceden yalnızca "kararı geri al" yolunda vardı, doğrudan
+      // silme yolunda eksikti).
+      if (izinData.tip === 'yillik' && izinData.durum === 'onaylandi') {
+        const gunSayisi = izinGunSayisi(izinData.baslangic, izinData.bitis);
+        await runTransaction(db, async (transaction) => {
+          const izinRef = doc(db, 'izinler', id);
+          const muezzinRef = doc(db, 'muezzins', izinData.uid);
+          const [tazeIzinSnap, muezzinSnap] = await Promise.all([
+            transaction.get(izinRef),
+            transaction.get(muezzinRef),
+          ]);
+          if (!tazeIzinSnap.exists()) return;
+
+          transaction.delete(izinRef);
+          if (muezzinSnap.exists()) {
+            const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
+            transaction.update(muezzinRef, { yillikIzinKullanilanGun: Math.max(0, mevcutKullanilan - gunSayisi) });
+          }
+        });
+      } else {
+        await deleteDoc(doc(db, 'izinler', id));
+      }
+
       await telemetryService.logAudit('İzin Talebi Silme', id, 'İzin kaydı dizgeden kalıcı olarak silindi.');
     } catch (err) {
       throw handleFirestoreError(err, OperationType.DELETE, path);

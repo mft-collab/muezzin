@@ -124,7 +124,12 @@ export const DuyuruYonetimi: React.FC = () => {
       await duyuruSil(id, title);
       setConfirmDelete({ open: false, id: null });
     } catch (error) {
+      // handleCreate'in aksine bu catch errorStatus'u hiç set etmiyordu —
+      // onay modalı başarıyla AYNI şekilde kapanıyordu, admin silme isteği
+      // (yetki/ağ hatası) başarısız olsa bile duyurunun silindiğine
+      // inanıyordu (bkz. mimari denetim).
       console.error('Duyuru silinemedi:', error);
+      setErrorStatus(error instanceof Error ? error.message : 'Duyuru silinirken bir hata oluştu.');
       setConfirmDelete({ open: false, id: null });
     } finally {
       setDeletingId(null);

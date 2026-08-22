@@ -56,7 +56,7 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
             <span className="text-2xs opacity-60 block leading-tight">{systemSubLabel}</span>
           </div>
         </button>
-        {muezzinler.filter(m => m.aktif && m.role === 'muezzin').map((m) => {
+        {muezzinler.filter(m => m.aktif && m.role === 'muezzin' && m.onayBekliyor !== true).map((m) => {
           const isSelected = value === m.id;
           const isUnavailable = unavailableUids.has(m.id);
           return (
@@ -126,7 +126,13 @@ export default function HaftalikCizelge() {
  const isAssignableMuezzin = useCallback((uid: string, tarih?: string) => {
  if (!uid || uid === 'Sistem' || uid === 'SISTEM') return true;
  const person = muezzinler.find((m) => m.id === uid);
- if (!person || person.aktif !== true || person.role !== 'muezzin') return false;
+ // onayBekliyor: true olan (admin henüz onaylamamış) bir davetli nöbete
+ // atanabilir sayılmamalı — planlamaCekirdegi.ts'in `nobeteAtanabilirMi`'si
+ // ve firestore.rules `isAssignableDutyUidVeri` bu kontrolü zaten mutlak
+ // sayıyordu, ama manuel atama burada hiç kontrol etmiyordu (bkz. mimari
+ // denetim Y4/O9'un manuel-atama karşılığı) — sunucu reddediyordu ama
+ // istemci önceden hiç engellemiyordu.
+ if (!person || person.aktif !== true || person.role !== 'muezzin' || person.onayBekliyor === true) return false;
  if (tarih && !kisiGunIcinMusaitMi(person, tarih, onayliIzinler)) return false;
  return true;
  }, [muezzinler, onayliIzinler]);
@@ -136,7 +142,7 @@ export default function HaftalikCizelge() {
  const tarih = editingCell.tarih;
  return new Set(
  muezzinler
- .filter((m) => m.aktif && m.role === 'muezzin' && !kisiGunIcinMusaitMi(m, tarih, onayliIzinler))
+ .filter((m) => m.aktif && m.role === 'muezzin' && (m.onayBekliyor === true || !kisiGunIcinMusaitMi(m, tarih, onayliIzinler)))
  .map((m) => m.id)
  );
  }, [editingCell, muezzinler, onayliIzinler]);
@@ -260,8 +266,14 @@ export default function HaftalikCizelge() {
  setModalOpen(false);
  showNotification('Güncelleme Başarılı', 'Seçili vakit için asil ve yedek ataması güncellendi.', 'success');
  }
- } catch {
- showNotification('Hata', 'Güncelleme sırasında bir hata oluştu.', 'error');
+ } catch (err: unknown) {
+ // vakitAtamasiniGuncelle çağıranı handleFirestoreError ile spesifik,
+ // Türkçe bir mesaja çevrilmiş hata fırlatır (yetki/çakışma vb.) — burada
+ // jenerik bir metinle yutmak (bkz. handlePlanOlustur'daki aynı desenin
+ // eksikliği) admin'in gerçek reddedilme sebebini hiç görmemesine yol
+ // açıyordu.
+ const errorMessage = err instanceof Error ? err.message : 'Güncelleme sırasında bir hata oluştu.';
+ showNotification('Hata', errorMessage, 'error');
  }
  };
 

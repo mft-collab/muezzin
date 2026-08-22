@@ -12,6 +12,7 @@ import {
   VakitCacheKaydi,
 } from '../../../services/vakitCacheServisi';
 import { toJsDate } from '../../../lib/dateUtils';
+import { telemetryService } from '../../../services/telemetryService';
 
 type UiMessage = { type: 'success' | 'error'; text: string } | null;
 
@@ -51,6 +52,12 @@ export default function EzanOnbellegi() {
     if (mounted) {
      setOnbellekler(data);
      setLoading(false);
+     // 15sn timeout zaten ateşlenip 'Sunucu yanıt vermedi.' hatasını
+     // set etmiş olabilir — istek bundan kısa süre sonra yine de
+     // başarıyla tamamlanırsa bu eski mesaj temizlenmezse tablo doğru
+     // veriyle dolu görünürken ekranda hâlâ hata bandı asılı kalırdı
+     // (bkz. mimari denetim).
+     setUiMessage(null);
      clearTimeout(timeoutId);
     }
    } catch (error) {
@@ -79,6 +86,10 @@ export default function EzanOnbellegi() {
     type: 'success',
     text: `${results.length} aylık vakit önbelleği güncellendi.`,
    });
+   // Otomatik senkronizasyon (SistemAyarlari.tsx ilçe kodu değişiminde)
+   // audit_logs'a yazarken bu manuel tetikleme hiç yazmıyordu — kimin ne
+   // zaman manuel senkron başlattığı iz bırakmıyordu (bkz. mimari denetim).
+   await telemetryService.logAudit('Ezan Vakti Manuel Senkronizasyon', settings.ilceAdi || settings.ilceId, `${results.length} aylık vakit önbelleği manuel olarak güncellendi.`);
   } catch (error) {
    console.error('Ezan vakti senkronizasyon hatası:', error);
    setUiMessage({ type: 'error', text: 'Vakit servislerine erişilemedi. Daha sonra tekrar deneyin.' });

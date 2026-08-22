@@ -8,10 +8,13 @@ import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
 import { Vakit, AdminUyarisi } from '../../../types';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { AdminLoadingState } from '../components/AdminLoadingState';
 import { kriziBaslat } from '../../../services/mazeretServisi';
+import { useNotificationStore } from '../../../store/useNotificationStore';
 
 export default function KrizAlarmlari() {
  const { alarmlar, loading, alarmCoz } = useKrizAlarmlariStore();
+ const showNotification = useNotificationStore(s => s.showNotification);
  const [showResolved, setShowResolved] = React.useState(false);
  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
  const [confirmData, setConfirmData] = React.useState<{ open: boolean, alarm: (AdminUyarisi & { id: string }) | null }>({ open: false, alarm: null });
@@ -31,7 +34,12 @@ export default function KrizAlarmlari() {
     try {
       await alarmCoz(alarm.id, 'Nöbet Uyarısı Arşivleme', `Nöbet uyarısı yönetici tarafından çözüldü olarak işaretlendi ve arşivlendi. Mesaj: "${alarm.mesaj}"`);
     } catch (err) {
+      // Önceden yalnızca console.error'a düşüyordu — admin, işlem
+      // başarısız olduğunda düğmenin dönmeyi bırakmasından başka hiçbir
+      // gösterge görmüyor, alarmın çözüldüğünü sanabiliyordu (bkz. mimari
+      // denetim).
       console.error("Vaka giderme hatası:", err);
+      showNotification('Hata', err instanceof Error ? err.message : 'Uyarı çözülürken bir hata oluştu.', 'error');
     } finally {
       setResolvingId(null);
     }
@@ -44,9 +52,12 @@ export default function KrizAlarmlari() {
       const success = await kriziBaslat(alarm.tarih, alarm.vakit, []);
       if (success) {
         await alarmCoz(alarm.id, 'Otomatik Nöbet Onarımı', 'Eşik dışı nöbet zinciri dizge tarafından otomatik onarıldı ve yedek görevli devraldı.');
+      } else {
+        showNotification('Onarılamadı', 'Bu vakit için uygun bir yedek görevli bulunamadı.', 'warning');
       }
     } catch (err) {
       console.error("Retry error:", err);
+      showNotification('Hata', err instanceof Error ? err.message : 'Otomatik onarım sırasında bir hata oluştu.', 'error');
     } finally {
       setIsRetrying(null);
     }
@@ -70,14 +81,7 @@ export default function KrizAlarmlari() {
  }
  };
 
- if (loading) return (
- <div className="flex h-[500px] items-center justify-center">
- <div className="flex flex-col items-center gap-6">
- <div className="w-14 h-14 border-4 border-rose-500/10 border-t-rose-500 rounded-full animate-spin shadow-[var(--spatial-shadow)]" />
- <p className="authority-title !text-2xs opacity-20 tracking-wide uppercase">Nöbet Uyarıları Yükleniyor</p>
- </div>
- </div>
- );
+ if (loading) return <AdminLoadingState label="Nöbet Uyarıları Yükleniyor" size="lg" />;
 
  const filteredAlarmlar = showResolved ? alarmlar : alarmlar.filter(a => !a.cozuldu);
 
