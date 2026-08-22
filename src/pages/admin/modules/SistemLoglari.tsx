@@ -1,5 +1,4 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { ShieldAlert, Cpu, HeartPulse, ClipboardList } from 'lucide-react';
 
 import { SistemHatalariSekmesi } from '../components/SistemHatalariSekmesi';
@@ -8,6 +7,7 @@ import { VeriSagligiSekmesi } from '../components/VeriSagligiSekmesi';
 import { SistemDenetimSekmesi } from '../components/SistemDenetimSekmesi';
 import { toJsDate } from '../../../lib/dateUtils';
 import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
+import { useUrlTab } from '../../../hooks/admin/useUrlTab';
 
 export type LogTab = 'errors' | 'diagnostics' | 'health' | 'audit';
 const LOG_TAB_IDS: LogTab[] = ['errors', 'diagnostics', 'health', 'audit'];
@@ -23,17 +23,7 @@ export default function SistemLoglari() {
  // Diğer admin sekmeleriyle (?tab=, ?subtab=) aynı desen: bu iç sekme de
  // URL'e yazılır — derin bağlantı (deep-link) ve sayfa yenilemesinde konumu
  // koruma, yalnızca üst iki seviyeyle sınırlı kalmaz (bkz. tasarım denetimi).
- const [searchParams, setSearchParams] = useSearchParams();
- const logtabParam = searchParams.get('logtab');
- const activeTab: LogTab = LOG_TAB_IDS.includes(logtabParam as LogTab) ? (logtabParam as LogTab) : 'errors';
-
- const setActiveTab = (tab: LogTab) => {
- setSearchParams(prev => {
- const newParams = new URLSearchParams(prev);
- newParams.set('logtab', tab);
- return newParams;
- });
- };
+ const { activeTab, setActiveTab } = useUrlTab<LogTab>('logtab', LOG_TAB_IDS, 'errors');
 
  const formatDate = (timestamp: unknown) => {
  const date = toJsDate(timestamp);

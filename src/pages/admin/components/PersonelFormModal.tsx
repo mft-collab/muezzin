@@ -42,6 +42,16 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Cuma (5) haftalık izin günü olarak seçilemez (bkz. mazeretKurallari.ts
+    // Cuma kısıtlaması) — UI'da buton disabled, ama kural eklenmeden önce
+    // kaydedilmiş bir personelde bu alan hâlâ 5 olabilir. Formdaki DİĞER bir
+    // alanı değiştirip kaydetmeye çalışırsa firestore.rules isValidMuezzin
+    // tüm yazımı opak bir "Kayıt sırasında bir hata oluştu" ile reddediyordu
+    // — burada erken ve net bir mesajla yakalanır.
+    if (formData.haftalikIzinGunu === 5) {
+      setErrorStatus('Bu personelin haftalık izin günü Cuma olarak ayarlı — Cuma artık izin günü olarak seçilemiyor. Devam etmeden önce başka bir gün seçin (ya da İZİNSİZ).');
+      return;
+    }
     setIsSubmitting(true);
     try {
       setErrorStatus(null);

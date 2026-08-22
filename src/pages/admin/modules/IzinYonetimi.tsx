@@ -301,7 +301,13 @@ export default function IzinYonetimi() {
  if (undoConfirm.id) handleUndo(undoConfirm.id);
  }}
  title="KARARI GERİ AL"
- message="Bu talep tekrar 'ONAY BEKLİYOR' durumuna alınacaktır. Yıllık izinse kullanılan kota da otomatik geri düşülür."
+ message={(() => {
+ const hedefIzin = izinler.find(i => i.id === undoConfirm.id);
+ const kotaEtkilenecek = hedefIzin?.tip === 'yillik' && hedefIzin.durum === 'onaylandi';
+ return kotaEtkilenecek
+ ? "Bu talep tekrar 'ONAY BEKLİYOR' durumuna alınacaktır. Yıllık izin kotasından düşülen gün sayısı otomatik geri eklenecektir."
+ : "Bu talep tekrar 'ONAY BEKLİYOR' durumuna alınacaktır.";
+ })()}
  isDanger={false}
  confirmText="EVET, GERİ AL"
  />

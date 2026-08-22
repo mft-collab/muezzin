@@ -190,7 +190,11 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
 
           transaction.update(izinRef, { durum: 'onay_bekliyor' });
-          if (muezzinSnap.exists()) {
+          // Sayaç yalnızca ONAYLANMIŞ bir izin geri alınırken düşürülmeli —
+          // reddedilen izin izinGuncelle'de zaten sayaca hiç eklenmemişti
+          // (bkz. L131), aksi halde reddedilen bir kaydı geri al/tekrar onayla
+          // döngüsüyle 30 günlük kota sayaç şişirilmeden aşılabilir.
+          if (tazeIzinSnap.data().durum === 'onaylandi' && muezzinSnap.exists()) {
             const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
             transaction.update(muezzinRef, { yillikIzinKullanilanGun: Math.max(0, mevcutKullanilan - gunSayisi) });
           }
