@@ -95,6 +95,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
 
       const auditSnap = await db.collection('audit_logs').get();
       assert.equal(auditSnap.size, 1);
@@ -115,6 +116,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
 
       // Ikinci calistirma yeni bir audit-log yazmamali.
       const auditSnap = await db.collection('audit_logs').get();
@@ -142,6 +144,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
 
       const alarmSnap = await db.collection('adminUyarilari').get();
       assert.equal(alarmSnap.size, 0);
@@ -172,6 +175,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
 
       const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
       assert.equal(alarmSnap.size, 1);
@@ -195,6 +199,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
     }
   },
   {
@@ -210,6 +215,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
     }
   },
   {
@@ -228,6 +234,7 @@ const tests: TestCase[] = [
 
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
     }
   },
   {

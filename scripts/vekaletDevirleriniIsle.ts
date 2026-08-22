@@ -25,6 +25,12 @@ type VekaletTalebiData = {
   tip: 'asil' | 'yedek' | 'gorev_cagrisi';
   durum: 'beklemede' | 'kabul_edildi' | 'reddedildi';
   bildirimUygulandi?: boolean;
+  /** `bildirimUygulandi` yalnızca "script bu talebi işledi mi" bilgisini
+   * taşır, SONUCUNU değil — istemci tarafı (useBekleyenVekaletDevirleri,
+   * "DEVİR İŞLENİYOR" banner'ı) hem başarı hem red durumunda bu alanı aynı
+   * `true` değeriyle görüyordu, ikisini ayırt edemiyordu (bkz. mimari
+   * denetim). */
+  talepSonuc?: 'uygulandi' | 'reddedildi';
 };
 
 type MuezzinData = {
@@ -128,7 +134,7 @@ export async function processVekaletDevirleri(dryRun = false) {
       // başarısız" sanıp yanlış admin uyarısı üretmek yerine "zaten
       // uygulanmış" say (idempotent no-op).
       if (bildirim.uid === talep.aliciUid) {
-        transaction.update(talepDoc.ref, { bildirimUygulandi: true, sonGuncelleme: Timestamp.now() });
+        transaction.update(talepDoc.ref, { bildirimUygulandi: true, talepSonuc: 'uygulandi', sonGuncelleme: Timestamp.now() });
         sonuc = 'zatenUygulanmis';
         return;
       }
@@ -159,7 +165,7 @@ export async function processVekaletDevirleri(dryRun = false) {
         // içindeki koruması artık gerekmiyor; önceki sahip normal bir
         // 'bekliyor' slotu olarak kalmaya devam eder.
         transaction.update(bildirimRef, { vekaletDevriBekliyor: false, sonGuncelleme: Timestamp.now() });
-        transaction.update(talepDoc.ref, { bildirimUygulandi: true, sonGuncelleme: Timestamp.now() });
+        transaction.update(talepDoc.ref, { bildirimUygulandi: true, talepSonuc: 'reddedildi', sonGuncelleme: Timestamp.now() });
         sonuc = 'reddedildi';
         return;
       }
@@ -170,7 +176,7 @@ export async function processVekaletDevirleri(dryRun = false) {
         vekaletDevriBekliyor: false,
         sonGuncelleme: Timestamp.now()
       });
-      transaction.update(talepDoc.ref, { bildirimUygulandi: true, sonGuncelleme: Timestamp.now() });
+      transaction.update(talepDoc.ref, { bildirimUygulandi: true, talepSonuc: 'uygulandi', sonGuncelleme: Timestamp.now() });
       transaction.set(db.collection('audit_logs').doc(), {
         actionType: 'Görev Vekaleti Devri',
         targetName: `${talep.tarih} - ${talep.vakit.toUpperCase()}`,

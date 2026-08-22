@@ -155,6 +155,12 @@ export interface VekaletTalebi {
   * isVekaletDevriBekliyorIsaretiIcin bu alana dokunmaz).
   */
  bildirimUygulandi?: boolean;
+ /**
+  * `bildirimUygulandi` yalnızca "script bu talebi işledi mi" bilgisini taşır,
+  * SONUCUNU değil — bu alan ikisini ayırt eder (bkz. mimari denetim,
+  * scripts/vekaletDevirleriniIsle.ts yorumu). Yalnızca Admin SDK yazar.
+  */
+ talepSonuc?: 'uygulandi' | 'reddedildi';
 }
 
 export interface AdminUyarisi {

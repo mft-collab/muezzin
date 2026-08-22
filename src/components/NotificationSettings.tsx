@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { BellRing, History } from 'lucide-react';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { User as FirebaseUser } from 'firebase/auth';
 import { Muezzin } from '../types';
 import { registerFcmToken } from '../hooks/useFcmToken';
@@ -90,7 +91,13 @@ export default function NotificationSettings({ userData, user }: NotificationSet
         notificationSettings: newSettings
       });
     } catch (err) {
-      console.error('Bildirim tercihleri güncellenemedi:', err);
+      // Anahtar canlı `userData.notificationSettings` dinleyicisini
+      // yansıttığından, yazım başarısız olursa görsel olarak hiç
+      // değişmiyordu — ama kullanıcıya bunun NEDENİNİ açıklayan hiçbir
+      // geri bildirim yoktu (bkz. mimari denetim; ProfileHeader.tsx'teki
+      // kardeş handleUpdate bu hatayı doğru şekilde gösteriyor).
+      const wrapped = handleFirestoreError(err, OperationType.UPDATE, `muezzins/${user.uid}`);
+      setUiMessage(wrapped.message);
     }
   };
 

@@ -15,6 +15,7 @@ import { useOzelVakitMesaji } from '../hooks/useOzelVakitMesaji';
 import { OzelVakitBanner } from './OzelVakitBanner';
 import { RamazanHub } from './RamazanHub';
 import { useThemeStore } from '../store/useThemeStore';
+import { getActiveAuraColor } from '../lib/auraTheme';
 
 
 // Tip-güvenli vakit saati okuyucu — dinamik bracket notasyonu uyarisini engeller
@@ -166,17 +167,7 @@ export const AnaEkranHero = React.memo(({
  const hijriDate = useMemo(() => getHijriDate(bugunDate), [bugunDate, settings.hicriDuzeltme]);
  const isRamazan = useMemo(() => hijriDate.includes('Ramazan'), [hijriDate]);
 
- const auraColor = useMemo(() => {
- switch (uiMevcutVakit) {
- case 'aksam': return 'var(--aura-rose)';
- case 'yatsi': return 'var(--aura-indigo)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-amber)';
- case 'sabah': return 'var(--aura-emerald)';
- case 'gunes': return 'var(--aura-amber)';
- default: return 'var(--aura-indigo)';
- }
- }, [uiMevcutVakit]);
+ const auraColor = useMemo(() => getActiveAuraColor(uiMevcutVakit), [uiMevcutVakit]);
 
  // Özel vakit mesajı (kerahat, teheccüd, bayram, teşrik)
  const ozelVakitDurumu = useOzelVakitMesaji(bugunVakitler, bugunDate, now, mevcutVakit);

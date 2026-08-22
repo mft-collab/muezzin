@@ -4,6 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { zamanAsimiIle } from '../lib/timeoutUtils';
+import { useNotificationStore } from '../store/useNotificationStore';
+import { telemetryService } from '../services/telemetryService';
 
 // NOT: Bu değer Firebase Console → Proje Ayarları → Cloud Messaging →
 // Web push sertifikaları'ndan alınan GERÇEK VAPID public key olmalı.
@@ -159,6 +161,14 @@ export async function performLogout(): Promise<void> {
     // engellemeden devam et.
   }
   await auth.signOut();
+  // FCM token temizliğiyle AYNI sınıftan bir sızıntı: bildirim geçmişi
+  // (localStorage, cihaz bazlı) ve breadcrumb tamponu (modül-seviyesi,
+  // sekme ömrü boyunca) kullanıcı bazlı değil — paylaşılan bir cihazda
+  // (ör. cami ofisi tableti) çıkış yapmadan temizlenmezse bir sonraki
+  // kullanıcı öncekinin bildirim geçmişini/hata izlerini görmeye devam
+  // eder (bkz. mimari denetim).
+  useNotificationStore.getState().clearHistory();
+  telemetryService.clearBreadcrumbs();
 }
 
 export function useFcmToken() {

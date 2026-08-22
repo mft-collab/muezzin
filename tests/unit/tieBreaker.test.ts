@@ -137,6 +137,34 @@ describe('tieBreakerSirala', () => {
     expect(sirali[2].id).toBe('a');
   });
 
+  it('Cuma 1.5x çarpanı yalnızca bu haftaki yükü etkiler, kalıcı aylık yedek ağırlığını (0.5x) etkilemez', () => {
+    // Bileşik ağırlık formülü: total = aylikVakitSayisi + (aylikYedekSayisi *
+    // YEDEK_YUK_CARPANI) + (buHaftakiYuk * cumaÇarpanı). Önceki testler Cuma
+    // çarpanını yalnızca `aylikVakitSayisi` ile izole doğruluyordu — bu test,
+    // `aylikYedekSayisi` teriminin (kalıcı, 0.5x sabit) Cuma çarpanından
+    // BAĞIMSIZ kaldığını izole doğrular (bkz. mimari denetim — kapsam boşluğu).
+    //
+    // a: aylikYedekSayisi=6 -> sabit katkı 6*0.5=3, bu hafta yükü yok.
+    // b: aylikYedekSayisi=0, bu hafta yükü 2.
+    // Normal günde: totalA=3, totalB=2 -> b önde (daha az yüklü).
+    // Cuma'da: totalA HÂLÂ 3 (yedek terimi çarpandan etkilenmez), totalB=2*1.5=3
+    //   -> eşitlik, tier 3'e (haftalık yük) düşer: loadA=0 < loadB=2 -> a önde.
+    // Eğer Cuma çarpanı yanlışlıkla TÜM toplama uygulansaydı (a.total=3*1.5=4.5),
+    // b Cuma'da da önde kalırdı — sıralama hiç DEĞİŞMEZDİ. Sıranın ters dönmesi
+    // (b,a -> a,b) formülün doğru izole edildiğinin kanıtıdır.
+    const muezzinler = [
+      muezzin('a', { aylikVakitSayisi: 0, aylikYedekSayisi: 6 }),
+      muezzin('b', { aylikVakitSayisi: 0, aylikYedekSayisi: 0 }),
+    ];
+    const buHaftakiYukler = { a: 0, b: 2 };
+
+    const normalGun = tieBreakerSirala(muezzinler, buHaftakiYukler, [], false);
+    const cuma = tieBreakerSirala(muezzinler, buHaftakiYukler, [], true);
+
+    expect(normalGun.map((m) => m.id)).toEqual(['b', 'a']);
+    expect(cuma.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
   it('tüm kriterler eşitse alfabetik değil, id karakter kodu toplamına göre sıralar', () => {
     // Alfabetik sırada 'aa-uid' < 'b-uid' olurdu; karakter kodu toplamına göre ise
     // 'b-uid' (465) 'aa-uid' (561) toplamından küçük olduğu için önce gelir.

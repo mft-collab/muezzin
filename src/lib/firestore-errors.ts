@@ -47,16 +47,32 @@ export function isFirebaseSdkError(error: unknown): error is { code: string; mes
   return typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string';
 }
 
+// JS'in kendi çalışma-zamanı hata sınıfları — bu kod tabanında hiçbir yerde
+// kasıtlı/kullanıcıya-yönelik bir mesaj için ATILMAZLAR (uygulama kodu her
+// zaman düz `new Error('Türkçe mesaj')` fırlatır, bkz. mazeretKurallari.ts/
+// timeoutUtils.ts örnekleri) — bunlar her zaman kazara bir programlama
+// hatasının belirtisidir. `handleFirestoreError` her yerde genel bir
+// `catch` bloğunda çağrıldığından, Firestore çağrısından ÖNCE oluşan
+// beklenmedik bir `TypeError` vb. de (instanceof Error olduğu için)
+// `toUserMessage`'ın "zaten kullanıcıya yönelik" dalına düşüp ham/İngilizce
+// mesajını doğrudan kullanıcıya sızdırabiliyordu (bkz. mimari denetim).
+const KAZARA_JS_HATA_SINIFLARI = [TypeError, RangeError, ReferenceError, SyntaxError, URIError, EvalError];
+
 /**
  * Bir hatadan kullanıcıya gösterilecek kısa Türkçe mesajı türetir.
  *  - Firebase SDK hataları (permission-denied vb.) → sabit, anlaşılır mesaj.
- *  - Uygulama içinde elle fırlatılan `Error`lar (ör. "Ezan vaktine 50
+ *  - JS'in kendi çalışma-zamanı hata sınıfları (TypeError vb.) → kazara bir
+ *    programlama hatası sayılır, mesajı ASLA kullanıcıya gösterilmez.
+ *  - Uygulama içinde elle fırlatılan düz `Error`lar (ör. "Ezan vaktine 50
  *    dakikadan az kaldı...") zaten kullanıcıya yönelik olduğundan olduğu
  *    gibi korunur.
  */
 function toUserMessage(error: unknown): string {
   if (isFirebaseSdkError(error)) {
     return FRIENDLY_MESSAGES[error.code] ?? DEFAULT_FRIENDLY_MESSAGE;
+  }
+  if (KAZARA_JS_HATA_SINIFLARI.some((ctor) => error instanceof ctor)) {
+    return DEFAULT_FRIENDLY_MESSAGE;
   }
   if (error instanceof Error && error.message) {
     return error.message;

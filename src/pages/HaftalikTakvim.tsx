@@ -12,24 +12,9 @@ import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
 import { getHaftaIdFromDate, getTurkeyNow } from '../lib/dateUtils';
+import { getActiveAuraColor, getSecondaryAuraColor } from '../lib/auraTheme';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-
-function pickCanonicalUid(values: string[]): string | null {
- const filtered = values.filter(Boolean);
- if (filtered.length === 0) return null;
- const counts = new Map<string, number>();
- filtered.forEach((v) => counts.set(v, (counts.get(v) || 0) + 1));
- let best = filtered[0];
- let max = counts.get(best) || 0;
- counts.forEach((count, uid) => {
- if (count > max) {
- best = uid;
- max = count;
- }
- });
- return best;
-}
 
 export default function HaftalikTakvim() {
  // new Date() cihazın kendi saat dilimini kullanır — Türkiye dışı bir saat
@@ -46,27 +31,12 @@ export default function HaftalikTakvim() {
  const { bugunVakitler } = useEzanVakitleri();
  const mevcutVakit = useMevcutVakit(bugunVakitler);
 
- const auraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-rose)';
- case 'yatsi': return 'var(--aura-indigo)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-amber)';
- case 'sabah': return 'var(--aura-emerald)';
- default: return 'var(--aura-indigo)';
- }
- }, [mevcutVakit]);
-
- const secondaryAuraColor = useMemo(() => {
- switch (mevcutVakit) {
- case 'aksam': return 'var(--aura-indigo)';
- case 'yatsi': return 'var(--aura-emerald)';
- case 'ogle': 
- case 'ikindi': return 'var(--aura-rose)';
- case 'sabah': return 'var(--aura-amber)';
- default: return 'var(--aura-emerald)';
- }
- }, [mevcutVakit]);
+ // NOT (mimari denetim — bütünsel hata analizi): bu iki eşleme
+ // auraTheme.ts, AnaEkranHero.tsx ve useDashboardLogic.ts'te birebir
+ // kopyalanmıştı (CLAUDE.md'nin "aynı algoritmayı yeniden yazma" uyarısına
+ // aykırı) — paylaşılan kaynağa taşındı.
+ const auraColor = useMemo(() => getActiveAuraColor(mevcutVakit), [mevcutVakit]);
+ const secondaryAuraColor = useMemo(() => getSecondaryAuraColor(mevcutVakit), [mevcutVakit]);
 
  const loading = planLoading || usersLoading || bildirimLoading;
 
@@ -109,17 +79,27 @@ export default function HaftalikTakvim() {
         )?.uid || fallbackUid;
       };
 
+      // NOT (mimari denetim — bütünsel hata analizi): planlamaCekirdegi.ts'in
+      // kendi yorumu, normal üretimde bir günün 5 vaktinin AYNI ekibi
+      // paylaştığını ama `korunmusAtama`'nın (self-healing/vekalet devri/
+      // mazeret reddi) bir günün vakitlerini birbirinden FARKLI kişilere
+      // atayabileceğini — bunun kasıtlı, beklenen bir kenar durum olduğunu
+      // belgeliyor. Önceden burada `pickCanonicalUid` bu 5 vakitlik listeyi
+      // ÇOĞUNLUK OYUNA indirgeyip günde tek bir asil/yedek gösteriyordu —
+      // azınlıkta kalan kişi (ör. yalnızca sabah vaktini vekaletle devralan
+      // biri) haftalık görünümden VE kendi "GÖREVİNİZ VAR" rozetinden
+      // tamamen düşüyordu. Artık gün için o vakitlerde görev alan TÜM
+      // farklı kişiler (tekilleştirilmiş, ilk-görülen sırayla) gösteriliyor
+      // — JSX zaten çoklu asil/yedek render etmek üzere tasarlanmıştı.
       const asilGunlukListe = VAKIT_LISTESI
         .map(v => getLiveUid(v, 'asil', gunObj[v]?.asil))
         .filter((uid): uid is string => !!uid && isAssignableUid(uid));
       const yedekGunlukListe = VAKIT_LISTESI
         .map(v => getLiveUid(v, 'yedek', gunObj[v]?.yedek))
         .filter((uid): uid is string => !!uid && isAssignableUid(uid));
-      const asilCanonical = pickCanonicalUid(asilGunlukListe);
-      const yedekCanonical = pickCanonicalUid(yedekGunlukListe);
-      const asiller = asilCanonical ? [asilCanonical] : [];
-      const yedekler = yedekCanonical ? [yedekCanonical] : [];
-      const isPersonalDuty = !!(currentUser && (asilCanonical === currentUser.uid || yedekCanonical === currentUser.uid));
+      const asiller = Array.from(new Set(asilGunlukListe));
+      const yedekler = Array.from(new Set(yedekGunlukListe));
+      const isPersonalDuty = !!(currentUser && (asiller.includes(currentUser.uid) || yedekler.includes(currentUser.uid)));
 
       return {
         tarih,

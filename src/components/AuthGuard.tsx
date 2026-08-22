@@ -135,13 +135,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           >
             <SplashLoader />
             {loadingTimeout && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-8 spatial-glass p-6 max-w-sm border-amber-500/20 z-[10000] relative pointer-events-auto"
               >
+                {/* isOffline zaten hesaplanıyordu ama hiç render'a
+                    bağlanmamıştı — çevrimdışı ve gerçekten yavaş bir sunucu
+                    durumu için AYNI belirsiz mesaj gösteriliyordu; kullanıcı
+                    çevrimdışıyken "yeniden dene"ye bassa da neden aynı
+                    sonucu aldığını anlayamıyordu (bkz. ChunkErrorFallback.tsx'in
+                    doğru yaptığı aynı ayrım, mimari denetim). */}
                 <p className="text-amber-500 text-xs font-medium mb-4">
-                  Bağlantı beklenenden yavaş sürüyor...
+                  {isOffline
+                    ? 'İnternet bağlantınız yok. Bağlantı geri gelince otomatik devam edecektir.'
+                    : 'Bağlantı beklenenden yavaş sürüyor...'}
                 </p>
                 <div className="flex flex-col gap-2">
                   <button 

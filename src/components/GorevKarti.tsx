@@ -344,7 +344,29 @@ export const GorevKarti = React.memo(({
  )}
  </AnimatePresence>
 
- {bildirim.durum === 'bekliyor' && (
+ {/* NOT ("1000 ifade tavanı" kök neden çözümü sonrası bulgu): kabul edilen
+     bir vekalet devri artık ANLIK değil — istemci yalnızca bu bayrağı yazar,
+     GERÇEK transfer scripts/vekaletDevirleriniIsle.ts'te ~10-15 dk gecikmeli
+     gerçekleşir (bkz. src/services/vekaletServisi.ts yorumu). Bu pencerede
+     `durum` hâlâ 'bekliyor' kalır — bu bayrak kontrol edilmeden aksiyon
+     düğmeleri (onayla/mazeret/devret) tam etkileşimli kalırdı; orijinal
+     sahip kendi görevini onaylarsa/mazeret bildirirse script'in taze
+     veriyle yeniden doğrulaması (existing().uid/durum kontrolü) sessizce
+     başarısız olur, devir hiç gerçekleşmeden kaybolurdu. */}
+ {bildirim.durum === 'bekliyor' && bildirim.vekaletDevriBekliyor === true && (
+ <motion.div
+ initial={{ opacity: 0, y: 10 }}
+ animate={{ opacity: 1, y: 0 }}
+ className="w-full py-6 rounded-[28px] bg-amber-500/[0.03] text-amber-500 font-light text-center text-2xs tracking-wide border border-amber-500/10 flex items-center justify-center gap-4"
+ >
+ <div className="w-10 h-10 rounded-2xl bg-amber-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-amber-500/20">
+ <Clock size={18} strokeWidth={2} />
+ </div>
+ <span className="authority-title !text-2xs !text-inherit">VEKALET DEVRİ İŞLENİYOR — GÖREV ÜZERİNDE İŞLEM YAPILAMAZ</span>
+ </motion.div>
+ )}
+
+ {bildirim.durum === 'bekliyor' && bildirim.vekaletDevriBekliyor !== true && (
  <div className="flex flex-col gap-5">
  <motion.button
  whileHover={isAktif ? { y: -2, scale: 1.02 } : {}}

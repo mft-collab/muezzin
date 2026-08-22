@@ -327,6 +327,18 @@ class TelemetryService {
     pushBreadcrumb({ action, category, data });
   }
 
+  /**
+   * Breadcrumb halka tamponunu boşaltır — `performLogout`'un çağırması
+   * gerekir. Tampon modül-seviyesinde (kullanıcı bazlı değil, sekme/cihaz
+   * ömrü boyunca) kalıcı olduğundan, çıkış yapılmadan temizlenmezse paylaşılan
+   * bir cihazda (ör. cami ofisi tableti) sonraki kullanıcının ilk hatası,
+   * önceki kullanıcının eylemlerini breadcrumb olarak taşır — hata ayıklarken
+   * yanlış kullanıcıya atfedilen bir eylem izi oluşur (bkz. mimari denetim).
+   */
+  clearBreadcrumbs() {
+    breadcrumbBuffer.length = 0;
+  }
+
   private getDeviceMetadata() {
     return {
       os: (navigator as Navigator & { userAgentData?: NavigatorUADataLike }).userAgentData?.platform || navigator.platform || 'Bilinmeyen OS',

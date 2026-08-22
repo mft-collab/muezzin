@@ -66,11 +66,20 @@ async function main() {
     .map(doc => ({ id: doc.id, ...doc.data() } as Muezzin & { id: string }))
     .filter(m => nobeteAtanabilirMi(m));
 
-  if (muezzinler.length < 2) {
+  // NOT (mimari denetim — bütünsel hata analizi): bu eşik önceden 2 idi,
+  // ama src/services/planServisi.ts'teki İSTEMCİ self-healing çağırıcısı
+  // aynı çekirdeği (haftalikPlanUret) 1 aktif müezzinle bile çağırıyordu —
+  // CLAUDE.md'nin "TEK çekirdek, her iki çağıran AYNI kuralları kullanır"
+  // ilkesine aykırı bir davranışsal ayrışmaydı. `haftalikPlanUret`'in
+  // kendisi zaten tek-kişilik hafta için tasarlanmış bir dal içeriyor
+  // (yedek her zaman 'Sistem') — bu script'in daha katı eşiği, personel
+  // sayısı 1'e düştüğünde (istemci sessizce yedeksiz bir plan üretip
+  // yayınlayabilirken) gece cron'unun HİÇ plan üretmemesine yol açıyordu.
+  if (muezzinler.length < 1) {
     console.error("Yetersiz müezzin! Planlama yapılamıyor.");
     await db.collection('adminUyarilari').add({
       tip: 'zincirTukendi',
-      mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 2 gerekli).',
+      mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 1 gerekli).',
       tarih: formatDateLocal(getTurkeyNow()),
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()

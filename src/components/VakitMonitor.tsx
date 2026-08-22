@@ -29,6 +29,20 @@ export const VakitMonitor: React.FC = () => {
     if (!bugunVakitler) return;
 
     const bugunStr = bugunVakitler.tarih;
+    const STORAGE_PREFIX = 'vakit-bildirimi:';
+
+    // Bu anahtarlar hiç expire edilmiyordu — her tetiklenen vakit için
+    // kalıcı olarak birikiyordu (bkz. mimari denetim, düşük öncelik). Yalnızca
+    // BUGÜNÜN kayıtları (aşağıdaki `alreadyTriggered` kontrolü için) gerekli;
+    // bu effect günde bir kez (bugunVakitler değiştiğinde) çalıştığından,
+    // eski günlere ait anahtarları burada temizlemek doğal ve ucuz bir nokta.
+    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith(STORAGE_PREFIX) && !key.startsWith(`${STORAGE_PREFIX}${bugunStr}_`)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+
     const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
     // Pre-parse dates once
@@ -36,7 +50,7 @@ export const VakitMonitor: React.FC = () => {
       key: vakitKey,
       date: parseVakitToDate(bugunStr, bugunVakitler[vakitKey]),
       triggerId: `${bugunStr}_${vakitKey}`,
-      storageKey: `vakit-bildirimi:${bugunStr}_${vakitKey}`
+      storageKey: `${STORAGE_PREFIX}${bugunStr}_${vakitKey}`
     })).filter(item => item.date !== null) as Array<{
       key: Vakit;
       date: Date;

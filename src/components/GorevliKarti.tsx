@@ -138,10 +138,15 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
           </div>
 
           <div className="flex items-center gap-3 min-w-[7rem] justify-end shrink-0">
+            {/* NOT (mimari denetim — bütünsel hata analizi): bu üç durum
+                rozeti (AKTİF/BEKLEYİŞTE/MEŞRU MAZERET) hardcoded Tailwind
+                emerald/amber/rose kullanıyordu; GorevKarti.tsx/HaftalikTakvim.tsx
+                gibi aynı anlamdaki durum göstergeleri `--status-success/
+                warning/danger` token'larını kullanıyor. */}
             {durum === 'onaylandi' && (
-              <div className={`flex items-center gap-2 px-4 py-1.5 rounded-[14px] border transition-all duration-500 ${isFriday ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
-                <CheckCircle2 size={11} className="text-emerald-400 shadow-sm" />
-                <span className="text-2xs font-bold uppercase tracking-wide text-emerald-400">AKTİF</span>
+              <div className={`flex items-center gap-2 px-4 py-1.5 rounded-[14px] border transition-all duration-500 ${isFriday ? 'bg-[var(--status-success)]/10 border-[var(--status-success)]/30' : 'bg-[var(--status-success)]/10 border-[var(--status-success)]/20'}`}>
+                <CheckCircle2 size={11} className="text-[var(--status-success)] shadow-sm" />
+                <span className="text-2xs font-bold uppercase tracking-wide text-[var(--status-success)]">AKTİF</span>
               </div>
             )}
             {durum === 'bekliyor' && (
@@ -152,16 +157,16 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
               <motion.button
                 type="button"
                 onClick={() => document.getElementById('gorev-akisi')?.scrollIntoView({ behavior: 'smooth' })}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-amber-500/10 border border-amber-500/20 shadow-sm cursor-pointer hover:bg-amber-500/15 transition-all"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-[var(--status-warning)]/10 border border-[var(--status-warning)]/20 shadow-sm cursor-pointer hover:bg-[var(--status-warning)]/15 transition-all"
               >
-                <Hourglass size={11} className="text-amber-400 animate-spin" style={{ animationDuration: '4s' }} />
-                <span className="text-2xs font-bold uppercase tracking-wide text-amber-400">BEKLEYİŞTE</span>
+                <Hourglass size={11} className="text-[var(--status-warning)] animate-spin" style={{ animationDuration: '4s' }} />
+                <span className="text-2xs font-bold uppercase tracking-wide text-[var(--status-warning)]">BEKLEYİŞTE</span>
               </motion.button>
             )}
             {izinde && (
-              <div className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-rose-500/10 border border-rose-500/20 shadow-sm">
-                <Compass size={11} className="text-rose-400" />
-                <span className="text-2xs font-bold uppercase tracking-wide text-rose-400">MEŞRU MAZERET</span>
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-[14px] bg-[var(--status-danger)]/10 border border-[var(--status-danger)]/20 shadow-sm">
+                <Compass size={11} className="text-[var(--status-danger)]" />
+                <span className="text-2xs font-bold uppercase tracking-wide text-[var(--status-danger)]">MEŞRU MAZERET</span>
               </div>
             )}
           </div>
