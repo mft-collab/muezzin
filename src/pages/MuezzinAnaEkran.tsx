@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Megaphone, Calendar, ChevronRight, ChevronLeft, Compass, Navigation, ClipboardList } from 'lucide-react';
+import { Megaphone, Calendar, ChevronRight, ChevronLeft, Compass, Navigation, ClipboardList, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useDashboardLogic } from '../hooks/useDashboardLogic';
@@ -16,6 +16,7 @@ import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { gpsHataTuruBelirle, GpsHataTuru } from '../services/gpsVakitServisi';
 import { KiblePusulasiModal } from '../components/KiblePusulasiModal';
 import { useGelenVekaletler } from '../hooks/useGelenVekaletler';
+import { useBekleyenVekaletDevirleri } from '../hooks/useBekleyenVekaletDevirleri';
 import { useHaftalikGorevOzeti } from '../hooks/useHaftalikGorevOzeti';
 import { useAktifSistemUyarisi } from '../hooks/useAktifSistemUyarisi';
 import { SistemUyarisiBanner } from '../components/SistemUyarisiBanner';
@@ -168,6 +169,7 @@ export default function MuezzinAnaEkran() {
   }, [viewingDuyuru, markAsRead, setViewingDuyuru]);
 
   const gelenVekaletler = useGelenVekaletler(currentUser?.uid);
+  const bekleyenVekaletDevirleri = useBekleyenVekaletDevirleri(currentUser?.uid);
   const haftalikOzet = useHaftalikGorevOzeti(currentUser?.uid, bugunDate);
   const aktifSistemUyarisi = useAktifSistemUyarisi(currentUser?.uid);
   const siradakiGorev = React.useMemo(() => (
@@ -486,7 +488,11 @@ export default function MuezzinAnaEkran() {
                   // yorumu, beşinci denetim turu) zamanAsimiIle ile sarmalanır;
                   // düğme sonsuza dek "İŞLENİYOR" durumunda kilitli kalmasın.
                   await zamanAsimiIle(vekaletKabulEt(talep.id));
-                  showNotification('Vekalet Devralındı', 'Göreviniz planınıza başarıyla işlendi.', 'success');
+                  // NOT: transfer artık ANLIK değil — bkz. src/services/vekaletServisi.ts
+                  // yorumu ("1000 ifade tavanı" kök neden çözümü). Gerçek uid
+                  // transferi scripts/vekaletDevirleriniIsle.ts'in bir sonraki
+                  // çalışmasına kadar (~10-15 dk) gecikmeli.
+                  showNotification('Kabulünüz Alındı', 'Kabulünüz kaydedildi, göreviniz planınıza kısa süre içinde işlenecektir.', 'success');
                 } catch (err: unknown) {
                   if (err instanceof IslemZamanAsimi) {
                     showNotification('Bağlantı Sorunu', err.message, 'warning');
@@ -539,6 +545,35 @@ export default function MuezzinAnaEkran() {
                 REDDET
               </motion.button>
             )}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )}
+
+  {/* Kabul edilmiş ama scripts/vekaletDevirleriniIsle.ts tarafından henüz
+      uygulanmamış devirler — "1000 ifade tavanı" kök neden çözümü sonrası
+      transfer artık anlık değil (~10-15 dk gecikmeli), bkz. useBekleyenVekaletDevirleri
+      yorumu. Alıcı, kabul ettiği görevin planına henüz yansımadığını
+      görebilsin diye. */}
+  {bekleyenVekaletDevirleri.length > 0 && (
+    <div className="space-y-3 mb-6 relative z-10">
+      {bekleyenVekaletDevirleri.map(talep => (
+        <motion.div
+          key={talep.id}
+          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          className="p-6 spatial-glass border-amber-500/25 bg-amber-500/[0.015] shadow-lg shadow-amber-500/5 rounded-card flex items-center gap-4 relative overflow-hidden"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <Clock size={18} />
+          </div>
+          <div className="text-left">
+            <span className="text-2xs font-extrabold bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2.5 py-1 rounded uppercase tracking-wide leading-none">DEVİR İŞLENİYOR</span>
+            <p className="text-sm font-light text-[var(--text-primary)] mt-1">
+              <strong className="text-[var(--dynamic-aura,var(--aura-indigo))]">{talep.tarih}</strong> günü <strong className="text-[var(--dynamic-aura,var(--aura-indigo))]">{toTurkishUpperCase(VAKIT_GORA_ISIMLERI[talep.vakit as Vakit] || talep.vakit)}</strong> vakti için kabulünüz alındı, kısa süre içinde planınıza işlenecektir.
+            </p>
           </div>
         </motion.div>
       ))}

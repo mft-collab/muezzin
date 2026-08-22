@@ -47,10 +47,12 @@ const tests: TestCase[] = [
         }
       });
 
-      // Seed Notifications — istemci tarafı (mazeretServisi.ts'deki transaction)
-      // bu iş çalışmadan ÖNCE zaten yedeği 'asil' rolüne terfi ettirmiş ve
-      // asil bildirimine devirSonucu='yedek_atandi' yazmış olarak kabul edilir;
-      // bu script yalnızca haftaPlanlari önbelleğini bununla senkronize eder.
+      // Seed Notifications — "1000 ifade tavanı" kök neden çözümü sonrası
+      // istemci (mazeretServisi.ts'deki transaction) yedek belgeye HİÇ
+      // dokunmaz — yalnızca kendi asil belgesine devirSonucu='yedek_atandi'
+      // İPUCUNU yazar. GERÇEK terfi (yedek belgenin tip:'yedek' -> 'asil'
+      // geçişi, taze veriyle yeniden doğrulanarak) burada, script'te
+      // gerçekleşir (bkz. scripts/mazeretDevirleriniIsle.ts yorumu).
       // ID'ler deterministiktir: {haftaId}_{tarih}_{vakit}_{asil|yedek}
       // (bkz. README) — mazeretDevirleriniIsle.ts, yedek dokümanını tam
       // olarak bu şemayla türetip arıyor.
@@ -72,7 +74,7 @@ const tests: TestCase[] = [
         tarih: '2026-05-22',
         vakit: 'sabah',
         uid: 'muezzin_yedek',
-        tip: 'asil', // istemci tarafından zaten terfi ettirilmiş
+        tip: 'yedek', // istemci HENUZ terfi ettirmedi — script'in kendisi terfi ettirecek
         durum: 'bekliyor'
       });
 
@@ -84,9 +86,67 @@ const tests: TestCase[] = [
       assert.equal(mazeretDoc.data()?.mazeretPlanSenkronEdildi, true);
       assert.equal(mazeretDoc.data()?.devirSonucu, 'yedek_atandi');
 
+      const yedekDoc = await yedekRef.get();
+      assert.equal(yedekDoc.data()?.tip, 'asil');
+      assert.equal(yedekDoc.data()?.durum, 'bekliyor');
+      assert.equal(yedekDoc.data()?.pendingAck, true);
+      assert.equal(yedekDoc.data()?.asilMazeretUid, 'muezzin_asil');
+
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
       assert.equal(haftaDoc.data()?.gunler['2026-05-22'].sabah.asil, 'muezzin_yedek');
       assert.equal(haftaDoc.data()?.gunler['2026-05-22'].sabah.yedek, 'Sistem');
+    }
+  },
+  {
+    // Yedek, istemcinin karar anından bu yana (script'in ~10-15 dk'lık
+    // gecikme penceresinde) arşivlenmiş/pasifleşmiş olabilir — istemcinin
+    // 'yedek_atandi' İPUCUNA GÜVENİLMEZ, script taze veriyle yeniden
+    // doğrular ve uygun değilse alarm_bekliyor'a düşürüp admin uyarısı
+    // oluşturur.
+    name: 'Karar sonrasi pasiflesen yedek terfi ettirilmez, alarm_bekliyor a dusurulur',
+    run: async () => {
+      await clearCollections();
+
+      await db.collection('muezzins').doc('muezzin_asil').set({
+        displayName: 'Asil', role: 'muezzin', aktif: true
+      });
+      await db.collection('muezzins').doc('muezzin_yedek').set({
+        displayName: 'Yedek', role: 'muezzin', aktif: false // karar sonrasi pasiflesti
+      });
+
+      const mazeretRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_asil');
+      await mazeretRef.set({
+        haftaId: 'W2026-05-18',
+        tarih: '2026-05-22',
+        vakit: 'sabah',
+        uid: 'muezzin_asil',
+        tip: 'asil',
+        durum: 'reddedildi',
+        devirSonucu: 'yedek_atandi',
+        mazeretPlanSenkronEdildi: false
+      });
+      const yedekRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_yedek');
+      await yedekRef.set({
+        haftaId: 'W2026-05-18',
+        tarih: '2026-05-22',
+        vakit: 'sabah',
+        uid: 'muezzin_yedek',
+        tip: 'yedek',
+        durum: 'bekliyor'
+      });
+
+      await processMazeretDevirleri(false);
+
+      const yedekDoc = await yedekRef.get();
+      assert.equal(yedekDoc.data()?.tip, 'yedek'); // terfi ETTİRİLMEDİ
+
+      const mazeretDoc = await mazeretRef.get();
+      assert.equal(mazeretDoc.data()?.mazeretPlanSenkronEdildi, true);
+      assert.equal(mazeretDoc.data()?.devirSonucu, 'alarm_uretildi');
+
+      const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
+      assert.equal(alarmSnap.size, 1);
+      assert.equal(alarmSnap.docs[0]!.data().tarih, '2026-05-22');
     }
   },
   {

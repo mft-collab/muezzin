@@ -223,30 +223,28 @@ service cloud.firestore {
     // ---------------------------------------------------------
     // ENTITY: Bildirimler
     // ---------------------------------------------------------
-    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı.
-    // `bildirimler` update kuralı bunun gibi 4 ağır dalı OR'lar (bkz. altta
-    // `allow update`); her dal önce pahalı bir Firestore get() ile başlarsa
-    // toplam ifade sayısı emülatörün 1000 ifade tavanına çarpabiliyordu ("K2:
-    // devirSonucu sema disi bir deger olamaz" ve "vekalet alicisi kabul
-    // etmeden bildirimi devralamaz" testleri bu yüzden doğru kural mantığıyla
-    // değil kaynak tükenmesiyle geçiyordu). CEL `&&` soldan sağa kısa devre
-    // yaptığından, ucuz alan eşitlikleri (özellikle `existing().uid ==
-    // request.auth.uid` — başkasının belgesini güncellemeye çalışan HER
-    // istek burada hiç Firestore okumadan elenir) en başta, pahalı
-    // `isAssignableDutyUid()` çağrısı en sonda olmalı.
-    // `existing().uid == request.auth.uid` sarmalayıcı bir FONKSİYON ÇAĞRISI
-    // sınırında kontrol edilir (ayrı bir `let` değil) — bildirimler
-    // update kuralı aynı transaction içinde İKİ belgeyi (asil+yedek)
-    // güncelleyebildiğinden (bkz. mazeretBildir), yedek belgenin update'i
-    // için bu fonksiyon çağrıldığında `existing().uid != request.auth.uid`
-    // olduğundan buradaki `&&` HİÇ isSelfBildirimUpdateIcin'e girmeden
-    // kısa devre yapar — içindeki `getAfter(mazeret_detaylari/...)` ve
-    // `incoming().diff(existing())` gibi pahalı işlemler o belge için hiç
-    // çalışmaz. Bu ayrım eklenmeden önce (blanket `let` fonksiyonun en
-    // başında), aynı transaction'daki 2 bildirimler yazımı + yeni
-    // mazeret_detaylari yazımının TOPLAM ifade sayısı emülatörün 1000
-    // ifade tavanını aşıp mazeret bildirimini üretimde kırıyordu (bkz.
-    // mimari denetim — altıncı tur, E2E regresyonu).
+    // NOT (ifade tavanı denetimi — 3. tur, KÖK NEDEN ÇÖZÜMÜ): bu kural
+    // eskiden 4 ağır dal OR'luyordu (self-update, vekalet-kabul TRANSFERİ,
+    // yedek-terfi, admin) ve emülatörün "istek başına 1000 ifade" bütçesine
+    // en basit tek-alan self-update yazımında bile çarpıyordu — üç bağımsız
+    // araştırma (resmi Firebase dokümantasyonu + kod haritası + test kanıtı)
+    // bunun çalışma-zamanı kısa-devre davranışından değil, 4 dalın TOPLAM
+    // derlenmiş karmaşıklığından (~160-180 terim) kaynaklandığını kanıtladı
+    // (iki bağımsız çalışma-zamanı optimizasyonu — get() paylaşımı, admin
+    // dalını sona alma — SIFIR etki yaptı, 13→13). Kusursuz çözüm bu yüzden
+    // "daha ucuz sırala" değil "gerçek doğrulama yükünü CEL'den çıkar" oldu:
+    // vekalet-kabul TRANSFERİ (bildirimler.uid flip'i) ve mazeret-reddi
+    // sonrası yedek-terfi artık istemci tarafında DEĞİL, Admin SDK ile
+    // çalışan scripts/vekaletDevirleriniIsle.ts / mazeretDevirleriniIsle.ts
+    // içinde (kural bütçesi yok, düz TypeScript) gerçekleşiyor — bkz. plan
+    // dosyası "sorunun-k-k-kayna..." (1000 ifade tavanı kök neden analizi).
+    // İstemci yalnızca dar, ucuz bir "niyet" bayrağı yazabiliyor
+    // (isVekaletDevriBekliyorIsareti). Kalan 3 dal (self-update, vekalet-
+    // bayrağı, admin) toplamda eskisinin küçük bir kesri kadar terim
+    // içeriyor. `existing().uid == request.auth.uid` hâlâ ucuz bir
+    // FONKSİYON ÇAĞRISI sınırında kontrol edilir (ayrı bir `let` değil) —
+    // başkasının belgesini güncellemeye çalışan HER istek burada hiç
+    // Firestore okumadan elenir.
     function isSelfBildirimUpdate(docId) {
       return existing().uid == request.auth.uid && isSelfBildirimUpdateIcin(docId);
     }
@@ -261,26 +259,27 @@ service cloud.firestore {
       // `isBackupPromotionFromMazeret` ile aynı kalıp).
       let devirSonucu = incoming().get('devirSonucu', null);
       // mazeret_detaylari koleksiyonunda BU belgeyle AYNI ID'ye (docId —
-      // match bloğunun kendi wildcard'ı, isAcceptedVekaletBildirimTransfer
-      // ile aynı desen) sahip bir kayıt, reddi bildiren tarafın özel
-      // mazeret gerekçesini (retSebebi) taşır. Önceden retSebebi doğrudan
-      // BU belgede (bildirimler) tutuluyordu; bildirimler `allow read, list:
-      // if isSignedIn()` ile (haftalık çizelgeyi TÜM ekibin görebilmesi
-      // için GEREKLİ) açık kalmak zorunda olduğundan, bu da retSebebi'yi
-      // istemeden herkese açıyordu — normal haftalık çizelge sorgusunda
-      // bile pasif olarak sızıyordu, ve admin-only "Mazeret Geçmişi"
-      // ekranının sorgusu herhangi bir kullanıcı tarafından konsoldan
-      // birebir tekrarlanabiliyordu (bkz. mimari denetim — altıncı tur).
-      // retSebebi artık ayrı, yalnızca ilgili kişi+admin'in okuyabildiği
-      // mazeret_detaylari koleksiyonuna taşındı; isBackupPromotionFromMazeret'teki
-      // desenle SİMETRİK bir getAfter() korelasyonu bu belgenin GERÇEKTEN
-      // aynı commit'te yazıldığını doğrular (eşleşen belge yoksa/uid
-      // uyuşmazsa değerlendirme hatasıyla fail-closed reddeder — dosyada
-      // zaten kurulu bir desen). NOT: docId, bildirimler'in kendi
-      // belgesinin GERÇEK ID'sidir — üretimde her zaman deterministik
-      // (haftaId_tarih_vakit_tip) olsa da, bu alanlardan yeniden hesaplamak
-      // yerine doğrudan kullanmak daha güvenilir (ör. test fixture'ları
-      // gibi bu kalıba uymayan ID'lerde de doğru çalışır).
+      // match bloğunun kendi wildcard'ı) sahip bir kayıt, reddi bildiren
+      // tarafın özel mazeret gerekçesini (retSebebi) taşır. Önceden retSebebi
+      // doğrudan BU belgede (bildirimler) tutuluyordu; bildirimler
+      // `allow read, list: if isSignedIn()` ile (haftalık çizelgeyi TÜM
+      // ekibin görebilmesi için GEREKLİ) açık kalmak zorunda olduğundan, bu
+      // da retSebebi'yi istemeden herkese açıyordu — normal haftalık çizelge
+      // sorgusunda bile pasif olarak sızıyordu, ve admin-only "Mazeret
+      // Geçmişi" ekranının sorgusu herhangi bir kullanıcı tarafından
+      // konsoldan birebir tekrarlanabiliyordu (bkz. mimari denetim — altıncı
+      // tur). retSebebi artık ayrı, yalnızca ilgili kişi+admin'in
+      // okuyabildiği mazeret_detaylari koleksiyonuna taşındı; bir getAfter()
+      // korelasyonu bu belgenin GERÇEKTEN aynı commit'te yazıldığını
+      // doğrular (eşleşen belge yoksa/uid uyuşmazsa değerlendirme hatasıyla
+      // fail-closed reddeder — dosyada zaten kurulu bir desen). NOT: docId,
+      // bildirimler'in kendi belgesinin GERÇEK ID'sidir — üretimde her zaman
+      // deterministik (haftaId_tarih_vakit_tip) olsa da, bu alanlardan
+      // yeniden hesaplamak yerine doğrudan kullanmak daha güvenilir (ör.
+      // test fixture'ları gibi bu kalıba uymayan ID'lerde de doğru çalışır).
+      // Bu, artık bu kuraldaki TEK getAfter() korelasyonu — yedek-terfi
+      // çapraz-doğrulaması (bkz. altta) kaldırıldı, o iş artık
+      // scripts/mazeretDevirleriniIsle.ts'te.
       let mazeretDetay = getAfter(/databases/$(database)/documents/mazeret_detaylari/$(docId)).data;
       return existing().uid == request.auth.uid &&
              incoming().uid == existing().uid &&
@@ -312,26 +311,17 @@ service cloud.firestore {
                  incoming().durum == 'reddedildi' &&
                  incoming().pendingAck == false &&
                  mazeretDetay.uid == request.auth.uid &&
-                 (
-                   devirSonucu == 'alarm_bekliyor' ||
-                   // Önceden `devirSonucu == 'yedek_atandi'` bu TEK belge
-                   // güncellemesinde hiçbir şekilde doğrulanmıyordu — yedeğin
-                   // GERÇEKTEN terfi ettiğini gösteren eşleşen bir yazım aynı
-                   // commit'te olmasa bile bu değer kabul ediliyordu.
-                   // src/services/mazeretServisi.ts (mazeretBildir) ikisini
-                   // her zaman AYNI transaction'da yazsa da, bu kuralı
-                   // atlayıp doğrudan updateDoc çağıran biri yedek belgesini
-                   // hiç terfi ettirmeden "yedek_atandi" diyebiliyordu —
-                   // scripts/mazeretDevirleriniIsle.ts bu durumda sessizce
-                   // atlıyor (ne admin alarmı ne mazeretPlanSenkronEdildi),
-                   // vakit kapsamsız kalıyor ama "halledildi" sanılıyordu
-                   // (bkz. mimari denetim — üçüncü tur). isBackupPromotionFromMazeret
-                   // ile simetrik: yedeğin deterministik belge ID'si
-                   // (haftaId_tarih_vakit_yedek) üzerinden bu COMMIT'te
-                   // gerçekten 'asil'e terfi ettiği getAfter() ile doğrulanır.
-                   (devirSonucu == 'yedek_atandi' &&
-                    getAfter(/databases/$(database)/documents/bildirimler/$(existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_yedek')).data.tip == 'asil')
-                 )
+                 // `devirSonucu` artık istemcinin yalnızca bir İPUCU olarak
+                 // yazdığı, YETKİLENDİRİCİ olmayan bir alan — yedeğin
+                 // GERÇEKTEN terfi edip etmediğini bu kural artık doğrulamaz
+                 // (o korelasyon, aynı-commit garantisi gerektirdiğinden ve
+                 // pahalı bir getAfter() olduğundan, scripts/
+                 // mazeretDevirleriniIsle.ts'e taşındı — orada Admin SDK ile
+                 // taze veriden yeniden doğrulanıyor, istemcinin yazdığı
+                 // değere güvenilmiyor). Bu asil belgenin kendisi için tek
+                 // önemli olan, durum geçişinin (bekliyor→reddedildi) ve
+                 // mazeretDetay korelasyonunun geçerli olması.
+                 devirSonucu in ['alarm_bekliyor', 'yedek_atandi']
                ) ||
                (
                  // Yedek görevli kendi mazeretini bildiriyor — devralacak bir
@@ -350,64 +340,19 @@ service cloud.firestore {
              isAssignableDutyUid(request.auth.uid);
     }
 
-    // Bir müezzin mazeret bildirdiğinde (yukarıdaki reddedildi geçişi), aynı
-    // transaction içinde -- eğer uygun bir yedek varsa -- yedeğin kendi
-    // bildirim belgesi 'asil' rolüne terfi eder. Bildirim ID'leri deterministik
-    // olduğundan (haftaId_tarih_vakit_tip), yedek belgesi kendi alanlarından
-    // asil belgesinin yolunu hesaplayıp getAfter() ile o belgenin bu
-    // transaction'da gerçekten 'reddedildi' durumuna geçtiğini doğrulayabilir.
-    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı (bkz.
-    // isSelfBildirimUpdate/isAcceptedVekaletBildirimTransfer yorumları — aynı
-    // gerekçe). Ayrıca `incoming().asilMazeretUid` artık `.get(..., '')` ile
-    // okunuyor: bu fonksiyon `bildirimler` update kuralındaki OR zincirinin
-    // SON dalı olduğundan, önceki dallara uymayan HER güncelleme isteği
-    // (asilMazeretUid alanı hiç göndermeyenler dahil) buraya kadar
-    // düşebiliyordu — alan tamamen eksikken doğrudan `.asilMazeretUid`
-    // erişimi rules motorunda "Property is undefined" hatası fırlatıyordu
-    // (bkz. `cumaMiIsaretli` ile aynı kalıp, aynı kök neden).
-    // NOT (ifade tavanı denetimi): `existing()/incoming()` alan karşılaştırması
-    // olan ucuz bir ön-kontrol, `getAfter()` içeren pahalı gövdeyi AYRI bir
-    // fonksiyona taşıdı — isSelfBildirimUpdate'teki AYNI teknik (bkz. o
-    // yorum). Önceden `let asilAfter = getAfter(...)` bu fonksiyonun EN
-    // BAŞINDAydı; CEL'de `let` bağlamaları fonksiyon girişinde HEMEN
-    // değerlendirildiğinden, `bildirimler` update kuralının OR zincirindeki
-    // diğer 3 dal (isAdmin/isValidBildirim, isSelfBildirimUpdate,
-    // isAcceptedVekaletBildirimTransfer) tutmayan HER güncelleme isteğinde bu
-    // fonksiyon da çağrılıyor ve `getAfter()` hiç ilgisi olmasa bile
-    // çalışıyordu — dört dalın toplamı emülatörün 1000 ifade tavanını
-    // aşıyordu (bkz. `npm run test:rules` çıktısındaki "Unable to evaluate
-    // the expression as the maximum of 1000 expressions" uyarıları).
-    function isBackupPromotionFromMazeret() {
-      return existing().tip == 'yedek' &&
-             incoming().tip == 'asil' &&
-             incoming().uid == existing().uid &&
-             isBackupPromotionFromMazeretIcin();
-    }
-
-    function isBackupPromotionFromMazeretIcin() {
-      let changed = incoming().diff(existing()).affectedKeys();
-      let asilDocId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_asil';
-      let asilAfter = getAfter(/databases/$(database)/documents/bildirimler/$(asilDocId)).data;
-      return isSignedIn() &&
-             existing().durum != 'reddedildi' &&
-             existing().uid != request.auth.uid &&
-             incoming().durum == 'bekliyor' &&
-             incoming().pendingAck == true &&
-             incoming().haftaId == existing().haftaId &&
-             incoming().tarih == existing().tarih &&
-             incoming().vakit == existing().vakit &&
-             incoming().get('asilMazeretUid', '') == request.auth.uid &&
-             changed.hasOnly(['tip', 'durum', 'pendingAck', 'sonGuncelleme', 'asilMazeretUid']) &&
-             incoming().sonGuncelleme is timestamp &&
-             asilAfter.tip == 'asil' &&
-             asilAfter.durum == 'reddedildi' &&
-             asilAfter.uid == request.auth.uid &&
-             asilAfter.haftaId == existing().haftaId &&
-             asilAfter.tarih == existing().tarih &&
-             asilAfter.vakit == existing().vakit &&
-             asilAfter.devirSonucu == 'yedek_atandi' &&
-             isAssignableDutyUid(existing().uid);
-    }
+    // NOT (ifade tavanı denetimi — 3. tur, KÖK NEDEN ÇÖZÜMÜ): yedek görevlinin
+    // 'asil' rolüne terfisi eskiden burada, `bildirimler` update kuralının bir
+    // dalı olarak, aynı transaction içinde çapraz-doğrulanıyordu (getAfter()
+    // ile asil belgenin GERÇEKTEN 'reddedildi' olduğunu kontrol ederek). Bu
+    // dal (isBackupPromotionFromMazeret/Icin) TAMAMEN SİLİNDİ — istemci artık
+    // yedek belgeye HİÇ dokunmuyor (bkz. src/services/mazeretServisi.ts,
+    // yedek write kaldırıldı); terfi artık Admin SDK ile çalışan
+    // scripts/mazeretDevirleriniIsle.ts'te, taze veriyle yeniden doğrulanarak
+    // gerçekleşiyor. Sonuç: bu koleksiyonda yedek belgenin `tip` alanını
+    // client-side değiştirebilecek HİÇBİR dal kalmadı (isSelfBildirimUpdate
+    // yalnızca `existing().uid == request.auth.uid` olan belgeleri kapsar,
+    // yedek belge başka birinin belgesidir) — client'tan gelen böyle bir
+    // yazım artık koşulsuz reddedilir.
 
     function vekaletTalepId(data) {
       return data.haftaId + '_' + data.tarih + '_' + data.vakit + '_' + data.tip + '_' + data.aliciUid;
@@ -474,80 +419,41 @@ service cloud.firestore {
              incoming().durum in ['kabul_edildi', 'reddedildi'];
     }
 
-    // NOT (ifade tavanı denetimi): isBackupPromotionFromMazeret ile AYNI
-    // teknik — ucuz, salt `existing()/incoming()` alan karşılaştırmalarından
-    // oluşan bir ön-kontrol, `getAfter()` içeren pahalı gövdeyi ayrı bir
-    // fonksiyona taşıdı. Önceden `let talep = getAfter(...)` doğrudan bu
-    // fonksiyonun (OR zincirinin bir dalının) en başındaydı ve `bildirimler`
-    // update kuralına uymayan HER istekte (diğer 3 dal tutmasa bile)
-    // koşulsuz çalışıyordu — dört dalın toplam ifade sayısı emülatörün 1000
-    // tavanını aşıyordu (bkz. isBackupPromotionFromMazeret yorumu).
-    function isAcceptedVekaletBildirimTransfer(bildirimId) {
+    // NOT (ifade tavanı denetimi — 3. tur, KÖK NEDEN ÇÖZÜMÜ): vekalet-kabul
+    // TRANSFERİ (bildirimler.uid flip'i + talep korelasyonu + atanabilirlik/
+    // Cuma/izin-günü yeniden doğrulaması) eskiden burada, ~45 terimlik ve
+    // getAfter() içeren pahalı bir dal olarak yaşıyordu. Artık istemci bu
+    // transferi HİÇ yapmıyor — yalnızca dar bir "niyet" bayrağı yazıyor
+    // (bkz. src/services/vekaletServisi.ts, vekaletKabulEt artık yalnızca
+    // vekalet_talepleri.durum='kabul_edildi' + bu bayrağı yazar). Gerçek
+    // transfer, tüm iş kurallarını (atanabilirlik, Cuma, izin-günü) taze
+    // veriyle TypeScript'te yeniden doğrulayan scripts/vekaletDevirleriniIsle.ts
+    // içinde, Admin SDK ile (kural bütçesi yok) gerçekleşiyor. Bu fonksiyon
+    // yalnızca "eşleşen, kabul edilmiş bir talep var mı" diye TEK bir ucuz
+    // get() yapar (getAfter DEĞİL — talep bu commit'te değil, ÖNCEDEN
+    // yazılmış bir belge).
+    function isVekaletDevriBekliyorIsareti(docId) {
       return existing().durum == 'bekliyor' &&
              existing().uid != request.auth.uid &&
-             incoming().uid == request.auth.uid &&
-             isAcceptedVekaletBildirimTransferIcin(bildirimId);
+             isVekaletDevriBekliyorIsaretiIcin(docId);
     }
 
-    // NOT (mimari denetim Y3): `isAssignableDutyUid()` en sona taşındı — ucuz
-    // `existing()`/`incoming()` alan karşılaştırmaları önce elenir, ek
-    // Firestore okuması gerektiren doğrulama en son (bkz. isSelfBildirimUpdate
-    // yorumu). `talep.*` karşılaştırmaları zaten fonksiyon girişindeki
-    // `let talep = getAfter(...)`'e bağımlı olduğundan (bu okuma sıralamadan
-    // bağımsız olarak zaten gerçekleşir) sıraları performansı etkilemez.
-    // ifade tavanı denetimi: alıcının muezzins belgesi burada VE
-    // isAssignableDutyUid() içinde AYRI AYRI get() ediliyordu (aynı yol,
-    // aynı transaction). Tek `let` ile bir kez okunup hem
-    // isAssignableDutyUidVeri()'ye hem Cuma-izin kontrolüne aktarılıyor —
-    // bu dalın kendi (zaten pahalı: talep getAfter + diff + get) ifade
-    // maliyetini bir get() kadar düşürür.
-    function isAcceptedVekaletBildirimTransferIcin(bildirimId) {
-      let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
-      let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
+    function isVekaletDevriBekliyorIsaretiIcin(docId) {
       let changed = incoming().diff(existing()).affectedKeys();
-      let aliciMuezzinDoc = /databases/$(database)/documents/muezzins/$(request.auth.uid);
-      let aliciMuezzinVeri = exists(aliciMuezzinDoc) ? get(aliciMuezzinDoc).data : null;
-      return !cumaMiIsaretli(existing()) &&
-             incoming().durum == existing().durum &&
-             incoming().haftaId == existing().haftaId &&
-             incoming().tarih == existing().tarih &&
-             incoming().vakit == existing().vakit &&
-             incoming().tip == existing().tip &&
-             incoming().pendingAck == existing().pendingAck &&
-             // vekaletDevredildi: true zorunlu — durum bu gecişte degismedigi
-             // icin (hala 'bekliyor' olabilir), bu isaret olmadan bir sonraki
-             // plan yeniden uretimi bu slotu korumasiz sanip sessizce eski
-             // sahibine geri dondurebiliyordu (bkz. mimari denetim K5).
-             incoming().get('vekaletDevredildi', false) == true &&
-             changed.hasOnly(['uid', 'vekaletDevredildi', 'sonGuncelleme']) &&
+      let talepId = existing().haftaId + '_' + existing().tarih + '_' + existing().vakit + '_' + existing().tip + '_' + request.auth.uid;
+      // `getAfter()` (get() DEĞİL) zorunlu: src/services/vekaletServisi.ts
+      // `vekaletKabulEt` talebi 'kabul_edildi'ye çeviren yazım İLE bu bildirim
+      // bayrağı yazımını AYNI transaction'da yapar — `get()` bu commit'ten
+      // ÖNCEKİ (hâlâ 'beklemede') durumu görürdü, korelasyonu her zaman false
+      // yapardı. Yine de tek bir getAfter() — silinen ~45 terimlik dalın
+      // yanında ihmal edilebilir bir maliyet.
+      let talep = getAfter(/databases/$(database)/documents/vekalet_talepleri/$(talepId)).data;
+      return changed.hasOnly(['vekaletDevriBekliyor', 'sonGuncelleme']) &&
+             incoming().vekaletDevriBekliyor == true &&
              incoming().sonGuncelleme is timestamp &&
-             talep.bildirimId == bildirimId &&
-             talep.haftaId == existing().haftaId &&
-             talep.tarih == existing().tarih &&
-             talep.vakit == existing().vakit &&
-             talep.tip == existing().tip &&
-             talep.gonderenUid == existing().uid &&
+             talep.bildirimId == docId &&
              talep.aliciUid == request.auth.uid &&
-             talep.durum == 'kabul_edildi' &&
-             // Talep oluşturulduğunda alıcının aktif müezzin olduğu
-             // doğrulanmıştı (isValidVekaletCreate), ama talep beklerken
-             // admin alıcıyı arşivleyebilir/rolünü değiştirebilir — kabul
-             // anında TEKRAR doğrulanmazsa arşivlenmiş biri çizelgeye geri
-             // dönebiliyordu (bkz. mimari denetim O9).
-             isAssignableDutyUidVeri(request.auth.uid, aliciMuezzinVeri) &&
-             // Sabit haftalık izin gününde asla atama yok kısıtlaması
-             // (isValidBildirim'deki karşılığı) admin create/manuel-update
-             // yolunda uygulanıyordu ama vekalet KABUL yolu bunu hiç
-             // kontrol etmiyordu — biri kendi izin gününe denk gelen bir
-             // nöbeti vekaletle "kabul ederek" bu kısıtlamayı atlatabiliyordu
-             // (bkz. Cuma kısıtlaması için CLAUDE.md'nin uyardığı aynı desen:
-             // üç yerde de senkron tutulmalı). `existing().tip` zaten
-             // `talep.tip` ile eşleşmesi zorunlu tutulduğundan tekrar
-             // kontrol edilmiyor. `isAssignableDutyUidVeri` yukarıda `&&`
-             // ile önce geldiğinden, aliciMuezzinVeri null ise burası hiç
-             // değerlendirilmeden kısa devre yapar.
-             !(existing().tip in ['asil', 'yedek'] &&
-               aliciMuezzinVeri.get('haftalikIzinGunu', 0) == haftaGunuNumarasi(existing().tarih));
+             talep.durum == 'kabul_edildi';
     }
 
     // NOT (ifade tavanı denetimi): `get(muezzinDoc)` tek bir `let`'e alındı —
@@ -564,10 +470,8 @@ service cloud.firestore {
     }
 
     // isAssignableDutyUid'in get()'siz hali — çağıran taraf muezzins verisini
-    // başka bir sebeple (ör. isAcceptedVekaletBildirimTransferIcin'deki Cuma-
-    // izin kontrolü) zaten okumuşsa AYNI belgeyi ikinci kez get() etmeden bu
-    // fonksiyona doğrudan veriyi geçebilir — ifade tavanına yakın dallarda
-    // tekrarlanan get() maliyetini önler.
+    // başka bir sebeple zaten okumuşsa AYNI belgeyi ikinci kez get() etmeden
+    // bu fonksiyona doğrudan veriyi geçebilir.
     function isAssignableDutyUidVeri(uid, muezzinVeri) {
       return uid is string &&
              muezzinVeri != null &&
@@ -593,7 +497,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -638,34 +542,36 @@ service cloud.firestore {
              // olusturulmus) belgeler bu alan olmadan da gecerli kalir — bkz.
              // isSelfBildirimUpdate()'teki `!= true` karsilastirmasi.
              (!data.keys().hasAny(['cumaMi']) || data.cumaMi is bool) &&
-             (!data.keys().hasAny(['vekaletDevredildi']) || data.vekaletDevredildi is bool);
+             (!data.keys().hasAny(['vekaletDevredildi']) || data.vekaletDevredildi is bool) &&
+             (!data.keys().hasAny(['vekaletDevriBekliyor']) || data.vekaletDevriBekliyor is bool);
     }
 
-    // ifade tavanı denetimi (2. tur, İKİ AYRI deneme ölçüldü — ikisi de
-    // "1000 ifade" uyarı SAYISINI DEĞİŞTİRMEDİ, 13 → 13, hep aynı satırda):
-    // (1) get()'leri paylaştırma (isAdmin/isAssignableDutyUid'in AYNI
-    // muezzins belgesini tek `let`'e indirmesi), (2) admin dalını (kendi
-    // isSuperAdminEmail get()'i + muezzins get()'i ile en pahalı dal, OR
-    // zincirinin İLK dalıydı) EN SONA taşımak — ki bu, self-update/vekalet-
-    // kabul dallarından biri eşleştiğinde isAdmin()'in 2 get()'inin HİÇ
-    // ÇALIŞMAMASI gerekirdi (CEL `||` soldan sağa kısa devre yapar). İKİ
-    // FARKLI çalışma-zamanı optimizasyonunun de ölçülebilir etkisi SIFIR
-    // olması, tavanın çalışma-zamanı okuma/kısa-devre davranışıyla değil,
-    // muhtemelen kuralın DERLENMİŞ ifade ağacının TOPLAM boyutuyla (tüm 4
-    // dalın birleşik terim sayısı, hangi dalın gerçekte çalıştığından
-    // bağımsız) ilgili olduğuna işaret ediyor — bu durumda gerçek çözüm
-    // gerçek doğrulama mantığını azaltmak/şemayı yeniden tasarlamaktır, ayrı
-    // bir kapsamlı görev (bkz. commit mesajı). Admin dalının sona alınması
-    // yine de tutuluyor: matematiksel olarak sonucu değiştirmez, ama gerçek
-    // üretimde (emülatör dışı) her self-update/vekalet-kabul yazımında
-    // isAdmin()'in 2 gereksiz Firestore okumasını atlatır.
+    // ifade tavanı denetimi — TAM ÖZET (3 tur):
+    // 1. tur: her dalın pahalı gövdesi (getAfter/get) koşulsuz `let`'lerle
+    //    fonksiyon girişinde çalışıyordu — cheap-check/expensive-body ayrımı
+    //    yapıldı (isSelfBildirimUpdate/Icin deseni).
+    // 2. tur: get() paylaşımı ve admin dalını OR zincirinde sona almak —
+    //    İKİSİ DE "1000 ifade" uyarı SAYISINI DEĞİŞTİRMEDİ (13 → 13, ölçüldü).
+    //    Bu, tavanın çalışma-zamanı okuma/kısa-devre davranışından değil,
+    //    kuralın DERLENMİŞ ifade ağacının TOPLAM boyutundan (tüm dalların
+    //    birleşik terim sayısı, hangi dalın gerçekte çalıştığından bağımsız)
+    //    kaynaklandığını kanıtladı — en basit tek-alan self-update yazımı
+    //    bile tavana çarpıyordu.
+    // 3. tur (KÖK NEDEN ÇÖZÜMÜ): vekalet-kabul TRANSFERİ ve mazeret-reddi
+    //    sonrası yedek-terfi — kuralın en pahalı 2 dalı (~72 terim, 2
+    //    getAfter() çağrısı) — CEL'den tamamen çıkarılıp Admin SDK ile
+    //    çalışan scripts/vekaletDevirleriniIsle.ts / mazeretDevirleriniIsle.ts
+    //    içine taşındı (kural bütçesi yok, düz TypeScript, taze veriyle
+    //    yeniden doğrulama). İstemci artık yalnızca dar "niyet" bayrakları
+    //    yazıyor. Kalan 3 dal (self-update, vekalet-bayrağı, admin) toplamda
+    //    eskisinin küçük bir kesri kadar terim içeriyor — bu kez ölçülebilir,
+    //    yapısal bir azalma (bkz. npm run test:rules çıktısı).
     match /bildirimler/{docId} {
       allow read, list: if isSignedIn();
       allow create: if isAdmin() && isValidBildirim(incoming());
       allow update: if isSignedIn() && (
         isSelfBildirimUpdate(docId) ||
-        isAcceptedVekaletBildirimTransfer(docId) ||
-        isBackupPromotionFromMazeret() ||
+        isVekaletDevriBekliyorIsareti(docId) ||
         (isAdmin() && isValidBildirim(incoming()))
       );
       allow delete: if isAdmin();

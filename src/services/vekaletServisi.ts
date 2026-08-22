@@ -1,6 +1,5 @@
 import { deleteDoc, doc, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { telemetryService } from './telemetryService';
 import { mazeretZamanKontrolYap } from './mazeretServisi';
 import { Bildirim, Vakit, VekaletTalebi } from '../types';
 
@@ -87,8 +86,18 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
     throw new Error(mazeretDurumu.sebep ?? 'Bu görev için vekalet kabul penceresi kapandı.');
   }
 
-  let auditDetails: { gonderenIsim: string; aliciIsim: string; tarih: string; vakit: string } | null = null;
-
+  // NOT ("1000 ifade tavanı" kök neden çözümü): bu transaction eskiden
+  // bildirimler.uid'i BURADA, anlık olarak flip ediyordu — bu,
+  // firestore.rules'taki `isAcceptedVekaletBildirimTransfer`'in emülatörün
+  // "1000 ifade" bütçesine çarpan ~45 terimlik çapraz-belge doğrulamasını
+  // (talep korelasyonu + atanabilirlik + Cuma + izin-günü, hepsi CEL'de)
+  // gerektiriyordu. Artık istemci yalnızca (1) talebi kabul edildi olarak
+  // işaretliyor ve (2) bildirime dar bir "niyet" bayrağı
+  // (vekaletDevriBekliyor) yazıyor — GERÇEK transfer (uid flip'i + tüm iş
+  // kurallarının taze veriyle yeniden doğrulanması, audit-log dahil) artık
+  // scripts/vekaletDevirleriniIsle.ts'te, Admin SDK ile (kural bütçesi yok)
+  // gerçekleşiyor; script'in bir sonraki çalışmasına kadar (~10-15 dk)
+  // gecikmeli.
   await runTransaction(db, async (transaction) => {
     const talepDoc = await transaction.get(talepRef);
     if (!talepDoc.exists()) throw new Error('Vekalet talebi bulunamadı.');
@@ -105,35 +114,8 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
     if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
 
     transaction.update(talepRef, { durum: 'kabul_edildi', sonGuncelleme: serverTimestamp() });
-    // vekaletDevredildi: true — bildirimin `durum`u bu geçişte DEĞİŞMEZ (hâlâ
-    // 'bekliyor' olabilir), bu yüzden planServisi.ts'teki korumaliSlotMu bu
-    // alan olmadan slotu korumasız sanıp bir sonraki plan yeniden
-    // üretiminde sessizce eski sahibine geri döndürebiliyordu (bkz. mimari
-    // denetim K5).
-    transaction.update(bildirimRef, { uid: talep.aliciUid, vekaletDevredildi: true, sonGuncelleme: serverTimestamp() });
-
-    auditDetails = {
-      gonderenIsim: talep.gonderenIsim,
-      aliciIsim: talep.aliciIsim,
-      tarih: talep.tarih,
-      vakit: talep.vakit,
-    };
+    transaction.update(bildirimRef, { vekaletDevriBekliyor: true, sonGuncelleme: serverTimestamp() });
   });
-
-  // NOT: `as` ile açık tip ataması kasıtlı — auditDetails, kapsayan bir async
-  // closure içinde yeniden atanan bir `let` olduğundan TypeScript'in kontrol
-  // akışı analizi burada `vakit` alanını yanlışlıkla `never`'a daraltıyor
-  // (bilinen bir TS closure-narrowing sınırlaması). Açık cast bu zinciri kırar.
-  const finalAuditDetails = auditDetails as { gonderenIsim: string; aliciIsim: string; tarih: string; vakit: string } | null;
-  if (finalAuditDetails) {
-    const { gonderenIsim, aliciIsim, tarih, vakit } = finalAuditDetails;
-    const details = `${gonderenIsim} görevi otonom vekalet ile ${aliciIsim} hocaya devretti.`;
-    await telemetryService.logAudit(
-      'Görev Vekaleti Devri',
-      `${tarih} - ${vakit.toUpperCase()}`,
-      details
-    );
-  }
 }
 
 export async function vekaletReddet(talepId: string): Promise<void> {

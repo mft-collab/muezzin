@@ -1187,26 +1187,43 @@ const tests: TestCase[] = [
       });
 
       const db = testUser(env, 'muezzin2').firestore();
+      // NOT ("1000 ifade tavanı" kök neden çözümü): GERÇEK transfer (uid
+      // flip'i) artık istemci tarafında değil, scripts/vekaletDevirleriniIsle.ts'te
+      // (Admin SDK) gerçekleşiyor — bkz. tests/integration/vekaletDevirleriniIsle.test.ts.
+      // İstemci burada yalnızca talebi kabul eder ve dar bir niyet bayrağı yazar.
       await assertSucceeds(runTransaction(db, async (transaction) => {
         transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
           durum: 'kabul_edildi',
           sonGuncelleme: Timestamp.now()
         });
         transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
-          uid: 'muezzin2',
-          vekaletDevredildi: true,
+          vekaletDevriBekliyor: true,
           sonGuncelleme: Timestamp.now()
         });
+      }));
+
+      // Eski doğrudan-transfer yolu artık TAMAMEN KAPALI — talep kabul
+      // edilmiş olsa bile istemci uid'i doğrudan flip edemez (bkz.
+      // isAcceptedVekaletBildirimTransfer'in silindiği "1000 ifade tavanı"
+      // kök neden çözümü). Bu, aşağıdaki "vekalet alicisi kabul etmeden
+      // bildirimi devralamaz" testinin ayna görüntüsü — burada FARKI, talep
+      // GERÇEKTEN kabul edilmiş olması, yine de fark etmiyor.
+      await assertFails(updateDoc(doc(db, 'bildirimler/ownPendingAsil'), {
+        uid: 'muezzin2',
+        vekaletDevredildi: true,
+        sonGuncelleme: Timestamp.now()
       }));
     }
   },
   {
-    // isValidBildirim (admin create/manuel-update yolu) sabit haftalık izin
-    // gününde asla atama yapılmasın kısıtlamasını uygular, ama vekalet KABUL
-    // yolu (isAcceptedVekaletBildirimTransfer) bunu hiç kontrol etmiyordu —
-    // biri kendi haftalık izin gününe denk gelen bir nöbeti vekaletle
-    // "kabul ederek" bu kısıtlamayı atlatabiliyordu.
-    name: 'vekalet alicisi kendi sabit haftalik izin gunune denk gelen nobeti kabul edemez',
+    // NOT ("1000 ifade tavanı" kök neden çözümü): sabit haftalık izin-günü
+    // çakışması artık BURADA (CEL'de) değil, scripts/vekaletDevirleriniIsle.ts'te
+    // TAZE veriyle yeniden doğrulanıyor (bkz. tests/integration/
+    // vekaletDevirleriniIsle.test.ts "izin gününe denk gelen..." vakası).
+    // Rules katmanında artık doğru davranış, izin-günü çakışmasından
+    // BAĞIMSIZ olarak dar niyet bayrağı yazımının başarılı olmasıdır —
+    // gerçek engelleme script'te gerçekleşir.
+    name: 'vekalet kabul niyet bayragi izin-gunu cakismasindan bagimsiz yazilabilir (kontrol script\'e tasindi)',
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
@@ -1242,54 +1259,27 @@ const tests: TestCase[] = [
       });
 
       const db = testUser(env, 'muezzin2').firestore();
-      await assertFails(runTransaction(db, async (transaction) => {
-        transaction.update(doc(db, 'bildirimler/wednesdayPendingAsil'), {
-          uid: 'muezzin2',
-          vekaletDevredildi: true,
-          sonGuncelleme: Timestamp.now()
-        });
+      await assertSucceeds(updateDoc(doc(db, 'bildirimler/wednesdayPendingAsil'), {
+        vekaletDevriBekliyor: true,
+        sonGuncelleme: Timestamp.now()
+      }));
+      // Ama dogrudan uid transferi hala her kosulda kapali.
+      await assertFails(updateDoc(doc(db, 'bildirimler/wednesdayPendingAsil'), {
+        uid: 'muezzin2',
+        vekaletDevredildi: true,
+        sonGuncelleme: Timestamp.now()
       }));
     }
   },
   {
-    name: 'vekaletDevredildi isareti olmadan bildirim devralinamaz (K5 regresyonu)',
-    run: async (env) => {
-      await env.withSecurityRulesDisabled(async (context) => {
-        const db = context.firestore();
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
-          bildirimId: 'ownPendingAsil',
-          haftaId: 'W2026-05-18',
-          gonderenUid: 'muezzin1',
-          gonderenIsim: 'Muezzin One',
-          aliciUid: 'muezzin2',
-          aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
-          vakit: 'ogle',
-          saat: '12:45',
-          tip: 'asil',
-          durum: 'beklemede',
-          olusturmaTarihi: Timestamp.now()
-        });
-      });
-
-      const db = testUser(env, 'muezzin2').firestore();
-      await assertFails(runTransaction(db, async (transaction) => {
-        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
-          durum: 'kabul_edildi',
-          sonGuncelleme: Timestamp.now()
-        });
-        // vekaletDevredildi eksik — planServisi.ts'in bu slotu korumasi icin
-        // gerekli isaret yok, kural bu geciste bunu zorunlu kilmali (bkz.
-        // mimari denetim K5).
-        transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
-          uid: 'muezzin2',
-          sonGuncelleme: Timestamp.now()
-        });
-      }));
-    }
-  },
-  {
-    name: 'arşivlenmiş alıcı, bekleyen vekalet teklifini kabul edemez (O9 regresyonu)',
+    // NOT ("1000 ifade tavanı" kök neden çözümü): arşivlenmiş alıcı kontrolü
+    // artık BURADA (CEL'de) değil, scripts/vekaletDevirleriniIsle.ts'te TAZE
+    // veriyle yeniden doğrulanıyor (bkz. tests/integration/
+    // vekaletDevirleriniIsle.test.ts "arşivlenmiş alıcı..." vakası, eski O9
+    // regresyonunun taşınmış hali). Rules katmanında artık doğru davranış,
+    // alıcının arşivli olmasından BAĞIMSIZ olarak dar niyet bayrağı
+    // yazımının başarılı olmasıdır.
+    name: 'vekalet kabul niyet bayragi alicinin arsivli olmasindan bagimsiz yazilabilir (kontrol script\'e tasindi)',
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
@@ -1319,14 +1309,13 @@ const tests: TestCase[] = [
       });
 
       const db = testUser(env, 'muezzin2').firestore();
-      await assertFails(runTransaction(db, async (transaction) => {
+      await assertSucceeds(runTransaction(db, async (transaction) => {
         transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
           durum: 'kabul_edildi',
           sonGuncelleme: Timestamp.now()
         });
         transaction.update(doc(db, 'bildirimler/ownPendingAsil'), {
-          uid: 'muezzin2',
-          vekaletDevredildi: true,
+          vekaletDevriBekliyor: true,
           sonGuncelleme: Timestamp.now()
         });
       }));
@@ -1439,39 +1428,6 @@ const tests: TestCase[] = [
     }
   },
   {
-    name: 'K2: mazeret bildirimi uygun yedegi ayni transaction icinde asil rolune terfi ettirir',
-    run: async (env) => {
-      const db = testUser(env, 'muezzin1').firestore();
-      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
-      const yedekRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_yedek');
-
-      await assertSucceeds(runTransaction(db, async (transaction) => {
-        await transaction.get(asilRef);
-        await transaction.get(yedekRef);
-        transaction.update(asilRef, {
-          durum: 'reddedildi',
-          pendingAck: false,
-          devirSonucu: 'yedek_atandi',
-          sonGuncelleme: Timestamp.now()
-        });
-        // retSebebi artik bildirimler'e degil, ayni transaction'daki
-        // mazeret_detaylari'na yaziliyor (bkz. mazeretRetBatch yorumu).
-        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
-          uid: 'muezzin1',
-          retSebebi: 'Hastalik',
-          olusturmaTarihi: Timestamp.now()
-        });
-        transaction.update(yedekRef, {
-          tip: 'asil',
-          durum: 'bekliyor',
-          pendingAck: true,
-          asilMazeretUid: 'muezzin1',
-          sonGuncelleme: Timestamp.now()
-        });
-      }));
-    }
-  },
-  {
     name: 'K2: yedegi olmayan/uygun olmayan mazeret sadece alarm_bekliyor ile reddedilebilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
@@ -1479,99 +1435,45 @@ const tests: TestCase[] = [
     }
   },
   {
-    name: 'K2 guvenlik: asil belge ayni transaction icinde reddedilmeden yedek terfi edilemez',
+    // NOT ("1000 ifade tavanı" kök neden çözümü): isBackupPromotionFromMazeret
+    // TAMAMEN SİLİNDİ — yedek belgenin `tip` alanını client-side değiştirebilecek
+    // HİÇBİR dal kalmadı (bkz. firestore.rules yorumu). Asil'in durumu ne
+    // olursa olsun (reddedilmiş olsun ya da olmasın) bu artık koşulsuz reddedilir.
+    name: 'K2 guvenlik: yedek belgenin tip alani client tarafindan hicbir sekilde degistirilemez',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
       const yedekRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_yedek');
-      await assertFails(runTransaction(db, async (transaction) => {
-        await transaction.get(yedekRef);
-        transaction.update(yedekRef, {
-          tip: 'asil',
-          durum: 'bekliyor',
-          pendingAck: true,
-          asilMazeretUid: 'muezzin1',
-          sonGuncelleme: Timestamp.now()
-        });
+      await assertFails(updateDoc(yedekRef, {
+        tip: 'asil',
+        durum: 'bekliyor',
+        pendingAck: true,
+        asilMazeretUid: 'muezzin1',
+        sonGuncelleme: Timestamp.now()
       }));
     }
   },
   {
-    name: 'K2 guvenlik: baskasinin gorevi icin mazeret/terfi transaction\'i baslatilamaz',
+    name: 'K2 guvenlik: baskasinin gorevi icin mazeret transaction\'i baslatilamaz',
     run: async (env) => {
       const db = testUser(env, 'muezzin2').firestore();
-      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
-      const yedekRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_yedek');
-      await assertFails(runTransaction(db, async (transaction) => {
-        await transaction.get(asilRef);
-        await transaction.get(yedekRef);
-        transaction.update(asilRef, {
-          durum: 'reddedildi',
-          pendingAck: false,
-          devirSonucu: 'yedek_atandi',
-          sonGuncelleme: Timestamp.now()
-        });
-        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
-          uid: 'muezzin2',
-          retSebebi: 'Sahte',
-          olusturmaTarihi: Timestamp.now()
-        });
-        transaction.update(yedekRef, {
-          tip: 'asil',
-          durum: 'bekliyor',
-          pendingAck: true,
-          asilMazeretUid: 'muezzin2',
-          sonGuncelleme: Timestamp.now()
-        });
-      }));
+      await assertFails(mazeretRetBatch(db, 'W2026-06-01_2026-06-03_yatsi_asil', 'muezzin2', 'Sahte', { devirSonucu: 'yedek_atandi' }));
     }
   },
   {
-    // Ucuncu denetim turu bulgusu: 'yedek_atandi' TEK basina (yedegin
-    // gercekten terfi ettigine dair eslesen bir yazim olmadan) kabul
-    // ediliyordu. Yedek belge dokunulmamis (hala tip:'yedek') halde birakilip
-    // yalniz asil belge guncellenirse artik reddedilmeli. Eslesen
-    // mazeret_detaylari yazimi DAHIL edildi ki test yalnizca yedek terfisi
-    // eksikligini izole etsin.
-    name: 'K2 guvenlik: devirSonucu=yedek_atandi, yedek GERCEKTEN terfi etmeden tek basina yazilamaz',
+    // NOT ("1000 ifade tavanı" kök neden çözümü — DAVRANIŞ DEĞİŞİKLİĞİ):
+    // eskiden 'yedek_atandi' TEK başına (yedeğin gerçekten terfi ettiğine
+    // dair eşleşen bir getAfter() korelasyonu olmadan) reddediliyordu — bu,
+    // kuralın en pahalı, ~27 terimlik çapraz-belge doğrulamasıydı. Artık bu
+    // korelasyon KASITLI olarak CEL'den kaldırıldı: `devirSonucu` yalnızca
+    // scripts/mazeretDevirleriniIsle.ts için bir İPUCU, YETKİLENDİRİCİ değil
+    // — script, yedeğin GERÇEK uygunluğunu taze veriyle kendisi yeniden
+    // doğrular (bkz. tests/integration/mazeretDevirleriniIsle.test.ts). Bu
+    // yüzden asil-only bir yazım, yedek belgenin durumundan TAMAMEN
+    // BAĞIMSIZ olarak artık başarılı olmalı.
+    name: 'K2: devirSonucu=yedek_atandi asil-only yazim, yedegin gercek durumundan bagimsiz kabul edilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertFails(mazeretRetBatch(db, 'W2026-06-01_2026-06-03_yatsi_asil', 'muezzin1', 'Sahte terfi denemesi', { devirSonucu: 'yedek_atandi' }));
-    }
-  },
-  {
-    // Yedek belge de AYNI transaction'da gercekten 'asil'e terfi ederse
-    // (mazeretServisi.ts'in gercek davranisi) kabul edilmeye devam etmeli —
-    // yukaridaki testin bir regresyona yol acmadigini dogrular (bu senaryo
-    // zaten 'K2: mazeret bildirimi uygun yedegi ayni transaction icinde asil
-    // rolune terfi ettirir' testinde de kapsanıyor, burada devirSonucu
-    // korelasyon kontrolunun POZITIF yolu ayrica adlandirilarak dogrulanir).
-    name: 'K2 guvenlik: devirSonucu=yedek_atandi, yedek ayni committe gercekten terfi ederse kabul edilir',
-    run: async (env) => {
-      const db = testUser(env, 'muezzin1').firestore();
-      const asilRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_asil');
-      const yedekRef = doc(db, 'bildirimler/W2026-06-01_2026-06-03_yatsi_yedek');
-      await assertSucceeds(runTransaction(db, async (transaction) => {
-        await transaction.get(asilRef);
-        await transaction.get(yedekRef);
-        transaction.update(asilRef, {
-          durum: 'reddedildi',
-          pendingAck: false,
-          devirSonucu: 'yedek_atandi',
-          sonGuncelleme: Timestamp.now()
-        });
-        transaction.set(doc(db, 'mazeret_detaylari/W2026-06-01_2026-06-03_yatsi_asil'), {
-          uid: 'muezzin1',
-          retSebebi: 'Hastalik',
-          olusturmaTarihi: Timestamp.now()
-        });
-        transaction.update(yedekRef, {
-          tip: 'asil',
-          durum: 'bekliyor',
-          pendingAck: true,
-          asilMazeretUid: 'muezzin1',
-          sonGuncelleme: Timestamp.now()
-        });
-      }));
+      await assertSucceeds(mazeretRetBatch(db, 'W2026-06-01_2026-06-03_yatsi_asil', 'muezzin1', 'Hastalik', { devirSonucu: 'yedek_atandi' }));
     }
   },
   {

@@ -218,15 +218,18 @@ export async function mazeretBildir(bildirimId: string, retSebebi: string, ezanS
         olusturmaTarihi: serverTimestamp()
       });
 
-      if (yedekUygun) {
-        transaction.update(yedekRef, {
-          tip: 'asil',
-          durum: 'bekliyor',
-          pendingAck: true,
-          asilMazeretUid: currentUid,
-          sonGuncelleme: serverTimestamp()
-        });
-      }
+      // NOT ("1000 ifade tavanı" kök neden çözümü): yedeğin 'asil' rolüne
+      // TERFİSİ eskiden BURADA, aynı transaction içinde yazılıyordu — bu,
+      // firestore.rules'taki `isBackupPromotionFromMazeret`'in emülatörün
+      // "1000 ifade" bütçesine çarpan ~27 terimlik çapraz-belge
+      // doğrulamasını (asil belgenin GERÇEKTEN reddedildiğini getAfter() ile
+      // doğrulama + atanabilirlik) gerektiriyordu. Artık istemci yedek
+      // belgeye HİÇ dokunmuyor — yukarıdaki `devirSonucu: yedekUygun ?
+      // 'yedek_atandi' : 'alarm_bekliyor'` yalnızca script için bir İPUCU
+      // (yetkilendirici değil). Terfi, yedeğin uygunluğunu TAZE veriyle
+      // yeniden doğrulayan scripts/mazeretDevirleriniIsle.ts'te, Admin SDK
+      // ile (kural bütçesi yok) gerçekleşiyor; script'in bir sonraki
+      // çalışmasına kadar (~10-15 dk) gecikmeli.
     });
 
   } catch (err) {

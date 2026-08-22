@@ -9,7 +9,7 @@ type TestCase = {
 };
 
 async function clearCollections() {
-  const collections = ['muezzins', 'bildirimler', 'haftaPlanlari', 'adminUyarilari'];
+  const collections = ['muezzins', 'bildirimler', 'haftaPlanlari', 'adminUyarilari', 'vekalet_talepleri', 'audit_logs'];
   for (const collection of collections) {
     const snapshot = await db.collection(collection).get();
     const batch = db.batch();
@@ -20,7 +20,188 @@ async function clearCollections() {
   }
 }
 
+/**
+ * "1000 ifade tavanı" kök neden çözümü sonrası GERÇEK sahiplik transferini
+ * (bildirimler.uid flip'i) burada, taze veriyle yeniden doğrulayarak kuran
+ * fixture — bkz. scripts/vekaletDevirleriniIsle.ts yorumu.
+ */
+async function seedKabulEdilmisTalep(overrides: {
+  aliciAktif?: boolean;
+  aliciOnayBekliyor?: boolean;
+  aliciHaftalikIzinGunu?: number;
+  bildirimCumaMi?: boolean;
+  bildirimDurum?: string;
+} = {}) {
+  await db.collection('muezzins').doc('muezzin1').set({
+    displayName: 'Muezzin One', role: 'muezzin', aktif: true, onayBekliyor: false
+  });
+  await db.collection('muezzins').doc('muezzin2').set({
+    displayName: 'Muezzin Two',
+    role: 'muezzin',
+    aktif: overrides.aliciAktif ?? true,
+    onayBekliyor: overrides.aliciOnayBekliyor ?? false,
+    ...(overrides.aliciHaftalikIzinGunu !== undefined ? { haftalikIzinGunu: overrides.aliciHaftalikIzinGunu } : {})
+  });
+
+  const bildirimRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_ogle_asil');
+  await bildirimRef.set({
+    haftaId: 'W2026-05-18',
+    tarih: '2026-05-22',
+    vakit: 'ogle',
+    uid: 'muezzin1',
+    tip: 'asil',
+    durum: overrides.bildirimDurum ?? 'bekliyor',
+    pendingAck: true,
+    cumaMi: overrides.bildirimCumaMi ?? false,
+    vekaletDevriBekliyor: true
+  });
+
+  const talepRef = db.collection('vekalet_talepleri').doc('W2026-05-18_2026-05-22_ogle_asil_muezzin2');
+  await talepRef.set({
+    bildirimId: 'W2026-05-18_2026-05-22_ogle_asil',
+    haftaId: 'W2026-05-18',
+    gonderenUid: 'muezzin1',
+    gonderenIsim: 'Muezzin One',
+    aliciUid: 'muezzin2',
+    aliciIsim: 'Muezzin Two',
+    tarih: '2026-05-22',
+    vakit: 'ogle',
+    saat: '12:45',
+    tip: 'asil',
+    durum: 'kabul_edildi'
+  });
+
+  return { bildirimRef, talepRef };
+}
+
 const tests: TestCase[] = [
+  {
+    // "1000 ifade tavanı" kök neden çözümü: GERÇEK sahiplik transferi
+    // (uid flip'i) artık burada, Admin SDK ile gerçekleşiyor — istemci
+    // yalnızca vekalet_talepleri.durum='kabul_edildi' + bildirimde dar bir
+    // vekaletDevriBekliyor:true bayrağı yazar (bkz. firestore.rules
+    // isVekaletDevriBekliyorIsareti, src/services/vekaletServisi.ts).
+    name: 'Kabul edilmis talep bildirimi devralan kisiye transfer eder',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1 });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin2');
+      assert.equal(bildirimDoc.data()?.vekaletDevredildi, true);
+      assert.equal(bildirimDoc.data()?.vekaletDevriBekliyor, false);
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+
+      const auditSnap = await db.collection('audit_logs').get();
+      assert.equal(auditSnap.size, 1);
+      assert.equal(auditSnap.docs[0]!.data().userId, 'muezzin2');
+    }
+  },
+  {
+    name: 'Ayni kabul edilmis talebi tekrar transfer etmez (idempotent)',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1 });
+
+      await processVekaletDevirleri(false);
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin2');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+
+      // Ikinci calistirma yeni bir audit-log yazmamali.
+      const auditSnap = await db.collection('audit_logs').get();
+      assert.equal(auditSnap.size, 1);
+    }
+  },
+  {
+    // Talep oluşturulduğunda alıcının aktif müezzin olduğu doğrulanmıştı
+    // (isValidVekaletCreate), ama talep beklerken (ve script'in ~10-15 dk'lık
+    // gecikme penceresinde) admin alıcıyı arşivleyebilir — script kabul
+    // anında değil UYGULAMA anında yeniden doğrular (bkz. eski O9 regresyonu,
+    // artık CEL'den buraya taşındı).
+    name: 'Kabul sonrasi arsivlenen alici transferi engeller, onceki sahip korunur, admin uyarisi olusturulur',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciAktif: false, aliciHaftalikIzinGunu: 1 });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      assert.equal(bildirimDoc.data()?.vekaletDevredildi, undefined);
+      // planServisi.ts korumaliSlotMu koruması artık gerekmediğinden bayrak
+      // temizlenmeli — aksi halde önceki sahibin slotu sonsuza kadar
+      // "korumalı" (dolayısıyla plan yeniden üretiminden muaf) kalırdı.
+      assert.equal(bildirimDoc.data()?.vekaletDevriBekliyor, false);
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+
+      const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
+      assert.equal(alarmSnap.size, 1);
+      assert.equal(alarmSnap.docs[0]!.data().tip, 'zincirTukendi');
+    }
+  },
+  {
+    // Sabit haftalık izin gününde asla atama yok kısıtlaması (bkz.
+    // isValidBildirim'deki karşılığı) vekalet KABUL yolunda da uygulanmalı —
+    // eskiden CEL'de, artık burada, taze veriyle.
+    name: 'Alicinin sabit haftalik izin gunune denk gelen kabul transferi engellenir',
+    run: async () => {
+      await clearCollections();
+      // 2026-05-22 haftaGunuNumarasi=5 (Cuma olcegi) ile AYNI.
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 5 });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+    }
+  },
+  {
+    name: 'Cuma gorevi icin kabul transferi engellenir',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimCumaMi: true });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+    }
+  },
+  {
+    // Bildirim script calisana kadar baska bir yolla (ör. mazeretle)
+    // 'bekliyor' disina cikmis olabilir — transfer atlanmali, talep yine
+    // isaretlenmeli ki sonsuza kadar denenmesin.
+    name: 'Bildirim artik bekliyor durumunda degilse transfer atlanir',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimDurum: 'reddedildi' });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+    }
+  },
   {
     name: 'Kabul edilen vekalet devri haftaPlanlari onbellegini senkronize eder',
     run: async () => {

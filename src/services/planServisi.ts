@@ -72,15 +72,23 @@ function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
 function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
  return slotBildirimleri.some((bildirimDoc) => {
  const data = bildirimDoc.data();
- // vekaletDevredildi: true — vekaletServisi.ts'teki vekaletKabulEt bunu
- // yazar. Kabul edilen bir vekalet devri, bildirimin `durum`unu
- // DEĞİŞTİRMEZ (hâlâ 'bekliyor' kalabilir) — bu alan olmadan
+ // vekaletDevredildi: true — scripts/vekaletDevirleriniIsle.ts GERÇEK
+ // transferi uyguladığında yazar. Kabul edilen bir vekalet devri, bildirimin
+ // `durum`unu DEĞİŞTİRMEZ (hâlâ 'bekliyor' kalabilir) — bu alan olmadan
  // korumaliSlotMu bu slotu korumasız sanıp plan yeniden üretiminde
  // sessizce eski sahibine geri döndürüyordu (bkz. mimari denetim K5).
+ // vekaletDevriBekliyor: true — vekaletServisi.ts'teki vekaletKabulEt
+ // bunu YAZAR (istemci artık transferi anlık yapmıyor, bkz. "1000 ifade
+ // tavanı" kök neden çözümü). Script çalışana kadar (~10-15 dk) geçen
+ // pencerede bu bayrak OLMADAN korumaliSlotMu slotu yine korumasız
+ // sanıp, script daha transferi uygulamadan bir admin manuel ataması
+ // veya haftalık plan yeniden üretimi kabul edilmiş devri sessizce
+ // ezebilirdi — vekaletDevredildi'nin bu geçişteki AYNI rolü.
  return !!data && (
  KORUNAN_DURUMLAR.includes(data.durum) ||
  data.tip === 'gorev_cagrisi' ||
- data.vekaletDevredildi === true
+ data.vekaletDevredildi === true ||
+ data.vekaletDevriBekliyor === true
  );
  });
 }

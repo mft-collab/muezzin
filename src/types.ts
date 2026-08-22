@@ -119,6 +119,17 @@ export interface Bildirim {
   * üretiminde eski sahibine geri döndürebiliyordu (bkz. mimari denetim K5).
   */
  vekaletDevredildi?: boolean;
+ /**
+  * İstemcinin vekaletKabulEt sırasında yazdığı DAR bir "niyet" bayrağı —
+  * gerçek sahiplik transferi (uid flip'i + vekaletDevredildi:true) artık
+  * scripts/vekaletDevirleriniIsle.ts'te (Admin SDK) gerçekleşiyor, kısa bir
+  * gecikmeyle (bkz. firestore.rules `isVekaletDevriBekliyorIsareti`, "1000
+  * ifade tavanı" kök neden çözümü). `durum` bu geçişte değişmediğinden,
+  * planServisi.ts bu alan olmadan da slotu korumasız sanıp script daha
+  * çalışmadan (manuel atama veya haftalık plan yeniden üretimiyle) sessizce
+  * ezebiliyordu — vekaletDevredildi'nin bu geçişteki AYNI rolü.
+  */
+ vekaletDevriBekliyor?: boolean;
 }
 
 export interface VekaletTalebi {
@@ -136,6 +147,14 @@ export interface VekaletTalebi {
  durum: "beklemede" | "kabul_edildi" | "reddedildi";
  olusturmaTarihi: Timestamp;
  sonGuncelleme?: Timestamp;
+ /**
+  * scripts/vekaletDevirleriniIsle.ts'in idempotency bayrağı — bu talep
+  * kabul edildikten sonra ilgili bildirimler.uid transferi GERÇEKTEN
+  * uygulandı mı. Yalnızca Admin SDK yazar (client bu alanı hiç görmez/
+  * yazamaz — firestore.rules'taki isRecipientVekaletStatusUpdate ve
+  * isVekaletDevriBekliyorIsaretiIcin bu alana dokunmaz).
+  */
+ bildirimUygulandi?: boolean;
 }
 
 export interface AdminUyarisi {
