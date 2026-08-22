@@ -113,7 +113,14 @@ test.describe('Vekalet (Görev Devri) Akışı E2E', () => {
 
     await page.getByRole('button', { name: /KABUL ET/i }).first().click();
 
-    await expect(page.locator('text=Vekalet Devralındı').first()).toBeVisible({ timeout: 10000 });
+    // NOT ("1000 ifade tavanı" kök neden çözümü): kabul artık ANLIK bir
+    // sahiplik transferi değil — istemci yalnızca talebi kabul eder ve
+    // bildirime dar bir "niyet" bayrağı yazar; GERÇEK transfer
+    // scripts/vekaletDevirleriniIsle.ts'te (ayrı bir süreç, kendi
+    // entegrasyon testinde kapsanıyor — bkz. tests/integration/
+    // vekaletDevirleriniIsle.test.ts) gerçekleşir. Bu E2E test yalnızca
+    // istemci tarafının doğru minimal yazımı yaptığını doğrular.
+    await expect(page.locator('text=Kabulünüz Alındı').first()).toBeVisible({ timeout: 10000 });
 
     const snap = await adminDb.collection('vekalet_talepleri')
       .where('gonderenUid', '==', 'muezzin_e2e_vekalet_gonderen')
@@ -125,8 +132,9 @@ test.describe('Vekalet (Görev Devri) Akışı E2E', () => {
     expect(talep.durum).toBe('kabul_edildi');
 
     const bildirimDoc = await adminDb.collection('bildirimler').doc(talep.bildirimId).get();
-    expect(bildirimDoc.data()?.uid).toBe('muezzin_e2e_vekalet_alici');
-    expect(bildirimDoc.data()?.vekaletDevredildi).toBe(true);
+    // Sahiplik henüz DEĞİŞMEMİŞ olmalı — yalnızca bekleme bayrağı yazılmış.
+    expect(bildirimDoc.data()?.uid).toBe('muezzin_e2e_vekalet_gonderen');
+    expect(bildirimDoc.data()?.vekaletDevriBekliyor).toBe(true);
 
     await context.close();
   });
