@@ -1,8 +1,8 @@
-import { getMessaging } from 'firebase-admin/messaging';
-import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
+import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
+import { fcmGonderVeTemizle, type FcmMessage } from './lib/fcmNotify.ts';
 import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
 
 function formatDateLocal(date: Date): string {
@@ -259,55 +259,18 @@ async function main() {
           fcmTokens.push(...userTokens);
         });
 
-      if (fcmTokens.length > 0) {
-        console.log(`FCM anlık bildirimleri ${fcmTokens.length} aktif müezzine gönderiliyor...`);
-        const messages = fcmTokens.map(token => ({
-          token,
-          notification: {
-            title: 'Yeni Haftalık Plan Yayınlandı 🗓️',
-            body: 'Önümüzdeki haftanın ezan nöbet planı hazırlandı. Görevlerinizi kontrol etmek için dokunun.'
-          },
-          data: {
-            type: 'weekly_plan_published'
-          }
-        }));
-
-        const response = await getMessaging().sendEach(messages);
-        console.log(`FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
-
-        // Clean up invalid tokens
-        const tokensToRemove: Record<string, string[]> = {};
-        response.responses.forEach((res, index) => {
-          if (!res.success) {
-            const errCode = res.error?.code;
-            if (errCode === 'messaging/registration-token-not-registered' || errCode === 'messaging/invalid-registration-token') {
-              const failedToken = messages[index].token;
-              const uid = tokenToUidMap[failedToken];
-              if (uid) {
-                if (!tokensToRemove[uid]) tokensToRemove[uid] = [];
-                tokensToRemove[uid].push(failedToken);
-              }
-            }
-          }
-        });
-
-        const uidsToUpdate = Object.keys(tokensToRemove);
-        if (uidsToUpdate.length > 0) {
-          const cleanupBatch = db.batch();
-          for (const uid of uidsToUpdate) {
-            const userRef = db.collection('muezzins').doc(uid);
-            const updates: Record<string, any> = {};
-            tokensToRemove[uid].forEach(t => {
-              updates[`fcmTokens.${t}`] = FieldValue.delete();
-            });
-            cleanupBatch.update(userRef, updates);
-          }
-          await cleanupBatch.commit();
-          console.log(`FCM Cleanup: ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
+      const messages: FcmMessage[] = fcmTokens.map(token => ({
+        token,
+        notification: {
+          title: 'Yeni Haftalık Plan Yayınlandı 🗓️',
+          body: 'Önümüzdeki haftanın ezan nöbet planı hazırlandı. Görevlerinizi kontrol etmek için dokunun.'
+        },
+        data: {
+          type: 'weekly_plan_published'
         }
-      } else {
-        console.log('Kayıtlı aktif FCM cihaz tokenı bulunamadı, bildirim gönderilmedi.');
-      }
+      }));
+
+      await fcmGonderVeTemizle(messages, tokenToUidMap, 'FCM haftalık plan bildirimi');
     } catch (fcmErr) {
       console.error('FCM haftalık plan bildirim gönderimi başarısız oldu:', fcmErr);
     }

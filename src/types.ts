@@ -164,7 +164,7 @@ export interface VekaletTalebi {
 }
 
 export interface AdminUyarisi {
- tip: "zincirTukendi" | "apiHatasi" | "planOlusturulamadi";
+ tip: "zincirTukendi" | "apiHatasi" | "planOlusturulamadi" | "otomasyonHatasi";
  mesaj: string;
  tarih: string;
  vakit: string | null;

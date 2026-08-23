@@ -170,7 +170,7 @@ export const AnaEkranHero = React.memo(({
  const auraColor = useMemo(() => getActiveAuraColor(uiMevcutVakit), [uiMevcutVakit]);
 
  // Özel vakit mesajı (kerahat, teheccüd, bayram, teşrik)
- const ozelVakitDurumu = useOzelVakitMesaji(bugunVakitler, bugunDate, now, mevcutVakit);
+ const ozelVakitDurumu = useOzelVakitMesaji(bugunVakitler, bugunDate, now);
 
  return (
  <div className="w-full flex flex-col items-center justify-center min-h-0 sm:min-h-[640px] lg:h-[calc(100dvh-128px)] lg:min-h-[680px] lg:max-h-[860px] h-auto mt-2">

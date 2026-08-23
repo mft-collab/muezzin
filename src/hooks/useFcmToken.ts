@@ -5,6 +5,7 @@ import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { zamanAsimiIle } from '../lib/timeoutUtils';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { telemetryService } from '../services/telemetryService';
 
 // NOT: Bu değer Firebase Console → Proje Ayarları → Cloud Messaging →
@@ -162,13 +163,17 @@ export async function performLogout(): Promise<void> {
   }
   await auth.signOut();
   // FCM token temizliğiyle AYNI sınıftan bir sızıntı: bildirim geçmişi
-  // (localStorage, cihaz bazlı) ve breadcrumb tamponu (modül-seviyesi,
-  // sekme ömrü boyunca) kullanıcı bazlı değil — paylaşılan bir cihazda
-  // (ör. cami ofisi tableti) çıkış yapmadan temizlenmezse bir sonraki
-  // kullanıcı öncekinin bildirim geçmişini/hata izlerini görmeye devam
-  // eder (bkz. mimari denetim).
+  // (localStorage, cihaz bazlı), breadcrumb/telemetri kuyruğu (modül-
+  // seviyesi, sekme ömrü boyunca) ve GPS konum/vakit önbelleği kullanıcı
+  // bazlı değil — paylaşılan bir cihazda (ör. cami ofisi tableti) çıkış
+  // yapmadan temizlenmezse bir sonraki kullanıcı öncekinin bildirim
+  // geçmişini/hata izlerini/konumunu görmeye devam eder (bkz. mimari
+  // denetim; GPS ve telemetri kuyruğu temizliği kod denetimi kritik
+  // bulgularıydı — bildirim geçmişi/breadcrumb temizliği zaten vardı).
   useNotificationStore.getState().clearHistory();
   telemetryService.clearBreadcrumbs();
+  telemetryService.clearQueue();
+  useGpsVakitStore.getState().disableGps();
 }
 
 export function useFcmToken() {

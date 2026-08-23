@@ -99,7 +99,10 @@ export default function MuezzinAyarlari() {
                   <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
                 </div>
               </div>
-              <span className="premium-label !text-2xs !opacity-35">v2.2.0</span>
+              {/* Hardcoded "v2.2.0" bir sonraki sürüm çıkışında güncellenmeyi
+                  unutma riski taşıyordu (bkz. kod denetimi) — telemetryService.ts
+                  zaten build-zamanı enjekte edilen __APP_VERSION__'ı kullanıyor. */}
+              <span className="premium-label !text-2xs !opacity-35">v{__APP_VERSION__}</span>
             </button>
 
             <button

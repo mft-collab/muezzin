@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 let _authInitStarted = false;
 
@@ -164,14 +165,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  }
  // loading will be set to false on the next snapshot trigger
  } catch (err) {
- console.error('AuthStore profile creation error:', err);
+ // Önceden yalnızca console.error'a yazılıyordu — kimlik doğrulama,
+ // uygulamanın en kritik iki veri akışından biri (diğeri: namaz vakitleri)
+ // olmasına rağmen telemetri/hata izleme dışı kalıyordu (bkz. kod
+ // denetimi). Kullanıcıya gösterilecek Türkçe mesaj zaten elle
+ // hazırlanmış olduğundan handleFirestoreError'ın döndürdüğü mesaj
+ // kullanılmıyor, yalnızca yapılandırılmış log + telemetri için çağrılıyor.
+ handleFirestoreError(err, OperationType.WRITE, `muezzins/${currentUser.uid}`);
  set({ error: 'Profiliniz oluşturulurken bir hata oluştu.', loading: false, initialized: true });
  }
  }
  },
  (err) => {
  clearTimeout(snapshotFailsafe!);
- console.error('AuthStore role fetch error:', err);
+ handleFirestoreError(err, OperationType.GET, `muezzins/${currentUser.uid}`);
  set({ loading: false, initialized: true });
  }
  );

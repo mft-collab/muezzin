@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, ServerCrash, CalendarX } from 'lucide-react';
+import { AlertTriangle, ServerCrash, CalendarX, RefreshCcw } from 'lucide-react';
 import { AdminUyarisi } from '../types';
 
 interface SistemUyarisiBannerProps {
@@ -11,6 +11,7 @@ const BASLIKLAR: Record<AdminUyarisi['tip'], string> = {
   zincirTukendi: 'NÖBET ZİNCİRİ KESİNTİSİ',
   apiHatasi: 'DİZGE BAĞLANTI ARIZASI',
   planOlusturulamadi: 'PLANLAMA UYARISI',
+  otomasyonHatasi: 'OTOMASYON HATASI',
 };
 
 function getIcon(tip: AdminUyarisi['tip']) {
@@ -18,6 +19,7 @@ function getIcon(tip: AdminUyarisi['tip']) {
     case 'zincirTukendi': return <AlertTriangle size={16} strokeWidth={1.5} />;
     case 'apiHatasi': return <ServerCrash size={16} strokeWidth={1.5} />;
     case 'planOlusturulamadi': return <CalendarX size={16} strokeWidth={1.5} />;
+    case 'otomasyonHatasi': return <RefreshCcw size={16} strokeWidth={1.5} />;
     default: return <AlertTriangle size={16} strokeWidth={1.5} />;
   }
 }

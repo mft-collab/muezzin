@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Edit3, CheckCircle2, AlertCircle, Shield, User, Eye } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
 import { Muezzin } from '../../types';
+import { kendiAdiniGuncelle } from '../../services/muezzinServisi';
+import { zamanAsimiIle, IslemZamanAsimi } from '../../lib/timeoutUtils';
 
 interface ProfileHeaderProps {
  userData: Muezzin | null;
@@ -55,15 +55,21 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  setIsUpdating(true);
 
  try {
- await updateDoc(doc(db, 'muezzins', user.uid), { 
- displayName: trimmedName
- });
+ // Servis katmanına devredildi (handleFirestoreError + audit log) ve
+ // çevrimdışıyken sonsuza dek askıda kalabilecek yazım için diğer kritik
+ // işlemlerle (okudumOnayla, vekaletKabulEt) AYNI zamanAsimiIle deseniyle
+ // sarmalandı (bkz. kod denetimi — önceden bu tek nokta bu korumadan
+ // yoksundu, "KAYDEDİLİYOR..." düğmesi çevrimdışıyken sonsuza kilitlenebilirdi).
+ await zamanAsimiIle(kendiAdiniGuncelle(user.uid, trimmedName));
  setEditMode(false);
  setUpdateSuccess(true);
  setTimeout(() => setUpdateSuccess(false), 3000);
  } catch (err) {
- console.error('Profil güncellenemedi:', err);
- setUpdateError('Güncelleme başarısız. Lütfen tekrar deneyin.');
+ if (err instanceof IslemZamanAsimi) {
+ setUpdateError(err.message);
+ } else {
+ setUpdateError(err instanceof Error ? err.message : 'Güncelleme başarısız. Lütfen tekrar deneyin.');
+ }
  } finally {
  setIsUpdating(false);
  }

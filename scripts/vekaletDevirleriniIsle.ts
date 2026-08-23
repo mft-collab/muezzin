@@ -64,6 +64,47 @@ type MuezzinData = {
  * mimarinin kabul edilen yeni maliyeti (bkz. plan dosyası).
  */
 
+/**
+ * Belirli bir tarih/vakit için ezan saatini `vakitler` koleksiyonundan okur —
+ * src/services/mazeretServisi.ts'teki `getEzanVakti` ile AYNI mantık, Admin
+ * SDK bağlamına taşınmış (bkz. scripts/vakitVeriSagligiKontrol.ts'teki AYNI
+ * ilceId/vakitler okuma deseni).
+ */
+async function ezanSaatiniGetir(tarih: string, vakit: string): Promise<Date | null> {
+  const settingsDoc = await db.collection('settings').doc('system').get();
+  const ilceId = (settingsDoc.data()?.ilceId as string) || '9148';
+  const ay = tarih.slice(0, 7);
+  const vakitDoc = await db.collection('vakitler').doc(`${ilceId}_${ay}`).get();
+  if (!vakitDoc.exists) return null;
+  const saat = vakitDoc.data()?.gunler?.[tarih]?.[vakit];
+  if (typeof saat !== 'string' || !/^\d{2}:\d{2}$/.test(saat)) return null;
+  const [sy, sm, sd] = tarih.split('-').map(Number);
+  const [hh, mm] = saat.split(':').map(Number);
+  return new Date(sy!, sm! - 1, sd!, hh!, mm!);
+}
+
+/**
+ * `src/lib/mazeretKurallari.ts`'teki "ezandan 1 saat kala kapanır" penceresi
+ * yalnızca istemci tarafında (vekaletServisi.ts `vekaletTeklifEt`/
+ * `vekaletKabulEt`, kabul ANINDA) kontrol ediliyordu — firestore.rules bu
+ * süre kısıtlamasını hiç doğrulamıyor (yalnızca Cuma kısıtlaması `cumaMi`
+ * alanıyla sunucu tarafında da korunuyor). Kabul ile bu script'in GERÇEK
+ * transferi uyguladığı an arasında ~10-15 dakikalık bir gecikme var; bu
+ * pencerede ezan vakti geçmiş olabilir (bkz. kod denetimi, kritik bulgu).
+ * Devam eden bir görevi zaten geçmiş bir vakit için devretmek anlamsız
+ * olduğundan, script kendi çalıştığı anda ezan vaktinin geçip geçmediğini
+ * TAZE veriyle ayrıca kontrol eder. Sabah vakti hariç tutulur — sabah'ın
+ * kendine özgü "yatsı+1sa" kuralı yalnızca kabul anında anlamlıdır ve zaten
+ * istemci tarafında uygulandı; veri yoksa (henüz önbelleğe alınmamış ay)
+ * mevcut davranışla tutarlı olarak kısıtlama uygulanmaz.
+ */
+async function ezanVaktiGecmisMi(tarih: string, vakit: string): Promise<boolean> {
+  if (vakit === 'sabah') return false;
+  const ezanSaati = await ezanSaatiniGetir(tarih, vakit);
+  if (!ezanSaati) return false;
+  return Date.now() >= ezanSaati.getTime();
+}
+
 async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
   const alarmSnap = await db.collection('adminUyarilari')
     .where('tarih', '==', tarih)
@@ -113,6 +154,10 @@ export async function processVekaletDevirleri(dryRun = false) {
     const bildirimRef = db.collection('bildirimler').doc(talep.bildirimId);
     let sonuc: 'uygulandi' | 'reddedildi' | 'zatenUygulanmis' | 'atlandi' = 'atlandi';
 
+    // Transaction dışında okunur — vakit verisi transaction'ın kilitlediği
+    // varlıklardan bağımsız, harici/nadiren değişen bir veri kaynağı.
+    const ezanGecmisMi = await ezanVaktiGecmisMi(talep.tarih, talep.vakit);
+
     await db.runTransaction(async (transaction) => {
       const freshTalep = await transaction.get(talepDoc.ref);
       if (!freshTalep.exists) return;
@@ -157,7 +202,8 @@ export async function processVekaletDevirleri(dryRun = false) {
         bildirim.uid === talep.gonderenUid &&
         bildirim.cumaMi !== true &&
         atanabilir &&
-        !izinGunuCakisiyor;
+        !izinGunuCakisiyor &&
+        !ezanGecmisMi;
 
       if (!uygun) {
         // vekaletDevriBekliyor temizlenir — transfer kalıcı olarak
@@ -205,7 +251,7 @@ export async function processVekaletDevirleri(dryRun = false) {
       if (!alarmZatenVar) {
         await db.collection('adminUyarilari').add({
           tip: 'zincirTukendi',
-          mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi). Admin müdahalesi gerekir.`,
+          mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi/ezan vakti geçti). Admin müdahalesi gerekir.`,
           tarih: talep.tarih,
           vakit: talep.vakit,
           cozuldu: false,

@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { isFriday } from '../src/lib/dateUtils.ts';
+import { isFriday, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 type Role = 'muezzin' | 'admin' | 'gozlemci' | string;
 type MuezzinDoc = { displayName?: string; role?: Role; aktif?: boolean };
@@ -7,12 +7,15 @@ type VakitAtama = { asil?: string; yedek?: string };
 
 const VAKITLER = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] as const;
 
+// Kod tabanındaki diğer TÜM cron script'leri (haftalikPlanOlustur.ts,
+// yatsiSonuIslemleri.ts, vakitVeriSagligiKontrol.ts) geçmiş/gelecek gün
+// ayrımı için `getTurkeyDateString()` kullanırken bu dosya düz `new Date()`
+// (çalıştırılan makinenin/CI runner'ının yerel saat dilimi) kullanıyordu —
+// UTC'de çalışan bir CI runner'da gece yarısına yakın çalıştırılırsa
+// "bugün" yanlış hesaplanabilirdi (bkz. kod denetimi). Artık projenin tek
+// Türkiye-tarihi kaynağıyla tutarlı.
 function getTodayStr(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return getTurkeyDateString();
 }
 
 function pickMostFrequent(values: string[], excluded = new Set<string>()): string | null {

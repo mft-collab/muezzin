@@ -20,9 +20,20 @@ const YILLIK_IZIN_KOTASI = 30;
  */
 function izinAraligindakiHaftaIdleri(baslangic: string, bitis: string): string[] {
   const haftaIdSeti = new Set<string>();
-  const [by, bm, bd] = baslangic.split('-').map(Number);
+
+  // Örneklemeye `baslangic`'ın kendi gününden değil, o haftanın Pazartesi'sinden
+  // başlanır (getHaftaIdFromDate zaten bunu hesaplıyor, format 'W-YYYY-MM-DD').
+  // Önceki hâliyle `baslangic`'tan 7 günlük sabit adımlarla ilerlemek, aralık
+  // hafta sınırını hizasız bir günde kesiyorsa (ör. Cumartesi–Salı arası kısa
+  // bir izin) `bitis`'i içeren haftayı tamamen atlıyordu — o hafta hiç yeniden
+  // planlanmadığından izinli kişi nöbetçi olarak atanmış görünmeye devam
+  // edebiliyordu (bkz. kod denetimi, kritik bulgu). Pazartesi'den başlayıp
+  // 7'şer gün ilerlemek, adım hizası ne olursa olsun ara hafta kaybını önler.
+  const ilkHaftaId = getHaftaIdFromDate(baslangic);
+  const [py, pm, pd] = ilkHaftaId.slice(1).split('-').map(Number);
+  const gun = new Date(py, pm - 1, pd);
+
   const [ey, em, ed] = bitis.split('-').map(Number);
-  const gun = new Date(by, bm - 1, bd);
   const sonGun = new Date(ey, em - 1, ed);
 
   // Sonsuz döngü koruması: geçersiz/ters bir aralık (bitis < baslangic) gelse

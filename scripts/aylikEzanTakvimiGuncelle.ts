@@ -36,8 +36,19 @@ async function main() {
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('permission') || message.includes('NOT_FOUND') || message.includes('code: 5') || message.includes('code: 7')) {
-       handleFirestoreError(err, OperationType.WRITE, `vakitler`);
+
+    // NOT: burada önceden Firestore-izin/not-found hatası tespit edilince
+    // `handleFirestoreError` çağrılıyordu — o fonksiyon HER ZAMAN fırlatır
+    // (dönüş tipi `never`), bu yüzden altındaki admin uyarısı yazımı bu
+    // durumda HİÇ çalışmıyordu; tam da en ciddi hata sınıfının (izin/
+    // not-found) admin panelinde görünmeyen tür olması riski vardı (bkz.
+    // kod denetimi). Yalnızca ek yapılandırılmış konsol logu için çağrılır,
+    // fırlatması yutulur — admin uyarısı koşulsuz olarak aşağıda yazılır.
+    const isFirestoreHatasi = message.includes('permission') || message.includes('NOT_FOUND') || message.includes('code: 5') || message.includes('code: 7');
+    if (isFirestoreHatasi) {
+      try {
+        handleFirestoreError(err, OperationType.WRITE, `vakitler`);
+      } catch { /* handleFirestoreError zaten fırlatır — yalnızca yapılandırılmış log için çağrıldı */ }
     }
 
     console.error(`Hata:`, message);

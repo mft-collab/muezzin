@@ -10,8 +10,19 @@ import { db, Timestamp } from './firebaseAdminInit.ts';
 async function main() {
   const isAdi = process.argv[2] || 'Bilinmeyen İş';
 
+  // Önceden BEŞ farklı cron'un (aylık ezan takvimi, günlük log temizliği,
+  // günlük yatsı sonu, haftalık plan, vakit veri sağlığı) hepsi 'apiHatasi'
+  // tipiyle raporlanıyordu — bu tip aslında "dış API'ye ulaşılamıyor"
+  // anlamına geliyor (bkz. src/pages/admin/modules/KrizAlarmlari.tsx ikon/
+  // renk/başlık eşlemesi: 'API BAĞLANTI ARIZASI'), oysa bir GitHub Actions
+  // işinin çökmesinin nedeni genelde API'yle ilgisiz (kod hatası, zaman
+  // aşımı, kota vb.). Admin panelinde bu beşi diğer gerçek API arızalarından
+  // (ör. scripts/vakitVeriSagligiKontrol.ts'in kendi 'apiHatasi' uyarısı)
+  // ayırt edilemiyordu (bkz. kod denetimi). Yeni, daha doğru bir kategori.
+  const tip = process.argv[3] || 'otomasyonHatasi';
+
   await db.collection('adminUyarilari').add({
-    tip: 'apiHatasi',
+    tip,
     mesaj: `Otomasyon hatası: "${isAdi}" GitHub Actions işi başarısız oldu. Loglara bakın ve gerekirse elle çalıştırın (workflow_dispatch).`,
     cozuldu: false,
     olusturmaTarihi: Timestamp.now()

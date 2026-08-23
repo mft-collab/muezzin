@@ -76,17 +76,26 @@ function getTesrikRenk(vakit: Vakit | null): TesrikVakitRenk {
  * @param bugunVakitler - Bugünkü namaz vakitleri (string "HH:MM")
  * @param bugunDate     - Bugünün tarih nesnesi
  * @param now           - Gerçek zamanlı saat (useTime() hook'undan)
- * @param mevcutVakit   - Aktif vakit
  */
 export function useOzelVakitMesaji(
   bugunVakitler: GunlukVakit | null,
   bugunDate: Date,
-  now: Date,
-  mevcutVakit: Vakit | null
+  now: Date
 ): OzelVakitDurumu {
   const { settings } = useSystemSettingsStore();
 
+  // Bu hesaplamanın TÜM sınır koşulları (ezan vakti, kerahat, teşrik hazırlık
+  // eşiği vb.) dakika hassasiyetindedir — `now` saniyede bir değiştiği için
+  // aşağıdaki useMemo önceden fiilen hiçbir önbellekleme sağlamıyordu: 7 tarih
+  // parse + hicri takvim + kerahat/teşrik/bayram kontrolleri saniyede bir
+  // tekrar çalışıyordu (bkz. kod denetimi). `now` dakikaya yuvarlanmış
+  // sayısal bir anahtara indirgenip yalnızca dakika değiştiğinde yeniden
+  // hesaplanır; canlı geri sayım zaten OzelVakitBanner'ın kendi `useTime()`'ına
+  // (KalanSure bileşeni) dayandığından bu hook için dakika hassasiyeti yeterli.
+  const nowDakikaKey = Math.floor(now.getTime() / 60000);
+
   return useMemo<OzelVakitDurumu>(() => {
+    const now = new Date(nowDakikaKey * 60000);
     const NULL_DURUM: OzelVakitDurumu = { tip: null, baslik: '', altBaslik: '', aciklama: '' };
 
     if (!bugunVakitler) return NULL_DURUM;
@@ -335,5 +344,5 @@ export function useOzelVakitMesaji(
     }
 
     return NULL_DURUM;
-  }, [bugunVakitler, bugunDate, now, settings.hicriDuzeltme]);
+  }, [bugunVakitler, bugunDate, nowDakikaKey, settings.hicriDuzeltme]);
 }

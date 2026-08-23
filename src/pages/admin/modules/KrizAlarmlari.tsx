@@ -68,6 +68,12 @@ export default function KrizAlarmlari() {
  case 'zincirTukendi': return <AlertTriangle size={24} />;
  case 'apiHatasi': return <ServerCrash size={24} />;
  case 'planOlusturulamadi': return <CalendarX size={24} />;
+ // scripts/lib/reportWorkflowFailure.ts — bir GitHub Actions cron işinin
+ // (aylık ezan takvimi, log temizliği, yatsı sonu, haftalık plan, vakit
+ // sağlığı) çökmesi; 'apiHatasi'dan (dış API'ye ulaşılamıyor) kasıtlı
+ // olarak AYRI bir kategori (bkz. kod denetimi — önceden hepsi 'apiHatasi'
+ // altında ayrıştırılamıyordu).
+ case 'otomasyonHatasi': return <RefreshCcw size={24} />;
  default: return <AlertTriangle size={24} />;
  }
  };
@@ -77,6 +83,7 @@ export default function KrizAlarmlari() {
  case 'zincirTukendi': return 'rose';
  case 'apiHatasi': return 'amber';
  case 'planOlusturulamadi': return 'indigo';
+ case 'otomasyonHatasi': return 'indigo';
  default: return 'rose';
  }
  };
@@ -213,9 +220,10 @@ export default function KrizAlarmlari() {
  <div className="flex-1 flex flex-col gap-2">
  <div className="flex items-center gap-4">
  <span className={`authority-title !text-2xs font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
- {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' : 
- alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' : 
- alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' : 'NÖBET UYARISI'}
+ {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' :
+ alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' :
+ alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' :
+ alarm.tip === 'otomasyonHatasi' ? 'OTOMASYON HATASI' : 'NÖBET UYARISI'}
  </span>
  {!alarm.cozuldu && (
  <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-2xs font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
