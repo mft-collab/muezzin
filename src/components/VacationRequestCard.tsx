@@ -371,7 +371,10 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             <div className="w-6 h-6 border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] rounded-full animate-spin mx-auto" />
           </div>
         ) : talepler.length === 0 ? (
-          <div className="p-8 text-center spatial-glass rounded-card border-dashed border-[var(--text-primary)]/5">
+          <div className="p-8 text-center spatial-glass rounded-card border-dashed border-[var(--text-primary)]/5 flex flex-col items-center gap-3">
+            <div className="w-11 h-11 rounded-[16px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
+              <Calendar size={18} className="text-[var(--text-primary)]/20" strokeWidth={1.5} />
+            </div>
             <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
         ) : (

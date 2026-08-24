@@ -350,7 +350,15 @@ export default function HaftalikCizelge() {
                   {VAKITLER.map(vakit => {
                     const atama = gunObj[vakit] || { asil: 'Sistem', yedek: 'Sistem' };
                     const asilBildirim = haftaBildirimleri.find(b => b.tarih === tarih && b.vakit === vakit && b.uid === atama?.asil);
-                    
+                    // "Sistem" (Dizge) bir gerçek kişi değil, henüz elle atama
+                    // yapılmamış vakit için otomatik-atama yer tutucusudur — bir
+                    // ismin yanında aynı nokta+düz metin kalıbıyla gösterilirse
+                    // gerçek bir "Dizge" adlı kişiyle ayırt edilemez hale geliyordu
+                    // (bkz. görsel tasarım denetimi). Bot ikonu + soluk/italik
+                    // metinle görsel olarak ayrıştırılır.
+                    const asilIsSistem = (atama?.asil || 'Sistem') === 'Sistem';
+                    const yedekIsSistem = (atama?.yedek || 'Sistem') === 'Sistem';
+
                     return (
                       <motion.button
                         key={vakit}
@@ -368,17 +376,27 @@ export default function HaftalikCizelge() {
                         
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3">
-                            <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(asilBildirim?.durum)}`} />
-                            <span className="text-xs font-medium text-[var(--text-primary)] tracking-tight truncate">
-                              {getMuezzinName(atama?.asil || '').split(' ').slice(-1)[0] || '—'}
+                            {asilIsSistem ? (
+                              <Bot size={11} strokeWidth={1.7} className="text-[var(--text-secondary)]/40 shrink-0" />
+                            ) : (
+                              <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(asilBildirim?.durum)}`} />
+                            )}
+                            <span className={`text-xs tracking-tight truncate ${
+                              asilIsSistem ? 'font-normal italic text-[var(--text-secondary)]/45' : 'font-medium text-[var(--text-primary)]'
+                            }`}>
+                              {asilIsSistem ? 'Atanmadı' : getMuezzinName(atama?.asil || '').split(' ').slice(-1)[0] || '—'}
                             </span>
                           </div>
 
                           {atama?.yedek && (
                             <div className="flex items-center gap-3 opacity-30">
-                              <div className="w-1 h-1 rounded-full bg-[var(--text-primary)]/40" />
-                              <span className="text-2xs font-bold text-[var(--text-secondary)] uppercase tracking-wide truncate">
-                                {getMuezzinName(atama?.yedek || '').split(' ').slice(-1)[0]}
+                              {yedekIsSistem ? (
+                                <Bot size={9} strokeWidth={1.7} className="text-[var(--text-secondary)] shrink-0" />
+                              ) : (
+                                <div className="w-1 h-1 rounded-full bg-[var(--text-primary)]/40" />
+                              )}
+                              <span className={`text-2xs uppercase tracking-wide truncate ${yedekIsSistem ? 'italic font-normal' : 'font-bold'} text-[var(--text-secondary)]`}>
+                                {yedekIsSistem ? 'Atanmadı' : getMuezzinName(atama?.yedek || '').split(' ').slice(-1)[0]}
                               </span>
                             </div>
                           )}

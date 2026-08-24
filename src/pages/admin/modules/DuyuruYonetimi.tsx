@@ -151,7 +151,7 @@ export const DuyuruYonetimi: React.FC = () => {
  whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
  whileTap={{ scale: 0.98 }}
  onClick={() => { setErrorStatus(null); setModalOpen(true); }}
- className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
+ className="flex items-center justify-center gap-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
  >
  <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
  YENİ DUYURU YAYINLA
@@ -356,7 +356,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={applyTemplate}
- className="flex-1 py-2.5 bg-white text-black rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
+ className="flex-1 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-all"
  >
  Şablonu Metne Uygula
  </button>

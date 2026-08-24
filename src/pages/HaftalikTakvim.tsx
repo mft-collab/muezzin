@@ -4,7 +4,7 @@ import { tr } from 'date-fns/locale';
 import { useHaftaPlan } from '../hooks/useHaftaPlan';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { auth } from '../lib/firebase';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Vakit } from '../types';
 import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
@@ -315,18 +315,28 @@ export default function HaftalikTakvim() {
  <div className="space-y-4">
  <span className="premium-label !text-2xs !opacity-20">ASİL GÖREVLİLER</span>
  <div className="flex flex-wrap gap-2">
- {asiller.length > 0 ? (asiller as string[]).map((uid) => (
- <div 
- key={uid} 
- className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-500 ${
- uid === currentUser?.uid 
- ? 'bg-[var(--status-warning)]/20 border-[var(--status-warning)]/30 text-[var(--status-warning)] shadow-lg shadow-[var(--status-warning)]/10' 
- : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
+ {asiller.length > 0 ? (asiller as string[]).map((uid) => {
+ // "Sistem" (Dizge) henüz elle atanmamış bir vakit için otomatik-atama
+ // yer tutucusudur, gerçek bir kişi değil — aynı dolu pill görünümüyle
+ // gösterilirse gerçek bir isimle ayırt edilemiyordu (bkz. görsel
+ // tasarım denetimi).
+ const isSistem = uid === 'Sistem' || uid === 'SISTEM';
+ return (
+ <div
+ key={uid}
+ className={`px-4 py-2 rounded-xl text-sm border transition-all duration-500 flex items-center gap-2 ${
+ isSistem
+ ? 'border-dashed border-[var(--text-secondary)]/20 text-[var(--text-secondary)]/45 italic font-normal'
+ : uid === currentUser?.uid
+ ? 'font-medium bg-[var(--status-warning)]/20 border-[var(--status-warning)]/30 text-[var(--status-warning)] shadow-lg shadow-[var(--status-warning)]/10 ring-1 ring-[var(--status-warning)]/50'
+ : 'font-medium bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
  }`}
  >
- {getMuezzinName(uid)}
+ {isSistem && <Bot size={13} strokeWidth={1.7} />}
+ {isSistem ? 'Atanmadı' : getMuezzinName(uid)}
  </div>
- )) : (
+ );
+ }) : (
  <span className="text-xs text-[var(--text-secondary)] opacity-10 font-light italic">Atanmamış</span>
  )}
  </div>
@@ -336,18 +346,24 @@ export default function HaftalikTakvim() {
  <div className="space-y-4">
  <span className="premium-label !text-2xs !opacity-20">YEDEK GÖREVLİLER</span>
  <div className="flex flex-wrap gap-2">
- {yedekler.length > 0 ? (yedekler as string[]).map((uid) => (
- <div 
- key={uid} 
- className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-500 ${
- uid === currentUser?.uid 
- ? 'bg-[var(--status-warning)]/20 border-[var(--status-warning)]/30 text-[var(--status-warning)] shadow-lg shadow-[var(--status-warning)]/10' 
- : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
+ {yedekler.length > 0 ? (yedekler as string[]).map((uid) => {
+ const isSistem = uid === 'Sistem' || uid === 'SISTEM';
+ return (
+ <div
+ key={uid}
+ className={`px-4 py-2 rounded-xl text-sm border transition-all duration-500 flex items-center gap-2 ${
+ isSistem
+ ? 'border-dashed border-[var(--text-secondary)]/20 text-[var(--text-secondary)]/45 italic font-normal'
+ : uid === currentUser?.uid
+ ? 'font-medium bg-[var(--status-warning)]/20 border-[var(--status-warning)]/30 text-[var(--status-warning)] shadow-lg shadow-[var(--status-warning)]/10 ring-1 ring-[var(--status-warning)]/50'
+ : 'font-medium bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
  }`}
  >
- {getMuezzinName(uid)}
+ {isSistem && <Bot size={13} strokeWidth={1.7} />}
+ {isSistem ? 'Atanmadı' : getMuezzinName(uid)}
  </div>
- )) : (
+ );
+ }) : (
  <span className="text-xs text-[var(--text-secondary)] opacity-10 font-light italic">Atanmamış</span>
  )}
  </div>

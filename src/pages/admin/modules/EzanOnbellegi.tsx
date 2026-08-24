@@ -153,7 +153,7 @@ export default function EzanOnbellegi() {
       whileTap={{ scale: 0.98 }}
       onClick={handleSenkronizeEt}
       disabled={syncing}
-      className="w-full sm:w-auto px-6 py-3.5 bg-white text-black rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
+      className="w-full sm:w-auto px-6 py-3.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
      >
       <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
       <span>{syncing ? 'Senkronize ediliyor' : 'Verileri senkronize et'}</span>

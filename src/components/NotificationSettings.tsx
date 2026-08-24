@@ -111,7 +111,18 @@ export default function NotificationSettings({ userData, user }: NotificationSet
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
           <h4 className="premium-label !text-2xs !opacity-70 tracking-wide">BİLDİRİM TERCİHLERİ VE TANI DİREKTİFİ</h4>
         </div>
-        <span className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+        {/* Durum rozeti (bağlı/izin gerekli) kasıtlı olarak sabit semantik
+            renk kullanır, dynamic-aura kullanmaz — aksi halde günün vaktine
+            göre değişen marka rengiyle karışıp "dikkat gerekiyor" sinyali
+            birincil eylem butonundan ayrışamıyordu (bkz. görsel tasarım
+            denetimi). */}
+        <span className={`text-2xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide ${
+          userData?.fcmToken
+            ? 'text-[var(--status-success)] bg-[var(--status-success)]/10'
+            : typeof window !== 'undefined' && (!('Notification' in window) || Notification.permission === 'denied')
+            ? 'text-[var(--status-danger)] bg-[var(--status-danger)]/10'
+            : 'text-[var(--status-warning)] bg-[var(--status-warning)]/10'
+        }`}>
           {userData?.fcmToken ? 'BAĞLANTI AKTİF' : 'İZİN GEREKLİ'}
         </span>
       </div>

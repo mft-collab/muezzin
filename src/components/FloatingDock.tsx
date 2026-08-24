@@ -252,7 +252,16 @@ export function FloatingDock() {
         // JS tarafında bir sayı olmalı, CSS değişkenini burada okuyamıyoruz.
         animate={{ borderRadius: 15 }}
         transition={{ layout: { type: 'spring', bounce: 0.15, duration: 0.5 }, borderRadius: { type: 'spring', bounce: 0.15, duration: 0.5 } }}
-        style={{ WebkitTapHighlightColor: 'transparent' }}
+        // Dock sabit (fixed) konumda kaldığı için sayfa kaydırılırken altındaki
+        // içerik (ör. Vakit Görevlileri kartı) üst kenarında keskin bir şekilde
+        // kesilip yarım kalabiliyordu (bkz. görsel tasarım denetimi). Üst 16px'i
+        // saydamdan opağa yumuşatan bir maske, dock'un ikon alanını (ortada,
+        // her zaman tam opak) etkilemeden bu geçişi yumuşatır.
+        style={{
+          WebkitTapHighlightColor: 'transparent',
+          maskImage: 'linear-gradient(to bottom, transparent, black 16px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 16px)',
+        }}
         className={`apple-glass pointer-events-auto touch-manipulation select-none relative group/nav overflow-hidden ${
           containerIsAdmin
             ? 'w-full sm:w-fit sm:min-w-[220px] min-h-[56px] sm:min-h-[70px] px-2 sm:px-3 py-1.5 sm:py-2 grid grid-cols-4 gap-1 sm:gap-1.5 max-w-full'
