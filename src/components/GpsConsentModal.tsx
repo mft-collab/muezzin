@@ -53,7 +53,15 @@ export function GpsConsentModal({ isOpen, onClose, onConfirm, isLoading }: GpsCo
             whileTap={{ scale: 0.98 }}
             onClick={() => { hapticMedium(); onConfirm(); }}
             disabled={isLoading}
-            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))] to-indigo-600 hover:to-indigo-500 text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center gap-2"
+            className="w-full py-5 rounded-[22px] border-none text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center gap-2"
+            style={{
+              // Gradyanın bitişi sabit indigo-600'e kilitliydi — günün vaktine
+              // göre değişen dynamic-aura ruby/amber/emerald olduğunda
+              // butonun kendi içinde tutarsız iki renk karışıyordu (bkz.
+              // Kıble Pusulası mimari denetimi). Bitiş tonu artık aynı
+              // aura'dan koyulaştırılarak türetiliyor.
+              background: 'linear-gradient(to right, var(--dynamic-aura, var(--aura-indigo)), color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 70%, black))'
+            }}
           >
             {isLoading ? (
               <>
