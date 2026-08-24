@@ -800,10 +800,17 @@
 
 /* Aydinlik modda etiketlerin okunabilirligini koruma kurallari — önceki opacity:0.55
    patch'i .premium-label'i tasarım denetiminde 3.01:1'in altına düşürüyordu (WCAG AA
-   4.5:1 altı); .authority-title zaten opaklık düşürmüyordu (tam kontrast 6.63:1),
-   bu yüzden kapsam dışı bırakıldı. */
+   4.5:1 altı); .authority-title'ın kendi rengi tam kontrastlıydı (6.63:1) ama admin
+   KPI kartlarında (ör. ExecutiveHeroScreen.tsx "AKTİF TALEPLER"/"HAFTALIK PLAN"
+   etiketleri) `opacity-30`/`opacity-40` gibi ayrı Tailwind utility'leriyle üst üste
+   binince aynı eşiğin altına düşüyordu (görsel denetim, Rev.2) — bu yüzden
+   .authority-title'ın kendi opaklığı da aydınlık modda tam güce zorlanır.
+*/
 [data-theme='light'] .premium-label {
   font-weight: 600 !important;
+}
+[data-theme='light'] .authority-title {
+  opacity: 1 !important;
 }
 
 /* ─────────────────────────────────────────
