@@ -20,14 +20,14 @@ Dizin yapısı:
 ### Köşe yarıçapı: `rounded-card`
 
 Uygulama genelinde "ana kart" katmanı (dashboard kartları, admin panel kartları,
-modal/login/boş-durum kartları) tek bir standarda oturur: **12px**. Bu,
+modal/login/boş-durum kartları) tek bir standarda oturur: **15px**. Bu,
 `src/index.css`'teki `@theme` bloğunda bir Tailwind v4 token'ı:
 
 ```css
---radius-card: 12px;
+--radius-card: 15px;
 ```
 
-**Yeni bir "ana kart" eklerken `rounded-[12px]` yazma — `rounded-card` kullan.**
+**Yeni bir "ana kart" eklerken `rounded-[15px]` yazma — `rounded-card` kullan.**
 Değer değişirse tek satır (`--radius-card`) güncellenir, 44+ dosyada
 arama-değiştirme gerekmez. Küçük katman öğeleri (butonlar, ikon daireleri,
 rozetler, toast'lar, nav chrome, tablo hücreleri, iç içe alt kartlar) bu
@@ -138,7 +138,7 @@ npm run test:unit          # vitest (tests/unit/**/*.test.{ts,tsx})
 npm run test:e2e           # playwright (Firebase emülatörü gerektirir)
 npm run test:rules         # firestore.rules testleri (emülatör)
 npm run test:integration   # admin-SDK uzlaştırma cron'ları (tests/integration, emülatör)
-npm run test:all           # typecheck + typecheck:scripts + lint + smoke + unit + rules + integration + sw-config
+npm run test:all           # typecheck + typecheck:scripts + lint + smoke + unit + rules + integration + sw-config + indexes
 ```
 
 **`npm test` `test:all`'ın takma adı DEĞİL** — sadece `test:smoke`'u çalıştırır.

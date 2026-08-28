@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteDoc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 let _authInitStarted = false;
 
@@ -39,6 +40,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  let unsubscribeDoc: (() => void) | null = null;
  let snapshotFailsafe: ReturnType<typeof setTimeout> | null = null;
  let authInitFailsafe: ReturnType<typeof setTimeout> | null = null;
+ // firestore.rules `isAdmin()` iki dalı OR'lar: muezzins.role=='admin' VEYA
+ // config/bootstrap superAdminEmails üyeliği. Bu store eskiden yalnızca
+ // role alanına bakıyordu — bir admin, MuezzinYonetimi üzerinden bir süper-
+ // admin'in rolünü yanlışlıkla 'muezzin'e çekerse sunucu hâlâ tam yetki
+ // verirdi ama UI admin panelini tamamen gizlerdi (kilitlenme, bkz. yetki
+ // denetimi). Bootstrap dokümanı nadiren değiştiğinden bu kontrol uid
+ // başına yalnızca BİR kez ve yalnızca role zaten 'admin' DEĞİLSE yapılır
+ // (sıradan müezzinler için gereksiz okuma eklemez); getDoc (cache-öncelikli)
+ // kullanılır, getDocFromServer DEĞİL — offline-first davranışı bozmamak
+ // için.
+ let superAdminCheckedForUid: string | null = null;
+ let cachedIsSuperAdminSelf = false;
 
  // Cold start failsafe: if Firebase Auth does not fire within 4.5 seconds (network lag, locked DB, etc.), force load
  authInitFailsafe = setTimeout(() => {
@@ -94,12 +107,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  if (data.aktif === false) {
  set({ error: 'Hesabınız devre dışı bırakılmış.', role: null, isAdmin: false, loading: false, initialized: true });
  } else {
- set({ 
- role: data.role, 
- isAdmin: data.role === 'admin',
+ let isAdminResolved = data.role === 'admin';
+ if (!isAdminResolved) {
+ if (superAdminCheckedForUid !== currentUser.uid) {
+ try {
+ const currentEmail = currentUser.email?.toLowerCase().trim() || '';
+ const bootstrapDoc = currentEmail ? await getDoc(doc(db, 'config', 'bootstrap')) : null;
+ const superAdminEmails: string[] = bootstrapDoc?.exists() ? (bootstrapDoc.data().superAdminEmails || []) : [];
+ cachedIsSuperAdminSelf = !!currentEmail && superAdminEmails.includes(currentEmail);
+ } catch {
+ // Çevrimdışı/erişim hatası: role alanına güven, güvenli varsayılan.
+ cachedIsSuperAdminSelf = false;
+ }
+ superAdminCheckedForUid = currentUser.uid;
+ }
+ isAdminResolved = cachedIsSuperAdminSelf;
+ }
+ set({
+ role: data.role,
+ isAdmin: isAdminResolved,
  isPending: !!data.onayBekliyor,
  loading: false,
- initialized: true 
+ initialized: true
  });
  }
  } else {
@@ -164,14 +193,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  }
  // loading will be set to false on the next snapshot trigger
  } catch (err) {
- console.error('AuthStore profile creation error:', err);
+ // Önceden yalnızca console.error'a yazılıyordu — kimlik doğrulama,
+ // uygulamanın en kritik iki veri akışından biri (diğeri: namaz vakitleri)
+ // olmasına rağmen telemetri/hata izleme dışı kalıyordu (bkz. kod
+ // denetimi). Kullanıcıya gösterilecek Türkçe mesaj zaten elle
+ // hazırlanmış olduğundan handleFirestoreError'ın döndürdüğü mesaj
+ // kullanılmıyor, yalnızca yapılandırılmış log + telemetri için çağrılıyor.
+ handleFirestoreError(err, OperationType.WRITE, `muezzins/${currentUser.uid}`);
  set({ error: 'Profiliniz oluşturulurken bir hata oluştu.', loading: false, initialized: true });
  }
  }
  },
  (err) => {
  clearTimeout(snapshotFailsafe!);
- console.error('AuthStore role fetch error:', err);
+ handleFirestoreError(err, OperationType.GET, `muezzins/${currentUser.uid}`);
  set({ loading: false, initialized: true });
  }
  );

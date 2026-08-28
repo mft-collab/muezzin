@@ -87,11 +87,20 @@ export const RamazanHub: React.FC = () => {
   const ramazanGunuStr = `Ramazan-ı Şerif'in ${hijriGunu.day}. Günü`;
 
   // 2. LocalStorage Yardımıyla Günlük Takip Kayıtları
-  const storageKeys = useMemo(() => ({
-    cuz: `muezzin_ramazan_cuz_${hijriGunu.day}`,
-    teravih: `muezzin_ramazan_teravih_${hijriGunu.day}`,
-    oruc: `muezzin_ramazan_oruc_${hijriGunu.day}`
-  }), [hijriGunu.day]);
+  // Anahtara Hicri gün SAYISI (1-30) YANI SIRA miladi tarih de eklenir —
+  // yalnızca hijriGunu.day kullanılsaydı, Ramazan her yıl aynı gün
+  // numaralarını tekrarladığından bir sonraki yılın aynı Ramazan gününde
+  // önceki yıldan kalan "oruç tuttum/cüz okudum/teravih kıldım" işaretleri
+  // otomatik olarak geri gelirdi (bkz. kod denetimi, kritik bulgu). Miladi
+  // tarih (bugunVakitler.tarih) her gün için biriciktir.
+  const storageKeys = useMemo(() => {
+    const gunAnahtari = bugunVakitler?.tarih ?? `gun-${hijriGunu.day}`;
+    return {
+      cuz: `muezzin_ramazan_cuz_${gunAnahtari}`,
+      teravih: `muezzin_ramazan_teravih_${gunAnahtari}`,
+      oruc: `muezzin_ramazan_oruc_${gunAnahtari}`
+    };
+  }, [bugunVakitler?.tarih, hijriGunu.day]);
 
   const gunlukKayitOku = (keys: typeof storageKeys) => {
     if (typeof window === 'undefined') {

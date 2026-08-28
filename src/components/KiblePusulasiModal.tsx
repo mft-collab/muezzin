@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ShieldAlert } from 'lucide-react';
+import { Info, ShieldAlert, RotateCw } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { useGpsVakitStore } from '../store/useGpsVakitStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
@@ -150,8 +150,26 @@ CompactCompassNeedle.displayName = 'CompactCompassNeedle';
 
 
 export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, onClose }) => {
-  const { gpsEnabled, gpsCoords, gpsKonumAdi } = useGpsVakitStore();
+  const { gpsEnabled, gpsCoords, gpsKonumAdi, gpsLoading, enableGps } = useGpsVakitStore();
   const { settings } = useSystemSettingsStore();
+
+  // GPS konumu yalnızca `enableGps()` ilk çağrıldığında tek seferlik alınıp
+  // kalıcı saklanıyordu (bkz. useGpsVakitStore.ts) — kullanıcı önemli ölçüde
+  // yer değiştirirse açı, GPS'i kapatıp yeniden açana kadar eski konuma göre
+  // hesaplanmaya devam ediyordu (bkz. Kıble Pusulası mimari denetimi).
+  // Burada aynı store aksiyonu (enableGps) yeniden tetiklenerek taze bir GPS
+  // okuması alınır — yeni bir store metodu gerekmez.
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const handleRefreshLocation = async () => {
+    hapticLight();
+    setRefreshError(null);
+    try {
+      await enableGps();
+    } catch {
+      setRefreshError('Konum yenilenemedi. Bağlantınızı kontrol edin.');
+      setTimeout(() => setRefreshError(null), 4000);
+    }
+  };
 
   // Refs for direct DOM manipulation (Bypasses React re-renders to maintain 0% CPU overhead)
   const dialRef = useRef<HTMLDivElement>(null);
@@ -444,13 +462,32 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         <p className="text-2xs text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
           Hassas Yön Tayini
         </p>
-        <h3 className="text-sm font-light text-[var(--text-primary)] tracking-tight">
-          {locationText}
-        </h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-light text-[var(--text-primary)] tracking-tight">
+            {locationText}
+          </h3>
+          {gpsEnabled && (
+            <button
+              type="button"
+              onClick={handleRefreshLocation}
+              disabled={gpsLoading}
+              aria-label="Konumu yenile"
+              title="Konumu yenile"
+              className="p-1 rounded-full text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer disabled:opacity-40 border-none bg-transparent"
+            >
+              <RotateCw size={11} className={gpsLoading ? 'animate-spin' : ''} />
+            </button>
+          )}
+        </div>
         <div className="mb-5 mt-1.5 min-h-0">
           {!gpsEnabled && coords.kaynak === 'varsayilan' && (
             <p className="text-2xs text-[var(--aura-amber)] font-medium leading-snug max-w-[220px]">
               İlçeniz için konum bulunamadı, açı varsayılan konuma göre hesaplandı. Kesin sonuç için GPS'i etkinleştirin.
+            </p>
+          )}
+          {refreshError && (
+            <p className="text-2xs text-[var(--aura-ruby)] font-medium leading-snug max-w-[220px]">
+              {refreshError}
             </p>
           )}
         </div>
@@ -567,6 +604,16 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
             <span className="text-2xs font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
           </div>
         </div>
+
+        {/* Manyetik sapma (declination) hiçbir yerde düzeltilmiyor: sensör
+            ham manyetik kuzeye göre okunur, kibleAcisiHesapla ise coğrafi
+            (gerçek) kuzeye göre hesaplar. Türkiye'de sapma ~4-6°'ye kadar
+            çıkabilir — bu, HİZALANDI eşiğinden (3.5°) büyük olabilir (bkz.
+            Kıble Pusulası mimari denetimi). Harici bir jeomanyetik model
+            olmadan düzeltilemez; kullanıcıya tolerans bırakması söylenir. */}
+        <p className="text-2xs text-[var(--text-secondary)]/40 font-light text-center max-w-[260px] mt-4 leading-relaxed">
+          Manyetik pusulalar birkaç derece sapabilir — kesin yön için ±5° tolerans bırakın ve telefonu metal eşyalardan uzak tutun.
+        </p>
 
         {/* Live Heading status when sensors active */}
         {headingState !== null && (

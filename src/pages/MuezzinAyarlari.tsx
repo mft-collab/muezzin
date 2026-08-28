@@ -44,7 +44,10 @@ export default function MuezzinAyarlari() {
   };
 
   return (
-    <div className="min-h-screen pb-40 relative overflow-hidden">
+    // pb-8: Layout.tsx'teki <main> zaten dock temizliği için pb ayırıyor (bkz.
+    // MuezzinAnaEkran.tsx yorumu, mobil yerleşim denetimi) — pb-40 bununla üst
+    // üste binip sayfa sonunda gereksiz boşluk bırakıyordu.
+    <div className="min-h-screen pb-8 relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-[var(--aura-indigo)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-[var(--aura-emerald)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
@@ -99,7 +102,10 @@ export default function MuezzinAyarlari() {
                   <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Sürüm, teknoloji ve uygulama bilgileri</p>
                 </div>
               </div>
-              <span className="premium-label !text-2xs !opacity-35">v2.2.0</span>
+              {/* Hardcoded "v2.2.0" bir sonraki sürüm çıkışında güncellenmeyi
+                  unutma riski taşıyordu (bkz. kod denetimi) — telemetryService.ts
+                  zaten build-zamanı enjekte edilen __APP_VERSION__'ı kullanıyor. */}
+              <span className="premium-label !text-2xs !opacity-35">v{__APP_VERSION__}</span>
             </button>
 
             <button

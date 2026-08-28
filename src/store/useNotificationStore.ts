@@ -30,7 +30,10 @@ interface ShowNotificationOptions {
  durationMs?: number;
 }
 
-const NOTIFICATION_HISTORY_LIMIT = 50;
+// export: NotificationSettings.tsx'teki "son N bildirim" etiketi bu sınırı
+// elle kopyalamak yerine buradan okur (bkz. premium standart denetimi) —
+// aksi halde limit değişirse etiket sessizce yanlış kalırdı.
+export const NOTIFICATION_HISTORY_LIMIT = 50;
 
 interface NotificationState {
  notifications: Notification[];

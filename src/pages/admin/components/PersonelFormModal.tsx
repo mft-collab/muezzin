@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Modal } from '../../../components/ui/Modal';
-import { AlertCircle } from 'lucide-react';
 import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
@@ -19,13 +18,11 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  const [formData, setFormData] = useState({
  email: '', ad: '', soyad: '', role: 'muezzin' as 'muezzin'|'admin'|'gozlemci', haftalikIzinGunu: 0
  });
- const [errorStatus, setErrorStatus] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const showNotification = useNotificationStore(s => s.showNotification);
 
  useEffect(() => {
  if (isOpen) {
- setErrorStatus(null);
  if (editingUser) {
  const parts = (editingUser.displayName || '').split(' ');
  const soyad = parts.length > 1 ? parts.pop() || '' : '';
@@ -51,12 +48,15 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
     // tüm yazımı opak bir "Kayıt sırasında bir hata oluştu" ile reddediyordu
     // — burada erken ve net bir mesajla yakalanır.
     if (formData.haftalikIzinGunu === 5) {
-      setErrorStatus('Bu personelin haftalık izin günü Cuma olarak ayarlı — Cuma artık izin günü olarak seçilemiyor. Devam etmeden önce başka bir gün seçin (ya da İZİNSİZ).');
+      showNotification(
+        'Geçersiz İzin Günü',
+        'Bu personelin haftalık izin günü Cuma olarak ayarlı — Cuma artık izin günü olarak seçilemiyor. Devam etmeden önce başka bir gün seçin (ya da İZİNSİZ).',
+        'error'
+      );
       return;
     }
     setIsSubmitting(true);
     try {
-      setErrorStatus(null);
       const fullName = `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim();
       const { planRefreshed } = await personelKaydet({
         editingUser,
@@ -83,14 +83,21 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
         );
       }
     } catch (err) {
-      setErrorStatus(err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.');
+      // Modal bu noktada hâlâ açık — eskiden burada modal'ın (z-[500],
+      // portallanmış) altında kalabilen yerel bir fixed banner kullanılıyordu
+      // (bkz. premium standart / mimari denetim); paylaşılan toast sistemi
+      // z-[9999]'da olduğundan modal'ın üzerinde güvenle görünür.
+      showNotification(
+        'Kayıt Başarısız',
+        err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.',
+        'error'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
  return (
- <>
  <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <div className="space-y-4 group">
@@ -224,20 +231,5 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  </div>
  </form>
  </Modal>
- 
- <AnimatePresence>
- {errorStatus && (
- <motion.div 
- initial={{ opacity: 0, y: 10 }}
- animate={{ opacity: 1, y: 0 }}
- exit={{ opacity: 0 }}
- className="fixed bottom-6 right-6 z-50 spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
- >
- <AlertCircle size={20} />
- {errorStatus}
- </motion.div>
- )}
- </AnimatePresence>
- </>
  );
 });

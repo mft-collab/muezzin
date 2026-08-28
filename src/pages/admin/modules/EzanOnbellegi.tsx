@@ -60,7 +60,7 @@ export default function EzanOnbellegi() {
      setUiMessage(null);
      clearTimeout(timeoutId);
     }
-   } catch (error) {
+   } catch {
     if (mounted) {
      setLoading(false);
      setUiMessage({ type: 'error', text: 'Veritabanı kayıtları okunamadı.' });
@@ -102,18 +102,18 @@ export default function EzanOnbellegi() {
 
  return (
   <div className="flex flex-col gap-6">
-   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div className="flex flex-col gap-1.5">
-     <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Ezan Önbelleği</h2>
-     <p className="authority-title !text-2xs opacity-45 font-medium tracking-wide uppercase">
-      Diyanet öncelikli, Aladhan yedekli vakit verisi
-     </p>
-    </div>
-
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--surface-low)] rounded-[14px] border border-[var(--glass-border)]">
-     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-     <span className="authority-title !text-2xs font-bold tracking-wide uppercase text-emerald-500">Servis hazır</span>
-    </div>
+   <div className="flex flex-col gap-1.5">
+    {/* font-light: diğer tüm admin modül başlıkları (Kadro Yönetimi, Nöbet
+        Uyarıları, Hizmet Cetveli, Duyuru Panosu, Mazeret Arşivi, İzin ve
+        Mazeret Masası...) tutarlı olarak font-light kullanıyor — burada tek
+        istisna olan font-semibold buna hizalandı (bkz. premium standart
+        denetimi). Sabit/koşulsuz "Servis hazır" rozeti de kaldırıldı: gerçek
+        durumu hiç yansıtmıyordu, aşağıdaki hata banner'ıyla (uiMessage) aynı
+        anda görünüp kendi kendini yalanlayabiliyordu. */}
+    <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Ezan Önbelleği</h2>
+    <p className="authority-title !text-2xs opacity-45 font-medium tracking-wide uppercase">
+     Diyanet öncelikli, Aladhan yedekli vakit verisi
+    </p>
    </div>
 
    <AnimatePresence mode="wait">
@@ -141,7 +141,7 @@ export default function EzanOnbellegi() {
        <DatabaseZap className="w-5 h-5" strokeWidth={1.7} />
       </div>
       <div>
-       <h3 className="text-lg font-semibold text-[var(--text-primary)] tracking-tight leading-tight">Senkronizasyon Merkezi</h3>
+       <h3 className="text-lg font-light text-[var(--text-primary)] tracking-tight leading-tight">Senkronizasyon Merkezi</h3>
        <p className="text-xs text-[var(--text-secondary)]/80">
         {settings.ilceAdi} için mevcut ay ve gelecek ay cache kaydı hazırlanır.
        </p>
@@ -153,7 +153,7 @@ export default function EzanOnbellegi() {
       whileTap={{ scale: 0.98 }}
       onClick={handleSenkronizeEt}
       disabled={syncing}
-      className="w-full sm:w-auto px-6 py-3.5 bg-white text-black rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
+      className="w-full sm:w-auto px-6 py-3.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
      >
       <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
       <span>{syncing ? 'Senkronize ediliyor' : 'Verileri senkronize et'}</span>

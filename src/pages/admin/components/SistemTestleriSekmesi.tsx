@@ -22,6 +22,68 @@ interface NavigatorWithUAData extends Navigator {
   userAgentData?: { platform?: string };
 }
 
+type SelfCheckState = 'idle' | 'running' | 'success' | 'error';
+
+interface SelfCheckCardProps {
+  icon: React.ComponentType<{ size?: number }>;
+  /** Boşta (idle) durumdaki ikon rengi — başarı/hata durumlarında sabit yeşil/kırmızıya döner. */
+  idleIconColorClass: string;
+  title: string;
+  subtitle: string;
+  state: SelfCheckState;
+  successLabel: string;
+  /** Verilmezse 'error' durumunda rozet alanı boş kalır (bkz. PWA kartının
+   *  orijinal davranışı — hata rozeti hiç yoktu, yalnızca davranış korunuyor). */
+  errorLabel?: string;
+  children: React.ReactNode;
+}
+
+/**
+ * 4 self-check kartının (Veritabanı/Bildirim/PWA/Ağ) ortak kabuğu — kart
+ * çerçevesi, icon-well ve durum rozeti (HAZIR/spinner/başarı/hata) önceden
+ * dört kez birebir kopyalanmıştı (bkz. AdminLoadingState.tsx'in aynı
+ * gerekçeyle çıkarıldığı "6 dosyada tekrar" örneği, mimari denetim). Her
+ * kartın DEĞİŞEN kısmı (ölçüm detayları + eylem butonu) `children` olarak
+ * geçilir.
+ */
+function SelfCheckCard({ icon: Icon, idleIconColorClass, title, subtitle, state, successLabel, errorLabel, children }: SelfCheckCardProps) {
+  return (
+    <motion.div
+      layout
+      className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
+        state === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
+        state === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
+        'border-[var(--glass-border)]'
+      }`}
+    >
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${
+            state === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+            state === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
+            `bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] ${idleIconColorClass}`
+          }`}>
+            <Icon size={18} />
+          </div>
+          <div>
+            <h5 className="text-xs font-semibold text-[var(--text-primary)]">{title}</h5>
+            <p className="text-2xs text-[var(--text-secondary)]/50">{subtitle}</p>
+          </div>
+        </div>
+
+        <div>
+          {state === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
+          {state === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
+          {state === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">{successLabel} <CheckCircle2 size={10} /></span>}
+          {state === 'error' && errorLabel && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">{errorLabel} <XCircle size={10} /></span>}
+        </div>
+      </div>
+
+      {children}
+    </motion.div>
+  );
+}
+
 export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTab: (t: LogTab) => void }) => {
   const [dbTestState, setDbTestState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [dbLatency, setDbLatency] = useState<number | null>(null);
@@ -69,7 +131,15 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
   };
 
   useEffect(() => {
-    runSyncCheck();
+    // Effect gövdesinde senkron olarak runSyncCheck'i çağırmak, içindeki ilk
+    // satır olan setSyncState('checking')'in aynı render turunda senkron
+    // çalışmasına yol açıyordu (bkz. HaftalikCizelge.tsx'teki self-healing
+    // effect'inde AYNI sınıf düzeltme). Bir microtask'a erteleyerek bunu
+    // onSnapshot/event callback'leriyle aynı — "harici bir tetikleyiciye
+    // yanıt olarak state güncelleme" — kalıba taşıyoruz.
+    queueMicrotask(() => {
+      void runSyncCheck();
+    });
   }, []);
 
   // Real-time SW check & manual update check
@@ -118,7 +188,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       }
       setFcmSwActive(swActive);
       setFcmTestState('success');
-    } catch (err) {
+    } catch {
       setFcmTestState('error');
     }
   };
@@ -136,7 +206,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       setPwaCacheSize(cacheSizeStr);
       setPwaTestState('success');
       checkSwUpdate();
-    } catch (err) {
+    } catch {
       setPwaTestState('error');
     }
   };
@@ -149,7 +219,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
       setNetworkTestState('success');
-    } catch (err) {
+    } catch {
       setNetworkTestState('error');
     }
   };
@@ -188,37 +258,15 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
       {/* Self-Check Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 1. Firestore DB check */}
-        <motion.div
-          layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
-            dbTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
-            dbTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
-            'border-[var(--glass-border)]'
-          }`}
+        <SelfCheckCard
+          icon={Database}
+          idleIconColorClass="text-[var(--dynamic-aura,var(--aura-indigo))]"
+          title="Veritabanı Katmanı"
+          subtitle="Firestore DB Bağlantı Durumu"
+          state={dbTestState}
+          successLabel="AKTİF"
+          errorLabel="ÇEVRİMDIŞI"
         >
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${
-                dbTestState === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                dbTestState === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--dynamic-aura,var(--aura-indigo))]'
-              }`}>
-                <Database size={18} />
-              </div>
-              <div>
-                <h5 className="text-xs font-semibold text-[var(--text-primary)]">Veritabanı Katmanı</h5>
-                <p className="text-2xs text-[var(--text-secondary)]/50">Firestore DB Bağlantı Durumu</p>
-              </div>
-            </div>
-            
-            <div>
-              {dbTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
-              {dbTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {dbTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">AKTİF <CheckCircle2 size={10} /></span>}
-              {dbTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">ÇEVRİMDIŞI <XCircle size={10} /></span>}
-            </div>
-          </div>
-
           <div className="my-4 space-y-2">
             <div className="flex flex-col gap-1">
               {dbTestState === 'success' && (
@@ -249,40 +297,18 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
           >
             {dbTestState === 'running' ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
           </motion.button>
-        </motion.div>
+        </SelfCheckCard>
 
         {/* 2. FCM & Push Alerts check */}
-        <motion.div
-          layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
-            fcmTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
-            fcmTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
-            'border-[var(--glass-border)]'
-          }`}
+        <SelfCheckCard
+          icon={BellRing}
+          idleIconColorClass="text-amber-500"
+          title="Bildirim Servisleri"
+          subtitle="FCM ve Push API Uyumluluğu"
+          state={fcmTestState}
+          successLabel="TAMAM"
+          errorLabel="HATA"
         >
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${
-                fcmTestState === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                fcmTestState === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-amber-500'
-              }`}>
-                <BellRing size={18} />
-              </div>
-              <div>
-                <h5 className="text-xs font-semibold text-[var(--text-primary)]">Bildirim Servisleri</h5>
-                <p className="text-2xs text-[var(--text-secondary)]/50">FCM ve Push API Uyumluluğu</p>
-              </div>
-            </div>
-
-            <div>
-              {fcmTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
-              {fcmTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {fcmTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {fcmTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
-            </div>
-          </div>
-
           <div className="my-4 space-y-2">
             {fcmTestState === 'success' && (
               <div className="flex flex-col gap-1">
@@ -316,37 +342,22 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
           >
             {fcmTestState === 'running' ? 'Sorgulanıyor...' : 'İzinleri Denetle'}
           </motion.button>
-        </motion.div>
+        </SelfCheckCard>
 
         {/* 3. PWA Standalone check & Update Checker */}
-        <motion.div
-          layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
-            pwaTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
-            'border-[var(--glass-border)]'
-          }`}
+        <SelfCheckCard
+          icon={Layers}
+          idleIconColorClass="text-purple-400"
+          title="PWA ve Sürüm Kontrolü"
+          subtitle="Çevrimdışı Çalışma Kabiliyeti"
+          state={pwaTestState}
+          successLabel="TAMAM"
+          // Diğer üç karttan farklı olarak burada 'error' rozeti hiç
+          // tanımlanmamıştı — runPwaTest başarısız olsa da kart görsel olarak
+          // sessiz kalıyordu (bkz. kod temizliği / mimari denetim). Ortak
+          // kabuğa geçerken dört kartı simetrik hale getirmek için eklendi.
+          errorLabel="HATA"
         >
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${
-                pwaTestState === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-purple-400'
-              }`}>
-                <Layers size={18} />
-              </div>
-              <div>
-                <h5 className="text-xs font-semibold text-[var(--text-primary)]">PWA ve Sürüm Kontrolü</h5>
-                <p className="text-2xs text-[var(--text-secondary)]/50">Çevrimdışı Çalışma Kabiliyeti</p>
-              </div>
-            </div>
-
-            <div>
-              {pwaTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
-              {pwaTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {pwaTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-            </div>
-          </div>
-
           <div className="my-4 space-y-2">
             {pwaTestState === 'success' && (
               <div className="flex flex-col gap-1">
@@ -398,40 +409,18 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </motion.button>
             )}
           </div>
-        </motion.div>
+        </SelfCheckCard>
 
         {/* 4. Network and Outbox check */}
-        <motion.div
-          layout
-          className={`spatial-glass border p-4 sm:p-6 rounded-card flex flex-col justify-between h-64 transition-all duration-500 ${
-            networkTestState === 'success' ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.03)]' :
-            networkTestState === 'error' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.03)]' :
-            'border-[var(--glass-border)]'
-          }`}
+        <SelfCheckCard
+          icon={Wifi}
+          idleIconColorClass="text-sky-400"
+          title="Ağ & Çevrimdışı Eşitleme"
+          subtitle="Veri Senkronizasyon Kuyruğu"
+          state={networkTestState}
+          successLabel="TAMAM"
+          errorLabel="HATA"
         >
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${
-                networkTestState === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                networkTestState === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-sky-400'
-              }`}>
-                <Wifi size={18} />
-              </div>
-              <div>
-                <h5 className="text-xs font-semibold text-[var(--text-primary)]">Ağ & Çevrimdışı Eşitleme</h5>
-                <p className="text-2xs text-[var(--text-secondary)]/50">Veri Senkronizasyon Kuyruğu</p>
-              </div>
-            </div>
-
-            <div>
-              {networkTestState === 'idle' && <span className="px-2 py-1 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] text-2xs font-bold tracking-wider rounded-lg text-[var(--text-secondary)]/60">HAZIR</span>}
-              {networkTestState === 'running' && <RefreshCw size={14} className="animate-spin text-[var(--dynamic-aura,var(--aura-indigo))]" />}
-              {networkTestState === 'success' && <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold tracking-wider rounded-lg text-emerald-400 flex items-center gap-1">TAMAM <CheckCircle2 size={10} /></span>}
-              {networkTestState === 'error' && <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-2xs font-bold tracking-wider rounded-lg text-rose-400 flex items-center gap-1">HATA <XCircle size={10} /></span>}
-            </div>
-          </div>
-
           <div className="my-4 space-y-2">
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-2xs">
@@ -465,7 +454,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
           >
             {networkTestState === 'running' ? 'Ping Ölçülüyor...' : 'Ağ ve Kuyruğu Sorgula'}
           </motion.button>
-        </motion.div>
+        </SelfCheckCard>
       </div>
 
       {/* Device & Session Specs */}

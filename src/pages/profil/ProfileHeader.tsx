@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Edit3, CheckCircle2, AlertCircle, Shield, User, Eye } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
 import { Muezzin } from '../../types';
+import { kendiAdiniGuncelle } from '../../services/muezzinServisi';
+import { zamanAsimiIle, IslemZamanAsimi } from '../../lib/timeoutUtils';
 
 interface ProfileHeaderProps {
  userData: Muezzin | null;
@@ -55,15 +55,21 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  setIsUpdating(true);
 
  try {
- await updateDoc(doc(db, 'muezzins', user.uid), { 
- displayName: trimmedName
- });
+ // Servis katmanına devredildi (handleFirestoreError + audit log) ve
+ // çevrimdışıyken sonsuza dek askıda kalabilecek yazım için diğer kritik
+ // işlemlerle (okudumOnayla, vekaletKabulEt) AYNI zamanAsimiIle deseniyle
+ // sarmalandı (bkz. kod denetimi — önceden bu tek nokta bu korumadan
+ // yoksundu, "KAYDEDİLİYOR..." düğmesi çevrimdışıyken sonsuza kilitlenebilirdi).
+ await zamanAsimiIle(kendiAdiniGuncelle(user.uid, trimmedName));
  setEditMode(false);
  setUpdateSuccess(true);
  setTimeout(() => setUpdateSuccess(false), 3000);
  } catch (err) {
- console.error('Profil güncellenemedi:', err);
- setUpdateError('Güncelleme başarısız. Lütfen tekrar deneyin.');
+ if (err instanceof IslemZamanAsimi) {
+ setUpdateError(err.message);
+ } else {
+ setUpdateError(err instanceof Error ? err.message : 'Güncelleme başarısız. Lütfen tekrar deneyin.');
+ }
  } finally {
  setIsUpdating(false);
  }
@@ -151,8 +157,12 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  </div>
  </div>
  ) : (
- <div className="flex items-center justify-center gap-4">
- <h3 className="text-3xl md:text-5xl font-light text-[var(--text-primary)] tracking-tight apple-thin hover:font-normal transition-all duration-700 cursor-default">
+ // min-w-0 + truncate: uzun ad-soyadlar (Türkçe'de sık) düzenle butonuyla
+ // aynı satırda dar mobil genişlikte kart dışına taşıp kesiliyordu (bkz.
+ // HaftalikCizelge.tsx'teki aynı truncate savunması, mobil yerleşim
+ // denetimi).
+ <div className="flex items-center justify-center gap-4 w-full min-w-0">
+ <h3 className="text-3xl md:text-5xl font-light text-[var(--text-primary)] tracking-tight apple-thin hover:font-normal transition-all duration-700 cursor-default truncate min-w-0">
  {userData?.displayName}
  </h3>
  <motion.button
@@ -160,7 +170,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  whileTap={{ scale: 0.9 }}
  onClick={() => setEditMode(true)}
  aria-label="İsmi düzenle"
- className="w-12 h-12 flex items-center justify-center bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl transition-all shadow-lg"
+ className="w-12 h-12 shrink-0 flex items-center justify-center bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl transition-all shadow-lg"
  >
  <Edit3 size={18} className="text-[var(--text-secondary)]/40" />
  </motion.button>

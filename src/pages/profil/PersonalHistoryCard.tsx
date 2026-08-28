@@ -63,12 +63,15 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
       whileHover={{ y: -4 }}
       className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden text-left"
     >
-      <div className="flex justify-between items-center mb-8 relative z-10">
+      {/* flex-col sm:flex-row: başlık + "SON 30 GÖREV" rozeti ikisi de metin
+          ağırlıklı olduğundan dar mobil genişlikte (≤375px) yan yana sığmıyordu
+          (bkz. KrizAlarmlari.tsx'teki aynı desen, mobil yerleşim denetimi). */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-8 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <h4 className="premium-label !text-2xs !opacity-70 tracking-wide">KİŞİSEL HİZMET GÜNLÜĞÜ</h4>
         </div>
-        <span className="text-2xs font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+        <span className="self-start sm:self-auto text-2xs font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
           SON 30 GÖREV
         </span>
       </div>

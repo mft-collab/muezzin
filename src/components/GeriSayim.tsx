@@ -228,12 +228,17 @@ export function GeriSayim({
   // ── Ezan is now ───────────────────────────────────────────────────────────
   if (farkMs <= 0) {
     return (
-      <div className="relative flex items-center justify-center w-[360px] h-[360px] sm:w-[400px] sm:h-[400px]">
+      // w-full max-w-[...] aspect-square: sabit w-[360px]/h-[360px] piksel bu
+      // dosyanın geri kalanındaki akışkan boyutlandırma deseninden (bkz.
+      // aşağıdaki svg'nin w-full max-w-[...] kullanımı) sapıyordu — dar mobil
+      // genişlikte (≤392px) taşan kısım ebeveyn kartın overflow-hidden'ıyla
+      // kırpılıyordu (bkz. mobil yerleşim denetimi).
+      <div className="relative flex items-center justify-center w-full max-w-[360px] sm:max-w-[400px] aspect-square mx-auto px-6">
         <div
           className="absolute inset-0 rounded-full animate-pulse"
           style={{ background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)' }}
         />
-        <span className="authority-title text-emerald-400 text-xs tracking-[0.6em] font-semibold">
+        <span className="authority-title text-emerald-400 text-xs tracking-[0.6em] font-semibold text-center">
           EZAN OKUNUYOR
         </span>
       </div>

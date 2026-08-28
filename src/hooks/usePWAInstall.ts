@@ -7,6 +7,26 @@ interface BeforeInstallPromptEvent extends Event {
 
 type PWAWindow = Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent };
 
+// "Uygulamayı Yükle" / iOS kurulum banner'ı kapatıldığında kalıcı olarak
+// hatırlanmıyordu, her sayfa yenilemesinde tekrar çıkıp altındaki kartların
+// üstüne biniyordu (bkz. görsel tasarım denetimi). localStorage'a yazılan
+// zaman damgasıyla 7 gün boyunca tekrar gösterilmez.
+const PWA_PROMPT_DISMISS_KEY = 'pwaPromptDismissedAt';
+const PWA_PROMPT_DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isPwaPromptDismissedRecently() {
+ if (typeof window === 'undefined') return false;
+ const raw = window.localStorage.getItem(PWA_PROMPT_DISMISS_KEY);
+ if (!raw) return false;
+ const dismissedAt = Number(raw);
+ return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < PWA_PROMPT_DISMISS_COOLDOWN_MS;
+}
+
+function dismissPwaPromptForCooldown() {
+ if (typeof window === 'undefined') return;
+ window.localStorage.setItem(PWA_PROMPT_DISMISS_KEY, String(Date.now()));
+}
+
 // Standalone/iOS tespiti sabit tarayıcı özellikleridir (oturum boyunca
 // değişmez) — bunları bir effect'te setState ile değil, doğrudan lazy
 // state initializer'larla hesaplıyoruz ki mount sırasında gereksiz bir
@@ -24,16 +44,18 @@ function detectPwaEnvironment() {
 
 export function usePWAInstall() {
  const [{ isStandalone, isIos }] = useState(detectPwaEnvironment);
- const [isInstallable, setIsInstallable] = useState(() => !isStandalone && !isIos && !!(window as PWAWindow).__pwaInstallPrompt);
+ const [isInstallable, setIsInstallable] = useState(() =>
+ !isStandalone && !isIos && !isPwaPromptDismissedRecently() && !!(window as PWAWindow).__pwaInstallPrompt
+ );
  const [isInstalled, setIsInstalled] = useState(isStandalone);
- const [isIosPrompt, setIsIosPrompt] = useState(isIos && !isStandalone);
+ const [isIosPrompt, setIsIosPrompt] = useState(() => isIos && !isStandalone && !isPwaPromptDismissedRecently());
 
  useEffect(() => {
  // Standalone veya iOS: beforeinstallprompt hiç desteklenmiyor/gerekmiyor.
  if (isStandalone || isIos) return;
 
  // Henüz gelmemişse, main.tsx'in dispatch ettiği event'i bekle
- const onReady = () => setIsInstallable(true);
+ const onReady = () => setIsInstallable(!isPwaPromptDismissedRecently());
  window.addEventListener('pwaInstallReady', onReady);
 
  // Uygulama yüklenince gizle
@@ -66,8 +88,8 @@ export function usePWAInstall() {
  isInstalled,
  isIosPrompt,
  install,
- dismissIosPrompt: () => setIsIosPrompt(false),
- dismissInstallPrompt: () => setIsInstallable(false),
+ dismissIosPrompt: () => { dismissPwaPromptForCooldown(); setIsIosPrompt(false); },
+ dismissInstallPrompt: () => { dismissPwaPromptForCooldown(); setIsInstallable(false); },
  };
 }
 

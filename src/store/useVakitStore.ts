@@ -6,6 +6,7 @@ import { aylikVakitleriCek, aylikVakitleriGrupla } from '../services/ezanVaktiSe
 import { getTurkeyNow, getTurkeyDateString } from '../lib/dateUtils';
 import { useSystemSettingsStore } from './useSystemSettingsStore';
 import { useAuthStore } from './useAuthStore';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 const isVakitEqual = (a: GunlukVakit | null, b: GunlukVakit | null) => {
   if (a === b) return true;
@@ -170,7 +171,12 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
  },
  (err) => {
- console.error('Vakitler snapshot error:', err);
+ // Önceden yalnızca console.error'a yazılıyordu — uygulamanın en kritik
+ // veri akışlarından biri (namaz vakitleri) telemetri/hata izleme dışı
+ // kalıyordu; diğer store'ların (useAdminIzinlerStore, useMuezzinStore vb.)
+ // tümü handleFirestoreError kullanırken bu ikisi tutarsızdı (bkz. kod
+ // denetimi).
+ handleFirestoreError(err, OperationType.GET, `vakitler/${buAyDocId}`);
  set({ loading: false, initializing: false, initialized: true });
  }
  );
@@ -186,7 +192,7 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
  eksikGunuTazele();
  },
- (err) => console.warn('Yarın vakitleri çekilemedi:', err)
+ (err) => handleFirestoreError(err, OperationType.GET, `vakitler/${yarinAyDocId}`)
  );
  }
 

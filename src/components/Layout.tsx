@@ -91,7 +91,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* PWA Install Banner */}
+      {/* PWA Install Banner — sağ-alt köşede, dock'un ve içeriğin üstüne
+          binmeyecek şekilde dar (maks. 320px); kapatıldığında 7 gün boyunca
+          tekrar gösterilmez (bkz. usePWAInstall, görsel tasarım denetimi). */}
       <AnimatePresence>
         {isInstallable && (
           <motion.div
@@ -99,7 +101,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
             transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-1/2 -translate-x-1/2 z-[99] pointer-events-auto flex items-center gap-2"
+            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] right-4 sm:right-6 max-w-[320px] z-[99] pointer-events-auto flex items-center gap-2"
           >
             <button
               onClick={install}
@@ -126,7 +128,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
             transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-[350px] z-[99] pointer-events-auto bg-[var(--app-bg)]/95 backdrop-blur-xl border border-[var(--glass-border)] p-4 rounded-2xl shadow-[var(--spatial-shadow)] flex flex-col gap-3"
+            className="fixed bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-[110px] left-4 right-4 sm:left-auto sm:right-6 sm:w-[320px] z-[99] pointer-events-auto bg-[var(--app-bg)]/95 backdrop-blur-xl border border-[var(--glass-border)] p-4 rounded-2xl shadow-[var(--spatial-shadow)] flex flex-col gap-3"
           >
             <button
               onClick={dismissIosPrompt}

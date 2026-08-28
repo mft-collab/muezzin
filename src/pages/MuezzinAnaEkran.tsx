@@ -24,6 +24,7 @@ import { vekaletKabulEt, vekaletReddet } from '../services/vekaletServisi';
 import { VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../lib/dateUtils';
 import { Vakit } from '../types';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
 import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
@@ -56,6 +57,11 @@ export default function MuezzinAnaEkran() {
  } = useDashboardLogic();
 
   const [activeDuyuruIdx, setActiveDuyuruIdx] = useState(0);
+  // İzin (leave) yalnızca nöbete atanabilen 'muezzin' rolü için anlamlı —
+  // sunucu tarafı artık bunu isValidIzin'de zorunlu kılıyor (bkz.
+  // firestore.rules); kart burada da admin/gözlemci'ye gösterilmeyip
+  // PERMISSION_DENIED ile karşılaşmaları önlenir (bkz. yetki denetimi).
+  const role = useAuthStore(s => s.role);
 
   const { gpsEnabled, gpsLoading, enableGps, disableGps } = useGpsVakitStore();
   const [isQiblaOpen, setIsQiblaOpen] = useState(false);
@@ -200,8 +206,13 @@ export default function MuezzinAnaEkran() {
  </div>
 
   <IslamicGeometricBg />
-  
-  <div className="fluid-wrapper pt-6 sm:pt-8 pb-32 relative z-10">
+
+  {/* Alt boşluk: Layout.tsx'teki <main> zaten dock/PWA banner'ını temizlemek için
+      dinamik pb (mobilde 96px+safe-area, md:144px) ayırıyor — burada AYRICA pb-32
+      eklemek toplamda 220px+ boş kaydırma alanına (mobil ekranın ~%30'u) yol
+      açıyordu (bkz. mobil yerleşim denetimi). Kalan pb-8/10 sadece son karta
+      görsel nefes payı için. */}
+  <div className="fluid-wrapper pt-6 sm:pt-8 pb-8 sm:pb-10 relative z-10">
 
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 lg:gap-12 relative z-10">
  
@@ -333,6 +344,7 @@ export default function MuezzinAnaEkran() {
  className="lg:col-span-7 flex flex-col gap-6 sm:gap-8"
  >
 
+ {role === 'muezzin' && (
  <motion.div
  initial={{ opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
@@ -342,6 +354,7 @@ export default function MuezzinAnaEkran() {
  <VacationRequestCard user={currentUser} />
  </Suspense>
  </motion.div>
+ )}
 
  {/* Announcements Slider */}
  {duyurular.length > 0 && (
@@ -410,8 +423,13 @@ export default function MuezzinAnaEkran() {
       : 'bg-gradient-to-br from-[var(--status-info)]/15 via-[var(--status-info)]/5 to-transparent border-[var(--status-info)]/25'
   }`}>
   <Megaphone size={16} className={`${isCurrentDuyuruRead ? 'text-[var(--text-secondary)]/40' : 'text-[var(--status-info)]'} group-hover/item:rotate-12 transition-transform duration-500`} strokeWidth={1.75} />
+  {/* Nokta bg-[var(--status-info)] (sabit mavi) ama parıltısı yanlışlıkla
+      dynamic-aura'ya (günün vaktine göre amber/ruby/emerald olabilir)
+      bağlıydı — nokta ile parıltısı aynı renk olmalı (bkz. GPS aktif
+      noktasındaki established desen: bg-emerald-400 + shadow rgba(52,211,153),
+      premium standart denetimi). */}
   {!isCurrentDuyuruRead && (
-    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--status-info)] shadow-[0_0_8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse" />
+    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--status-info)] shadow-[0_0_8px_color-mix(in_srgb,var(--status-info)_80%,transparent)] animate-pulse" />
   )}
   </div>
   <div className="flex-1 min-w-0">

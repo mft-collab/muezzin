@@ -8,13 +8,15 @@ import { Vakit } from '../types';
  * `--dynamic-aura` için yazdığı DAHA ZENGİN, kerahat/cuma/teheccüd
  * dönemlerini de hesaba katan eşleme KASITLI OLARAK AYRI tutuldu — bu
  * fonksiyon yalnızca basit "hangi vakit" ambient arkaplanları için, o ise
- * canlı/global durum için; ikisini birleştirmek ayrı, görsel doğrulama
- * gerektiren bir karar.
+ * canlı/global durum için. aksam/yatsi bucket'ı için renk (ruby) görsel
+ * denetimle (bkz. görsel tasarım denetimi) her iki eşlemede de hizalandı —
+ * aksi halde admin ve müezzin panelleri aynı anda aynı token için farklı
+ * renk render ediyordu (bkz. GeriSayim.tsx, useCircadianTheme.ts).
  */
 export function getActiveAuraColor(vakit: Vakit | 'gunes' | null | undefined): string {
   switch (vakit) {
-    case 'aksam': return 'var(--aura-rose)';
-    case 'yatsi': return 'var(--aura-indigo)';
+    case 'aksam': return 'var(--aura-ruby)';
+    case 'yatsi': return 'var(--aura-ruby)';
     case 'ogle':
     case 'ikindi':
     case 'gunes': return 'var(--aura-amber)';

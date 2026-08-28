@@ -68,6 +68,12 @@ export default function KrizAlarmlari() {
  case 'zincirTukendi': return <AlertTriangle size={24} />;
  case 'apiHatasi': return <ServerCrash size={24} />;
  case 'planOlusturulamadi': return <CalendarX size={24} />;
+ // scripts/lib/reportWorkflowFailure.ts — bir GitHub Actions cron işinin
+ // (aylık ezan takvimi, log temizliği, yatsı sonu, haftalık plan, vakit
+ // sağlığı) çökmesi; 'apiHatasi'dan (dış API'ye ulaşılamıyor) kasıtlı
+ // olarak AYRI bir kategori (bkz. kod denetimi — önceden hepsi 'apiHatasi'
+ // altında ayrıştırılamıyordu).
+ case 'otomasyonHatasi': return <RefreshCcw size={24} />;
  default: return <AlertTriangle size={24} />;
  }
  };
@@ -77,6 +83,7 @@ export default function KrizAlarmlari() {
  case 'zincirTukendi': return 'rose';
  case 'apiHatasi': return 'amber';
  case 'planOlusturulamadi': return 'indigo';
+ case 'otomasyonHatasi': return 'indigo';
  default: return 'rose';
  }
  };
@@ -135,18 +142,21 @@ export default function KrizAlarmlari() {
 
  return (
  <div className="flex flex-col gap-10">
- {/* TOOLBAR: Operational Toggle */}
- <div className="flex justify-between items-center">
+ {/* TOOLBAR: Operational Toggle — dar mobil ekranlarda (≤375px) başlık + "ARŞİVLENMİŞ
+     UYARILAR" anahtarı tek satıra sığmayıp anahtarın sağ ucu ekran dışına taşıyordu
+     (bkz. mobil yerleşim denetimi, gerçek 360px genişlikte doğrulandı). flex-col ile
+     mobilde alt alta, sm+ ekranlarda eskisi gibi yan yana. */}
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Nöbet Uyarıları</h2>
  <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">NÖBET VE VAKİT AKIŞI TAKİBİ</p>
  </div>
 
- <motion.button 
+ <motion.button
  whileHover={{ scale: 1.02 }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setShowResolved(!showResolved)}
- className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 ${
+ className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 self-start ${
  showResolved 
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
  : 'bg-[var(--text-primary)]/[0.03] border-[var(--text-primary)]/5 text-[var(--text-secondary)]'
@@ -213,9 +223,10 @@ export default function KrizAlarmlari() {
  <div className="flex-1 flex flex-col gap-2">
  <div className="flex items-center gap-4">
  <span className={`authority-title !text-2xs font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
- {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' : 
- alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' : 
- alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' : 'NÖBET UYARISI'}
+ {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' :
+ alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' :
+ alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' :
+ alarm.tip === 'otomasyonHatasi' ? 'OTOMASYON HATASI' : 'NÖBET UYARISI'}
  </span>
  {!alarm.cozuldu && (
  <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-2xs font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>

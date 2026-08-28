@@ -2,6 +2,7 @@ import { deleteDoc, doc, getDoc, runTransaction, serverTimestamp, setDoc, update
 import { auth, db } from '../lib/firebase';
 import { mazeretZamanKontrolYap } from './mazeretServisi';
 import { Bildirim, Vakit, VekaletTalebi } from '../types';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 function buildVekaletTalebiId(
   haftaId: string,
@@ -31,8 +32,15 @@ export async function vekaletTeklifEt(
   // atlatılabilir (bkz. mimari denetim K3/K4). Bildirim belgesindeki
   // (eski belgelerde eksik olabilen) `cumaMi` alanına GÜVENMEZ, `tarih`'ten
   // taze türetir — bkz. src/services/mazeretServisi.ts `mazeretZamanKontrolYap`.
-  // Asıl uygulama sunucu tarafındadır (firestore.rules `isValidVekaletCreate`);
-  // bu yalnızca gereksiz bir yazım denemesini önleyen erken geri bildirimdir.
+  // DİKKAT: yalnızca Cuma kısıtlaması sunucu tarafında da (firestore.rules
+  // `isValidVekaletCreate` → `cumaMiIsaretli`) doğrulanır. 1 saatlik zaman
+  // penceresinin firestore.rules'ta bir karşılığı YOKTUR (ezan vakti verisi
+  // rule bütçesine sığmadan okunamıyor) — bu satır, o kural için TEK
+  // uygulama noktasıdır; istemci bypass edilirse (doğrudan SDK/REST çağrısı)
+  // yalnızca zaman penceresi atlatılabilir (Cuma yine engellenir). Kabulden
+  // sonraki gerçek transfer anında ezan vaktinin geçip geçmediği ayrıca
+  // scripts/vekaletDevirleriniIsle.ts'te (Admin SDK, taze veriyle) tekrar
+  // kontrol edilir (bkz. kod denetimi, kritik bulgu).
   const mazeretDurumu = await mazeretZamanKontrolYap(tarih, vakit, saat);
   if (mazeretDurumu.kapali) {
     throw new Error(mazeretDurumu.sebep ?? 'Bu görev için görev devri (vekalet) kullanılamaz.');
@@ -40,36 +48,45 @@ export async function vekaletTeklifEt(
 
   const talepId = buildVekaletTalebiId(haftaId, tarih, vakit, tip, aliciUid);
   const talepRef = doc(db, 'vekalet_talepleri', talepId);
+  const path = `vekalet_talepleri/${talepId}`;
 
-  // Talep ID'si deterministik (haftaId_tarih_vakit_tip_aliciUid) — aynı
-  // alıcıya aynı görev için ikinci kez teklif göndermek normalde bir
-  // `update` sayılır ve hiçbir kuralla eşleşmediği için reddedilir. Daha
-  // önce reddedilmiş bir talep varsa önce sil (aşağıdaki create bu yüzden
-  // gerçek bir create olur) — aksi halde bir kez reddedilen teklif o
-  // gün/vakit için kalıcı olarak kilitleniyordu (bkz. mimari denetim O7).
-  const oncekiTalepSnap = await getDoc(talepRef);
-  if (oncekiTalepSnap.exists() && oncekiTalepSnap.data().durum === 'reddedildi') {
-    await deleteDoc(talepRef);
+  try {
+    // Talep ID'si deterministik (haftaId_tarih_vakit_tip_aliciUid) — aynı
+    // alıcıya aynı görev için ikinci kez teklif göndermek normalde bir
+    // `update` sayılır ve hiçbir kuralla eşleşmediği için reddedilir. Daha
+    // önce reddedilmiş bir talep varsa önce sil (aşağıdaki create bu yüzden
+    // gerçek bir create olur) — aksi halde bir kez reddedilen teklif o
+    // gün/vakit için kalıcı olarak kilitleniyordu (bkz. mimari denetim O7).
+    const oncekiTalepSnap = await getDoc(talepRef);
+    if (oncekiTalepSnap.exists() && oncekiTalepSnap.data().durum === 'reddedildi') {
+      await deleteDoc(talepRef);
+    }
+
+    await setDoc(talepRef, {
+      bildirimId,
+      haftaId,
+      gonderenUid: currentUser.uid,
+      gonderenIsim: currentUser.displayName || currentUser.email || 'Değerli Hocam',
+      aliciUid,
+      aliciIsim,
+      tarih,
+      vakit,
+      saat,
+      tip,
+      durum: 'beklemede',
+      olusturmaTarihi: serverTimestamp()
+    });
+  } catch (err) {
+    // Bu dosya önceden hiçbir Firestore yazımını handleFirestoreError ile
+    // sarmalamıyordu — diğer tüm yazma servisleriyle (mazeret/muezzin/
+    // plan/duyuru/okudum) tutarlı hale getirildi (bkz. kod denetimi).
+    throw handleFirestoreError(err, OperationType.WRITE, path);
   }
-
-  await setDoc(talepRef, {
-    bildirimId,
-    haftaId,
-    gonderenUid: currentUser.uid,
-    gonderenIsim: currentUser.displayName || currentUser.email || 'Değerli Hocam',
-    aliciUid,
-    aliciIsim,
-    tarih,
-    vakit,
-    saat,
-    tip,
-    durum: 'beklemede',
-    olusturmaTarihi: serverTimestamp()
-  });
 }
 
 export async function vekaletKabulEt(talepId: string): Promise<void> {
   const talepRef = doc(db, 'vekalet_talepleri', talepId);
+  const path = `vekalet_talepleri/${talepId}`;
 
   // Mazeret zaman penceresi kontrolü Firestore'dan ezan verisi çekmek zorunda
   // olduğundan transaction dışında yapılır (mazeretBildir ile aynı desen).
@@ -98,27 +115,36 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
   // scripts/vekaletDevirleriniIsle.ts'te, Admin SDK ile (kural bütçesi yok)
   // gerçekleşiyor; script'in bir sonraki çalışmasına kadar (~10-15 dk)
   // gecikmeli.
-  await runTransaction(db, async (transaction) => {
-    const talepDoc = await transaction.get(talepRef);
-    if (!talepDoc.exists()) throw new Error('Vekalet talebi bulunamadı.');
+  try {
+    await runTransaction(db, async (transaction) => {
+      const talepDoc = await transaction.get(talepRef);
+      if (!talepDoc.exists()) throw new Error('Vekalet talebi bulunamadı.');
 
-    const talep = talepDoc.data() as VekaletTalebi;
-    if (talep.durum !== 'beklemede') throw new Error('Bu talep zaten sonuçlandırılmış.');
-    if (talep.aliciUid !== auth.currentUser?.uid) throw new Error('Bu vekalet teklifi size ait değil.');
+      const talep = talepDoc.data() as VekaletTalebi;
+      if (talep.durum !== 'beklemede') throw new Error('Bu talep zaten sonuçlandırılmış.');
+      if (talep.aliciUid !== auth.currentUser?.uid) throw new Error('Bu vekalet teklifi size ait değil.');
 
-    const bildirimRef = doc(db, 'bildirimler', talep.bildirimId);
-    const bildirimDoc = await transaction.get(bildirimRef);
-    if (!bildirimDoc.exists()) throw new Error('Orijinal görev bildirimi bulunamadı.');
+      const bildirimRef = doc(db, 'bildirimler', talep.bildirimId);
+      const bildirimDoc = await transaction.get(bildirimRef);
+      if (!bildirimDoc.exists()) throw new Error('Orijinal görev bildirimi bulunamadı.');
 
-    const bildirim = bildirimDoc.data() as Bildirim;
-    if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
+      const bildirim = bildirimDoc.data() as Bildirim;
+      if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
 
-    transaction.update(talepRef, { durum: 'kabul_edildi', sonGuncelleme: serverTimestamp() });
-    transaction.update(bildirimRef, { vekaletDevriBekliyor: true, sonGuncelleme: serverTimestamp() });
-  });
+      transaction.update(talepRef, { durum: 'kabul_edildi', sonGuncelleme: serverTimestamp() });
+      transaction.update(bildirimRef, { vekaletDevriBekliyor: true, sonGuncelleme: serverTimestamp() });
+    });
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.UPDATE, path);
+  }
 }
 
 export async function vekaletReddet(talepId: string): Promise<void> {
   const talepRef = doc(db, 'vekalet_talepleri', talepId);
-  await updateDoc(talepRef, { durum: 'reddedildi', sonGuncelleme: serverTimestamp() });
+  const path = `vekalet_talepleri/${talepId}`;
+  try {
+    await updateDoc(talepRef, { durum: 'reddedildi', sonGuncelleme: serverTimestamp() });
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.UPDATE, path);
+  }
 }

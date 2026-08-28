@@ -16,8 +16,6 @@ interface Props {
  isYedekSizMisiniz?: boolean;
  asilIzinde?: boolean;
  yedekIzinde?: boolean;
- asilSabitIzinde?: boolean;
- yedekSabitIzinde?: boolean;
  loading?: boolean;
  /** Gösterilen atamanın ait olduğu tarih (YYYY-MM-DD) — "sonraki vakit" gece yarısını
   * aşıp yarına sarktığında bugünün tarihinden farklı olabilir, bu yüzden Cuma etiketi
@@ -35,8 +33,6 @@ export const Muezzinler = React.memo(({
  isYedekSizMisiniz,
  asilIzinde,
  yedekIzinde,
- asilSabitIzinde,
- yedekSabitIzinde,
  loading,
  planTarih,
 }: Props) => {
@@ -109,20 +105,20 @@ export const Muezzinler = React.memo(({
  </div>
  ) : planVarMi ? (
  <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-8 lg:gap-10">
- <GorevliKarti 
+ <GorevliKarti
  tip="asil"
  isim={asilIsim}
  durum={asilDurum}
  isUser={isAsilSizMisiniz}
- izinde={asilIzinde || asilSabitIzinde}
+ izinde={asilIzinde}
  isFriday={isFriday}
  />
- <GorevliKarti 
+ <GorevliKarti
  tip="yedek"
  isim={yedekIsim}
  durum={yedekDurum}
  isUser={isYedekSizMisiniz}
- izinde={yedekIzinde || yedekSabitIzinde}
+ izinde={yedekIzinde}
  isFriday={isFriday}
  />
  </motion.div>

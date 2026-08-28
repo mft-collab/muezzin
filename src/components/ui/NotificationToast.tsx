@@ -25,7 +25,10 @@ interface NotificationToastProps {
  onClose: (id: string) => void;
 }
 
-const TYPE_CONFIG = {
+// export: NotificationHistoryPanel.tsx aynı tip→renk/ikon eşlemesini
+// bağımsız olarak yeniden tanımlıyordu (bkz. premium standart denetimi,
+// CLAUDE.md "aynı algoritmayı yeniden yazma" uyarısı) — tek kaynağa taşındı.
+export const TYPE_CONFIG = {
  info: { borderColor: 'var(--status-info)', icon: <Info size={16} className="text-[var(--status-info)]" />, dot: 'var(--status-info)' },
  success: { borderColor: 'var(--status-success)', icon: <CheckCircle2 size={16} className="text-[var(--status-success)]" />, dot: 'var(--status-success)' },
  warning: { borderColor: 'var(--status-warning)', icon: <AlertCircle size={16} className="text-[var(--status-warning)]" />, dot: 'var(--status-warning)' },

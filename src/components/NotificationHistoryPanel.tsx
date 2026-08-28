@@ -1,22 +1,16 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Trash2, BellOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from './ui/Modal';
 import { useNotificationStore } from '../store/useNotificationStore';
-import type { NotificationType } from './ui/NotificationToast';
+import { TYPE_CONFIG } from './ui/NotificationToast';
 
 interface NotificationHistoryPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const TYPE_DOT_COLOR: Record<NotificationType, string> = {
-  info: 'var(--status-info)',
-  success: 'var(--status-success)',
-  warning: 'var(--status-warning)',
-  error: 'var(--status-danger)',
-};
 
 export function NotificationHistoryPanel({ isOpen, onClose }: NotificationHistoryPanelProps) {
   const history = useNotificationStore((s) => s.history);
@@ -41,26 +35,41 @@ export function NotificationHistoryPanel({ isOpen, onClose }: NotificationHistor
             </button>
           </div>
           <ul className="space-y-3">
-            {history.map((entry) => (
-              <li
-                key={entry.id}
-                className="flex items-start gap-3 p-4 rounded-2xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.02]"
-              >
-                <span
-                  className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                  style={{ backgroundColor: TYPE_DOT_COLOR[entry.type] }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-xs font-medium text-[var(--text-primary)]">{entry.title}</h4>
-                    <span className="text-2xs text-[var(--text-secondary)]/40 shrink-0">
-                      {formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: tr })}
-                    </span>
-                  </div>
-                  <p className="text-2xs text-[var(--text-secondary)]/60 leading-relaxed mt-1">{entry.message}</p>
-                </div>
-              </li>
-            ))}
+            {/* Toast'ın (bkz. NotificationToast.tsx) tip-özel ikon + sol kenar
+                accent + giriş animasyonu görsel dili burada hiç yoktu — aynı
+                bildirimin geçmiş kaydı canlı toast'tan görsel olarak kopuk,
+                düz bir liste gibi duruyordu (bkz. premium standart denetimi).
+                TYPE_CONFIG'i paylaşarak iki bileşen artık aynı dili konuşuyor. */}
+            <AnimatePresence initial={false}>
+              {history.map((entry, idx) => {
+                const cfg = TYPE_CONFIG[entry.type] ?? TYPE_CONFIG.info;
+                return (
+                  <motion.li
+                    key={entry.id}
+                    layout
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.03 } }}
+                    exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}
+                    transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex items-start gap-3 p-4 rounded-2xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.02] hover:bg-[var(--text-primary)]/[0.04] transition-colors"
+                    style={{ borderLeftWidth: '3px', borderLeftColor: cfg.borderColor }}
+                  >
+                    <div className="flex-shrink-0 mt-0.5 flex items-center justify-center w-7 h-7 rounded-xl bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/5">
+                      {cfg.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-xs font-medium text-[var(--text-primary)]">{entry.title}</h4>
+                        <span className="text-2xs text-[var(--text-secondary)]/40 shrink-0">
+                          {formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: tr })}
+                        </span>
+                      </div>
+                      <p className="text-2xs text-[var(--text-secondary)]/60 leading-relaxed mt-1">{entry.message}</p>
+                    </div>
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
           </ul>
         </div>
       )}

@@ -3,7 +3,6 @@ import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useNotificationStore } from '../store/useNotificationStore';
 import {
  getTurkeyNow,
- getTurkeyDateString,
  parseVakitToDate,
 } from '../lib/dateUtils';
 import { Vakit } from '../types';

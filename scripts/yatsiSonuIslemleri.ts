@@ -1,8 +1,8 @@
-import { getMessaging } from 'firebase-admin/messaging';
-import { db, Timestamp, auth, FieldValue } from './lib/firebaseAdminInit.ts';
+import { db, Timestamp, auth } from './lib/firebaseAdminInit.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { gunlukKredileriHesapla } from '../src/lib/gunlukKrediHesaplama.ts';
+import { fcmGonderVeTemizle, type FcmMessage } from './lib/fcmNotify.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -139,7 +139,7 @@ export async function processYatsiSonuIslemleri() {
         muezzinMap[d.id] = d.data();
       });
 
-      const messages: { token: string; notification: { title: string; body: string }; data: { type: string; tarih: string } }[] = [];
+      const messages: FcmMessage[] = [];
       const tokenToUidMap: Record<string, string> = {};
       for (const uid of uidList) {
         const userProfile = muezzinMap[uid];
@@ -174,44 +174,7 @@ export async function processYatsiSonuIslemleri() {
         }
       }
 
-      if (messages.length > 0) {
-        console.log(`Yarın için ${messages.length} müezzine günlük hatırlatma bildirimleri gönderiliyor...`);
-        const response = await getMessaging().sendEach(messages);
-        console.log(`Günlük FCM Gönderim Tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
-        
-        // Clean up invalid tokens
-        const tokensToRemove: Record<string, string[]> = {};
-        response.responses.forEach((res, index) => {
-          if (!res.success) {
-            const errCode = res.error?.code;
-            if (errCode === 'messaging/registration-token-not-registered' || errCode === 'messaging/invalid-registration-token') {
-              const failedToken = messages[index].token;
-              const uid = tokenToUidMap[failedToken];
-              if (uid) {
-                if (!tokensToRemove[uid]) tokensToRemove[uid] = [];
-                tokensToRemove[uid].push(failedToken);
-              }
-            }
-          }
-        });
-
-        const uidsToUpdate = Object.keys(tokensToRemove);
-        if (uidsToUpdate.length > 0) {
-          const cleanupBatch = db.batch();
-          for (const uid of uidsToUpdate) {
-            const userRef = db.collection('muezzins').doc(uid);
-            const updates: Record<string, any> = {};
-            tokensToRemove[uid].forEach(t => {
-              updates[`fcmTokens.${t}`] = FieldValue.delete();
-            });
-            cleanupBatch.update(userRef, updates);
-          }
-          await cleanupBatch.commit();
-          console.log(`FCM Cleanup: ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
-        }
-      } else {
-        console.log('Kayıtlı aktif FCM cihazı bulunamadı, günlük bildirimler gönderilmedi.');
-      }
+      await fcmGonderVeTemizle(messages, tokenToUidMap, 'Günlük hatırlatma FCM bildirimi');
     } else {
       console.log('Yarın için planlanmış herhangi bir nöbet görevi bulunamadı.');
     }

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Code, Cpu, Globe, CheckCircle2 } from 'lucide-react';
 import { Logo } from './ui/Logo';
 import { playClick, playSuccess } from '../lib/sounds';
+import { format } from 'date-fns';
 
 interface HakkindaModalProps {
   isOpen: boolean;
@@ -86,7 +87,14 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--text-primary)]/5 border border-[var(--text-primary)]/10">
                 <Sparkles size={10} className="text-[var(--aura-indigo)]" />
                 <span className="text-2xs font-bold tracking-widest text-[var(--text-primary)]/80 uppercase">
-                  Sürüm 2.2.0 (Build 860)
+                  {/* Elle yazılmış "Sürüm 2.2.0 (Build 860)" bir sonraki
+                      sürüm çıkışında güncellenmeyi unutma riski taşıyordu
+                      (bkz. kod denetimi) — artık build zamanında Vite'in
+                      enjekte ettiği gerçek değerlerden (package.json'dan
+                      __APP_VERSION__, build tarihinden __BUILD_TIMESTAMP__)
+                      geliyor; telemetryService.ts zaten aynı sabitleri
+                      kullanıyor. */}
+                  Sürüm {__APP_VERSION__} · {format(new Date(__BUILD_TIMESTAMP__), 'dd.MM.yyyy')}
                 </span>
               </div>
             </motion.div>

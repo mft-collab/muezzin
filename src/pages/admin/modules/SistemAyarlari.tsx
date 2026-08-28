@@ -134,9 +134,27 @@ export default function SistemAyarlari() {
   <MapPin className="text-[var(--dynamic-aura,var(--aura-indigo))] w-5 h-5" strokeWidth={1.6} />
   </div>
   <div>
-  <h3 className="text-lg sm:text-xl font-semibold text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
+  {/* font-light: diğer tüm admin modül/bölüm başlıklarıyla (bkz. EzanOnbellegi.tsx,
+      premium standart denetimi) tutarlı — font-semibold buradaki tek istisnaydı. */}
+  <h3 className="text-lg sm:text-xl font-light text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
   <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">Diyanet ilçe kodu ve hicri tarih ayarı</p>
   </div>
+  </div>
+
+  {/* Şu an canlıda geçerli olan (form alanlarının aksine, henüz kaydedilmemiş
+      taslak değişiklikleri değil) ayarların özeti — tek karttan sonra sayfanın
+      geri kalanı boş kaldığı için eklendi (bkz. görsel tasarım denetimi);
+      yeni bir Firestore dinleyicisi açmaz, zaten yüklenmiş `settings`'i okur. */}
+  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 sm:mb-8 px-4 py-3 rounded-[12px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] relative z-10">
+  <span className="authority-title !text-2xs opacity-45 tracking-wide">ŞU AN CANLIDA GEÇERLİ</span>
+  <span className="text-xs text-[var(--text-secondary)]">
+    <span className="text-[var(--text-primary)] font-medium">{settings.ilceAdi}</span> ({settings.ilceId})
+  </span>
+  <span className="text-xs text-[var(--text-secondary)]">
+    Hicri düzeltme: <span className="text-[var(--text-primary)] font-medium">
+      {settings.hicriDuzeltme ? `${settings.hicriDuzeltme > 0 ? '+' : ''}${settings.hicriDuzeltme} gün` : 'Normal'}
+    </span>
+  </span>
   </div>
 
   <form onSubmit={handleSave} className="space-y-6 sm:space-y-8 relative z-10">
@@ -149,7 +167,7 @@ export default function SistemAyarlari() {
              value={ilceId}
              onChange={(e) => setIlceId(e.target.value)}
              inputMode="numeric"
-             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/35"
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/30 placeholder:italic placeholder:font-normal"
              placeholder="9148"
              required
            />
@@ -163,7 +181,7 @@ export default function SistemAyarlari() {
              type="text" 
              value={ilceAdi}
              onChange={(e) => setIlceAdi(e.target.value)}
-             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/35"
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/30 placeholder:italic placeholder:font-normal"
              placeholder="Ceyhan"
              required
            />
@@ -215,12 +233,12 @@ export default function SistemAyarlari() {
  <motion.button 
  whileHover={{ y: -5, scale: 1.02, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}
  whileTap={{ scale: 0.98 }}
-  type="submit" 
+  type="submit"
   disabled={saving}
-  className="bg-white text-black w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
+  className="bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
   >
   {saving ? (
-  <div className="w-4 h-4 border-2 border-black/10 border-t-black rounded-full animate-spin" />
+  <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-[var(--text-primary)] rounded-full animate-spin" />
   ) : <Save className="w-4 h-4" />}
   {saving ? 'İŞLENİYOR...' : 'AYARLARI KAYDET'}
   </motion.button>

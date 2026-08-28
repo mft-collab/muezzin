@@ -28,9 +28,9 @@ export function ConfirmModal({
  <Modal isOpen={isOpen} onClose={onClose} title={title}>
  <div className="flex flex-col items-center text-center py-6">
     <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center mb-10 border transition-all duration-700 ${
-      isDanger 
-        ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.15)] animate-float' 
-        : 'bg-[var(--status-warning)]/10 border-[var(--status-warning)]/20 text-[var(--status-warning)] shadow-[0_0_25px_rgba(245,158,11,0.15)]'
+      isDanger
+        ? 'bg-[var(--status-danger)]/10 border-[var(--status-danger)]/20 text-[var(--status-danger)] shadow-[0_0_25px_color-mix(in_srgb,var(--status-danger)_15%,transparent)] animate-float'
+        : 'bg-[var(--status-warning)]/10 border-[var(--status-warning)]/20 text-[var(--status-warning)] shadow-[0_0_25px_color-mix(in_srgb,var(--status-warning)_15%,transparent)]'
     }`}>
       <AlertTriangle size={32} strokeWidth={1.2} />
     </div>
@@ -45,8 +45,8 @@ export function ConfirmModal({
         whileTap={{ scale: 0.95 }}
         onClick={onConfirm}
         className={`flex-1 py-4.5 rounded-[20px] text-2xs font-bold uppercase tracking-wide transition-all border-none cursor-pointer ${
-          isDanger 
-            ? 'bg-rose-500 text-[var(--text-primary)] shadow-[0_4px_15px_-3px_rgba(244,63,94,0.4)] hover:shadow-[0_8px_25px_-5px_rgba(244,63,94,0.6)]' 
+          isDanger
+            ? 'bg-[var(--status-danger)] text-[var(--app-bg)] shadow-[0_4px_15px_-3px_color-mix(in_srgb,var(--status-danger)_40%,transparent)] hover:shadow-[0_8px_25px_-5px_color-mix(in_srgb,var(--status-danger)_60%,transparent)]'
             : 'neural-btn'
         }`}
       >

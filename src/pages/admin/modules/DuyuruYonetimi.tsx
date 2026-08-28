@@ -16,6 +16,7 @@ import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { AdminLoadingState } from '../components/AdminLoadingState';
 import { duyurularAbone, duyuruYayinla, duyuruSil } from '../../../services/duyuruServisi';
 import { toJsDate } from '../../../lib/dateUtils';
+import { useNotificationStore } from '../../../store/useNotificationStore';
 
 export const DuyuruYonetimi: React.FC = () => {
  const [duyurular, setDuyurular] = useState<Duyuru[]>([]);
@@ -28,8 +29,8 @@ export const DuyuruYonetimi: React.FC = () => {
  });
  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
  const [deletingId, setDeletingId] = useState<string | null>(null);
- const [errorStatus, setErrorStatus] = useState<string | null>(null);
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const showNotification = useNotificationStore(s => s.showNotification);
 
  // Hazır duyuru şablonu önerici — anahtar kelime eşleştirmesiyle çalışan
  // basit bir şablon seçicidir, yapay zeka içermez.
@@ -103,12 +104,20 @@ export const DuyuruYonetimi: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      setErrorStatus(null);
       await duyuruYayinla(formData);
       setModalOpen(false);
       setFormData({ baslik: '', icerik: '', tip: 'duyuru' });
     } catch (error) {
-      setErrorStatus(error instanceof Error ? error.message : 'Duyuru yayınlanırken bir hata oluştu.');
+      // Modal bu noktada hâlâ açık — burada eskiden Modal'ın (z-[500],
+      // portallanmış) altında kalabilen yerel bir fixed banner kullanılıyordu
+      // (bkz. PersonelFormModal.tsx'teki AYNI düzeltme, premium standart
+      // denetimi); paylaşılan toast sistemi z-[9999]'da olduğundan modal'ın
+      // üzerinde güvenle görünür.
+      showNotification(
+        'Duyuru Yayınlanamadı',
+        error instanceof Error ? error.message : 'Duyuru yayınlanırken bir hata oluştu.',
+        'error'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -124,12 +133,16 @@ export const DuyuruYonetimi: React.FC = () => {
       await duyuruSil(id, title);
       setConfirmDelete({ open: false, id: null });
     } catch (error) {
-      // handleCreate'in aksine bu catch errorStatus'u hiç set etmiyordu —
-      // onay modalı başarıyla AYNI şekilde kapanıyordu, admin silme isteği
-      // (yetki/ağ hatası) başarısız olsa bile duyurunun silindiğine
-      // inanıyordu (bkz. mimari denetim).
+      // handleCreate'in aksine bu catch önceden hiçbir kullanıcı geri
+      // bildirimi vermiyordu — onay modalı başarıyla AYNI şekilde
+      // kapanıyordu, admin silme isteği (yetki/ağ hatası) başarısız olsa
+      // bile duyurunun silindiğine inanıyordu (bkz. mimari denetim).
       console.error('Duyuru silinemedi:', error);
-      setErrorStatus(error instanceof Error ? error.message : 'Duyuru silinirken bir hata oluştu.');
+      showNotification(
+        'Duyuru Silinemedi',
+        error instanceof Error ? error.message : 'Duyuru silinirken bir hata oluştu.',
+        'error'
+      );
       setConfirmDelete({ open: false, id: null });
     } finally {
       setDeletingId(null);
@@ -150,8 +163,8 @@ export const DuyuruYonetimi: React.FC = () => {
  <motion.button
  whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
  whileTap={{ scale: 0.98 }}
- onClick={() => { setErrorStatus(null); setModalOpen(true); }}
- className="flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
+ onClick={() => setModalOpen(true)}
+ className="flex items-center justify-center gap-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
  >
  <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
  YENİ DUYURU YAYINLA
@@ -272,7 +285,10 @@ export const DuyuruYonetimi: React.FC = () => {
 
  {/* Hazır Duyuru Şablonları — anahtar kelimeye göre şablon önerir, yapay zeka değildir */}
  <div className="spatial-glass border border-[var(--dynamic-aura,var(--aura-indigo))]/15 p-5 rounded-2xl space-y-4 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))]/[0.01] to-purple-500/[0.01]">
- <div className="flex justify-between items-center">
+ {/* flex-col sm:flex-row: başlık + "Şablonları Göster/Gizle" ikisi de metin
+     ağırlıklı olduğundan dar mobil genişlikte (≤375px) yan yana sığmıyordu
+     (bkz. KrizAlarmlari.tsx'teki aynı desen, mobil yerleşim denetimi). */}
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
  <div className="flex items-center gap-2">
  <LayoutTemplate size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
  <span className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">Hazır Duyuru Şablonları</span>
@@ -280,7 +296,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={() => setTemplatesOpen(!templatesOpen)}
- className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all px-3 py-1.5 rounded-lg border border-[var(--text-primary)]/5 bg-[var(--text-primary)]/[0.01]"
+ className="self-start sm:self-auto text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all px-3 py-1.5 rounded-lg border border-[var(--text-primary)]/5 bg-[var(--text-primary)]/[0.01]"
  >
  {templatesOpen ? 'Şablonları Gizle' : 'Şablonları Göster'}
  </button>
@@ -356,7 +372,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={applyTemplate}
- className="flex-1 py-2.5 bg-white text-black rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:bg-white/90 transition-all"
+ className="flex-1 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-all"
  >
  Şablonu Metne Uygula
  </button>
@@ -432,20 +448,6 @@ export const DuyuruYonetimi: React.FC = () => {
  isDanger={true}
  confirmText="EVET, KALICI OLARAK SİL"
  />
-
- <AnimatePresence>
- {errorStatus && (
- <motion.div
- initial={{ opacity: 0, y: 10 }}
- animate={{ opacity: 1, y: 0 }}
- exit={{ opacity: 0 }}
- className="fixed bottom-6 right-6 z-50 spatial-glass !bg-rose-500/10 border-rose-500/30 p-5 flex items-center gap-4 text-rose-500 text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] rounded-2xl"
- >
- <AlertCircle size={20} />
- {errorStatus}
- </motion.div>
- )}
- </AnimatePresence>
  </div>
  );
 };

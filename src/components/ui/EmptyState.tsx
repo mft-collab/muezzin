@@ -59,7 +59,7 @@ export function EmptyState({ icon, title, description, tone = 'neutral', size = 
           whileTap={{ scale: 0.95 }}
           onClick={action.onClick}
           disabled={action.disabled}
-          className="bg-white text-black px-12 py-6 rounded-[24px] text-2xs font-bold uppercase tracking-wide shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center gap-6 disabled:opacity-50"
+          className="bg-[var(--text-primary)] text-[var(--app-bg)] px-12 py-6 rounded-[24px] text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] flex items-center gap-6 disabled:opacity-50"
         >
           {action.label}
         </motion.button>

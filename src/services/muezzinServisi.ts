@@ -25,6 +25,29 @@ export function isLastActiveAdmin(m: MuezzinDoc, muezzinler: MuezzinDoc[]): bool
   return m.role === 'admin' && m.aktif === true && activeAdmins.length <= 1;
 }
 
+/**
+ * Bir kullanıcının kendi görünen adını (displayName) günceller.
+ *
+ * `src/pages/profil/ProfileHeader.tsx` önceden bu yazımı servis katmanını
+ * atlayıp doğrudan `updateDoc` ile yapıyordu — bu yüzden (a) hata
+ * `handleFirestoreError` ile eşlenmiyor, ham/İngilizce bir SDK hatası
+ * kullanıcıya sızabiliyor ve telemetriye hiç düşmüyordu, (b) admin
+ * panelindeki eşdeğer işlemin (`personelKaydet`) bıraktığı audit-log izi
+ * kullanıcının kendi profilini değiştirmesinde hiç oluşmuyordu (bkz. kod
+ * denetimi). Çağıran taraf (ProfileHeader) offline zaman aşımı koruması
+ * için bunu `zamanAsimiIle` ile sarmalamalı — `okudumOnayla`/`vekaletKabulEt`
+ * çağrılarıyla AYNI desen.
+ */
+export async function kendiAdiniGuncelle(uid: string, displayName: string): Promise<void> {
+  const path = `muezzins/${uid}`;
+  try {
+    await updateDoc(doc(db, 'muezzins', uid), { displayName });
+    await telemetryService.logAudit('Profil Güncelleme', uid, `Kullanıcı kendi görünen adını "${displayName}" olarak güncelledi.`);
+  } catch (err) {
+    throw handleFirestoreError(err, OperationType.UPDATE, path);
+  }
+}
+
 /** Bekleyen davetleri canlı dinler (yalnızca admin panelinde kullanılır). */
 export function invitesAbone(
   onData: (invites: InviteDoc[]) => void,

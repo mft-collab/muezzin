@@ -280,7 +280,7 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-2xs font-bold text-amber-500/60 uppercase tracking-wide">AKTİF TALEPLER</p>
+  <p className="authority-title !text-2xs opacity-40 font-medium tracking-wide">AKTİF TALEPLER</p>
   </div>
  </motion.div>
 

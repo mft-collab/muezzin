@@ -374,19 +374,22 @@ export default function MuezzinYonetimi() {
  </div>
  
  <div className="flex flex-row flex-wrap items-center sm:flex-col sm:items-end gap-1.5 w-full sm:w-auto mt-2 sm:mt-0">
+ {/* Sıralama rozeti tek biçimde ("#N SIRALAMA") yazılır — ilk 3 sıra yalnızca
+ renk kademesiyle (amber/slate/amber-700) ayrılır, ayrı bir kelime dilbilgisi
+ kullanılmaz (bkz. görsel denetim, tutarlılık bulgusu). */}
  {rank === 1 && !showArchived && (
  <span className="px-2.5 py-1 rounded-md text-2xs font-black tracking-wide bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
- LİDER
+ #1 SIRALAMA
  </span>
  )}
  {rank === 2 && !showArchived && (
  <span className="px-2.5 py-1 rounded-md text-2xs font-black tracking-wide bg-slate-400/10 text-slate-400 border border-slate-400/20">
- 2. SIRADA
+ #2 SIRALAMA
  </span>
  )}
  {rank === 3 && !showArchived && (
  <span className="px-2.5 py-1 rounded-md text-2xs font-black tracking-wide bg-amber-700/10 text-amber-700 border border-amber-700/20">
- 3. SIRADA
+ #3 SIRALAMA
  </span>
  )}
  {rank > 3 && !showArchived && (
@@ -422,20 +425,22 @@ export default function MuezzinYonetimi() {
  <div className="flex justify-between items-center">
  <p className="premium-label !text-2xs !opacity-35 uppercase tracking-wide">HİZMET VERİMİ</p>
  <span className={`text-2xs font-bold tabular-nums ${
- efficiency > 80 ? 'text-amber-500' : efficiency > 40 ? 'text-emerald-500' : 'text-[var(--text-secondary)]/40'
+ !isOperationalMuezzin ? 'text-[var(--text-secondary)]/40' :
+ efficiency >= 70 ? 'text-emerald-500' : efficiency >= 40 ? 'text-amber-500' : 'text-rose-500'
  }`}>
  {isOperationalMuezzin ? `%${Math.round(efficiency)}` : 'Kadro dışı'}
  </span>
  </div>
  <div className="w-full h-1.5 bg-[var(--text-primary)]/[0.05] rounded-full overflow-hidden border border-[var(--glass-border)]">
- <motion.div 
+ <motion.div
  initial={{ width: 0 }}
  animate={{ width: `${efficiency}%` }}
  transition={{ duration: 1, ease: "easeOut" }}
  className={`h-full ${
- efficiency > 80 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 
- efficiency > 40 ? 'bg-emerald-500/60' : 
- 'bg-[var(--text-primary)]/10'
+ !isOperationalMuezzin ? 'bg-[var(--text-primary)]/10' :
+ efficiency >= 70 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' :
+ efficiency >= 40 ? 'bg-amber-500/60' :
+ 'bg-rose-500/60'
  }`}
  />
  </div>

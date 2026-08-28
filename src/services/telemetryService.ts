@@ -339,6 +339,30 @@ class TelemetryService {
     breadcrumbBuffer.length = 0;
   }
 
+  /**
+   * Bekleyen (henüz Firestore'a yazılmamış) olay kuyruğunu ve varsa
+   * localStorage yedeğini temizler — `performLogout`'un çağırması gerekir.
+   * `eventQueue` (breadcrumbBuffer gibi) modül-seviyesinde, kullanıcı bazlı
+   * DEĞİL tutulur. Çıkışta temizlenmezse paylaşılan bir cihazda (ör. cami
+   * ofisi tableti) önceki kullanıcının olayları sonraki kullanıcının auth
+   * bağlamıyla yazılmaya çalışılır; `isValidTelemetryLog`'un
+   * `data.userId == request.auth.uid` şartı TEK batch'teki TÜM olayları
+   * (yeni kullanıcının meşru olayları dahil) reddeder ve `flushEvents`'in
+   * catch bloğu kirli kuyruğu geri kuyruğa koyup yeniden dener — kirli olay
+   * kuyruktan çıkmadığı sürece o oturum boyunca hiçbir telemetri/hata kaydı
+   * Firestore'a yazılamaz (bkz. kod denetimi, kritik bulgu).
+   */
+  clearQueue() {
+    this.eventQueue = [];
+    if (this.flushTimeout) {
+      clearTimeout(this.flushTimeout);
+      this.flushTimeout = null;
+    }
+    try {
+      localStorage.removeItem('muezzin-telemetry-backup');
+    } catch { /* yoksay */ }
+  }
+
   private getDeviceMetadata() {
     return {
       os: (navigator as Navigator & { userAgentData?: NavigatorUADataLike }).userAgentData?.platform || navigator.platform || 'Bilinmeyen OS',

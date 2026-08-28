@@ -1,14 +1,13 @@
 import { auth } from './firebase';
 import { telemetryService } from '../services/telemetryService';
+import { OperationType } from './operationType';
 
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
+// Geriye dönük uyumluluk için tekrar dışa aktarılır — bu dosyayı
+// `import { OperationType } from '../lib/firestore-errors'` şeklinde
+// kullanan mevcut ~15 çağıran değişmeden çalışmaya devam eder. Enum'un
+// TEK tanımı artık ./operationType.ts'te (bkz. scripts/lib/errors.ts'teki
+// AYNI enum'la kod denetiminde tespit edilen kopya).
+export { OperationType };
 
 export interface FirestoreErrorInfo {
   error: string;
@@ -118,7 +117,7 @@ export function handleFirestoreError(
       wrappedError,
       `Firestore ${operationType} @ ${path ?? 'unknown'}`
     );
-  } catch (err) {
+  } catch {
     /* telemetri servisine ulaşılamazsa sessizce devam et */
   }
 

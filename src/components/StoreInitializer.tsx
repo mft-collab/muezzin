@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useAuthStore } from '../store/useAuthStore';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { useVakitStore } from '../store/useVakitStore';
+import { useAktifIzinlerStore } from '../store/useAktifIzinlerStore';
 import { useCircadianTheme } from '../hooks/useCircadianTheme';
 
 /**
@@ -27,6 +27,7 @@ export const StoreInitializer = () => {
  useSystemSettingsStore.getState().init();
  useMuezzinStore.getState().init();
  useVakitStore.getState().init();
+ useAktifIzinlerStore.getState().init();
  }, []); // Empty deps: run once only
 
  return null;

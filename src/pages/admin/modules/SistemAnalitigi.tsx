@@ -17,6 +17,19 @@ const PERIOD_OPTIONS = [
   { days: 90, label: '90 Gün' },
 ] as const;
 
+// Türkçe tam gün adının 3 harfli kısaltması — `.substring(0, 3)` ile türetilseydi
+// "Cuma"/"Cumartesi" ve "Pazartesi"/"Pazar" aynı kısaltmaya ("CUM"/"PAZ") düşüp
+// grafikte ayırt edilemez oluyordu (bkz. görsel denetim, SistemAnalitigi.tsx:323).
+const GUN_KISALTMA: Record<string, string> = {
+  Pazartesi: 'PZT',
+  Salı: 'SAL',
+  Çarşamba: 'ÇAR',
+  Perşembe: 'PER',
+  Cuma: 'CUM',
+  Cumartesi: 'CTS',
+  Pazar: 'PAZ',
+};
+
 interface PersonnelStat {
   uid: string;
   displayName: string;
@@ -320,7 +333,7 @@ export default function SistemAnalitigi() {
                   <span className={`authority-title !text-2xs transition-all duration-700 font-bold tracking-wide ${
                     hoveredIdx === idx ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100' : 'opacity-20'
                   }`}>
-                    {data.day.substring(0, 3).toUpperCase()}
+                    {GUN_KISALTMA[data.day] ?? data.day.substring(0, 3).toUpperCase()}
                   </span>
                 </div>
               ))}

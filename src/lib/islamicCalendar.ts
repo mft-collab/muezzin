@@ -106,3 +106,69 @@ export function isRamazanBaslangiciOncesi(date: Date): boolean {
   const { day, month } = parseHijriDate(nextDay);
   return month === 9 && day === 1;
 }
+
+// ─────────────────────────────────────────────────────
+// Kandil Geceleri (Regaib, Miraç, Berat, Kadir, Mevlid)
+// ─────────────────────────────────────────────────────
+
+/**
+ * Bu beş fonksiyonun HEPSİ, "bu tarih doğrudan hedef hicri (ay, gün)'e denk
+ * geliyor mu" sorusuna KAYDIRMASIZ cevap verir — kandil GECESİNİN "bir gün
+ * önceki akşam" olması (İslami günün akşamla başlaması ilkesi: "27. gece" =
+ * hicri 27'nin kendi akşamı değil, YARIN hicri 27 olacaksa BUGÜNÜN akşamı)
+ * kasıtlı olarak burada değil, tek bir yerde — useOzelVakitMesaji.ts'in
+ * kandil bloğunda — ele alınır (bkz. kullanıcı doğrulaması). Regaib eskiden
+ * bu kaydırmayı burada (Perşembe tespiti olarak) kendi içinde taşıyordu; artık
+ * diğer dördüyle simetrik olsun diye doğrudan Cuma'yı (kaydırmasız hedef gün)
+ * tespit ediyor.
+ */
+
+/** Regaib Kandili: Receb ayının (7. ay) ilk Cuma günü. Bir 7 günlük pencere
+ *  haftanın her gününden tam bir tane içerir; bu yüzden ayın ilk 7 günü
+ *  içine düşen Cuma, o ayın İLK Cuma'sı olmak zorundadır — tekil ve kesin
+ *  bir tespit, hicriden miladiye ters dönüşüm gerektirmez. */
+export function isRegaibKandili(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 7 && day <= 7 && date.getDay() === 5; // 5 = Cuma
+}
+
+/** Miraç Kandili: 27 Receb (7. ay) */
+export function isMiracKandili(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 7 && day === 27;
+}
+
+/** Berat Kandili: 15 Şaban (8. ay) */
+export function isBeratKandili(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 8 && day === 15;
+}
+
+/** Kadir Gecesi: 27 Ramazan (9. ay) — Diyanet takviminde sabit gösterilir. */
+export function isKadirGecesi(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 9 && day === 27;
+}
+
+/** Mevlid Kandili: 12 Rebiülevvel (3. ay) */
+export function isMevlidKandili(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 3 && day === 12;
+}
+
+// ─────────────────────────────────────────────────────
+// Hicri Yılbaşı ve Aşure Günü — kandillerin aksine "gece" değil "gün"
+// olarak anılır, bu yüzden akşam-kaydırması uygulanmaz.
+// ─────────────────────────────────────────────────────
+
+/** Hicri Yılbaşı: 1 Muharrem (1. ay) */
+export function isHicriYilbasi(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 1 && day === 1;
+}
+
+/** Aşure Günü: 10 Muharrem (1. ay) */
+export function isAsureGunu(date: Date): boolean {
+  const { day, month } = parseHijriDate(date);
+  return month === 1 && day === 10;
+}

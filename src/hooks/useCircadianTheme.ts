@@ -7,6 +7,7 @@ import {
   calculateKerahatTimes,
   isFriday as isFridayTarih,
 } from '../lib/dateUtils';
+import { mevcutVaktiHesapla } from '../services/ezanVaktiServisi';
 import { Vakit } from '../types';
 
 export function useCircadianTheme() {
@@ -25,31 +26,17 @@ export function useCircadianTheme() {
 
     if (!imsakSaati || !gunesSaati || !ogleSaati || !aksamSaati) return;
 
-    const vakitler: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
-    const parsedVakitler = vakitler.map(vKey => ({
-      key: vKey,
-      time: parseVakitToDate(bugunStr, bugunVakitler[vKey])
-    }));
-
     const updateTheme = () => {
       const now = getTurkeyNow();
 
-      // Determine current vakit period
-      let mevcutVakit: Vakit | 'gunes' = 'yatsi';
-
-      // Find current vakit period using pre-parsed dates
-      let found = false;
-      for (let i = parsedVakitler.length - 1; i >= 0; i--) {
-        const item = parsedVakitler[i];
-        if (item.time && now >= item.time) {
-          mevcutVakit = item.key;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        mevcutVakit = 'yatsi';
-      }
+      // Temel vakit hesaplaması artık merkezi çekirdekten (mevcutVaktiHesapla
+      // — useMevcutVakit'in de kullandığı TEK kaynak, bkz. src/services/
+      // ezanVaktiServisi.ts) geliyor. Önceden burada aynı "sondan başa doğru
+      // tara" algoritması bağımsız bir kopya olarak yeniden yazılmıştı; bu,
+      // çekirdekte yapılacak bir düzeltmenin (ör. DST/Ramazan sabah kayması)
+      // buraya hiç yansımaması riskini taşıyordu (bkz. kod denetimi). Bu hook
+      // yalnızca çekirdeğin kapsamadığı 'gunes' özel durumunu üstüne ekler.
+      let mevcutVakit: Vakit | 'gunes' = mevcutVaktiHesapla(bugunVakitler);
 
       // Special case: gunes period is between sunrise and dhuhr
       if (now >= gunesSaati && now < ogleSaati) {

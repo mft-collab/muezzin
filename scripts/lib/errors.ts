@@ -1,11 +1,12 @@
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
+import { OperationType } from '../../src/lib/operationType.ts';
+
+// Geriye dönük uyumluluk için tekrar dışa aktarılır — bu dosyayı
+// `import { OperationType } from './lib/errors.ts'` şeklinde kullanan
+// mevcut script'ler değişmeden çalışmaya devam eder. Enum'un TEK tanımı
+// artık src/lib/operationType.ts'te (bkz. src/lib/firestore-errors.ts'teki
+// AYNI enum'la kod denetiminde tespit edilen kopya) — bu dosya (~0 bağımlılık)
+// hem tarayıcı hem Admin SDK bağlamında güvenle import edilebiliyor.
+export { OperationType };
 
 interface FirestoreErrorInfo {
   error: string;
