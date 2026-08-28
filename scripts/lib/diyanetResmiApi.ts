@@ -8,6 +8,8 @@
 import { Timestamp } from 'firebase/firestore';
 import type { Vakitler, VakitKaydi } from '../../src/types.ts';
 import { aylikVakitleriCek } from '../../src/services/ezanVaktiServisi.ts';
+import { db } from './firebaseAdminInit.ts';
+import { getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
 /**
  * DİYANET RESMİ NAMAZ VAKTİ API'Sİ (awqatsalah.diyanet.gov.tr)
@@ -18,19 +20,55 @@ import { aylikVakitleriCek } from '../../src/services/ezanVaktiServisi.ts';
  * ise e-posta/şifre ile JWT login gerektiriyor; bu kimlik bilgileri
  * TARAYICI paketine asla girmemeli (herkese açık bundle'da sızar). Bu
  * yüzden bu dosya BİLİNÇLİ OLARAK `scripts/lib/` altında, yalnızca Admin
- * SDK bağlamında çalışan cron script'lerinden (aylikEzanTakvimiGuncelle.ts,
- * vakitVeriSagligiKontrol.ts) import edilecek şekilde tutuluyor —
- * `src/services/ezanVaktiServisi.ts` (hem tarayıcı hem sunucu tarafından
- * paylaşılan modül) bu dosyayı ASLA import etmemeli.
+ * SDK bağlamında çalışan `aylikEzanTakvimiGuncelle.ts` (aylık cron)
+ * tarafından import edilecek şekilde tutuluyor — `src/services/
+ * ezanVaktiServisi.ts` (hem tarayıcı hem sunucu tarafından paylaşılan
+ * modül) bu dosyayı ASLA import etmemeli. `vakitVeriSagligiKontrol.ts`
+ * (GÜNLÜK sağlık kontrolü) BİLİNÇLİ OLARAK bu dosyayı KULLANMIYOR — aksi
+ * halde bir kesinti sırasında (verinin gerçekten eksik olduğu, tam da
+ * resmi API'ye en çok ihtiyaç duyulan an) her gün tekrar tekrar denenip
+ * aylık kotayı hızla tüketirdi; günlük kontrol mevcut anahtarsız zincirde
+ * (emushaf/Aladhan) kalmaya devam ediyor.
  *
- * Kota (bkz. resmi kılavuz "İstek Kotası"): Standart rol altında endpoint +
- * parametre başına günde 5 istek. Bu entegrasyon günde en fazla 2 kez
- * çalışır (aylık cron + günlük sağlık kontrolü, ki ikisi neredeyse hiç aynı
- * ilçe/gün için üst üste binmez), her çalışma da CityDetail + Monthly için
- * birer istek yapar — bu yüzden token'ı çalıştırmalar arası önbelleğe almaya
- * gerek yok, her çalıştırma kendi Login'ini yapar (Login de aynı kotaya tabi
- * olsa bile günde en fazla 2 istekle çok altında kalınır).
+ * Kota: Kullanıcının bildirdiği bilgiye göre bazı uç noktalar (ör.
+ * DateRange) konum başına AYLIK 10 istekle sınırlı; genel "Standart Rol"
+ * kılavuzu ise endpoint+parametre başına GÜNLÜK 5 istekten bahsediyor.
+ * Hangi sınırın `Monthly`/`CityDetail`'e tam olarak uygulandığı belgeden
+ * kesin çıkarılamadığından, EN SIKI olası okumaya (aylık 10) göre
+ * davranılır: `AYLIK_ISTEK_LIMITI` ile ay başına en fazla 8 "deneme"ye
+ * (güvenlik payı bırakılarak) izin verilir — bkz. `kotaRezerveEt`. Aylık
+ * cron zaten ayda yalnızca 1 kez zamanlanmış çalışır; bu sayaç asıl olarak
+ * manuel `workflow_dispatch` tekrarlarının (test/hata ayıklama) kotayı
+ * kazara tüketmesine karşı bir güvenlik ağı.
  */
+
+const AYLIK_ISTEK_LIMITI = 8;
+const KOTA_DOC = 'diyanetResmiApiKota';
+
+/**
+ * Firestore'da `config/diyanetResmiApiKota` belgesinde ay başına bir
+ * "deneme" sayacı tutar (transaction ile atomik) — limitine ulaşılmışsa
+ * `false` döner ve hiçbir HTTP isteği yapılmadan (Login dahil) doğrudan
+ * mevcut zincire düşülür. Bir "deneme" burada Login+CityDetail+Monthly'nin
+ * TAMAMINI (başarılı ya da başarısız fark etmeksizin) kapsıyor — kısmi bir
+ * başarısızlık bile gerçek kota tüketimi olduğundan yalnızca başarıyı
+ * saymak yanıltıcı olurdu.
+ */
+async function kotaRezerveEt(): Promise<boolean> {
+  const ref = db.collection('config').doc(KOTA_DOC);
+  const ay = getTurkeyNow().toISOString().slice(0, 7); // "YYYY-MM"
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const veri = snap.exists ? (snap.data() as { ay?: string; istekSayisi?: number }) : {};
+    const guncelSayisi = veri.ay === ay ? (veri.istekSayisi || 0) : 0;
+
+    if (guncelSayisi >= AYLIK_ISTEK_LIMITI) return false;
+
+    tx.set(ref, { ay, istekSayisi: guncelSayisi + 1 });
+    return true;
+  });
+}
 
 const BASE_URL = 'https://awqatsalah.diyanet.gov.tr';
 
@@ -200,6 +238,12 @@ export async function vakitleriCekOncelikli(
   ilceId: string,
   ilceAdi: string
 ): Promise<Vakitler> {
+  const kotaMusait = await kotaRezerveEt();
+  if (!kotaMusait) {
+    console.warn(`Diyanet resmi API: aylık deneme kotası (${AYLIK_ISTEK_LIMITI}) dolu, mevcut zincire (emushaf/Aladhan) düşülüyor — hiçbir istek yapılmadı.`);
+    return aylikVakitleriCek(yil, ay, ilceId, ilceAdi);
+  }
+
   try {
     const sonuc = await resmiDiyanetVakitleriCek(ilceId, ilceAdi);
     console.log(`Diyanet resmi API'den ${Object.keys(sonuc.gunler).length} gün alındı (ilceId=${ilceId}).`);

@@ -1,6 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
-import { vakitleriCekOncelikli } from './lib/diyanetResmiApi.ts';
+import { aylikVakitleriCek, aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
 import { getTurkeyNow, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 /**
@@ -50,9 +49,12 @@ async function main() {
     `Vakit verisi eksik — bugün(${bugun}): ${bugunTamam ? 'tam' : 'EKSİK'}, yarın(${yarin}): ${yarinTamam ? 'tam' : 'EKSİK'}. API'den tazeleniyor...`
   );
 
-  // Önce resmi Diyanet API'sini dener, başarısız olursa mevcut public
-  // zincire (emushaf/Aladhan) düşer — bkz. scripts/lib/diyanetResmiApi.ts.
-  const vakitData = await vakitleriCekOncelikli(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
+  // BİLİNÇLİ OLARAK resmi Diyanet API'sini (scripts/lib/diyanetResmiApi.ts)
+  // KULLANMIYOR — bu script GÜNLÜK çalıştığından, bir kesinti sırasında her
+  // gün tekrar tekrar denenip aylık kotayı hızla tüketirdi (bkz. o dosyadaki
+  // yorum). Anahtarsız zincirde (emushaf/Aladhan) kalır; resmi API yalnızca
+  // AYDA BİR çalışan aylikEzanTakvimiGuncelle.ts'te kullanılıyor.
+  const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
 
   // Kayan pencereyi gerçek takvim ayına göre bölen paylaşılan çekirdek
   // (bkz. vakitCacheServisi.ts, scripts/aylikEzanTakvimiGuncelle.ts,
