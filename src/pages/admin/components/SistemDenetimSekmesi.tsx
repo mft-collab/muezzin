@@ -35,7 +35,10 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* flex-col sm:flex-row: başlık + sayaç rozeti dar mobil genişlikte
+          (≤375px) yan yana sığmıyordu (bkz. KrizAlarmlari.tsx'teki aynı
+          desen, mobil yerleşim / premium standart denetimi). */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h4 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
           <ClipboardList size={16} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
           Yönetici Denetim İzleri (Audit Logs)

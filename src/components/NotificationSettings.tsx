@@ -8,7 +8,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 import { Muezzin } from '../types';
 import { registerFcmToken } from '../hooks/useFcmToken';
 import { useThemeStore } from '../store/useThemeStore';
-import { useNotificationStore } from '../store/useNotificationStore';
+import { useNotificationStore, NOTIFICATION_HISTORY_LIMIT } from '../store/useNotificationStore';
 import { NotificationHistoryPanel } from './NotificationHistoryPanel';
 
 interface NotificationSettingsProps {
@@ -106,7 +106,10 @@ export default function NotificationSettings({ userData, user }: NotificationSet
       whileHover={{ y: -4 }}
       className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
     >
-      <div className="flex justify-between items-center mb-8 relative z-10">
+      {/* flex-col sm:flex-row: başlık uzun (37 karakter) + durum rozeti dar
+          mobil genişlikte (≤375px) yan yana sığmıyordu (bkz. KrizAlarmlari.tsx'teki
+          aynı desen, mobil yerleşim denetimi). */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-8 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] animate-pulse" />
           <h4 className="premium-label !text-2xs !opacity-70 tracking-wide">BİLDİRİM TERCİHLERİ VE TANI DİREKTİFİ</h4>
@@ -116,7 +119,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
             göre değişen marka rengiyle karışıp "dikkat gerekiyor" sinyali
             birincil eylem butonundan ayrışamıyordu (bkz. görsel tasarım
             denetimi). */}
-        <span className={`text-2xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide ${
+        <span className={`self-start sm:self-auto text-2xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide ${
           userData?.fcmToken
             ? 'text-[var(--status-success)] bg-[var(--status-success)]/10'
             : typeof window !== 'undefined' && (!('Notification' in window) || Notification.permission === 'denied')
@@ -308,7 +311,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
           <div className="space-y-1">
             <h5 className="text-xs font-semibold text-[var(--text-primary)]">Bildirim Geçmişi</h5>
             <p className="text-2xs text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">
-              Kaçırdığınız veya kapanmış bildirimleri (son {50}) buradan tekrar görüntüleyin.
+              Kaçırdığınız veya kapanmış bildirimleri (son {NOTIFICATION_HISTORY_LIMIT}) buradan tekrar görüntüleyin.
             </p>
           </div>
           <button

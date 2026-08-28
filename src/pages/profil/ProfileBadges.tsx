@@ -38,12 +38,15 @@ export default function ProfileBadges({ aylikVakitSayisi }: ProfileBadgesProps) 
       whileHover={{ y: -4 }}
       className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden text-left"
     >
-      <div className="flex justify-between items-center mb-6 relative z-10">
+      {/* flex-col sm:flex-row: başlık + "BAŞARI NİŞANLARI" rozeti ikisi de metin
+          ağırlıklı olduğundan dar mobil genişlikte (≤375px) yan yana sığmıyordu
+          (bkz. KrizAlarmlari.tsx'teki aynı desen, mobil yerleşim denetimi). */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--aura-rose)] animate-pulse" />
           <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">HİZMET VE SADAKAT ROZETLERİ</h4>
         </div>
-        <span className="text-2xs font-bold text-[var(--aura-rose)] bg-[var(--aura-rose)]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
+        <span className="self-start sm:self-auto text-2xs font-bold text-[var(--aura-rose)] bg-[var(--aura-rose)]/10 px-4 py-1.5 rounded-full uppercase tracking-wide">
           BAŞARI NİŞANLARI
         </span>
       </div>

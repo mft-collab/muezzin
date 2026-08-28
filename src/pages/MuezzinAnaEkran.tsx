@@ -415,8 +415,13 @@ export default function MuezzinAnaEkran() {
       : 'bg-gradient-to-br from-[var(--status-info)]/15 via-[var(--status-info)]/5 to-transparent border-[var(--status-info)]/25'
   }`}>
   <Megaphone size={16} className={`${isCurrentDuyuruRead ? 'text-[var(--text-secondary)]/40' : 'text-[var(--status-info)]'} group-hover/item:rotate-12 transition-transform duration-500`} strokeWidth={1.75} />
+  {/* Nokta bg-[var(--status-info)] (sabit mavi) ama parıltısı yanlışlıkla
+      dynamic-aura'ya (günün vaktine göre amber/ruby/emerald olabilir)
+      bağlıydı — nokta ile parıltısı aynı renk olmalı (bkz. GPS aktif
+      noktasındaki established desen: bg-emerald-400 + shadow rgba(52,211,153),
+      premium standart denetimi). */}
   {!isCurrentDuyuruRead && (
-    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--status-info)] shadow-[0_0_8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)] animate-pulse" />
+    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--status-info)] shadow-[0_0_8px_color-mix(in_srgb,var(--status-info)_80%,transparent)] animate-pulse" />
   )}
   </div>
   <div className="flex-1 min-w-0">

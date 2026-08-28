@@ -134,7 +134,9 @@ export default function SistemAyarlari() {
   <MapPin className="text-[var(--dynamic-aura,var(--aura-indigo))] w-5 h-5" strokeWidth={1.6} />
   </div>
   <div>
-  <h3 className="text-lg sm:text-xl font-semibold text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
+  {/* font-light: diğer tüm admin modül/bölüm başlıklarıyla (bkz. EzanOnbellegi.tsx,
+      premium standart denetimi) tutarlı — font-semibold buradaki tek istisnaydı. */}
+  <h3 className="text-lg sm:text-xl font-light text-[var(--text-primary)] tracking-tight leading-tight">Vakit Bölgesi</h3>
   <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">Diyanet ilçe kodu ve hicri tarih ayarı</p>
   </div>
   </div>
