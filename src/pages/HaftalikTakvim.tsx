@@ -136,7 +136,11 @@ export default function HaftalikTakvim() {
 
  <IslamicGeometricBg />
 
- <div className="w-full max-w-7xl mx-auto px-0 md:px-8 pb-32 min-h-screen relative z-10">
+ {/* pb-8: Layout.tsx'teki <main> zaten dock temizliği için pb ayırıyor (bkz.
+     MuezzinAnaEkran.tsx yorumu, mobil yerleşim denetimi) — eskiden buradaki
+     pb-32 bununla üst üste binip sayfa sonunda gereksiz ~220px boşluk
+     bırakıyordu. */}
+ <div className="w-full max-w-7xl mx-auto px-0 md:px-8 pb-8 min-h-screen relative z-10">
  <header className="relative z-10 mb-10 pt-10 md:pt-16 px-6 md:px-0">
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
  <div className="flex-1">

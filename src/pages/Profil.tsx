@@ -71,7 +71,10 @@ export default function Profil() {
   const currentAylikVakit = userData?.aylikVakitSayisi || 0;
 
   return (
-    <div className="min-h-screen pb-40 relative overflow-hidden">
+    // pb-8: Layout.tsx'teki <main> zaten dock temizliği için pb ayırıyor (bkz.
+    // MuezzinAnaEkran.tsx yorumu, mobil yerleşim denetimi) — pb-40 bununla üst
+    // üste binip sayfa sonunda gereksiz boşluk bırakıyordu.
+    <div className="min-h-screen pb-8 relative overflow-hidden">
       {/* Background Flair */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-[var(--aura-indigo)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />

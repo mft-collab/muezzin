@@ -584,10 +584,17 @@
   background-clip: padding-box;
 }
 
+/* --phi-space burada 0.35rem (5.6px) idi — masaüstü tabanının (clamp'in
+   1rem/16px tabanı) ALTINA düşüyordu. Bu değişken hem sayfa kenar boşluğunu
+   (fluid-wrapper) hem modal iç dolgusunu (.phi-padding) sürdüğü için mobilde
+   kartlar ekran kenarına neredeyse yapışıyor, alt-sheet modallarda metin
+   kenara değecek kadar sıkışıyordu (bkz. mobil yerleşim denetimi). 1rem,
+   masaüstü tabanıyla aynı — dokunmatik/okunabilirlik için küçük ekranda daha
+   AZ değil en az eşit kenar boşluğu gerekir. */
 @media (max-width: 640px) {
   :root {
-    --phi-space: 0.35rem;
-    --phi-gap: 0.7rem;
+    --phi-space: 1rem;
+    --phi-gap: 1rem;
   }
 }
 

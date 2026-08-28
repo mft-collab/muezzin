@@ -200,8 +200,13 @@ export default function MuezzinAnaEkran() {
  </div>
 
   <IslamicGeometricBg />
-  
-  <div className="fluid-wrapper pt-6 sm:pt-8 pb-32 relative z-10">
+
+  {/* Alt boşluk: Layout.tsx'teki <main> zaten dock/PWA banner'ını temizlemek için
+      dinamik pb (mobilde 96px+safe-area, md:144px) ayırıyor — burada AYRICA pb-32
+      eklemek toplamda 220px+ boş kaydırma alanına (mobil ekranın ~%30'u) yol
+      açıyordu (bkz. mobil yerleşim denetimi). Kalan pb-8/10 sadece son karta
+      görsel nefes payı için. */}
+  <div className="fluid-wrapper pt-6 sm:pt-8 pb-8 sm:pb-10 relative z-10">
 
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 lg:gap-12 relative z-10">
  

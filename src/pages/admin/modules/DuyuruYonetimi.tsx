@@ -272,7 +272,10 @@ export const DuyuruYonetimi: React.FC = () => {
 
  {/* Hazır Duyuru Şablonları — anahtar kelimeye göre şablon önerir, yapay zeka değildir */}
  <div className="spatial-glass border border-[var(--dynamic-aura,var(--aura-indigo))]/15 p-5 rounded-2xl space-y-4 bg-gradient-to-r from-[var(--dynamic-aura,var(--aura-indigo))]/[0.01] to-purple-500/[0.01]">
- <div className="flex justify-between items-center">
+ {/* flex-col sm:flex-row: başlık + "Şablonları Göster/Gizle" ikisi de metin
+     ağırlıklı olduğundan dar mobil genişlikte (≤375px) yan yana sığmıyordu
+     (bkz. KrizAlarmlari.tsx'teki aynı desen, mobil yerleşim denetimi). */}
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
  <div className="flex items-center gap-2">
  <LayoutTemplate size={14} className="text-[var(--dynamic-aura,var(--aura-indigo))]" />
  <span className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))] uppercase tracking-wider">Hazır Duyuru Şablonları</span>
@@ -280,7 +283,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={() => setTemplatesOpen(!templatesOpen)}
- className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all px-3 py-1.5 rounded-lg border border-[var(--text-primary)]/5 bg-[var(--text-primary)]/[0.01]"
+ className="self-start sm:self-auto text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all px-3 py-1.5 rounded-lg border border-[var(--text-primary)]/5 bg-[var(--text-primary)]/[0.01]"
  >
  {templatesOpen ? 'Şablonları Gizle' : 'Şablonları Göster'}
  </button>

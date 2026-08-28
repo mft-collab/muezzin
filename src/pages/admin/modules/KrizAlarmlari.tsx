@@ -142,18 +142,21 @@ export default function KrizAlarmlari() {
 
  return (
  <div className="flex flex-col gap-10">
- {/* TOOLBAR: Operational Toggle */}
- <div className="flex justify-between items-center">
+ {/* TOOLBAR: Operational Toggle — dar mobil ekranlarda (≤375px) başlık + "ARŞİVLENMİŞ
+     UYARILAR" anahtarı tek satıra sığmayıp anahtarın sağ ucu ekran dışına taşıyordu
+     (bkz. mobil yerleşim denetimi, gerçek 360px genişlikte doğrulandı). flex-col ile
+     mobilde alt alta, sm+ ekranlarda eskisi gibi yan yana. */}
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Nöbet Uyarıları</h2>
  <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">NÖBET VE VAKİT AKIŞI TAKİBİ</p>
  </div>
 
- <motion.button 
+ <motion.button
  whileHover={{ scale: 1.02 }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setShowResolved(!showResolved)}
- className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 ${
+ className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 self-start ${
  showResolved 
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
  : 'bg-[var(--text-primary)]/[0.03] border-[var(--text-primary)]/5 text-[var(--text-secondary)]'
