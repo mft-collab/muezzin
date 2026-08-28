@@ -1,5 +1,6 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriCek, aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
+import { vakitleriCekOncelikli } from './lib/diyanetResmiApi.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
@@ -16,8 +17,11 @@ async function main() {
     const ilceId = settings?.ilceId || '9148';
     const ilceAdi = settings?.ilceAdi || 'Ceyhan';
 
-    // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren)
-    const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
+    // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren).
+    // Önce resmi Diyanet API'sini dener, başarısız olursa (kimlik bilgisi
+    // yok/kota/ağ hatası) mevcut public zincire (emushaf/Aladhan) düşer —
+    // bkz. scripts/lib/diyanetResmiApi.ts.
+    const vakitData = await vakitleriCekOncelikli(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
 
     // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
     // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama

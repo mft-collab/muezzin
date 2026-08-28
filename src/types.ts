@@ -61,7 +61,10 @@ export interface VakitKaydi {
 export interface Vakitler {
  ilceId: string;
  gunler: { [key: string]: VakitKaydi };
- kaynakApi: "diyanet" | "aladhan";
+ /** "diyanet" = emushaf.net proxy'si (anahtarsız), "diyanet-resmi" = resmi
+  *  awqatsalah.diyanet.gov.tr REST servisi (bkz. scripts/lib/diyanetResmiApi.ts,
+  *  yalnızca sunucu tarafında kullanılır), "aladhan" = son çare fallback. */
+ kaynakApi: "diyanet" | "diyanet-resmi" | "aladhan";
  guncellenmeTarihi: Timestamp;
 }
 
