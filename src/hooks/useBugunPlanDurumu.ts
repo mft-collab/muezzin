@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect } from 'react';
 import { parseISO, startOfWeek, format } from 'date-fns';
 import { useHaftaPlan } from './useHaftaPlan';
 import { useVakitBildirimleri } from './useVakitBildirimleri';
-import { useAktifIzinler } from './useAktifIzinler';
+import { useAktifIzinlerStore } from '../store/useAktifIzinlerStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Bildirim, Vakit } from '../types';
@@ -66,7 +66,7 @@ export function useBugunPlanDurumu(planDateStr: string, vakitKeyForPlan: Vakit) 
 
   const muezzinMap = useMuezzinStore(state => state.muezzinMap);
   const usersLoading = useMuezzinStore(state => state.loading);
-  const { aktifIzinler } = useAktifIzinler();
+  const aktifIzinler = useAktifIzinlerStore(state => state.aktifIzinler);
 
   const { bildirimler: vakitBildirimleri, loading: vakitBildirimleriLoading } = useVakitBildirimleri(planDateStr, vakitKeyForPlan);
 

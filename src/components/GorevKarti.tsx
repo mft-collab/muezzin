@@ -1,9 +1,11 @@
 /**
  * GorevKarti.tsx
- * Optimized task component with 5s polling interval and Spatial Design System.
+ * Görev kartı — geri sayım kendi kendine ayarlanan bir setTimeout zinciriyle
+ * çalışır (1sn/30sn aralık, aşağıdaki updateTimer'a bkz.), sabit bir polling
+ * interval'i yok — Spatial Design System.
  */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from './ui/Modal';
 import { Bildirim, Vakit } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
@@ -12,7 +14,6 @@ import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
 import {
  getTurkeyNow,
  parseVakitToDate,
- VAKIT_GORA_ISIMLERI,
  toTurkishUpperCase,
 } from '../lib/dateUtils';
 import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info } from 'lucide-react';
@@ -21,7 +22,7 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { auth } from '../lib/firebase';
 import { vekaletTeklifEt } from '../services/vekaletServisi';
-import { useAktifIzinler } from '../hooks/useAktifIzinler';
+import { useAktifIzinlerStore } from '../store/useAktifIzinlerStore';
 import { useVakitBildirimleri } from '../hooks/useVakitBildirimleri';
 
 // Sabit etiketler — IDE i18n tarayicisi JSX literal yakalar; degisken referansi yakalamiyor
@@ -48,8 +49,6 @@ function getVakitIsmi(vakit: string): string {
     default:       return vakit;
   }
 }
-
-const AKTIF_KONTROL_INTERVAL_MS = 5_000;
 
 const getStatusConfig = (bildirim: Bildirim) => {
  if (bildirim.durum === 'onaylandi')
@@ -89,11 +88,10 @@ export const GorevKarti = React.memo(({
  );
  const { showNotification } = useNotificationStore();
  const [kalanSureText, setKalanSureText] = useState('');
- const tickSpeedRef = useRef(1000);
  const [isVekaletModalOpen, setIsVekaletModalOpen] = useState(false);
  const [isSendingVekalet, setIsSendingVekalet] = useState(false);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
- const { aktifIzinler } = useAktifIzinler();
+ const aktifIzinler = useAktifIzinlerStore(s => s.aktifIzinler);
  const { bildirimler: vakitBildirimleri } = useVakitBildirimleri(bildirim.tarih, bildirim.vakit as Vakit);
 
  const eligiblePeers = useMemo(() => {

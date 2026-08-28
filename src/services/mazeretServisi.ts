@@ -10,7 +10,6 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  Timestamp,
   where,
   writeBatch
 } from 'firebase/firestore';

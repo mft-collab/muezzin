@@ -117,7 +117,7 @@ export function handleFirestoreError(
       wrappedError,
       `Firestore ${operationType} @ ${path ?? 'unknown'}`
     );
-  } catch (err) {
+  } catch {
     /* telemetri servisine ulaşılamazsa sessizce devam et */
   }
 
