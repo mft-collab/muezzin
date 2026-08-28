@@ -24,6 +24,7 @@ import { vekaletKabulEt, vekaletReddet } from '../services/vekaletServisi';
 import { VAKIT_GORA_ISIMLERI, toTurkishUpperCase } from '../lib/dateUtils';
 import { Vakit } from '../types';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
 import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
@@ -56,6 +57,11 @@ export default function MuezzinAnaEkran() {
  } = useDashboardLogic();
 
   const [activeDuyuruIdx, setActiveDuyuruIdx] = useState(0);
+  // İzin (leave) yalnızca nöbete atanabilen 'muezzin' rolü için anlamlı —
+  // sunucu tarafı artık bunu isValidIzin'de zorunlu kılıyor (bkz.
+  // firestore.rules); kart burada da admin/gözlemci'ye gösterilmeyip
+  // PERMISSION_DENIED ile karşılaşmaları önlenir (bkz. yetki denetimi).
+  const role = useAuthStore(s => s.role);
 
   const { gpsEnabled, gpsLoading, enableGps, disableGps } = useGpsVakitStore();
   const [isQiblaOpen, setIsQiblaOpen] = useState(false);
@@ -338,6 +344,7 @@ export default function MuezzinAnaEkran() {
  className="lg:col-span-7 flex flex-col gap-6 sm:gap-8"
  >
 
+ {role === 'muezzin' && (
  <motion.div
  initial={{ opacity: 0, y: 12 }}
  animate={{ opacity: 1, y: 0 }}
@@ -347,6 +354,7 @@ export default function MuezzinAnaEkran() {
  <VacationRequestCard user={currentUser} />
  </Suspense>
  </motion.div>
+ )}
 
  {/* Announcements Slider */}
  {duyurular.length > 0 && (

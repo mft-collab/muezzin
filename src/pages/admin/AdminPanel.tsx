@@ -90,10 +90,17 @@ export default function AdminPanel() {
  // StoreInitializer'daki global store'larla aynı yaklaşım: dönen unsubscribe
  // kasıtlı olarak çağrılmaz, `initialized` bayrağı yalnızca aynı oturumda
  // (StrictMode çift-mount dahil) tekrar abone olunmasını engeller.
+ // `isAdmin`'e bağımlı: eskiden koşulsuz çalışıyordu, yani /admin'e manuel
+ // giden yetkisiz bir kullanıcı için (ya da auth henüz çözülmemişken) admin-
+ // scope sorgular deneniyordu — Firestore kuralları bunu doğru reddediyor
+ // (veri sızmıyor) ama gereksiz PERMISSION_DENIED hatası/dinleyici
+ // üretiyordu (bkz. yetki denetimi). isAdmin sonradan true olursa (auth
+ // async çözüldüğünde) efekt yeniden çalışıp abonelik başlatır.
  useEffect(() => {
+ if (!isAdmin) return;
  useKrizAlarmlariStore.getState().init();
  useAdminIzinlerStore.getState().init();
- }, []);
+ }, [isAdmin]);
 
  // Sirkadiyen Aura Entegrasyonu
  const { bugunVakitler } = useEzanVakitleri();

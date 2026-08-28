@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteDoc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
@@ -40,6 +40,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  let unsubscribeDoc: (() => void) | null = null;
  let snapshotFailsafe: ReturnType<typeof setTimeout> | null = null;
  let authInitFailsafe: ReturnType<typeof setTimeout> | null = null;
+ // firestore.rules `isAdmin()` iki dalı OR'lar: muezzins.role=='admin' VEYA
+ // config/bootstrap superAdminEmails üyeliği. Bu store eskiden yalnızca
+ // role alanına bakıyordu — bir admin, MuezzinYonetimi üzerinden bir süper-
+ // admin'in rolünü yanlışlıkla 'muezzin'e çekerse sunucu hâlâ tam yetki
+ // verirdi ama UI admin panelini tamamen gizlerdi (kilitlenme, bkz. yetki
+ // denetimi). Bootstrap dokümanı nadiren değiştiğinden bu kontrol uid
+ // başına yalnızca BİR kez ve yalnızca role zaten 'admin' DEĞİLSE yapılır
+ // (sıradan müezzinler için gereksiz okuma eklemez); getDoc (cache-öncelikli)
+ // kullanılır, getDocFromServer DEĞİL — offline-first davranışı bozmamak
+ // için.
+ let superAdminCheckedForUid: string | null = null;
+ let cachedIsSuperAdminSelf = false;
 
  // Cold start failsafe: if Firebase Auth does not fire within 4.5 seconds (network lag, locked DB, etc.), force load
  authInitFailsafe = setTimeout(() => {
@@ -95,12 +107,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  if (data.aktif === false) {
  set({ error: 'Hesabınız devre dışı bırakılmış.', role: null, isAdmin: false, loading: false, initialized: true });
  } else {
- set({ 
- role: data.role, 
- isAdmin: data.role === 'admin',
+ let isAdminResolved = data.role === 'admin';
+ if (!isAdminResolved) {
+ if (superAdminCheckedForUid !== currentUser.uid) {
+ try {
+ const currentEmail = currentUser.email?.toLowerCase().trim() || '';
+ const bootstrapDoc = currentEmail ? await getDoc(doc(db, 'config', 'bootstrap')) : null;
+ const superAdminEmails: string[] = bootstrapDoc?.exists() ? (bootstrapDoc.data().superAdminEmails || []) : [];
+ cachedIsSuperAdminSelf = !!currentEmail && superAdminEmails.includes(currentEmail);
+ } catch {
+ // Çevrimdışı/erişim hatası: role alanına güven, güvenli varsayılan.
+ cachedIsSuperAdminSelf = false;
+ }
+ superAdminCheckedForUid = currentUser.uid;
+ }
+ isAdminResolved = cachedIsSuperAdminSelf;
+ }
+ set({
+ role: data.role,
+ isAdmin: isAdminResolved,
  isPending: !!data.onayBekliyor,
  loading: false,
- initialized: true 
+ initialized: true
  });
  }
  } else {

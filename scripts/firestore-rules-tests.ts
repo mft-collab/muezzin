@@ -106,6 +106,19 @@ async function seedBaseData(env: RulesTestEnvironment) {
       aylikVakitSayisi: 0
     });
 
+    // Gozlemci: sadece izleyici, hicbir zaman nobete atanmiyor (bkz.
+    // isAssignableDutyUidVeri) — izin (leave) testlerinde bu rolun izin
+    // olusturamamasini dogrulamak icin (bkz. yetki denetimi).
+    await setDoc(doc(db, 'muezzins/gozlemci1'), {
+      displayName: 'Gozlemci One',
+      email: 'gozlemci1@example.test',
+      role: 'gozlemci',
+      aktif: true,
+      photoURL: '',
+      fcmToken: null,
+      aylikVakitSayisi: 0
+    });
+
     await setDoc(doc(db, 'bildirimler/ownPendingAsil'), {
       haftaId: 'W2026-05-18',
       tarih: '2026-05-22',
@@ -712,6 +725,35 @@ const tests: TestCase[] = [
       await assertFails(setDoc(doc(db, 'izinler/otherLeave'), {
         ...base,
         uid: 'muezzin2'
+      }));
+    }
+  },
+  {
+    // Izin (leave) yalnizca nobete atanabilen 'muezzin' rolu icin
+    // anlamlidir (bkz. isAssignableDutyUidVeri) — admin ve gozlemci
+    // hicbir zaman nobete atanmiyor, sunucu tarafi bunu isValidIzin'de
+    // artik zorunlu kiliyor (bkz. yetki denetimi).
+    name: 'gozlemci ve admin izin talebi olusturamaz',
+    run: async (env) => {
+      const base = {
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onay_bekliyor',
+        sebep: 'Aile',
+        olusturmaTarihi: Timestamp.now()
+      };
+
+      const gozlemciDb = testUser(env, 'gozlemci1').firestore();
+      await assertFails(setDoc(doc(gozlemciDb, 'izinler/gozlemciLeave'), {
+        ...base,
+        uid: 'gozlemci1'
+      }));
+
+      const adminDb = testUser(env, 'admin').firestore();
+      await assertFails(setDoc(doc(adminDb, 'izinler/adminLeave'), {
+        ...base,
+        uid: 'admin'
       }));
     }
   },

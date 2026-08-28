@@ -814,6 +814,14 @@ service cloud.firestore {
              // burada da izinli olmalı.
              data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'sebep', 'durum', 'olusturmaTarihi', 'redSebebi']) &&
              data.uid == request.auth.uid &&
+             // İzin (leave) yalnızca nöbete atanabilen 'muezzin' rolü icin
+             // anlamlidir — admin ve gozlemci hicbir zaman nobete
+             // atanmiyor (bkz. isAssignableDutyUidVeri, role == 'muezzin'
+             // sarti), yani onlar icin bir izin kaydinin planlama acisindan
+             // hicbir karsiligi yok. Istemci (VacationRequestCard.tsx) bu
+             // forma role bakmaksizin herkesi eristiriyordu — sunucu
+             // tarafinda hic dogrulanmiyordu (bkz. yetki denetimi).
+             get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'muezzin' &&
              data.tip in ['haftalik', 'yillik', 'mazeret'] &&
              data.durum == 'onay_bekliyor' &&
              isValidIzinTarihAraligi(data.baslangic, data.bitis) &&
@@ -829,18 +837,26 @@ service cloud.firestore {
     }
 
     match /izinler/{docId} {
-      allow list: if isAdmin() || (isSignedIn() && (resource == null || resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
+      // `list` sorgusu yalnizca VAR OLAN belgeler uzerinde degerlendirilir —
+      // Firestore bir liste sonucunda "olmayan bir belge" doner remez, bu
+      // yuzden `resource` burada asla null olamaz (bu, tek bir bilinen
+      // dokuman yoluna get() yapan `get` kuralindan farkli — orada gercekten
+      // olmayan bir ID'ye bakilabilir, bkz. asagidaki `get`). Eskiden buraya
+      // `get` kuraliyla simetri icin `resource == null` eklenmisti; olu kod
+      // oldugu icin kaldirildi (bkz. yetki denetimi) — npm run test:rules
+      // ile davranis degismedigi dogrulandi.
+      allow list: if isAdmin() || (isSignedIn() && (resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       // isSignedIn() ortadaki disjunktta da zorunlu — eskiden yalnizca
       // 'onaylandi' durumu kontrol ediliyordu, yani giris yapmamis biri
       // durumu 'onaylandi' olan HERHANGI bir izin belgesini ID'sini
       // bilerek okuyabiliyordu (bkz. mimari denetim O10).
-      // `resource == null` dali komsu `list` kuraliyla (yukarida) SIMETRIK
-      // olmasi icin eklendi — bu satirda eskiden eksikti: admin olmayan bir
-      // kullanici var olmayan bir izin ID'sine getDoc attiginda `resource`
-      // null oldugundan `resource.data.durum` null-deref hatasiyla
-      // reddediliyordu (bkz. vekalet_talepleri get kuralindaki ayni sinif
-      // bug, e2e denetimi — bu koleksiyonda henuz gercek bir cagiran yok
-      // ama desen tutarliligi ve savunma derinligi icin duzeltildi).
+      // `resource == null` dali `get` icin gercekten gerekli: admin olmayan
+      // bir kullanici var olmayan bir izin ID'sine getDoc attiginda
+      // `resource` null oldugundan `resource.data.durum` null-deref
+      // hatasiyla reddediliyordu (bkz. vekalet_talepleri get kuralindaki
+      // ayni sinif bug, e2e denetimi — bu koleksiyonda henuz gercek bir
+      // cagiran yok ama desen tutarliligi ve savunma derinligi icin
+      // duzeltildi).
       allow get: if isAdmin() || (isSignedIn() && (resource == null || resource.data.durum == 'onaylandi' || resource.data.uid == request.auth.uid));
       allow create: if isSignedIn() && isValidIzin(incoming());
       // Admin disjunct'ı önceden yalnızca durum/redSebebi'ye izin veriyordu —
