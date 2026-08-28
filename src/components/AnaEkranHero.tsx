@@ -369,7 +369,7 @@ export const AnaEkranHero = React.memo(({
  </div>
  </motion.div>
 
- {/* Özel Vakit Banner — Kerahat / Teheccüd / Bayram / Teşrik */}
+ {/* Özel Vakit Banner — Kerahat / Teheccüd / Bayram / Teşrik / Kandil */}
  <OzelVakitBanner durum={ozelVakitDurumu} />
 
  {/* Ramazan Ayı Özel Hub Bileşeni */}

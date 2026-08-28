@@ -7,9 +7,21 @@
  *  - bayram_arife   : Bayramdan bir gün önce hazırlık mesajı
  *  - bayram         : Bayram namazı vakti
  *  - tesrik         : Kurban günlerinde farz namazı öncesi/sonrası tekbir hatırlatması
+ *  - kandil         : Regaib / Miraç / Berat / Kadir / Mevlid geceleri. İslami
+ *                      günün akşamla başlaması ilkesi gereği "hicri X. gece"
+ *                      hicri X'in KENDİ akşamı değil, YARIN hicri X olacaksa
+ *                      BUGÜNÜN akşamıdır. Sıra GECE ÖNCE, GÜNDÜZ SONRA (bkz.
+ *                      kullanıcı doğrulaması) — iki ayrı takvim gününde:
+ *                      gece (D'nin akşamından D+1'in imsakına, `yarinDate`
+ *                      hicri X ise) kandilin kendisi; ardından gündüz (D+1'in
+ *                      kendi imsakından akşamına, `bugunDate` hicri X ise)
+ *                      "bu gün kandil günü" hatırlatması.
+ *  - hicri_yilbasi  : 1 Muharrem (gece değil gün olarak anılır, kaydırmasız)
+ *  - asure_gunu     : 10 Muharrem (gece değil gün olarak anılır, kaydırmasız)
  */
 
 import { useMemo } from 'react';
+import { addDays, format } from 'date-fns';
 import { GunlukVakit, Vakit } from '../types';
 import { parseVakitToDate, calculateKerahatTimes, calculateLastThirdOfNight, isFriday as isFridayTarih } from '../lib/dateUtils';
 import {
@@ -22,9 +34,15 @@ import {
   isRamazanBaslangiciOncesi,
   isTesrikGunu,
   isSonTesrikGunu,
+  isRegaibKandili,
+  isMiracKandili,
+  isBeratKandili,
+  isKadirGecesi,
+  isMevlidKandili,
+  isHicriYilbasi,
+  isAsureGunu,
   parseHijriDate,
 } from '../lib/islamicCalendar';
-import { format } from 'date-fns';
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 
 export type OzelVakitTip =
@@ -36,6 +54,9 @@ export type OzelVakitTip =
   | 'bayram'
   | 'tesrik'
   | 'cuma'
+  | 'kandil'
+  | 'hicri_yilbasi'
+  | 'asure_gunu'
   | null;
 
 export type TesrikVakitRenk = 'emerald' | 'amber' | 'orange' | 'rose' | 'violet';
@@ -51,6 +72,17 @@ export interface OzelVakitDurumu {
   tesrikVakitRenk?: TesrikVakitRenk;
   /** Mesajın biteceği zaman (geri sayım için) */
   bitisZamani?: Date;
+  /**
+   * Bu öncelik zinciri "ilk eşleşme kazanır" mantığıyla çalışır (bkz. mantıksal
+   * tutarlılık denetimi) — ama bir kandilin gündüz fazı bazı yıllarda gerçek
+   * bir Cuma gününe denk gelebilir (Regaib'in gündüzü TANIM GEREĞİ her zaman
+   * Cuma'dır; Miraç/Berat/Kadir/Mevlid sabit hicri günler olduğundan bazı
+   * yıllarda tesadüfen Cuma'ya denk gelebilir). Bu tek durumda kandil Cuma'yı
+   * SESSİZCE ezmesin diye, ikinci bir banner burada taşınır — yalnızca bu
+   * örtüşme için var, genel bir "çoklu durum" sistemi değil (bkz. 3 yıllık
+   * simülasyon: başka hiçbir örtüşme yok).
+   */
+  ikincilDurum?: OzelVakitDurumu;
 }
 
 // Teşrik tekbiri metni
@@ -101,6 +133,9 @@ export function useOzelVakitMesaji(
     if (!bugunVakitler) return NULL_DURUM;
 
     const dateStr = format(bugunDate, 'yyyy-MM-dd');
+    // Kandil tespiti bu tarihe göre değil YARINA göre yapılır (bkz. dosya
+    // başı yorumu — İslami günün akşamla başlaması ilkesi).
+    const yarinDate = addDays(bugunDate, 1);
 
     // Tüm vakit nesnelerini parse et
     const sabahDate  = parseVakitToDate(dateStr, bugunVakitler.sabah);
@@ -268,6 +303,104 @@ export function useOzelVakitMesaji(
     }
 
     // ─────────────────────────────────────────────────────
+    // 3d. KANDİL GECELERİ (Regaib / Miraç / Berat / Kadir / Mevlid)
+    // Sıra GECE ÖNCE, GÜNDÜZ SONRA (bkz. kullanıcı doğrulaması) — iki faz
+    // birbirini takip eden İKİ FARKLI takvim gününde gerçekleşir:
+    //  1) Gece: BUGÜNÜN akşamından YARININ imsakına — YARIN hicri X ise
+    //     (İslami günün akşamla başlaması ilkesi, bkz. dosya başı yorumu).
+    //  2) Gündüz: BİR SONRAKİ günün (hicri X'in kendi günü — dün geceki
+    //     kandilin ertesi) imsakından akşamına — BUGÜN hicri X ise.
+    // Yani bir kandil döngüsünde önce (D günü akşamı) gece fazı, sonra
+    // (D+1 günü gündüzü) gündüz fazı gösterilir; aynı takvim gününde asla
+    // ikisi birden tetiklenmez. kerahat/teheccüd/cuma gibi rutin
+    // bannerlardan daha yüksek öncelikli — bayram/teşrik/arife ile aynı
+    // gerekçe: yılda bir kez olan mübarek bir gece.
+    // ─────────────────────────────────────────────────────
+    const KANDIL_ACIKLAMA: Record<string, string> = {
+      'Regaib Kandili': 'Üç Ayların ve mübarek gecelerin ilkidir. Receb ayının ilk Cuma gecesine denk gelir; dua, tövbe ve ibadetle ihya edilir.',
+      'Miraç Kandili': 'Peygamber Efendimiz (s.a.v)\'in Cenâb-ı Hakk\'ın huzuruna yükseldiği, beş vakit namazın farz kılındığı gecedir.',
+      'Berat Kandili': 'Yıllık rızık, ecel ve amellerin yazıldığına inanılan; af ve mağfiret gecesidir.',
+      'Kadir Gecesi': 'Kur\'ân-ı Kerîm\'in indirilmeye başlandığı, "bin aydan hayırlı" olduğu bildirilen gecedir.',
+      'Mevlid Kandili': 'Peygamber Efendimiz Hz. Muhammed (s.a.v)\'in dünyayı teşrif ettiği doğum gecesidir.',
+    };
+
+    const kandilAdiGece =
+      isRegaibKandili(yarinDate) ? 'Regaib Kandili' :
+      isMiracKandili(yarinDate) ? 'Miraç Kandili' :
+      isBeratKandili(yarinDate) ? 'Berat Kandili' :
+      isKadirGecesi(yarinDate) ? 'Kadir Gecesi' :
+      isMevlidKandili(yarinDate) ? 'Mevlid Kandili' :
+      null;
+
+    // Gece: kandilin kendisi (bugünün akşamından yarının imsakına)
+    if (kandilAdiGece && aksamDate && yarinImsakDate && now >= aksamDate && now < yarinImsakDate) {
+      return {
+        tip: 'kandil',
+        baslik: kandilAdiGece,
+        altBaslik: 'MÜBAREK GECE',
+        aciklama: `${KANDIL_ACIKLAMA[kandilAdiGece]} ${kandilAdiGece} mübarek olsun.`,
+        bitisZamani: yarinImsakDate,
+      };
+    }
+
+    const kandilAdiGunduz =
+      isRegaibKandili(bugunDate) ? 'Regaib Kandili' :
+      isMiracKandili(bugunDate) ? 'Miraç Kandili' :
+      isBeratKandili(bugunDate) ? 'Berat Kandili' :
+      isKadirGecesi(bugunDate) ? 'Kadir Gecesi' :
+      isMevlidKandili(bugunDate) ? 'Mevlid Kandili' :
+      null;
+
+    // Gündüz: "bu gün kandil günü" (bugünün imsakından akşamına) — dün
+    // geceki kandilin ertesi günü. Regaib'in gündüzü TANIM GEREĞİ her zaman
+    // Cuma'dır; diğer dördü sabit hicri gün olduğundan bazı yıllarda
+    // tesadüfen Cuma'ya denk gelebilir — o durumda Cuma bannerı SESSİZCE
+    // ezilmesin diye ikincil durum olarak taşınır (bkz. OzelVakitDurumu.ikincilDurum).
+    if (kandilAdiGunduz && imsakDate && aksamDate && now >= imsakDate && now < aksamDate) {
+      const buGunCuma = isFridayTarih(bugunDate);
+      return {
+        tip: 'kandil',
+        baslik: kandilAdiGunduz,
+        altBaslik: 'BU GÜN',
+        aciklama: `Bu gün ${kandilAdiGunduz} günü. ${KANDIL_ACIKLAMA[kandilAdiGunduz]}`,
+        bitisZamani: aksamDate,
+        ikincilDurum: buGunCuma ? {
+          tip: 'cuma',
+          baslik: 'Hayırlı Cumalar',
+          altBaslik: 'CUMA GÜNÜ',
+          aciklama: 'Bugün Müslümanların haftalık bayramıdır. Günün hayrı, bereketi ve huzuru üzerinize olsun.',
+          bitisZamani: aksamDate,
+        } : undefined,
+      };
+    }
+
+    // ─────────────────────────────────────────────────────
+    // 3e. HİCRİ YILBAŞI (1 Muharrem) VE AŞURE GÜNÜ (10 Muharrem)
+    // Kandillerin aksine "gece" değil "gün" olarak anılır — kaydırmasız,
+    // o günün imsakından akşamına kadar (cuma bannerıyla aynı desen).
+    // ─────────────────────────────────────────────────────
+    const ozelGunAdi =
+      isHicriYilbasi(bugunDate) ? 'Hicri Yılbaşı' :
+      isAsureGunu(bugunDate) ? 'Aşure Günü' :
+      null;
+
+    if (ozelGunAdi && imsakDate && aksamDate) {
+      if (now >= imsakDate && now < aksamDate) {
+        const tip = ozelGunAdi === 'Hicri Yılbaşı' ? 'hicri_yilbasi' as const : 'asure_gunu' as const;
+        const aciklama = ozelGunAdi === 'Hicri Yılbaşı'
+          ? 'Hicri takvimin yeni yılı başlıyor. Yeni hicri yılınız hayırlara vesile olsun.'
+          : 'Muharrem ayının onuncu günü — oruç tutmanın, sadaka vermenin ve akrabalık bağlarını gözetmenin faziletli olduğu gündür.';
+        return {
+          tip,
+          baslik: ozelGunAdi,
+          altBaslik: ozelGunAdi === 'Hicri Yılbaşı' ? 'HİCRİ YILBAŞI' : 'AŞURE GÜNÜ',
+          aciklama,
+          bitisZamani: aksamDate,
+        };
+      }
+    }
+
+    // ─────────────────────────────────────────────────────
     // 4. KERAHAT VAKİTLERİ (Hanefî / Diyanet standardı)
     // ─────────────────────────────────────────────────────
     if (gunesDate && ogleDate && aksamDate) {
@@ -284,9 +417,11 @@ export function useOzelVakitMesaji(
         };
       }
 
-      // Zeval kerahati (Öğle'den 15 dk önce → Öğle)
-      const zevalBaslangic = new Date(ogleDate.getTime() - 15 * 60 * 1000);
-      if (now >= zevalBaslangic && now < ogleDate) {
+      // Zeval kerahati (Öğle'den 15 dk önce → Öğle) — sabah/akşam kerahati
+      // gibi calculateKerahatTimes'tan okunur; önceden burada aynı 15dk'lık
+      // hesap elle tekrarlanıyordu (bkz. premium standart / hata denetimi,
+      // "aynı algoritmayı yeniden yazma" riski).
+      if (now >= kerahat.ogle.baslangic && now < ogleDate) {
         return {
           tip: 'kerahat_zeval',
           baslik: 'Kerahat Vakti',
