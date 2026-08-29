@@ -14,6 +14,20 @@ export interface GunlukKrediGirdisi {
   durum: string;
   uid: string;
   cumaMi?: boolean;
+  /** Bu bildirimin aylık sayaçlara ZATEN işlendiğini işaretler (bkz.
+   *  `puanIslenenIndeksleri` ve yatsiSonuIslemleri.ts). Yalnızca 'bekliyor'
+   *  → 'okundu_varsayilan' durum geçişi tekrar-çalıştırmaya karşı doğal
+   *  korumalıydı; 'onaylandi' kalan (kullanıcının GÜN İÇİNDE kendi
+   *  okudumOnayla'sını verdiği) bildirimler hiç işaretlenmiyordu — script
+   *  aynı gün için ikinci kez çalışırsa (ör. GitHub Actions
+   *  workflow_dispatch ile manuel "Re-run", ya da script'in kredi batch'i
+   *  BAŞARIYLA commit olduktan SONRA ay/yıl sonu reset adımlarından biri
+   *  başarısız olup job'ı "failed" gösterip birinin re-run tetiklemesi),
+   *  bu 'onaylandi' kayıtlar İKİNCİ KEZ kredilendirilirdi — aylikVakitSayisi
+   *  (kişi kartlarındaki "GÖREV YÜKÜ"/"HİZMET VERİMİ" ve tieBreaker.ts'nin
+   *  adalet algoritmasının girdisi) kalıcı olarak şişerdi (bkz. kod
+   *  denetimi bulgusu). */
+  puanIslendi?: boolean;
 }
 
 export interface GunlukKrediSonucu {
@@ -29,13 +43,22 @@ export interface GunlukKrediSonucu {
   /** `bildirimler` girdi listesindeki, 'bekliyor' kaldığı için
    *  durum:'okundu_varsayilan' olarak işaretlenmesi gereken kayıtların indeksleri. */
   okunduVarsayilanIndeksleri: number[];
+  /** `bildirimler` girdi listesindeki, HERHANGİ bir sayaca (asil/cuma/yedek)
+   *  kredi verilmiş TÜM kayıtların indeksleri — `okunduVarsayilanIndeksleri`
+   *  ile ÇAKIŞABİLİR (bekliyor kalanlar ikisine de girer). Çağıran taraf bu
+   *  indekslerin belgesine `puanIslendi: true` yazmalı ki aynı çalıştırma
+   *  tekrar tetiklenirse (bkz. `puanIslendi` alan yorumu) bu kayıtlar
+   *  ikinci kez sayılmasın. */
+  puanIslenenIndeksleri: number[];
 }
 
 /**
  * `bekliyor` → varsayılan olarak görevi yapmış sayılır (kredi + gerekiyorsa
  * okundu_varsayilan işareti). `onaylandi` → kendi onayını vermiş, kredi
  * verilir ama işaret zaten `okudumOnayla`'da set edilmiştir. `reddedildi`
- * (mazeret bildirilmiş) → kredi yok.
+ * (mazeret bildirilmiş) → kredi yok. `puanIslendi === true` olan HERHANGİ
+ * bir kayıt (durumu ne olursa olsun) tamamen atlanır — tekrar-çalıştırma
+ * güvenliği (bkz. yukarıdaki `puanIslendi` alan yorumu).
  *
  * `gorev_cagrisi` (acil çağrı — hem asil hem yedek mazeret bildirdiğinde
  * devreye giren üçüncü kişi), asil'le birebir aynı işi fiilen yaptığından
@@ -50,24 +73,31 @@ export function gunlukKredileriHesapla(bildirimler: GunlukKrediGirdisi[]): Gunlu
   const yedekKredi: Record<string, number> = {};
   const uyariUids: string[] = [];
   const okunduVarsayilanIndeksleri: number[] = [];
+  const puanIslenenIndeksleri: number[] = [];
 
   bildirimler.forEach((data, index) => {
+    if (data.puanIslendi === true) return;
+
     if (data.tip === 'asil') {
       if (data.durum === 'bekliyor') {
         okunduVarsayilanIndeksleri.push(index);
+        puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
         if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       } else if (data.durum === 'onaylandi') {
+        puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
         if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       }
     } else if (data.tip === 'gorev_cagrisi') {
       if (data.durum === 'bekliyor') {
         okunduVarsayilanIndeksleri.push(index);
+        puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
         if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
         uyariUids.push(data.uid);
       } else if (data.durum === 'onaylandi') {
+        puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
         if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       }
@@ -77,12 +107,14 @@ export function gunlukKredileriHesapla(bildirimler: GunlukKrediGirdisi[]): Gunlu
     } else if (data.tip === 'yedek') {
       if (data.durum === 'bekliyor') {
         okunduVarsayilanIndeksleri.push(index);
+        puanIslenenIndeksleri.push(index);
         yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
       } else if (data.durum === 'onaylandi') {
+        puanIslenenIndeksleri.push(index);
         yedekKredi[data.uid] = (yedekKredi[data.uid] || 0) + 1;
       }
     }
   });
 
-  return { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri };
+  return { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri, puanIslenenIndeksleri };
 }

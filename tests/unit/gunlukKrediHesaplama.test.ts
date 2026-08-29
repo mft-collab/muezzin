@@ -88,5 +88,25 @@ describe('gunlukKredileriHesapla', () => {
     expect(sonuc.asilKredi).toEqual({ a: 1, c: 1 });
     expect(sonuc.yedekKredi).toEqual({ b: 1 });
     expect(sonuc.okunduVarsayilanIndeksleri).toEqual([0, 1]);
+    expect(sonuc.puanIslenenIndeksleri).toEqual([0, 1, 2]);
+  });
+
+  // Kod denetimi bulgusu (regresyon kanıtı): script'in aynı gün için ikinci
+  // kez çalıştırılması (ör. GitHub Actions manuel "Re-run failed jobs" —
+  // kredi batch'i başarıyla commit olduktan SONRA ay/yıl sonu reset
+  // adımlarından biri başarısız olup job'ı "failed" gösterirse) daha önce
+  // ZATEN kredilendirilmiş 'onaylandi' kayıtları ikinci kez sayardı, çünkü
+  // yalnızca 'bekliyor'→'okundu_varsayilan' durum değişimi tekrar-sayıma
+  // karşı korumalıydı. `puanIslendi:true` işaretli bir kayıt artık
+  // durumundan BAĞIMSIZ olarak tamamen atlanır.
+  it('puanIslendi:true olan bir kayıt tekrar kredilendirilmez (tekrar-çalıştırma güvenliği)', () => {
+    const sonuc = gunlukKredileriHesapla([
+      { tip: 'asil', durum: 'onaylandi', uid: 'a', puanIslendi: true },
+      { tip: 'yedek', durum: 'onaylandi', uid: 'b', puanIslendi: true },
+      { tip: 'asil', durum: 'onaylandi', uid: 'c' }, // bu kayıt henüz işlenmemiş, kredi almalı
+    ]);
+    expect(sonuc.asilKredi).toEqual({ c: 1 });
+    expect(sonuc.yedekKredi).toEqual({});
+    expect(sonuc.puanIslenenIndeksleri).toEqual([2]);
   });
 });

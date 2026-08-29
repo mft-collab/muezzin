@@ -133,6 +133,14 @@ export interface Bildirim {
   * ezebiliyordu — vekaletDevredildi'nin bu geçişteki AYNI rolü.
   */
  vekaletDevriBekliyor?: boolean;
+ /**
+  * Bu bildirimin aylık sayaçlara (aylikVakitSayisi vb., bkz.
+  * src/lib/gunlukKrediHesaplama.ts) ZATEN kredilendirildiğini işaretler —
+  * yalnızca Admin SDK (scripts/yatsiSonuIslemleri.ts) yazar, hiçbir client
+  * kodu dokunmaz. Script'in aynı gün için tekrar çalıştırılmasında (ör.
+  * GitHub Actions manuel "Re-run") çift kredilendirmeyi önler.
+  */
+ puanIslendi?: boolean;
 }
 
 export interface VekaletTalebi {
