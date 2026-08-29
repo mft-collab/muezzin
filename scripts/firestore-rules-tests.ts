@@ -119,9 +119,19 @@ async function seedBaseData(env: RulesTestEnvironment) {
       aylikVakitSayisi: 0
     });
 
+    // NOT: bu ucu (ownPendingAsil/otherPendingAsil/ownPendingYedek) kasitli
+    // olarak Cuma OLMAYAN bir tarihte (2026-05-20, Carsamba — asagidaki
+    // "wednesdayPendingAsil" ile ayni bilinen gun) kuruludur. Genel amacli
+    // (Cuma kisitlamasiyla ilgisiz) bircok testte kullanildiklarindan, Cuma
+    // gunune denk gelselerdi cumaMiIsaretli() artik tarihten dogru
+    // hesapladigi icin (bkz. firestore.rules) o testler kendileriyle
+    // ilgisiz bir nedenle basarisiz olurdu. Cuma'ya ozel senaryolar icin
+    // ayri, acikca isimlendirilmis belgeler kullanilir: fridayPendingAsil/
+    // fridayPendingYedek (cumaMi:true ile) ve legacyFridayNoCumaMiAsil
+    // (cumaMi alani hic olmadan, backfill-oncesi belgeyi temsil eder).
     await setDoc(doc(db, 'bildirimler/ownPendingAsil'), {
       haftaId: 'W2026-05-18',
-      tarih: '2026-05-22',
+      tarih: '2026-05-20',
       vakit: 'ogle',
       uid: 'muezzin1',
       tip: 'asil',
@@ -134,7 +144,7 @@ async function seedBaseData(env: RulesTestEnvironment) {
 
     await setDoc(doc(db, 'bildirimler/otherPendingAsil'), {
       haftaId: 'W2026-05-18',
-      tarih: '2026-05-22',
+      tarih: '2026-05-20',
       vakit: 'ikindi',
       uid: 'muezzin2',
       tip: 'asil',
@@ -147,7 +157,7 @@ async function seedBaseData(env: RulesTestEnvironment) {
 
     await setDoc(doc(db, 'bildirimler/ownPendingYedek'), {
       haftaId: 'W2026-05-18',
-      tarih: '2026-05-22',
+      tarih: '2026-05-20',
       vakit: 'aksam',
       uid: 'muezzin1',
       tip: 'yedek',
@@ -214,6 +224,23 @@ async function seedBaseData(env: RulesTestEnvironment) {
       pendingAck: true,
       retSebebi: null,
       cumaMi: true,
+      olusturmaTarihi: Timestamp.now(),
+      sonGuncelleme: Timestamp.now()
+    });
+
+    // `cumaMi` alanı HİÇ YOK (backfill öncesi gerçek bir belgeyi temsil
+    // eder) ama `tarih` gerçekten bir Cuma — cumaMiIsaretli()'nin artık
+    // saklı bayrağa değil, tarihten hesaplanan güne güvendiğini doğrular
+    // (bkz. firestore.rules cumaMiIsaretli, kod denetimi güvenlik bulgusu).
+    await setDoc(doc(db, 'bildirimler/legacyFridayNoCumaMiAsil'), {
+      haftaId: 'W2026-05-18',
+      tarih: '2026-05-22',
+      vakit: 'sabah',
+      uid: 'muezzin2',
+      tip: 'asil',
+      durum: 'bekliyor',
+      pendingAck: true,
+      retSebebi: null,
       olusturmaTarihi: Timestamp.now(),
       sonGuncelleme: Timestamp.now()
     });
@@ -629,21 +656,19 @@ const tests: TestCase[] = [
     }
   },
   {
-    // `ownPendingAsil` kasitli olarak cumaMi alani OLMADAN olusturuldu (bkz.
-    // yukaridaki setup) — bu, alan eklenmeden once yazilmis GERCEK belgeleri
-    // temsil eder. `existing().cumaMi != true` (guard'siz) rules engine'de
-    // eksik anahtara erisim hatasi firlatiyor ve bu, mazeret/vekalet
-    // gecislerini ALAN EKSIK olan HER belgede kalici olarak reddediyordu —
-    // "eksikse Cuma degil say" (fail-open) niyetinin tam tersi. Bu test bir
-    // ustteki testle ayni senaryoyu kapsiyor ama niyeti acikca isimlendiriyor
-    // ki regresyon sessizce geri gelmesin (bkz. firestore.rules
-    // `cumaMiIsaretli`).
-    name: 'cumaMi alani hic olmayan (backfill oncesi) bir bildirimde mazeret reddi calisir',
+    // `legacyFridayNoCumaMiAsil` kasitli olarak cumaMi alani OLMADAN
+    // olusturuldu (bkz. yukaridaki setup) — backfill-oncesi GERCEK bir
+    // belgeyi temsil eder, ama tarihi GERCEKTEN bir Cuma. ONCEDEN
+    // cumaMiIsaretli() yalnizca saklanan (ve bu belgede eksik olan) bayraga
+    // bakiyordu, bu yuzden alan eksikken Cuma kisitlamasi SESSIZCE
+    // atlatilabiliyordu (bkz. kod denetimi guvenlik bulgusu). Artik
+    // `tarih`ten dogrudan hesaplandigi icin (bkz. firestore.rules
+    // `cumaMiIsaretli`), alanin eksik olmasi kisitlamayi ATLATMIYOR — bu
+    // test tam da bunu dogrular ki regresyon sessizce geri gelmesin.
+    name: 'cumaMi alani hic olmayan ama gercekte Cuma olan bir bildirimde mazeret reddi hala engellenir',
     run: async (env) => {
-      // otherPendingAsil, ownPendingAsil'den bagimsiz ikinci bir cumaMi'siz
-      // belge — sahibi muezzin2.
       const db = testUser(env, 'muezzin2').firestore();
-      await assertSucceeds(mazeretRetBatch(db, 'otherPendingAsil', 'muezzin2', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
+      await assertFails(mazeretRetBatch(db, 'legacyFridayNoCumaMiAsil', 'muezzin2', 'Hastalik', { devirSonucu: 'alarm_bekliyor' }));
     }
   },
   {
@@ -1153,14 +1178,14 @@ const tests: TestCase[] = [
     name: 'muezzin kendi bekleyen gorevi icin vekalet talebi acabilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      await assertSucceeds(setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+      await assertSucceeds(setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
         bildirimId: 'ownPendingAsil',
         haftaId: 'W2026-05-18',
         gonderenUid: 'muezzin1',
         gonderenIsim: 'Muezzin One',
         aliciUid: 'muezzin2',
         aliciIsim: 'Muezzin Two',
-        tarih: '2026-05-22',
+        tarih: '2026-05-20',
         vakit: 'ogle',
         saat: '12:45',
         tip: 'asil',
@@ -1229,14 +1254,14 @@ const tests: TestCase[] = [
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           bildirimId: 'ownPendingAsil',
           haftaId: 'W2026-05-18',
           gonderenUid: 'muezzin1',
           gonderenIsim: 'Muezzin One',
           aliciUid: 'muezzin2',
           aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
+          tarih: '2026-05-20',
           vakit: 'ogle',
           saat: '12:45',
           tip: 'asil',
@@ -1251,7 +1276,7 @@ const tests: TestCase[] = [
       // (Admin SDK) gerçekleşiyor — bkz. tests/integration/vekaletDevirleriniIsle.test.ts.
       // İstemci burada yalnızca talebi kabul eder ve dar bir niyet bayrağı yazar.
       await assertSucceeds(runTransaction(db, async (transaction) => {
-        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           durum: 'kabul_edildi',
           sonGuncelleme: Timestamp.now()
         });
@@ -1351,14 +1376,14 @@ const tests: TestCase[] = [
           fcmToken: null,
           aylikVakitSayisi: 0
         });
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           bildirimId: 'ownPendingAsil',
           haftaId: 'W2026-05-18',
           gonderenUid: 'muezzin1',
           gonderenIsim: 'Muezzin One',
           aliciUid: 'muezzin2',
           aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
+          tarih: '2026-05-20',
           vakit: 'ogle',
           saat: '12:45',
           tip: 'asil',
@@ -1369,7 +1394,7 @@ const tests: TestCase[] = [
 
       const db = testUser(env, 'muezzin2').firestore();
       await assertSucceeds(runTransaction(db, async (transaction) => {
-        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        transaction.update(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           durum: 'kabul_edildi',
           sonGuncelleme: Timestamp.now()
         });
@@ -1385,14 +1410,14 @@ const tests: TestCase[] = [
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           bildirimId: 'ownPendingAsil',
           haftaId: 'W2026-05-18',
           gonderenUid: 'muezzin1',
           gonderenIsim: 'Muezzin One',
           aliciUid: 'muezzin2',
           aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
+          tarih: '2026-05-20',
           vakit: 'ogle',
           saat: '12:45',
           tip: 'asil',
@@ -1414,14 +1439,14 @@ const tests: TestCase[] = [
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           bildirimId: 'ownPendingAsil',
           haftaId: 'W2026-05-18',
           gonderenUid: 'muezzin1',
           gonderenIsim: 'Muezzin One',
           aliciUid: 'muezzin2',
           aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
+          tarih: '2026-05-20',
           vakit: 'ogle',
           saat: '12:45',
           tip: 'asil',
@@ -1439,14 +1464,14 @@ const tests: TestCase[] = [
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-22_ogle_asil_muezzin2'), {
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
           bildirimId: 'ownPendingAsil',
           haftaId: 'W2026-05-18',
           gonderenUid: 'muezzin1',
           gonderenIsim: 'Muezzin One',
           aliciUid: 'muezzin2',
           aliciIsim: 'Muezzin Two',
-          tarih: '2026-05-22',
+          tarih: '2026-05-20',
           vakit: 'ogle',
           saat: '12:45',
           tip: 'asil',
@@ -1631,6 +1656,25 @@ const tests: TestCase[] = [
         pendingAck: false,
         devirSonucu: 'alarm_bekliyor',
         sonGuncelleme: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // Kod denetimi guvenlik bulgusu (regresyon kaniti): `incoming().uid ==
+    // request.auth.uid` tek basina bir baskasinin nobetinin mazeret_detaylari
+    // ID'sini onceden "isgal etmeyi" engellemiyordu — belge var oldugunda
+    // update daima `if false` oldugundan, gercek sahip daha sonra AYNI ID'ye
+    // yazmaya calistiginda kalici olarak reddediliyordu (bkz. firestore.rules
+    // mazeret_detaylari create kurali). muezzin1, muezzin2'ye ait
+    // otherPendingAsil'in ID'sini kendi uid'iyle isgal etmeye calisir ve
+    // artik bildirimId->bildirim.uid capraz dogrulamasiyla reddedilmelidir.
+    name: 'muezzin baskasinin nobetinin mazeret_detaylari ID sini isgal edemez',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(setDoc(doc(db, 'mazeret_detaylari/otherPendingAsil'), {
+        uid: 'muezzin1',
+        retSebebi: 'Baskasinin nobetini isgal etme denemesi',
+        olusturmaTarihi: Timestamp.now()
       }));
     }
   },

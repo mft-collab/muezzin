@@ -223,6 +223,26 @@ describe('haftalikPlanUret', () => {
     expect(tekKisiliGunleriBul(plan)).toEqual(['2026-08-03']);
   });
 
+  it('tekKisiliGunleriBul, günün TEK bir vakti (ör. yatsı) yedeksiz kalsa bile günü tespit eder (kod denetimi regresyonu)', () => {
+    // Elle kurulmuş bir gunPlan: sabah/ogle/ikindi/aksam gerçek yedeklerle
+    // kapsanmış, yalnızca yatsı yedeksiz (yedek: 'Sistem') kalmış — önceden
+    // `.every(...)` kullanan filtre, günün TÜM vakitleri yedeksiz olmadıkça
+    // hiç uyarı üretmiyordu (bkz. kod denetimi bulgusu; bu tam olarak
+    // planServisi.ts `korunmusAtama`'nın reddedilen bir yatsı devrinde
+    // üretebildiği durum).
+    const gunPlan: Record<string, Record<Vakit, { asil: string; yedek: string }>> = {
+      '2026-08-03': {
+        sabah: { asil: 'a', yedek: 'b' },
+        ogle: { asil: 'a', yedek: 'b' },
+        ikindi: { asil: 'a', yedek: 'b' },
+        aksam: { asil: 'a', yedek: 'b' },
+        yatsi: { asil: 'a', yedek: 'Sistem' },
+      },
+    };
+
+    expect(tekKisiliGunleriBul(gunPlan)).toEqual(['2026-08-03']);
+  });
+
   it('tekKisiliGunleriBul, hiç kimsenin müsait olmadığı (Sistem/Sistem) günleri saymaz', () => {
     const muezzinler = [
       muezzin('a', { haftalikIzinGunu: 1 }),

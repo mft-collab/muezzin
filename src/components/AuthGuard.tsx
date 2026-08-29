@@ -21,6 +21,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  const loading = useAuthStore(state => state.loading);
  const isPending = useAuthStore(state => state.isPending);
  const error = useAuthStore(state => state.error);
+ const disabledReason = useAuthStore(state => state.disabledReason);
  const isAdmin = useAuthStore(state => state.isAdmin);
  const setError = useAuthStore(state => state.setError);
  const setLoading = useAuthStore(state => state.setLoading);
@@ -179,12 +180,23 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="w-full min-h-screen"
         >
-          {error ? (
-            <AuthErrorScreen 
-              error={error} 
-              setError={setError} 
-              setLoading={setLoading} 
-              logout={logout} 
+          {disabledReason ? (
+            // setError bilerek geçilmiyor: bu durum sunucu tarafından
+            // (aktif:false) belirleniyor ve yalnızca canlı muezzins/{uid}
+            // dinleyicisi hesabı yeniden aktif görünce kendiliğinden
+            // temizleniyor (bkz. useAuthStore). Dismiss edilebilir olsaydı
+            // devre dışı hesap "TEKRAR DENE" ile tam uygulamaya sızardı.
+            <AuthErrorScreen
+              error={disabledReason}
+              setLoading={setLoading}
+              logout={logout}
+            />
+          ) : error ? (
+            <AuthErrorScreen
+              error={error}
+              setError={setError}
+              setLoading={setLoading}
+              logout={logout}
             />
           ) : isPending ? (
             <PendingApprovalScreen logout={logout} />

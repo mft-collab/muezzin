@@ -3,26 +3,88 @@ import {
   deleteField,
   doc,
   deleteDoc,
+  DocumentData,
   FirestoreError,
+  getDocsFromServer,
   onSnapshot,
+  query,
+  runTransaction,
   setDoc,
   Timestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Invite, Muezzin } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 import { haftalikPlanOlustur } from './planServisi';
-import { getHaftaIdFromDate, getTurkeyDateString } from '../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, toTurkishUpperCase } from '../lib/dateUtils';
 
 type MuezzinDoc = Muezzin & { id: string };
 type InviteDoc = Invite & { id: string };
 
-/** Bir personelin sistemdeki son aktif yönetici olup olmadığını belirler — son yönetici pasife/arşive alınamaz. */
+/** Bir personelin sistemdeki son aktif yönetici olup olmadığını belirler — son yönetici pasife/arşive alınamaz.
+ * Bu, YALNIZCA hızlı bir istemci-tarafı ön-kontrol (anlık UI geri bildirimi
+ * için) — çağıranlar (`muezzinler`) genelde Zustand/onSnapshot önbelleğinden
+ * gelir. Asıl yetkilendirici karşılığı `sonAdminKorumaliGuncelle`'dir (bkz.
+ * o fonksiyonun yorumu) — burada true dönmesi işlemi engellemek için
+ * yeterli, ama false dönmesi TEK BAŞINA yeterli değil. */
 export function isLastActiveAdmin(m: MuezzinDoc, muezzinler: MuezzinDoc[]): boolean {
   const activeAdmins = muezzinler.filter(user => user.role === 'admin' && user.aktif === true && user.arsivlendi !== true);
   return m.role === 'admin' && m.aktif === true && activeAdmins.length <= 1;
+}
+
+/** Sunucudan taze aday aktif-admin UID listesini toplar — `getDocsFromServer`
+ * ile istemci önbelleğini atlar. Bu liste TEK BAŞINA yetkilendirici DEĞİL,
+ * yalnızca "`sonAdminKorumaliGuncelle`'in transaction içinde BİLİNEN belge
+ * referansı olarak okuyacağı adaylar hangileri" sorusuna cevap verir —
+ * gerçek sayım/karar orada, aynı transaction'daki taze `transaction.get()`
+ * okumalarıyla yapılır. */
+async function aktifAdminUidleriGetir(): Promise<string[]> {
+  const q = query(collection(db, 'muezzins'), where('role', '==', 'admin'), where('aktif', '==', true));
+  const snap = await getDocsFromServer(q);
+  return snap.docs.filter(d => d.data().arsivlendi !== true).map(d => d.id);
+}
+
+/**
+ * "Son aktif admin" değişmezini GERÇEKTEN atomik olarak uygulayarak
+ * `hedefUid`'e `guncelleme`'yi yazar. Firestore Web SDK transaction'ları
+ * SORGU okuyamaz, yalnızca BİLİNEN belge referanslarını okuyabilir — bu
+ * yüzden aday admin kümesi transaction DIŞINDA (taze bir sorguyla,
+ * `aktifAdminUidleriGetir`) toplanır, ama asıl SAYIM ve YAZIM AYNI
+ * transaction içinde, bu adayların `transaction.get()` ile taze
+ * okunmasıyla yapılır.
+ *
+ * Neden bu atomik: iki admin birbirini AYNI anda pasifleştirmeye çalışırsa,
+ * her iki transaction'ın da okuma kümesi (aday admin belgeleri, ki her iki
+ * adminin KENDİ belgesini de içerir) diğerinin YAZDIĞI belgeyle çakışır —
+ * Firestore bu çakışmayı optimistic concurrency ile tespit edip kaybedeni
+ * otomatik olarak YENİDEN ÇALIŞTIRIR; yeniden çalıştırmada taze okuma artık
+ * güncel (azalmış) sayıyı görür ve doğru şekilde reddeder. (Önceki, tek
+ * başına bir `getDocsFromServer` + transaction'sız `updateDoc` yaklaşımı
+ * yarışı yalnızca DARALTIYORDU — bkz. kod denetimi race condition bulgusu —
+ * bu tasarım onu tamamen KAPATIR, ayrı bir sayaç belgesi/şema göçü
+ * gerektirmeden.)
+ */
+async function sonAdminKorumaliGuncelle(
+  hedefUid: string,
+  guncelleme: DocumentData,
+  hataMesaji: string
+): Promise<void> {
+  const adayUidler = await aktifAdminUidleriGetir();
+  const tumUidler = adayUidler.includes(hedefUid) ? adayUidler : [...adayUidler, hedefUid];
+  await runTransaction(db, async (transaction) => {
+    const snaps = await Promise.all(tumUidler.map(uid => transaction.get(doc(db, 'muezzins', uid))));
+    const aktifAdminSayisi = snaps.filter(s => {
+      const data = s.data();
+      return s.exists() && data?.role === 'admin' && data?.aktif === true && data?.arsivlendi !== true;
+    }).length;
+    if (aktifAdminSayisi <= 1) {
+      throw new Error(hataMesaji);
+    }
+    transaction.update(doc(db, 'muezzins', hedefUid), guncelleme);
+  });
 }
 
 /**
@@ -106,7 +168,14 @@ export async function personelAktiflikDegistir(m: MuezzinDoc, muezzinler: Muezzi
   }
   const path = `muezzins/${m.id}`;
   try {
-    await updateDoc(doc(db, 'muezzins', m.id), { aktif: !m.aktif, onayBekliyor: false });
+    if (m.role === 'admin' && m.aktif === true) {
+      // Aktif bir admin'i pasifleştiriyoruz — tam atomik son-admin koruması
+      // gerekli (bkz. sonAdminKorumaliGuncelle). Aktifleştirme yönünde bu
+      // kısıt anlamsız (aksine bir yazım updateDoc ile yeterli).
+      await sonAdminKorumaliGuncelle(m.id, { aktif: false, onayBekliyor: false }, 'Son aktif yönetici pasife alınamaz.');
+    } else {
+      await updateDoc(doc(db, 'muezzins', m.id), { aktif: !m.aktif, onayBekliyor: false });
+    }
     const planRefreshed = await haftaPlaniniGuvenliYenile(m);
     await telemetryService.logAudit('Kadro Durumu Değiştirme', m.displayName, `Personel aktiflik durumu ${!m.aktif ? 'AKTİF' : 'PASİF'} yapıldı.`);
     return { planRefreshed };
@@ -153,12 +222,17 @@ export async function personelArsivle(m: MuezzinDoc, muezzinler: MuezzinDoc[]): 
   }
   const path = `muezzins/${m.id}`;
   try {
-    await updateDoc(doc(db, 'muezzins', m.id), {
+    const guncelleme = {
       aktif: false,
       onayBekliyor: false,
       arsivlendi: true,
       arsivTarihi: Timestamp.now(),
-    });
+    };
+    if (m.role === 'admin' && m.aktif === true) {
+      await sonAdminKorumaliGuncelle(m.id, guncelleme, 'Son aktif yönetici arşive alınamaz.');
+    } else {
+      await updateDoc(doc(db, 'muezzins', m.id), guncelleme);
+    }
     const planRefreshed = await haftaPlaniniGuvenliYenile(m);
     await telemetryService.logAudit('Personel Arşivleme', m.displayName, 'Personel aktif kadrodan çıkarılarak arşiv kategorisine alındı.');
     return { planRefreshed };
@@ -205,11 +279,18 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<{ pl
     const path = `muezzins/${editingUser.id}`;
     try {
       const impactsDutyPlan = editingUser.role === 'muezzin' || role === 'muezzin' || editingUser.haftalikIzinGunu !== haftalikIzinGunu;
-      await updateDoc(doc(db, 'muezzins', editingUser.id), {
+      const guncelleme = {
         displayName: fullName,
         role,
         haftalikIzinGunu: haftalikIzinGunu > 0 ? haftalikIzinGunu : deleteField(),
-      });
+      };
+      if (editingUser.role === 'admin' && editingUser.aktif === true && role !== 'admin') {
+        // Aktif bir admin'in rolü admin DIŞINA değiştiriliyor — tam atomik
+        // son-admin koruması gerekli (bkz. sonAdminKorumaliGuncelle).
+        await sonAdminKorumaliGuncelle(editingUser.id, guncelleme, 'Son aktif yöneticinin yetki seviyesi değiştirilemez.');
+      } else {
+        await updateDoc(doc(db, 'muezzins', editingUser.id), guncelleme);
+      }
       let planRefreshed = true;
       if (impactsDutyPlan) {
         // haftalikPlanlariYenile (guard'sız) kullanılır — haftaPlaniniGuvenliYenile
@@ -219,7 +300,7 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<{ pl
         // (bkz. mimari denetim O1).
         planRefreshed = await haftalikPlanlariYenile();
       }
-      await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${role.toUpperCase()}, İzin günü: ${haftalikIzinGunu > 0 ? haftalikIzinGunu : 'Yok'}`);
+      await telemetryService.logAudit('Profil Güncelleme', fullName, `Kullanıcı rolü: ${toTurkishUpperCase(role)}, İzin günü: ${haftalikIzinGunu > 0 ? haftalikIzinGunu : 'Yok'}`);
       return { planRefreshed };
     } catch (err) {
       throw handleFirestoreError(err, OperationType.UPDATE, path);
@@ -242,7 +323,7 @@ export async function personelKaydet(params: PersonelKaydetParams): Promise<{ pl
         inviteData.haftalikIzinGunu = haftalikIzinGunu;
       }
       await setDoc(doc(db, 'invites', mail), inviteData);
-      await telemetryService.logAudit('Personel Daveti', mail, `Kullanıcı adı: ${fullName}, Davet edilen rol: ${role.toUpperCase()}`);
+      await telemetryService.logAudit('Personel Daveti', mail, `Kullanıcı adı: ${fullName}, Davet edilen rol: ${toTurkishUpperCase(role)}`);
       return { planRefreshed: true };
     } catch (err) {
       throw handleFirestoreError(err, OperationType.CREATE, path);

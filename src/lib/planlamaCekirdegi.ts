@@ -151,21 +151,28 @@ export function haftalikPlanUret(
 }
 
 /**
- * Üretilmiş bir gün planında, yalnızca tek kişinin müsait olduğu (yedek hep
- * 'Sistem' kalan) günleri tespit eder — çağıran taraf bunun için admin'e
- * "bu hafta X günü yedeksiz kalıyor" uyarısı üretebilir (bkz. algoritma
- * denetimi). Hiç kimsenin müsait olmadığı (asil de Sistem) günler bu listeye
- * dahil edilmez — o durum ayrı bir fonksiyonla (`kapsamsizGunleriBul`,
- * aşağıda) tespit edilir; eskiden bu durumun cron'daki toplam kadro
- * uyarısıyla kapsandığı iddia ediliyordu ama o uyarı yalnızca kadro
- * mevcuduna bakıyordu, belirli bir günün tamamen boş kalmasına değil
- * (bkz. mimari denetim O3).
+ * Üretilmiş bir gün planında, en az bir vakti tek kişiyle (yedeksiz) kalan
+ * günleri tespit eder — çağıran taraf bunun için admin'e "bu hafta X günü
+ * yedeksiz kalıyor" uyarısı üretebilir (bkz. algoritma denetimi). Hiç
+ * kimsenin müsait olmadığı (asil de Sistem) vakitler bu koşula dahil
+ * edilmez — o durum ayrı bir fonksiyonla (`kapsamsizGunleriBul`, aşağıda)
+ * tespit edilir; eskiden bu durumun cron'daki toplam kadro uyarısıyla
+ * kapsandığı iddia ediliyordu ama o uyarı yalnızca kadro mevcuduna
+ * bakıyordu, belirli bir günün tamamen boş kalmasına değil (bkz. mimari
+ * denetim O3).
+ *
+ * DİKKAT: koşul `.some(...)` — günün TÜM vakitleri değil, TEK BİR vakti bile
+ * (ör. yatsı) asil-var/yedek-yok ise gün listeye girer. Önceden `.every(...)`
+ * kullanıyordu, yani günün kalan vakitleri (sabah/öğle/ikindi/akşam) gerçek
+ * yedeklerle kapsansa bile TEK bir vakit (operasyonel olarak en kritik olan
+ * yatsı dahil) yedeksiz kalırsa hiç uyarı üretilmiyordu (bkz. kod denetimi
+ * bulgusu — client self-heal yolunda, planServisi.ts `korunmusAtama`, tam
+ * olarak bu şekilde tek bir vakit 'Sistem' yedekle kalabiliyor).
  */
 export function tekKisiliGunleriBul(gunPlan: Record<string, Record<Vakit, VakitAtama>>): string[] {
   return Object.entries(gunPlan)
     .filter(([, vakitler]) =>
-      VAKITLER.some((v) => vakitler[v].asil !== 'Sistem') &&
-      VAKITLER.every((v) => vakitler[v].yedek === 'Sistem')
+      VAKITLER.some((v) => vakitler[v].asil !== 'Sistem' && vakitler[v].yedek === 'Sistem')
     )
     .map(([gun]) => gun)
     .sort();

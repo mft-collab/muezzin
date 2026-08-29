@@ -95,6 +95,18 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  if (cleanup) cleanup();
 
  const setupSubscriptions = () => {
+ // `fetchFallback` (aşağıda) asenkron — çözüldüğünde bu abonelik hâlâ
+ // "aktif" olmayabilir. İlçe değişip `startVakitSubscription` yeniden
+ // çağrıldığında (bkz. useSystemSettingsStore.subscribe altta) `cleanup()`
+ // önce eski `setupSubscriptions` çağrısının döndürdüğü fonksiyonu
+ // çalıştırır — bu bayrağı burada true'ya çeker. Önceden fetchFallback
+ // kapandığı `settings.ilceId`'yi hiç kontrol etmeden sonucu koşulsuz
+ // `set({currentMonthData})` ile yazıyordu: İlçe A'nın eksik ay belgesi
+ // yavaş bir fetchFallback tetiklerken admin İlçe B'ye geçerse, İlçe B
+ // için doğru abonelik zaten kurulmuş olsa bile İlçe A'nın gecikmeli
+ // sonucu gelince İlçe B'nin verisini sessizce ezebiliyordu (bkz. kod
+ // denetimi race condition bulgusu).
+ let iptalEdildi = false;
  const tarih = getTurkeyNow();
  const buAyYYYYMM = `${tarih.getFullYear()}-${String(tarih.getMonth() + 1).padStart(2, '0')}`;
  const buAyDocId = `${settings.ilceId}_${buAyYYYYMM}`;
@@ -112,6 +124,12 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  const fetchFallback = async (yil: number, ay: number) => {
  try {
  const data = (await aylikVakitleriCek(yil, ay, settings.ilceId, settings.ilceAdi)) as unknown as Vakitler;
+ // Bu abonelik iptal edildiyse (ilçe değişti / gece yarısı geçişiyle
+ // yeniden kuruldu) sonucu artık STORE'a yazma — aşağıdaki Firestore
+ // önbellek yazımı zararsız (hangi ilçe için olursa olsun geçerli bir
+ // önbellekleme), o yüzden ondan ÖNCE değil, yalnızca state güncellemesinden
+ // önce kontrol edilir.
+ if (iptalEdildi) return;
  set({ currentMonthData: data });
  get()._processData();
  // Yalnızca admin bu önbelleği Firestore'a yazabilir (bkz. firestore.rules
@@ -139,6 +157,7 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
  } catch (err) {
  console.error('VakitStore Fallback API Hatası:', err);
+ if (iptalEdildi) return;
  set({ loading: false, initializing: false, initialized: true });
  }
  };
@@ -197,6 +216,7 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
 
  return () => {
+ iptalEdildi = true;
  unsubscribeBuAy();
  unsubscribeYarin?.();
  };

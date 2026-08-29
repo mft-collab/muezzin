@@ -4,7 +4,13 @@ import { AlertCircle } from 'lucide-react';
 
 interface AuthErrorScreenProps {
  error: string;
- setError: (err: string | null) => void;
+ // Opsiyonel: yalnızca gerçekten geçici/dismiss edilebilir hatalarda
+ // (ağ, popup vb.) geçilir. Sunucu tarafından belirlenen kalıcı durumlar
+ // (örn. devre dışı hesap) için verilmez — bu durumda "TEKRAR DENE"
+ // düğmesi hiç gösterilmez, çünkü onu dismiss etmek durumu değiştirmez
+ // ve yalnızca canlı Firestore dinleyicisi hesabı yeniden aktif görünce
+ // kendiliğinden temizlenir (bkz. useAuthStore, AuthGuard).
+ setError?: (err: string | null) => void;
  setLoading: (loading: boolean) => void;
  logout: () => void;
 }
@@ -25,12 +31,14 @@ export function AuthErrorScreen({ error, setError, setLoading, logout }: AuthErr
  <p className="text-sm text-[var(--status-danger)] leading-relaxed font-medium">{error}</p>
  </div>
  <div className="space-y-3">
+ {setError && (
  <button
  onClick={() => { setError(null); setLoading(false); }}
  className="w-full h-14 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] rounded-2xl font-medium shadow-lg shadow-[color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all "
  >
  TEKRAR DENE
  </button>
+ )}
  <button
  onClick={logout}
  className="w-full h-14 bg-[var(--text-primary)]/5 text-[var(--text-primary)] rounded-2xl font-medium hover:bg-[var(--text-primary)]/10 transition-all "

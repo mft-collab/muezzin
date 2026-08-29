@@ -130,6 +130,19 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
 
       const bildirim = bildirimDoc.data() as Bildirim;
       if (bildirim.durum !== 'bekliyor') throw new Error('Bu görev zaten sonuçlandırılmış.');
+      // Aynı bildirim için BAŞKA bir alıcının kabulü zaten "niyet" bayrağını
+      // yazmış olabilir (asıl sahip aynı görevi birden fazla kişiye teklif
+      // etmişse, iki farklı talep aynı bildirimId'yi paylaşabilir).
+      // `bildirim.durum` bu durumda hâlâ 'bekliyor' kalır (bayrak durumu
+      // değiştirmez), bu yüzden ayrıca kontrol edilmezse iki kabul de burada
+      // başarılı olur ve GERÇEK sonuç yalnızca ~10-15 dk sonra
+      // scripts/vekaletDevirleriniIsle.ts'in `bildirim.uid === talep.gonderenUid`
+      // kontrolüyle (kaybedene admin uyarısı üreterek) çözülürdü — bunu
+      // burada erkenden reddetmek kullanıcıya anında doğru geri bildirim
+      // verir (bkz. kod denetimi race condition bulgusu).
+      if (bildirim.vekaletDevriBekliyor === true) {
+        throw new Error('Bu görev için zaten bekleyen başka bir vekalet devri var.');
+      }
 
       transaction.update(talepRef, { durum: 'kabul_edildi', sonGuncelleme: serverTimestamp() });
       transaction.update(bildirimRef, { vekaletDevriBekliyor: true, sonGuncelleme: serverTimestamp() });

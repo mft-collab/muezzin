@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, serverTimestamp, setDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { clearIndexedDbPersistence, doc, serverTimestamp, setDoc, terminate, updateDoc, deleteField } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -174,6 +174,28 @@ export async function performLogout(): Promise<void> {
   telemetryService.clearBreadcrumbs();
   telemetryService.clearQueue();
   useGpsVakitStore.getState().disableGps();
+
+  // AYNI sınıftan bir sızıntı, ama Firestore SDK seviyesinde: `db`
+  // `persistentLocalCache` (IndexedDB) ile başlatılıyor (bkz. lib/firebase.ts)
+  // ve bu önbellek çıkışta hiç temizlenmiyordu — paylaşılan bir cihazda
+  // (ör. cami ofisi tableti) bir sonraki kullanıcı, gerçek sunucu
+  // snapshot'ından ÖNCE/yanında öncekinin önbelleğe alınmış muezzins/
+  // izinler/alarmlar belgelerini görebiliyordu (bkz. kod denetimi
+  // güvenlik bulgusu). `clearIndexedDbPersistence` aktif dinleyiciler
+  // varken başarısız olur (ve bu uygulamada `useAuthStore`'un dinleyicisi
+  // KASITLI olarak hiç unsubscribe edilmiyor — bkz. AuthGuard.tsx yorumu),
+  // bu yüzden önce `terminate` ile bu sekmenin Firestore istemcisi
+  // kapatılır. Bu YALNIZCA güvenli çünkü AuthGuard'ın `logout` çağıranı
+  // hemen ardından `window.location.reload()` yapıyor — bu JS bağlamında
+  // `db`'nin bir daha kullanılması gerekmiyor, sayfa sıfırdan başlıyor.
+  // En iyi çaba: başka bir sekme aynı hesapla açık kalmışsa (persistentMultiple-
+  // TabManager) temizleme başarısız olabilir, çıkışı engellememeli.
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch {
+    // best-effort — bkz. yukarıdaki yorum.
+  }
 }
 
 export function useFcmToken() {
