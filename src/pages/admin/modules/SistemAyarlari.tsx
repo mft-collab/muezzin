@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { Save, MapPin } from 'lucide-react';
+import { Save, MapPin, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
 import { AdminLoadingState } from '../components/AdminLoadingState';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { VeriSifirlamaModal } from '../components/VeriSifirlamaModal';
 import { playSuccess, playWarning } from '../../../lib/sounds';
 import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
 
@@ -29,6 +30,7 @@ export default function SistemAyarlari() {
  const [pendingLocationChange, setPendingLocationChange] = useState<{
    ilceId: string; ilceAdi: string; hicriDuzeltme: number;
  } | null>(null);
+ const [veriSifirlamaAcik, setVeriSifirlamaAcik] = useState(false);
 
  // Uzak ayar dokümanı değiştiğinde form alanlarını render sırasında
  // doldur — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
@@ -245,6 +247,45 @@ export default function SistemAyarlari() {
   </div>
  </form>
  </motion.div>
+
+ {/* TEHLİKELİ BÖLGE: diğer tüm ayar kartlarından görsel olarak AYRIŞTIRILMIŞ
+     (rose tonu, ayrı kart) — bu ekrandaki tek geri alınamaz işlem. Onay,
+     tek-tıkla ConfirmModal DEĞİL, VeriSifirlamaModal'ın kendi "tam metni
+     yaz" akışıyla — bkz. o dosyanın yorumu. */}
+ <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.1 }}
+  className="p-1 sm:p-8 relative overflow-hidden rounded-card border-none sm:border border-rose-500/15 sm:bg-rose-500/[0.02] bg-transparent mt-6"
+ >
+  <div className="flex items-center gap-3 sm:gap-5 mb-6 relative z-10">
+   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+    <AlertTriangle className="text-rose-500 w-5 h-5" strokeWidth={1.6} />
+   </div>
+   <div>
+    <h3 className="text-lg sm:text-xl font-light text-[var(--text-primary)] tracking-tight leading-tight">Tehlikeli Bölge</h3>
+    <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">Geri alınamaz veri işlemleri</p>
+   </div>
+  </div>
+
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+   <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed max-w-lg">
+    Bildirimler, haftalık planlar, izinler, vekalet talepleri gibi operasyonel verileri toplu olarak siler — yeni bir sezona sıfırdan başlamak için. Mazeret geçmişi ve denetim kayıtları bu işlemden etkilenmez.
+   </p>
+   <motion.button
+    whileHover={{ y: -3, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    type="button"
+    onClick={() => setVeriSifirlamaAcik(true)}
+    className="shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/25 px-6 py-3.5 rounded-[14px] font-bold text-2xs uppercase tracking-wide transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-rose-500/15"
+   >
+    Operasyonel Veriyi Sıfırla
+   </motion.button>
+  </div>
+ </motion.div>
+
+ <VeriSifirlamaModal isOpen={veriSifirlamaAcik} onClose={() => setVeriSifirlamaAcik(false)} />
+
  <ConfirmModal
    isOpen={pendingLocationChange !== null}
    onClose={() => setPendingLocationChange(null)}
