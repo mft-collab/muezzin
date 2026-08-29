@@ -201,7 +201,10 @@ service cloud.firestore {
              // senkronize edilen bir ilçede (bkz. SistemAyarlari.tsx ilçe değişikliği)
              // ayın neredeyse HER gününde bu yazımı reddediyordu (bkz. mantık denetimi).
              data.gunler is map && data.gunler.size() >= 1 && data.gunler.size() <= 32 &&
-             data.kaynakApi in ['diyanet', 'aladhan'] &&
+             // 'diyanet-resmi' = awqatsalah.diyanet.gov.tr resmi servisi
+             // (bkz. scripts/lib/diyanetResmiApi.ts) — 'diyanet' (emushaf.net
+             // proxy'si) ve 'aladhan' fallback'larına ek üçüncü kaynak.
+             data.kaynakApi in ['diyanet', 'diyanet-resmi', 'aladhan'] &&
              data.guncellenmeTarihi is timestamp;
     }
 

@@ -1056,6 +1056,23 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Resmi Diyanet API'si (bkz. scripts/lib/diyanetResmiApi.ts) 'diyanet'
+    // (emushaf.net proxy'si) yerine ayirt edici 'diyanet-resmi' degeriyle
+    // yaziyor — uc kaynagin da (diyanet/diyanet-resmi/aladhan) semaya kabul
+    // edildigini dogrular.
+    name: 'admin vakit onbellegine diyanet-resmi kaynagiyla da yazabilir',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+
+      await assertSucceeds(setDoc(doc(db, 'vakitler/9148_2026-08'), {
+        ilceId: '9148',
+        gunler: validVakitGunleri(),
+        kaynakApi: 'diyanet-resmi',
+        guncellenmeTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
     // aylikVakitleriGrupla, API'nin kayan penceresini gerçek takvim ayına göre
     // böldüğünden içinde bulunulan ay için kasıtlı olarak PARTIAL bir grup
     // üretir (ayın ortasında senkronize edilirse o ay yalnızca kalan günleri

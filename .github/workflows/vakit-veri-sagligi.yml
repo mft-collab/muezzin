@@ -25,6 +25,10 @@ jobs:
       - name: Vakit verisi sağlığını kontrol et
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        # NOT: DIYANET_API_EMAIL/PASSWORD burada BİLİNÇLİ OLARAK geçirilmiyor —
+        # bu script günlük çalışıyor, resmi API'yi kullansaydı bir kesinti
+        # sırasında aylık kotayı hızla tüketirdi (bkz.
+        # scripts/lib/diyanetResmiApi.ts). Resmi API yalnızca aylık cron'da.
         run: npx tsx scripts/vakitVeriSagligiKontrol.ts
       - name: Başarısızlığı admin paneline bildir
         if: failure()

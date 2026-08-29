@@ -49,6 +49,11 @@ async function main() {
     `Vakit verisi eksik — bugün(${bugun}): ${bugunTamam ? 'tam' : 'EKSİK'}, yarın(${yarin}): ${yarinTamam ? 'tam' : 'EKSİK'}. API'den tazeleniyor...`
   );
 
+  // BİLİNÇLİ OLARAK resmi Diyanet API'sini (scripts/lib/diyanetResmiApi.ts)
+  // KULLANMIYOR — bu script GÜNLÜK çalıştığından, bir kesinti sırasında her
+  // gün tekrar tekrar denenip aylık kotayı hızla tüketirdi (bkz. o dosyadaki
+  // yorum). Anahtarsız zincirde (emushaf/Aladhan) kalır; resmi API yalnızca
+  // AYDA BİR çalışan aylikEzanTakvimiGuncelle.ts'te kullanılıyor.
   const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
 
   // Kayan pencereyi gerçek takvim ayına göre bölen paylaşılan çekirdek
