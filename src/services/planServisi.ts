@@ -1,8 +1,8 @@
-import { collection, query, where, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
-import { isFriday, getOncekiHafta } from '../lib/dateUtils';
+import { isFriday, getOncekiHafta, toTurkishUpperCase } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
@@ -67,6 +67,30 @@ function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
  acc[key].push(bildirimDoc);
  return acc;
  }, {} as Record<string, BildirimQueryDoc[]>);
+}
+
+// scripts/vekaletDevirleriniIsle.ts'teki `alarmVarMi` ile AYNI dedup
+// deseni. Gece cron'u (scripts/haftalikPlanOlustur.ts) bir haftanın
+// uyarılarını yalnızca `haftaPlanlari/{haftaId}` belgesi İLK
+// OLUŞTURULDUĞUNDA üretir (`if (planDoc.exists) continue`) — ama bu
+// istemci tarafı "self-healing" fonksiyonu belge var olsa bile HER
+// çağrıldığında (korunan slotlar hariç) yeniden hesaplar ve önceden bu
+// kontrolsüzdü: aynı anlaşılmaz/yedeksiz gün, self-healing effect'leri
+// (HaftalikCizelge.tsx, useBugunPlanDurumu.ts), her personel işleminde
+// 3 haftalık yenileme döngüsü (`haftalikPlanlariYenile`) veya "PLANLARI
+// GÜNCELLE" düğmesiyle günde onlarca kez tetiklenebildiğinden, aynı
+// koşul için art arda neredeyse birebir aynı çözülmemiş uyarı kaydı
+// birikiyordu (bkz. kod denetimi bulgusu, Hizmet Cetveli veri akışı
+// analizi).
+async function cozulmemisUyariVarMi(tip: string, tarih: string): Promise<boolean> {
+ const snap = await getDocs(query(
+ collection(db, 'adminUyarilari'),
+ where('tip', '==', tip),
+ where('tarih', '==', tarih),
+ where('cozuldu', '==', false),
+ limit(1)
+ ));
+ return !snap.empty;
 }
 
 function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
@@ -161,7 +185,7 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
     });
 
     if (sonuc === 'updated') {
-      await telemetryService.logAudit('Manuel Görev Atama', tarih, `${vakit.toUpperCase()} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
+      await telemetryService.logAudit('Manuel Görev Atama', tarih, `${toTurkishUpperCase(vakit)} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
     }
     return sonuc;
   } catch (err) {
@@ -321,7 +345,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  gunler: gunPlan
  }, { merge: true });
 
- if (kapsamsizGunler.length > 0) {
+ if (kapsamsizGunler.length > 0 && !(await cozulmemisUyariVarMi('planOlusturulamadi', kapsamsizGunler[0]))) {
  batch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'planOlusturulamadi',
  mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
@@ -330,7 +354,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  olusturmaTarihi: Timestamp.now()
  });
  }
- if (tekKisiliGunler.length > 0) {
+ if (tekKisiliGunler.length > 0 && !(await cozulmemisUyariVarMi('zincirTukendi', tekKisiliGunler[0]))) {
  batch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'zincirTukendi',
  mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
