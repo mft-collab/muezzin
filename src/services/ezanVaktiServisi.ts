@@ -55,6 +55,14 @@ export async function aylikVakitleriCek(
    }
  }
  
+ // method=13, Aladhan'ın kendi metod listesinde birebir "Diyanet İşleri
+ // Başkanlığı, Turkey" olarak tanımlı (18°/17° tan açılarıyla) — ama
+ // Aladhan bunu kendi listesinde "(experimental)" diye işaretliyor, yani
+ // resmi/sertifikalı bir garanti değil. Ceyhan/9148 için gerçek Diyanet
+ // (emushaf) verisiyle aynı gün karşılaştırıldığında (bkz. yetki/kota
+ // denetimi, 2026-08-29) sapma en fazla ±1 dakikaydı — bu, yalnızca SON
+ // ÇARE fallback olarak (emushaf/resmi Diyanet API'si başarısız olduğunda)
+ // kullanıldığından kabul edilebilir bir tolerans.
  const aladhanUrl = `https://api.aladhan.com/v1/calendarByCity/${yil}/${ay}?city=${city}&country=${country}&method=13`;
  const response = await fetch(aladhanUrl);
  
