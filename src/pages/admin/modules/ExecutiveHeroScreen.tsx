@@ -327,7 +327,13 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
+  {/* tracking-wide kaldırıldı + leading-snug eklendi — bu üç eşit-genişlikli
+      kartta (BEKLEYEN İZİN / HAFTALIK PLAN / DUYURULAR) "0/0 görev onay
+      bekliyor" gibi metinler dar genişlikte 3 satıra sarıp kartın alt
+      kenarına sıkışıyordu (manuel görsel denetimde bulundu — premium
+      standart ihlali). Harf aralığı normale dönünce metin daha dar yer
+      kaplıyor, satır aralığı sıkılaşınca sarsa bile daha düzenli görünüyor. */}
+  <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase leading-snug">
   {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
   </p>
   </div>
@@ -351,7 +357,7 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-2xs font-bold text-emerald-500/60 uppercase tracking-wide">Duyuru panelini yönet</p>
+  <p className="text-2xs font-bold text-emerald-500/60 uppercase leading-snug">Duyuru panelini yönet</p>
   </div>
  </motion.div>
  </div>
@@ -408,8 +414,14 @@ export default function ExecutiveHeroScreen({
  {/* record.time date-fns'in tr locale'iyle üretilen serbest metin ("3
      dakika önce" gibi) — toTurkishUpperCase (bkz. src/lib/dateUtils.ts)
      kullanılır. record.id.substring(...).toUpperCase() (aşağıda) BİLEREK
-     dokunulmadı — o rastgele/opak bir Firestore ID'si, doğal dil değil. */}
- <div className="w-20 authority-title !text-2xs opacity-30 tracking-wide shrink-0">{toTurkishUpperCase(record.time)}</div>
+     dokunulmadı — o rastgele/opak bir Firestore ID'si, doğal dil değil.
+     Sabit w-20 (80px) genişlik + satır sarma koruması yoktu — "yaklaşık
+     2 ay önce" gibi daha uzun aralıklar üreten kayıtlarda metin 2 satıra
+     sarıp satırı "1 GÜN ÖNCE" gibi kısa etiketlerle aynı hizada
+     durdurmuyordu (manuel görsel denetimde bulundu). Sabit genişlik
+     kaldırıldı, whitespace-nowrap ile her zaman tek satır garanti edilir
+     — sütun artık içeriğine göre doğal genişlik alır. */}
+ <div className="authority-title !text-2xs opacity-30 tracking-wide shrink-0 whitespace-nowrap">{toTurkishUpperCase(record.time)}</div>
  <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
  {record.title}
  </div>

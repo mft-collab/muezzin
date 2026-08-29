@@ -33,21 +33,30 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  const appLinks = APP_LINKS;
 
  return (
- <aside className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)]">
- {/* Brand & Authority */}
+ <aside className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)] overflow-y-auto">
+ {/* Brand & Authority
+     flex-shrink-0 — <aside> fixed inset-y-0 (viewport yüksekliğine sabit) ve
+     hiçbir çocuğu flex-shrink-0 taşımıyordu. İçerik viewport'tan sadece
+     birkaç piksel taşınca (kısa pencere yüksekliklerinde — ör. 1366×768
+     dizüstü ekranları — sıradan), flexbox varsayılan davranışıyla bu
+     taşmayı orantısız biçimde İLK çocuktan (bu logo butonu, 48px→0px'e
+     kadar) kırpıyordu (manuel görsel denetimde bulundu — buton pratikte
+     TAMAMEN GÖRÜNMEZ oluyordu). Kalıcı çözüm: her sabit boyutlu çocuk
+     flex-shrink-0 alır, <aside> kendisi overflow-y-auto ile gerçek taşma
+     durumunda kırpmak yerine iç kaydırma sunar. */}
  <button
  type="button"
  onClick={() => onNavigateApp('/')}
  aria-label="Müezzin vakit ekranına git"
  title="Vakit ekranı"
- className="w-12 h-12 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[18px] flex items-center justify-center text-[var(--text-primary)] mb-12 shadow-[var(--spatial-shadow)] group cursor-pointer transition-all duration-500 relative overflow-hidden"
+ className="w-12 h-12 flex-shrink-0 bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-[18px] flex items-center justify-center text-[var(--text-primary)] mb-12 shadow-[var(--spatial-shadow)] group cursor-pointer transition-all duration-500 relative overflow-hidden"
  >
  <div className="absolute inset-0 bg-gradient-to-tr from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
  <Logo size={24} variant="dynamic" className="text-[var(--dynamic-aura,var(--aura-indigo))] group-hover:rotate-12 transition-transform duration-700" />
  </button>
 
  {/* Nav Items Ecosystem */}
- <nav aria-label="Admin ana menü" className="flex flex-col gap-3 w-full px-3">
+ <nav aria-label="Admin ana menü" className="flex-shrink-0 flex flex-col gap-3 w-full px-3">
  {navItems.map((item) => {
  const isActive = activeTab === item.id;
  return (
@@ -104,7 +113,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  })}
  </nav>
 
- <nav aria-label="Müezzin menüsü" className="mt-5 flex flex-col gap-2 w-full px-4">
+ <nav aria-label="Müezzin menüsü" className="flex-shrink-0 mt-5 flex flex-col gap-2 w-full px-4">
  {appLinks.map((item) => (
  <button
  key={item.path}
@@ -123,7 +132,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  </nav>
 
  {/* Global Actions Stack */}
- <div className="mt-auto flex flex-col gap-3 pb-8">
+ <div className="flex-shrink-0 mt-auto flex flex-col gap-3 pb-8">
  <button 
  onClick={toggleTheme}
  aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
