@@ -327,14 +327,16 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  {/* tracking-wide kaldırıldı + leading-snug eklendi — bu üç eşit-genişlikli
-      kartta (BEKLEYEN İZİN / HAFTALIK PLAN / DUYURULAR) "0/0 görev onay
-      bekliyor" gibi metinler dar genişlikte 3 satıra sarıp kartın alt
-      kenarına sıkışıyordu (manuel görsel denetimde bulundu — premium
-      standart ihlali). Harf aralığı normale dönünce metin daha dar yer
-      kaplıyor, satır aralığı sıkılaşınca sarsa bile daha düzenli görünüyor. */}
+  {/* tracking-wide kaldırıldı + leading-snug eklendi + "görev" kelimesi
+      çıkarıldı — bu üç eşit-genişlikli kartta (BEKLEYEN İZİN / HAFTALIK
+      PLAN / DUYURULAR) "0/0 görev onay bekliyor" dar genişlikte 3 satıra
+      sarıp kartın alt kenarına sıkışıyordu (manuel görsel denetimde
+      bulundu — leading-snug/tracking normalizasyonu TEK BAŞINA yeterli
+      olmadı, hâlâ 3 satırdı). "Görev" kelimesi bağlamdan zaten belli
+      (kart başlığı "HAFTALIK PLAN") — kaldırılması anlamı korurken
+      metni 2 satıra indiriyor. */}
   <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase leading-snug">
-  {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
+  {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} onay bekliyor` : 'Planlama ekranına git'}
   </p>
   </div>
  </motion.div>
