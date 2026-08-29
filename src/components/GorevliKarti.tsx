@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Shield, Sparkles, CheckCircle2, Hourglass, Compass } from 'lucide-react';
+import { toTurkishUpperCase } from '../lib/dateUtils';
 
 interface GorevliKartiProps {
  tip: 'asil' | 'yedek';
@@ -12,7 +13,9 @@ interface GorevliKartiProps {
 }
 
 const PersonaAvatar = React.memo(({ name, colorClass, isUser }: { name: string; colorClass: string; isUser: boolean }) => {
- const initials = name === 'Sistem' ? 'SA' : (name || '').split(' ').filter(Boolean).map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) || '??';
+ // toTurkishUpperCase (bkz. src/lib/dateUtils.ts) — locale'siz .toUpperCase()
+ // bir isim baş harfi "i"/"ı" ise yanlış büyütür, ör. "ismail" -> "IK" değil "İK".
+ const initials = name === 'Sistem' ? 'SA' : toTurkishUpperCase((name || '').split(' ').filter(Boolean).map(n => n.charAt(0)).join('')).slice(0, 2) || '??';
 
  return (
  <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] sm:rounded-[28px] flex items-center justify-center relative overflow-hidden border border-[var(--glass-border)] shadow-lg transition-all duration-500 ${colorClass} ${isUser ? 'animate-heartbeat' : ''}`}>

@@ -26,6 +26,16 @@ export function toTurkishUpperCase(text: string): string {
  return text.toLocaleUpperCase('tr-TR');
 }
 
+/** `toTurkishUpperCase`'in küçük harf karşılığı — anahtar kelime arama/
+ *  eşleştirme öncesi Türkçe metni normalize ederken kullanılır (bkz.
+ *  DuyuruYonetimi.tsx, KiblePusulasiModal.tsx, SistemDenetimSekmesi.tsx).
+ *  Locale'siz `.toLowerCase()` "İ" harfini tek bir "i" yerine "i" + birleşen
+ *  nokta işaretine çevirir, bu da ardından gelen `.includes(...)`
+ *  aramalarının sessizce eşleşmemesine yol açar. */
+export function toTurkishLowerCase(text: string): string {
+ return text.toLocaleLowerCase('tr-TR');
+}
+
 /**
  * Türkiye saati (UTC+3) için çevresel bağımsız yardımcı fonksiyonlar
  */

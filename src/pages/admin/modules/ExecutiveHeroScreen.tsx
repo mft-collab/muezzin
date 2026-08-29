@@ -10,7 +10,7 @@ import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { type ActiveModule } from '../config/navConfig';
 
@@ -378,7 +378,11 @@ export default function ExecutiveHeroScreen({
 
  <motion.div layout className="flex items-center justify-between relative z-10">
  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
- <div className="w-20 authority-title !text-2xs opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
+ {/* record.time date-fns'in tr locale'iyle üretilen serbest metin ("3
+     dakika önce" gibi) — toTurkishUpperCase (bkz. src/lib/dateUtils.ts)
+     kullanılır. record.id.substring(...).toUpperCase() (aşağıda) BİLEREK
+     dokunulmadı — o rastgele/opak bir Firestore ID'si, doğal dil değil. */}
+ <div className="w-20 authority-title !text-2xs opacity-30 tracking-wide shrink-0">{toTurkishUpperCase(record.time)}</div>
  <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
  {record.title}
  </div>

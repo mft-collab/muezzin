@@ -3,6 +3,7 @@ import { db } from '../../../lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { ClipboardList, Shield, User } from 'lucide-react';
+import { toTurkishLowerCase } from '../../../lib/dateUtils';
 
 interface AuditLog {
   id: string;
@@ -26,7 +27,10 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
   }, []);
 
   const getActionBadgeColor = (type: string) => {
-    const t = type.toLowerCase();
+    // toTurkishLowerCase (bkz. src/lib/dateUtils.ts) — `type` denetim
+    // kaydının Türkçe aksiyon adı (ör. "İzin Talebi Kararı", "Personel
+    // Arşivleme"), locale'siz .toLowerCase() "İ"yi bozuk çeviriyordu.
+    const t = toTurkishLowerCase(type);
     if (t.includes('sil') || t.includes('arşiv') || t.includes('red')) return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
     if (t.includes('ekle') || t.includes('onay') || t.includes('oluştur')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     if (t.includes('güncelle') || t.includes('düzenle') || t.includes('kaydet')) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';

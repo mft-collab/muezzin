@@ -5,6 +5,7 @@ import { VekaletTalebi } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { useChangeKey } from './useChangeKey';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { toTurkishUpperCase } from '../lib/dateUtils';
 
 /**
  * Oturum sahibinin kabul ettiği ama scripts/vekaletDevirleriniIsle.ts
@@ -48,7 +49,7 @@ export function useBekleyenVekaletDevirleri(uid: string | undefined) {
         if (data.bildirimUygulandi === true && data.talepSonuc === 'reddedildi') {
           showNotification(
             'Devir Uygulanamadı',
-            `${data.tarih} ${String(data.vakit).toUpperCase()} vakti için kabul ettiğiniz devir işlenirken artık uygun bulunmadınız. Admin bilgilendirildi.`,
+            `${data.tarih} ${toTurkishUpperCase(String(data.vakit))} vakti için kabul ettiğiniz devir işlenirken artık uygun bulunmadınız. Admin bilgilendirildi.`,
             'error'
           );
         }

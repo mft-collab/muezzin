@@ -1,4 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { toTurkishUpperCase } from '../src/lib/dateUtils.ts';
 
 type BildirimData = {
   haftaId: string;
@@ -225,7 +226,7 @@ export async function processVekaletDevirleri(dryRun = false) {
       transaction.update(talepDoc.ref, { bildirimUygulandi: true, talepSonuc: 'uygulandi', sonGuncelleme: Timestamp.now() });
       transaction.set(db.collection('audit_logs').doc(), {
         actionType: 'Görev Vekaleti Devri',
-        targetName: `${talep.tarih} - ${talep.vakit.toUpperCase()}`,
+        targetName: `${talep.tarih} - ${toTurkishUpperCase(talep.vakit)}`,
         details: `${talep.gonderenIsim} görevi otonom vekalet ile ${talep.aliciIsim} hocaya devretti.`,
         userId: talep.aliciUid,
         userDisplayName: talep.aliciIsim,

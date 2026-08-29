@@ -2,6 +2,7 @@ import { collection, getDoc, getDocs, writeBatch, doc, type DocumentData, type U
 import { db } from '../lib/firebase';
 import type { Muezzin, Izin, HaftaPlan, Vakit } from '../types';
 import { telemetryService } from './telemetryService';
+import { toTurkishUpperCase } from '../lib/dateUtils';
 
 // Denetlenen belgeler tanım gereği güvenilmez olabilir (eksik/bozuk alanlar
 // aranan şey) — bu yüzden `Muezzin`/`Izin`/`HaftaPlan` yerine bunların
@@ -172,7 +173,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'critical',
  message: `Nöbette bulunamayan asil görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti asil görevlisi (UID: ${asil}) dizgede kayıtlı değil.`,
+ details: `${gun} ${toTurkishUpperCase(vakit)} vakti asil görevlisi (UID: ${asil}) dizgede kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
  });
  } else if (asilUser.aktif === false || asilUser.role !== 'muezzin') {
@@ -181,7 +182,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'warning',
  message: `Nöbette pasif asil görevli tespit edildi!`,
- details: `${gun} ${vakit.toUpperCase()} vakti görevlisi ${asilUser.displayName} pasif statüde.`,
+ details: `${gun} ${toTurkishUpperCase(vakit)} vakti görevlisi ${asilUser.displayName} pasif statüde.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'asil', value: 'Sistem' }
  });
  }
@@ -195,7 +196,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'critical',
  message: `Nöbette bulunamayan yedek görevli!`,
- details: `${gun} ${vakit.toUpperCase()} vakti yedek görevlisi (UID: ${yedek}) dizgede kayıtlı değil.`,
+ details: `${gun} ${toTurkishUpperCase(vakit)} vakti yedek görevlisi (UID: ${yedek}) dizgede kayıtlı değil.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
  });
  } else if (yedekUser.aktif === false || yedekUser.role !== 'muezzin') {
@@ -204,7 +205,7 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  category: 'schedule',
  severity: 'warning',
  message: `Nöbette pasif yedek görevli tespit edildi!`,
- details: `${gun} ${vakit.toUpperCase()} vakti yedeği ${yedekUser.displayName} pasif statüde.`,
+ details: `${gun} ${toTurkishUpperCase(vakit)} vakti yedeği ${yedekUser.displayName} pasif statüde.`,
  repairData: { type: 'schedule_reset', planId: plan.id, gun, vakit, field: 'yedek', value: 'Sistem' }
  });
  }

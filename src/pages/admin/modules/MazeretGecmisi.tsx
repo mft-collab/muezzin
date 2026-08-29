@@ -9,6 +9,7 @@ import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { AdminLoadingState } from '../components/AdminLoadingState';
 import { exportCsv } from '../../../lib/csvExport';
 import { mazeretKaydiSil } from '../../../services/mazeretServisi';
+import { toTurkishUpperCase } from '../../../lib/dateUtils';
 
 export default function MazeretGecmisi() {
  const { gecmis, loading } = useMazeretGecmisi();
@@ -77,7 +78,7 @@ export default function MazeretGecmisi() {
  >
  <option value="all" className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">TÜM PERSONEL</option>
  {muezzinler.map(m => (
- <option key={m.id} value={m.id} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">{m.displayName.toUpperCase()}</option>
+ <option key={m.id} value={m.id} className="bg-[var(--card-elevated-bg)] text-[var(--text-primary)]">{toTurkishUpperCase(m.displayName)}</option>
  ))}
  </select>
  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
@@ -155,7 +156,7 @@ export default function MazeretGecmisi() {
  <div className="flex items-center gap-2">
  <div className="w-1 h-1 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
  <span className="authority-title !text-2xs opacity-40 uppercase tracking-wide">
- {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {g.vakit.toUpperCase()} VAKTİ
+ {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {toTurkishUpperCase(g.vakit)} VAKTİ
  </span>
  </div>
  </div>

@@ -11,7 +11,7 @@ import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate, getTurkeyNow } from '../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyNow, toTurkishUpperCase } from '../lib/dateUtils';
 import { getActiveAuraColor, getSecondaryAuraColor } from '../lib/auraTheme';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
@@ -292,7 +292,9 @@ export default function HaftalikTakvim() {
  : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]'
  }`}>
  <span className="text-2xl font-sans font-light leading-none">{format(parsedDate, 'd')}</span>
- <span className="text-2xs font-bold uppercase tracking-wider mt-1">{gunAyi?.substring(0, 3)?.toUpperCase()}</span>
+ {/* toTurkishUpperCase — gunAyi Türkçe ay adı ("Nisan"/"Ekim" gibi "i"
+     içerenler), locale'siz .toUpperCase() "İ" yerine "I" üretirdi. */}
+ <span className="text-2xs font-bold uppercase tracking-wider mt-1">{gunAyi ? toTurkishUpperCase(gunAyi.substring(0, 3)) : ''}</span>
  </div>
  <div>
  <h4 className={`text-xl font-light tracking-tight apple-thin ${isToday ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>

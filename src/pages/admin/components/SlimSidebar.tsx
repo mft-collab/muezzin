@@ -4,6 +4,7 @@ import { LogOut, Sun, Moon } from 'lucide-react';
 import { Logo } from '../../../components/ui/Logo';
 import { getAdminNavItems, APP_LINKS, type ActiveModule } from '../config/navConfig';
 import type { ThemeToggleEvent } from '../../../store/useThemeStore';
+import { toTurkishUpperCase } from '../../../lib/dateUtils';
 
 interface SlimSidebarProps {
  activeTab: ActiveModule;
@@ -71,7 +72,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  />
  </div>
  <span className={`authority-title !text-2xs relative z-10 transition-all duration-700 font-bold tracking-wide ${isActive ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'}`}>
- {item.shortLabel.toUpperCase()}
+ {toTurkishUpperCase(item.shortLabel)}
  </span>
 
  {item.badge > 0 && (

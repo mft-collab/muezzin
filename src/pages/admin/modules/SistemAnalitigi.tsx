@@ -6,7 +6,7 @@ import { db } from '../../../lib/firebase';
 import { format, subDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
-import { getTurkeyNow } from '../../../lib/dateUtils';
+import { getTurkeyNow, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { telemetryService } from '../../../services/telemetryService';
 import { AdminLoadingState } from '../components/AdminLoadingState';
@@ -286,7 +286,7 @@ export default function SistemAnalitigi() {
                           exit={{ opacity: 0, y: 10, scale: 0.9 }}
                           className="absolute -top-16 bg-[var(--surface-medium)] text-[var(--text-primary)] border border-[var(--glass-border)] text-2xs font-bold py-3 px-6 rounded-2xl tracking-wide shadow-[var(--spatial-shadow)] z-50 whitespace-nowrap"
                         >
-                          {data.day.toUpperCase()} •{' '}
+                          {toTurkishUpperCase(data.day)} •{' '}
                           {data.total > 0
                             ? `${data.completed}/${data.total} görev — %${data.value}`
                             : 'Plan yok'}
@@ -333,7 +333,7 @@ export default function SistemAnalitigi() {
                   <span className={`authority-title !text-2xs transition-all duration-700 font-bold tracking-wide ${
                     hoveredIdx === idx ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100' : 'opacity-20'
                   }`}>
-                    {GUN_KISALTMA[data.day] ?? data.day.substring(0, 3).toUpperCase()}
+                    {GUN_KISALTMA[data.day] ?? toTurkishUpperCase(data.day.substring(0, 3))}
                   </span>
                 </div>
               ))}

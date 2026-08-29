@@ -11,7 +11,7 @@ import {
   senkronizeGuncelVeGelecekAyCache,
   VakitCacheKaydi,
 } from '../../../services/vakitCacheServisi';
-import { toJsDate } from '../../../lib/dateUtils';
+import { toJsDate, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { telemetryService } from '../../../services/telemetryService';
 
 type UiMessage = { type: 'success' | 'error'; text: string } | null;
@@ -191,7 +191,7 @@ export default function EzanOnbellegi() {
           </td>
           <td className="px-6 py-4">
            <span className="px-3 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-2xs font-bold text-[var(--text-secondary)] uppercase">
-            {o.kaynakApi?.toUpperCase() || 'OTONOM'}
+            {o.kaynakApi ? toTurkishUpperCase(o.kaynakApi) : 'OTONOM'}
            </span>
           </td>
           <td className="px-6 py-4">
@@ -227,7 +227,7 @@ export default function EzanOnbellegi() {
         <div className="flex justify-between items-center gap-3">
          <h4 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight">{o.id.toUpperCase()}</h4>
          <span className="px-2.5 py-1 rounded-lg bg-[var(--surface-low)] border border-[var(--glass-border)] text-2xs font-bold text-[var(--text-secondary)] tracking-wide uppercase">
-          {o.kaynakApi?.toUpperCase() || 'OTONOM'}
+          {o.kaynakApi ? toTurkishUpperCase(o.kaynakApi) : 'OTONOM'}
          </span>
         </div>
         <div className="flex flex-col gap-1 text-xs">

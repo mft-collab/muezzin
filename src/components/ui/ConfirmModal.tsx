@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal } from './Modal';
 import { AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
+import { toTurkishUpperCase } from '../../lib/dateUtils';
 
 interface ConfirmModalProps {
  isOpen: boolean;
@@ -36,7 +37,15 @@ export function ConfirmModal({
     </div>
     
     <p className="premium-label !text-2xs leading-relaxed max-w-sm mb-12 opacity-65 dark:opacity-40 tracking-wide px-4">
-      {message.toUpperCase()}
+      {/* toTurkishUpperCase (bkz. src/lib/dateUtils.ts) — locale'siz
+          `.toUpperCase()` Türkçe metinde "i" harfini yanlış büyütürdü ("İ"
+          yerine "I"). Bu mesaj neredeyse her zaman Türkçe kelimeler VE bir
+          kişinin adını (ör. "Ali", "Bilal") içerir — "aktif" → "AKTIF",
+          "Ali" → "ALI" gibi hatalı sonuçlar üretiyordu (bkz. kod denetimi
+          bulgusu; scripts/smoke-tests.ts'teki "türkçe büyük harf dönüşümü"
+          testi zaten TAM OLARAK bu hatayı yakalayacak şekilde yazılmış ama
+          bu bileşen o yardımcı fonksiyonu hiç kullanmıyordu). */}
+      {toTurkishUpperCase(message)}
     </p>
     
     <div className="flex items-center gap-4 w-full px-4">
@@ -50,7 +59,7 @@ export function ConfirmModal({
             : 'neural-btn'
         }`}
       >
-        {confirmText.toUpperCase()}
+        {toTurkishUpperCase(confirmText)}
       </motion.button>
       <motion.button 
         whileHover={{ y: -1 }}
@@ -58,7 +67,7 @@ export function ConfirmModal({
         onClick={onClose}
         className="px-8 py-4.5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent border-none"
       >
-        {cancelText.toUpperCase()}
+        {toTurkishUpperCase(cancelText)}
       </motion.button>
     </div>
  </div>

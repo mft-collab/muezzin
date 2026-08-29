@@ -13,6 +13,7 @@ import { db } from '../lib/firebase';
 import { Duyuru } from '../hooks/useDuyurular';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
+import { toTurkishUpperCase } from '../lib/dateUtils';
 
 export function duyurularAbone(
   onData: (duyurular: Duyuru[]) => void,
@@ -30,7 +31,7 @@ export async function duyuruYayinla(data: { baslik: string; icerik: string; tip:
   const path = 'duyurular';
   try {
     await addDoc(collection(db, path), { ...data, tarih: Timestamp.now() });
-    await telemetryService.logAudit('Duyuru Yayınlama', data.baslik, `Yeni duyuru panoda paylaşıldı. Kategori: ${data.tip.toUpperCase()}`);
+    await telemetryService.logAudit('Duyuru Yayınlama', data.baslik, `Yeni duyuru panoda paylaşıldı. Kategori: ${toTurkishUpperCase(data.tip)}`);
   } catch (err) {
     throw handleFirestoreError(err, OperationType.CREATE, path);
   }

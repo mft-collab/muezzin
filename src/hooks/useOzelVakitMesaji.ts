@@ -23,7 +23,7 @@
 import { useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { GunlukVakit, Vakit } from '../types';
-import { parseVakitToDate, calculateKerahatTimes, calculateLastThirdOfNight, isFriday as isFridayTarih } from '../lib/dateUtils';
+import { parseVakitToDate, calculateKerahatTimes, calculateLastThirdOfNight, isFriday as isFridayTarih, toTurkishUpperCase } from '../lib/dateUtils';
 import {
   isRamazanBayram,
   isKurbanBayram,
@@ -204,7 +204,7 @@ export function useOzelVakitMesaji(
             return {
               tip: 'tesrik',
               baslik: 'Teşrik Tekbirleri',
-              altBaslik: `${v.vakit.toUpperCase()} NAMAZI`,
+              altBaslik: `${toTurkishUpperCase(v.vakit)} NAMAZI`,
               aciklama: 'Son teşrik vakti. Bu namazın ardından teşrik tekbirleri tamamlanır.',
               arapca: TESRIK_TEKBIR_ARAPCA,
               transkript: TESRIK_TEKBIR_TRANSKRIPT,
@@ -230,7 +230,7 @@ export function useOzelVakitMesaji(
           return {
             tip: 'tesrik',
             baslik: 'Teşrik Tekbirleri',
-            altBaslik: `${v.vakit.toUpperCase()} NAMAZI`,
+            altBaslik: `${toTurkishUpperCase(v.vakit)} NAMAZI`,
             aciklama: `${gunAciklama} — Her farz namazdan sonra teşrik tekbiri getirilir.`,
             arapca: TESRIK_TEKBIR_ARAPCA,
             transkript: TESRIK_TEKBIR_TRANSKRIPT,
