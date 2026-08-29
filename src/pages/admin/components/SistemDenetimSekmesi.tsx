@@ -4,6 +4,8 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
 import { motion } from 'motion/react';
 import { ClipboardList, Shield, User } from 'lucide-react';
 import { toTurkishLowerCase } from '../../../lib/dateUtils';
+import { AdminLoadingState } from './AdminLoadingState';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 interface AuditLog {
   id: string;
@@ -17,12 +19,17 @@ interface AuditLog {
 
 export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (ts: unknown) => string }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const auditQuery = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(30));
     const unsub = onSnapshot(auditQuery, (snap) => {
       setLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog)));
-    }, (err) => console.error("Audit logs listen error:", err));
+      setLoading(false);
+    }, (err) => {
+      console.error("Audit logs listen error:", err);
+      setLoading(false);
+    });
     return () => unsub();
   }, []);
 
@@ -36,6 +43,12 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
     if (t.includes('güncelle') || t.includes('düzenle') || t.includes('kaydet')) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
     return 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20';
   };
+
+  // İlk onSnapshot paketi gelmeden önce erken dönüş yapılmazsa, gerçekte
+  // henüz hiç veri okunmamışken "Kayıt Bulunmuyor" boş-durum ekranı yanlışlıkla
+  // yanıp söner (bkz. premium standart denetimi — EzanOnbellegi.tsx'teki aynı
+  // desen).
+  if (loading) return <AdminLoadingState label="Denetim izleri okunuyor" />;
 
   return (
     <div className="space-y-6">
@@ -52,13 +65,13 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
 
       <div className="space-y-4">
         {logs.length === 0 ? (
-          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-card bg-[var(--text-primary)]/[0.01]">
-            <div className="w-12 h-12 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center mx-auto mb-4 border border-[var(--dynamic-aura,var(--aura-indigo))]/20">
-              <Shield size={20} />
-            </div>
-            <p className="text-sm text-[var(--text-primary)] font-light">Kayıt Bulunmuyor</p>
-            <p className="premium-label !text-2xs !opacity-30 mt-1">DİZGEDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ.</p>
-          </div>
+          <EmptyState
+            icon={<Shield size={36} strokeWidth={1.2} />}
+            title="Kayıt Bulunmuyor"
+            description="DİZGEDE HENÜZ HİÇBİR YÖNETİCİ İŞLEMİ KAYDEDİLMEMİŞ."
+            tone="indigo"
+            size="md"
+          />
         ) : (
           logs.map((log) => (
             <motion.div

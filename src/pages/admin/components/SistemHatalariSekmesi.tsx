@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, ShieldAlert, CheckCircle, Trash2, Wifi, WifiOff, Cpu, Navigation, Layers, Activity, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { AdminLoadingState } from './AdminLoadingState';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { errorLogsAbone, errorLoglariniTemizle, type EnrichedErrorLog, type Breadcrumb } from '../../../services/telemetryService';
 
 interface ErrorLog extends Partial<EnrichedErrorLog> {
@@ -118,14 +120,21 @@ function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnap
 
 export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (ts: unknown) => string }) => {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedError, setSelectedError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<'stack' | 'breadcrumbs' | 'snapshot'>('stack');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   useEffect(() => {
     const unsub = errorLogsAbone(
-      (logs) => setErrorLogs(logs as ErrorLog[]),
-      (err) => console.error('Error logs listen error:', err)
+      (logs) => {
+        setErrorLogs(logs as ErrorLog[]);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error logs listen error:', err);
+        setLoading(false);
+      }
     );
     return () => unsub();
   }, []);
@@ -139,6 +148,12 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
       setConfirmClearOpen(false);
     }
   };
+
+  // İlk onSnapshot paketi gelmeden önce erken dönüş yapılmazsa, gerçekte
+  // henüz hiç veri okunmamışken "Mükemmel Durum!" boş-durum ekranı yanlışlıkla
+  // yanıp söner (bkz. premium standart denetimi — EzanOnbellegi.tsx'teki aynı
+  // desen).
+  if (loading) return <AdminLoadingState label="Hata günlükleri okunuyor" />;
 
   return (
     <div className="space-y-6">
@@ -160,13 +175,13 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
 
       <div className="space-y-4">
         {errorLogs.length === 0 ? (
-          <div className="p-16 text-center border border-dashed border-[var(--glass-border)] rounded-card bg-[var(--text-primary)]/[0.01]">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-              <CheckCircle size={20} />
-            </div>
-            <p className="text-sm text-[var(--text-primary)] font-light">Mükemmel Durum!</p>
-            <p className="premium-label !text-2xs !opacity-30 mt-1">DİZGEDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR.</p>
-          </div>
+          <EmptyState
+            icon={<CheckCircle size={36} strokeWidth={1.2} />}
+            title="Mükemmel Durum!"
+            description="DİZGEDE HİÇBİR KRİTİK ÇÖKME VEYA HATA BULUNMUYOR."
+            tone="emerald"
+            size="md"
+          />
         ) : (
           errorLogs.map((log) => {
             const isOpen = selectedError === log.id;

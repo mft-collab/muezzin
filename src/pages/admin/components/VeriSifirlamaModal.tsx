@@ -47,12 +47,24 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
     setSayilarYukleniyor(true);
   }
 
-  useEffect(() => {
-    if (!isOpen) return;
+  // fetchSayilar: hem modal ilk açıldığında hem de başarısız/yarım kalan bir
+  // sıfırlama sonrası TEKRAR çağrılır — aksi halde ekranda işlem öncesinin
+  // (artık kısmen silinmiş, bayat) belge sayıları asılı kalırdı (bkz. premium
+  // standart denetimi). "Yükleniyor" bayrağını KENDİSİ ayarlamaz — ilk açılış
+  // için bunu zaten yukarıdaki render-sırası useChangeKey bloğu yapıyor;
+  // yeniden deneme çağrıları (handleSifirla'nın catch bloğu) kendi
+  // setSayilarYukleniyor(true) çağrısını yapar. Böylece effect içinde eşzamanlı
+  // setState tetiklenmez (react-hooks/set-state-in-effect).
+  const fetchSayilar = () => {
     koleksiyonBelgeSayilariniGetir()
       .then(setSayilar)
       .catch(() => setSayilar(null))
       .finally(() => setSayilarYukleniyor(false));
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchSayilar();
   }, [isOpen]);
 
   const toggleSecim = (anahtar: SifirlanabilirKoleksiyonAnahtari) => {
@@ -94,6 +106,11 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
         'error'
       );
       playWarning();
+      // Kısmi sıfırlama bazı koleksiyonları gerçekten boşaltmış olabilir —
+      // modal kapanmadığı için ekranda işlem-öncesi (artık bayat) sayılar
+      // kalmasın diye tazelenir.
+      setSayilarYukleniyor(true);
+      fetchSayilar();
     } finally {
       setCalisiyor(false);
       setIlerlemeMesaji('');

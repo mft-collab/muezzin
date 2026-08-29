@@ -812,12 +812,34 @@
    etiketleri) `opacity-30`/`opacity-40` gibi ayrı Tailwind utility'leriyle üst üste
    binince aynı eşiğin altına düşüyordu (görsel denetim, Rev.2) — bu yüzden
    .authority-title'ın kendi opaklığı da aydınlık modda tam güce zorlanır.
-*/
-[data-theme='light'] .premium-label {
-  font-weight: 600 !important;
-}
-[data-theme='light'] .authority-title {
-  opacity: 1 !important;
+   @layer base İÇİNDE: bu blok önceden katmansızdı (unlayered) — ExecutiveHeroScreen.tsx'in
+   authority-title kullanımları bang'siz opacity-XX (kendi !important'ı YOK) taşıdığı için
+   sorun hiç ortaya çıkmıyordu, ama SistemHatalariSekmesi.tsx/SistemDenetimSekmesi.tsx/
+   VeriSagligiSekmesi.tsx'teki premium-label kullanımları BANG'Lİ !opacity-XX (kendi
+   !important'ı VAR) taşıyor. CSS Cascade Layers spesifikasyonuna göre iki !important
+   kural karşılaştığında katmansız (unlayered) taraf, Tailwind'in @layer utilities'i
+   dahil TÜM adlandırılmış katmanlara karşı EN DÜŞÜK önceliğe sahip — bu yüzden
+   önceki (katmansız) hâli manuel doğrulamada gerçekte hiç uygulanmıyordu (bkz.
+   premium standart denetimi, tarayıcıda ölçülen computed opacity hâlâ 0.35 çıktı).
+   @layer base'e taşımak, Tailwind'in kendi katman sırasında (theme, base, components,
+   utilities) base'i utilities'ten ÖNCE koyduğu için — !important karşılaştırmasında
+   öncelik sırası TERSİNE döner, yani base'in !important'ı utilities'inkini yener. */
+@layer base {
+  [data-theme='light'] .premium-label {
+    font-weight: 600 !important;
+    /* .premium-label @apply authority-title yapıyor ama Tailwind v4'te bu,
+       DOM'a .authority-title sınıfını EKLEMİYOR — yalnızca onun kurallarını bu
+       @utility'nin kendi kural kümesine derliyor. Bu yüzden aşağıdaki
+       .authority-title kuralı miras alınmıyordu ve Loglar sekmesindeki
+       !opacity-XX çağrı noktaları (SistemHatalariSekmesi.tsx,
+       SistemDenetimSekmesi.tsx vb.) ışık modunda WCAG AA eşiğinin altına
+       düşüyordu (bkz. premium standart denetimi) — aynı zorlama burada da
+       tekrarlanır. */
+    opacity: 1 !important;
+  }
+  [data-theme='light'] .authority-title {
+    opacity: 1 !important;
+  }
 }
 
 /* ─────────────────────────────────────────

@@ -9,7 +9,7 @@ import { useMuezzinStore } from '../../../store/useMuezzinStore';
 import { getTurkeyNow, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { telemetryService } from '../../../services/telemetryService';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 const PERIOD_OPTIONS = [
   { days: 7, label: '7 Gün' },
@@ -39,14 +39,34 @@ interface PersonnelStat {
   rate: number;
 }
 
+/** `displayName` HENÜZ çözülmemiş kişi-bazlı özet — bkz. aşağıdaki
+ * `personnelStats` useMemo yorumu. */
+type PersonnelStatRaw = Omit<PersonnelStat, 'displayName'>;
+
 export default function SistemAnalitigi() {
   const [periodDays, setPeriodDays] = useState<7 | 30 | 90>(7);
   const [healthScore, setHealthScore] = useState(0);
   const [weeklyData, setWeeklyData] = useState<{ day: string; value: number; completed: number; total: number }[]>([]);
-  const [personnelStats, setPersonnelStats] = useState<PersonnelStat[]>([]);
+  const [personnelStatsRaw, setPersonnelStatsRaw] = useState<PersonnelStatRaw[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const muezzinMap = useMuezzinStore(s => s.muezzinMap);
+
+  // `displayName` çözümlemesi ana Firestore sorgusundan (aşağıdaki
+  // useEffect) BİLEREK ayrıldı — useMuezzinStore'un `muezzinMap`'i HER
+  // onSnapshot tetiklenmesinde yeni bir obje referansı üretiyor (reduce
+  // ile kurulan map kararlı değil). Bu, `muezzinMap`'i doğrudan ana
+  // useEffect'in bağımlılığında tutsaydı, herhangi bir müezzinin herhangi
+  // bir alanı (isim, aktiflik, FCM token...) değiştiğinde TÜM periyot
+  // penceresi için `bildirimler` sorgusunun gereksiz yere yeniden
+  // kurulmasına (unsubscribe+yeniden abone, kısa bir dinleyici kopukluğu
+  // penceresiyle) yol açıyordu (bkz. kod denetimi bulgusu). Artık yalnızca
+  // bu ucuz istemci-tarafı eşleme adımı `muezzinMap` değişince yeniden
+  // hesaplanıyor, Firestore sorgusu DOKUNULMADAN kalıyor.
+  const personnelStats: PersonnelStat[] = useMemo(
+    () => personnelStatsRaw.map(p => ({ ...p, displayName: muezzinMap[p.uid]?.displayName || 'Bilinmiyor' })),
+    [personnelStatsRaw, muezzinMap]
+  );
 
   // Seçili dönem değiştiğinde yükleme durumunu render sırasında ayarla —
   // bkz. useBugunkuGorevlerim.ts'teki aynı desen.
@@ -136,15 +156,14 @@ export default function SistemAnalitigi() {
         if (b.durum === 'reddedildi') entry.rejected += 1;
         byUid.set(b.uid, entry);
       }
-      const personnelList: PersonnelStat[] = Array.from(byUid.entries()).map(([uid, s]) => ({
+      const personnelList: PersonnelStatRaw[] = Array.from(byUid.entries()).map(([uid, s]) => ({
         uid,
-        displayName: muezzinMap[uid]?.displayName || 'Bilinmiyor',
         completed: s.completed,
         rejected: s.rejected,
         total: s.total,
         rate: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
       })).sort((a, b) => b.total - a.total);
-      setPersonnelStats(personnelList);
+      setPersonnelStatsRaw(personnelList);
 
       setLoading(false);
     }, () => {
@@ -152,7 +171,7 @@ export default function SistemAnalitigi() {
     });
 
     return () => unsubscribe();
-  }, [periodDays, muezzinMap]);
+  }, [periodDays]);
 
   const periodLabel = useMemo(() => PERIOD_OPTIONS.find(p => p.days === periodDays)?.label || `${periodDays} Gün`, [periodDays]);
 
@@ -181,9 +200,13 @@ export default function SistemAnalitigi() {
     }
   };
 
-  if (loading) {
-    return <AdminLoadingState label="Veriler Yükleniyor" size="lg" />;
-  }
+  // Önceden `loading` iken TÜM ekran (periyot seçici düğmeler dahil)
+  // AdminLoadingState'in ortalanmış tek bir spinner'ıyla değiştiriliyordu
+  // — düzen tamamen kayboluyor, admin periyot seçimini yükleme sırasında
+  // değiştiremiyordu (bkz. kod denetimi bulgusu). ExecutiveHeroScreen.tsx'in
+  // HeroStatSkeleton deseniyle tutarlı olacak şekilde artık yalnızca veriye
+  // bağlı alanlar (sağlık skoru/grafik/tablo) `loading` iken iskelete
+  // dönüyor, sayfa iskeleti (başlık + periyot seçici) her zaman sabit kalıyor.
 
   return (
     <motion.div
@@ -242,26 +265,36 @@ export default function SistemAnalitigi() {
                   çakışıyordu (bkz. görsel tasarım denetimi: KPI kart çakışması).
                   ExecutiveHeroScreen'deki eşdeğer büyük-rakam paterniyle (text-6xl lg:text-8xl)
                   aynı mantıkla duyarlı hale getirildi ve flex-wrap güvenlik ağı eklendi. */}
-              <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
-                <h3 className="text-6xl sm:text-7xl lg:text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
-                  {healthScore}
-                </h3>
-                <div className="flex flex-col">
-                  <span className="text-xl sm:text-2xl lg:text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
-                  <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
-                    healthScore >= 80 ? 'text-emerald-500' :
-                    healthScore >= 60 ? 'text-amber-500' :
-                    healthScore > 0 ? 'text-rose-500' : 'text-[var(--text-secondary)]/30'
-                  }`}>
-                    {healthScore >= 80 ? 'STABİL' : healthScore >= 60 ? 'İZLEME' : healthScore > 0 ? 'KRİTİK' : 'VERİ YOK'}
-                  </span>
+              {loading ? (
+                <div className="w-40 sm:w-56 h-16 sm:h-24 fluid-skeleton rounded-2xl" />
+              ) : (
+                <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
+                  <h3 className="text-6xl sm:text-7xl lg:text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
+                    {healthScore}
+                  </h3>
+                  <div className="flex flex-col">
+                    <span className="text-xl sm:text-2xl lg:text-3xl text-[var(--dynamic-aura,var(--aura-indigo))]/40 font-light italic leading-none">%</span>
+                    <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
+                      healthScore >= 80 ? 'text-emerald-500' :
+                      healthScore >= 60 ? 'text-amber-500' :
+                      healthScore > 0 ? 'text-rose-500' : 'text-[var(--text-secondary)]/30'
+                    }`}>
+                      {healthScore >= 80 ? 'STABİL' : healthScore >= 60 ? 'İZLEME' : healthScore > 0 ? 'KRİTİK' : 'VERİ YOK'}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Chart Core — yalnızca 7 günlük dönemde günlük çubuklar gösterilir */}
-          {periodDays === 7 && (
+          {/* Chart Core — yalnızca 7 günlük dönemde günlük çubuklar gösterilir.
+              `loading` iken (dönem değişimi sırasında) düzen aynı kalır,
+              yalnızca içerik iskelete döner — bkz. dosya başı yorumu. */}
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center mb-10 mt-12">
+              <div className="w-full h-64 fluid-skeleton rounded-2xl" />
+            </div>
+          ) : periodDays === 7 ? (
             <div className="flex-1 flex items-end justify-between gap-4 sm:gap-10 relative px-6 mb-10 mt-12">
               {/* Background Grid Lines (Subtle) */}
               <div className="absolute inset-x-0 inset-y-0 flex flex-col justify-between pointer-events-none opacity-[0.06]">
@@ -338,10 +371,7 @@ export default function SistemAnalitigi() {
                 </div>
               ))}
             </div>
-          )}
-
-          {/* Uzun dönemlerde günlük kırılım anlamlı olmadığından bilgilendirici yer tutucu gösterilir */}
-          {periodDays !== 7 && (
+          ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 mb-10 mt-12 text-center">
               <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
                 <Activity size={22} strokeWidth={1} className="text-[var(--text-secondary)]" />
@@ -371,8 +401,16 @@ export default function SistemAnalitigi() {
             </button>
           </div>
 
-          {personnelStats.length === 0 ? (
-            <p className="text-2xs text-[var(--text-secondary)]/50 py-8 text-center">Bu dönemde kayıtlı görev bulunmuyor.</p>
+          {loading ? (
+            <div className="w-full h-40 fluid-skeleton rounded-2xl" />
+          ) : personnelStats.length === 0 ? (
+            <EmptyState
+              icon={<Activity size={36} strokeWidth={1.2} />}
+              title="Kayıt Bulunmuyor"
+              description={`SON ${periodDays} GÜN İÇİN KİŞİ BAZLI HİÇBİR GÖREV KAYDI BULUNMUYOR.`}
+              tone="neutral"
+              size="md"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">

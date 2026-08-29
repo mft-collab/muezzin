@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeartPulse, CheckCircle2, AlertOctagon, RefreshCw, ShieldCheck, Terminal } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { veriSagligiTara, veriHatalariniOnar, type AuditError } from '../../../services/veriOnarimServisi';
 
 export const VeriSagligiSekmesi = React.memo(() => {
@@ -150,13 +151,13 @@ export const VeriSagligiSekmesi = React.memo(() => {
  </p>
  </div>
  ) : errors.length === 0 ? (
- <div className="p-10 text-center border border-dashed border-emerald-500/10 rounded-card bg-emerald-500/[0.01]">
- <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
- <CheckCircle2 size={18} />
- </div>
- <h5 className="text-xs font-semibold text-emerald-400">Veritabanı Tamamen Sağlıklı!</h5>
- <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Personeller, izinler ve nöbet planları arasında hiçbir uyumsuzluk veya yetim kayıt bulunamadı.</p>
- </div>
+ <EmptyState
+   icon={<CheckCircle2 size={36} strokeWidth={1.2} />}
+   title="Veritabanı Tamamen Sağlıklı!"
+   description="PERSONELLER, İZİNLER VE NÖBET PLANLARI ARASINDA HİÇBİR UYUMSUZLUK VEYA YETİM KAYIT BULUNAMADI."
+   tone="emerald"
+   size="md"
+ />
  ) : (
  errors.map((err) => (
  <div 

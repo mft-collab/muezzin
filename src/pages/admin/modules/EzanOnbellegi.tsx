@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
 import { AdminLoadingState } from '../components/AdminLoadingState';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import {
   listeleVakitCacheleri,
   senkronizeGuncelVeGelecekAyCache,
@@ -134,7 +135,11 @@ export default function EzanOnbellegi() {
     )}
    </AnimatePresence>
 
-   <section className="p-1 sm:p-8 relative overflow-hidden rounded-card border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent">
+   {/* spatial-glass — bu kart önceden elle yazılmış "border-none sm:border
+       ... bg-transparent" deseni kullanıyordu (Loglar sekmesindeki TÜM
+       kartların aksine), mobilde tamamen çerçevesiz/şeffaf görünüyordu
+       (bkz. kod denetimi bulgusu, premium standart). */}
+   <section className="spatial-glass !rounded-card p-1 sm:p-8 relative overflow-hidden">
     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5 mb-6">
      <div className="flex items-center gap-4">
       <div className="w-11 h-11 rounded-[14px] bg-[var(--surface-medium)] text-[var(--dynamic-aura,var(--aura-indigo))] flex items-center justify-center border border-[var(--glass-border)]">
@@ -173,8 +178,14 @@ export default function EzanOnbellegi() {
       <tbody className="divide-y divide-[var(--glass-border)]">
        {onbellekler.length === 0 ? (
         <tr>
-         <td colSpan={4} className="px-6 py-16 text-center">
-          <p className="authority-title !text-2xs opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
+         <td colSpan={4} className="px-2 py-8">
+          <EmptyState
+           icon={<DatabaseZap size={36} strokeWidth={1.2} />}
+           title="Kayıtlı Önbellek Yok"
+           description="BU İLÇE İÇİN HENÜZ BİR VAKİT ÖNBELLEĞİ OLUŞTURULMADI — YUKARIDAKİ BUTONLA SENKRONİZE EDEBİLİRSİNİZ."
+           tone="neutral"
+           size="md"
+          />
          </td>
         </tr>
        ) : (
@@ -212,9 +223,13 @@ export default function EzanOnbellegi() {
 
     <div className="md:hidden flex flex-col gap-3">
      {onbellekler.length === 0 ? (
-      <div className="bg-[var(--surface-medium)] p-6 text-center rounded-[18px] border border-[var(--glass-border)]">
-       <p className="authority-title !text-2xs opacity-35 uppercase tracking-wide font-bold">Kayıtlı önbellek bulunamadı</p>
-      </div>
+      <EmptyState
+       icon={<DatabaseZap size={36} strokeWidth={1.2} />}
+       title="Kayıtlı Önbellek Yok"
+       description="BU İLÇE İÇİN HENÜZ BİR VAKİT ÖNBELLEĞİ OLUŞTURULMADI."
+       tone="neutral"
+       size="md"
+      />
      ) : (
       onbellekler.map((o, idx) => (
        <motion.div
