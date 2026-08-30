@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import {
   assertFails,
   assertSucceeds,
@@ -26,6 +27,13 @@ import {
 } from 'firebase/firestore';
 
 const projectId = 'demo-muezzin-rules';
+
+// firestore.rules `isSuperAdminEmail` artık config/bootstrap'ta düz metin
+// değil, SHA-256 hex hash tutuyor (bkz. kod denetimi — config/bootstrap
+// plaintext ifşa düzeltmesi); test fixture'ları AYNI formatta hash yazmalı.
+function sha256Hex(email: string): string {
+  return createHash('sha256').update(email.toLowerCase(), 'utf8').digest('hex');
+}
 
 type TestCase = {
   name: string;
@@ -1815,7 +1823,7 @@ const tests: TestCase[] = [
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
         await setDoc(doc(db, 'config/bootstrap'), {
-          superAdminEmails: ['superadmin@example.test']
+          superAdminEmailHashes: [sha256Hex('superadmin@example.test')]
         });
       });
 
@@ -1836,7 +1844,7 @@ const tests: TestCase[] = [
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
         await setDoc(doc(db, 'config/bootstrap'), {
-          superAdminEmails: ['superadmin@example.test']
+          superAdminEmailHashes: [sha256Hex('superadmin@example.test')]
         });
       });
 
@@ -1857,7 +1865,7 @@ const tests: TestCase[] = [
       await env.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
         await setDoc(doc(db, 'config/bootstrap'), {
-          superAdminEmails: ['gercekSuperAdmin@example.test']
+          superAdminEmailHashes: [sha256Hex('gercekSuperAdmin@example.test')]
         });
         await setDoc(doc(db, 'muezzins/siradanAdmin'), {
           displayName: 'Siradan Admin',

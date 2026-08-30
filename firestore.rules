@@ -36,12 +36,18 @@ service cloud.firestore {
       return haftaGunuNumarasi(data.tarih) == 5;
     }
 
-    // Süper-admin e-postaları config/bootstrap dokümanında tutulur (kaynak kodda
-    // gömülü değildir). Doküman yoksa veya alan eksikse boş liste varsayılır.
+    // Süper-admin e-postaları config/bootstrap dokümanında DÜZ METİN değil,
+    // SHA-256 hex hash olarak tutulur (kaynak kodda gömülü değildir) — bu
+    // doküman `isSelfApproved`'ın client bootstrap akışı gereği herhangi bir
+    // giriş yapmış kullanıcıya `allow read` ile açık kalmak zorunda olduğundan
+    // (bkz. o kural yorumu), plaintext e-posta saklamak bu listeyi tüm ekibe
+    // ifşa ederdi (bkz. kod denetimi). Doküman yoksa veya alan eksikse boş
+    // liste varsayılır.
     function isSuperAdminEmail(email) {
       return email != null &&
         exists(/databases/$(database)/documents/config/bootstrap) &&
-        email in get(/databases/$(database)/documents/config/bootstrap).data.get('superAdminEmails', []);
+        hashing.sha256(email.lower()).toHexString().lower() in
+          get(/databases/$(database)/documents/config/bootstrap).data.get('superAdminEmailHashes', []);
     }
 
     function isAdmin() {
@@ -50,6 +56,21 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'admin')
       );
+    }
+
+    // isAssignableDutyUidVeri'nin YAZMA tarafında zaten uyguladığı ilkenin
+    // (onayBekliyor:true bir davetli nöbete atanamaz — bkz. mimari denetim
+    // Y4, AuthGuard zaten ona bekleme ekranı gösterir) OKUMA tarafındaki
+    // eşleniği: onay bekleyen biri admin onayından ÖNCE duyurular'ı/haftalık
+    // çizelgeyi (bildirimler) sunucu tarafında kısıtlamasız okuyabiliyordu —
+    // PendingApprovalScreen bunu yalnızca istemci tarafında engelliyordu
+    // (bkz. kod denetimi). Kendi muezzins belgesi henüz yoksa (super-admin
+    // bootstrap penceresi) erişim reddedilir — o pencerede zaten bu verilere
+    // ihtiyaç yoktur, profil oluşturma ayrı bir koleksiyon/kural.
+    function isSelfApproved() {
+      return isAdmin() ||
+        (exists(/databases/$(database)/documents/muezzins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.get('onayBekliyor', false) != true);
     }
 
     // ---------------------------------------------------------
@@ -91,7 +112,7 @@ service cloud.firestore {
     }
 
     match /duyurular/{duyuruId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && isSelfApproved();
       allow create, update: if isAdmin() && isValidDuyuru(incoming());
       allow delete: if isAdmin();
     }
@@ -420,7 +441,13 @@ service cloud.firestore {
              // (bkz. algoritma denetimi).
              !cumaMiIsaretli(bildirim) &&
              alici.role == 'muezzin' &&
-             alici.aktif == true;
+             alici.aktif == true &&
+             // isAssignableDutyUidVeri ile AYNI kontrol (bkz. mimari denetim
+             // Y4) — onay bekleyen bir davetliye vekalet teklifi
+             // oluşturulabilmesi tutarsızlıktı; gerçek transfer Admin SDK'da
+             // (scripts/vekaletDevirleriniIsle.ts) zaten reddediyordu, burası
+             // savunma derinliği için hizalandı (bkz. kod denetimi).
+             alici.get('onayBekliyor', false) != true;
     }
 
     function isRecipientVekaletStatusUpdate() {
@@ -596,7 +623,7 @@ service cloud.firestore {
     //    eskisinin küçük bir kesri kadar terim içeriyor — bu kez ölçülebilir,
     //    yapısal bir azalma (bkz. npm run test:rules çıktısı).
     match /bildirimler/{docId} {
-      allow read, list: if isSignedIn();
+      allow read, list: if isSignedIn() && isSelfApproved();
       allow create: if isAdmin() && isValidBildirim(incoming());
       allow update: if isSignedIn() && (
         isSelfBildirimUpdate(docId) ||
@@ -753,6 +780,26 @@ service cloud.firestore {
     // ENTITY: Config & Settings
     // ---------------------------------------------------------
     match /config/{docId} {
+      // NOT (kod denetimi): read kuralı `isSignedIn()` ile geniş tutulmak
+      // ZORUNDA — src/store/useAuthStore.ts hem YENİ kullanıcı onboarding'inde
+      // (henüz muezzins belgesi yok, isAdmin() bu yüzden çalışamaz) hem de
+      // role!='admin' bir kullanıcının süper-admin olup olmadığını
+      // belirlemek için bu dokümanı DOĞRUDAN istemciden okur. Proje Spark
+      // planında kalmayı tercih ettiğinden (Cloud Functions Blaze gerektirir)
+      // bu kontrolü sunucu tarafında gizli bir callable'a taşıyacak bir
+      // katman YOK — denendi ve bilinçli olarak geri alındı (bkz. kod
+      // denetimi: config/bootstrap ifşa düzeltmesi, Cloud Function denemesi).
+      //
+      // MİTİGASYON: config/bootstrap DÜZ METİN e-posta değil, SHA-256 hex
+      // hash tutar (bkz. isSuperAdminEmail, scripts/seedSuperAdminConfig.ts,
+      // src/store/useAuthStore.ts `sha256Hex`) — bu yüzden read hâlâ geniş
+      // olsa da artık okunabilir bir e-posta listesi sızdırmıyor, tek yönlü
+      // hash sızdırıyor. Kalan artık risk: küçük/tahmin edilebilir bir
+      // e-posta uzayına (ör. bilinen bir domain + yaygın isim örüntüleri)
+      // karşı offline brute-force ile hash eşleştirmesi — ki bu bile
+      // yalnızca hedef e-postayı ifşa eder, ayrıcalık ELDE ETMEZ
+      // (isSuperAdminEmail hâlâ `email_verified` gerektiren gerçek Google
+      // OAuth sahipliği şartına bağlı).
       allow read: if isSignedIn();
       // config/bootstrap superAdminEmails listesini tutar. isAdmin() burada
       // KULLANILAMAZ: isAdmin() siradan role=='admin' kullanicilarini da

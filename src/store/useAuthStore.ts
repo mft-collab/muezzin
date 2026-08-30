@@ -6,6 +6,24 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 let _authInitStarted = false;
 
+// firestore.rules `isSuperAdminEmail` ile AYNI algoritma: config/bootstrap
+// düz metin e-posta değil, SHA-256 hex hash tutuyor (bkz. kod denetimi —
+// config/bootstrap plaintext ifşa düzeltmesi; Spark planında kalma kararı
+// gereği bir Cloud Function callable'ı YOK, bu yüzden hash mitigasyonu
+// kalıcı çözüm) — bu doküman herhangi bir giriş yapmış kullanıcıya
+// `allow read` ile açık kalmak ZORUNDA olduğundan (client bootstrap akışı
+// bunu gerektiriyor), düz metin saklamak süper-admin e-postalarını tüm ekibe
+// ifşa ederdi. Web Crypto (crypto.subtle) tüm modern tarayıcılarda ve
+// yalnızca güvenli bağlamlarda (https/localhost) mevcuttur — PWA zaten bu
+// kısıtlama altında çalışıyor.
+async function sha256Hex(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 interface AuthState {
  user: User | null;
  role: 'admin' | 'muezzin' | 'gozlemci' | null;
@@ -50,8 +68,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  let snapshotFailsafe: ReturnType<typeof setTimeout> | null = null;
  let authInitFailsafe: ReturnType<typeof setTimeout> | null = null;
  // firestore.rules `isAdmin()` iki dalı OR'lar: muezzins.role=='admin' VEYA
- // config/bootstrap superAdminEmails üyeliği. Bu store eskiden yalnızca
- // role alanına bakıyordu — bir admin, MuezzinYonetimi üzerinden bir süper-
+ // config/bootstrap süper-admin üyeliği. Bu store eskiden yalnızca role
+ // alanına bakıyordu — bir admin, MuezzinYonetimi üzerinden bir süper-
  // admin'in rolünü yanlışlıkla 'muezzin'e çekerse sunucu hâlâ tam yetki
  // verirdi ama UI admin panelini tamamen gizlerdi (kilitlenme, bkz. yetki
  // denetimi). Bootstrap dokümanı nadiren değiştiğinden bu kontrol uid
@@ -123,8 +141,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  try {
  const currentEmail = currentUser.email?.toLowerCase().trim() || '';
  const bootstrapDoc = currentEmail ? await getDoc(doc(db, 'config', 'bootstrap')) : null;
- const superAdminEmails: string[] = bootstrapDoc?.exists() ? (bootstrapDoc.data().superAdminEmails || []) : [];
- cachedIsSuperAdminSelf = !!currentEmail && superAdminEmails.includes(currentEmail);
+ const superAdminEmailHashes: string[] = bootstrapDoc?.exists() ? (bootstrapDoc.data().superAdminEmailHashes || []) : [];
+ cachedIsSuperAdminSelf = !!currentEmail && superAdminEmailHashes.includes(await sha256Hex(currentEmail));
  } catch {
  // Çevrimdışı/erişim hatası: role alanına güven, güvenli varsayılan.
  cachedIsSuperAdminSelf = false;
@@ -153,13 +171,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
  let inviteData: { displayName?: string; role?: 'admin' | 'muezzin' | 'gozlemci'; haftalikIzinGunu?: number } | null = null;
 
- // Süper-admin e-postaları config/bootstrap dokümanında tutulur (bkz. firestore.rules
- // isSuperAdminEmail ve scripts/seedSuperAdminConfig.ts).
+ // Süper-admin e-posta HASH'leri config/bootstrap dokümanında tutulur (bkz.
+ // firestore.rules isSuperAdminEmail ve scripts/seedSuperAdminConfig.ts).
  const bootstrapDoc = await getDocFromServer(doc(db, 'config', 'bootstrap'));
- const superAdminEmails: string[] = bootstrapDoc.exists()
- ? (bootstrapDoc.data().superAdminEmails || [])
+ const superAdminEmailHashes: string[] = bootstrapDoc.exists()
+ ? (bootstrapDoc.data().superAdminEmailHashes || [])
  : [];
- const isSuperAdmin = superAdminEmails.includes(currentEmail);
+ const isSuperAdmin = superAdminEmailHashes.includes(await sha256Hex(currentEmail));
 
  if (isSuperAdmin) {
  inviteData = { displayName: 'Baş Yönetici', role: 'admin' };

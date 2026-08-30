@@ -213,7 +213,12 @@ export async function processVekaletDevirleri(dryRun = false) {
       const uygun =
         bildirim.durum === 'bekliyor' &&
         bildirim.uid === talep.gonderenUid &&
-        bildirim.cumaMi !== true &&
+        // Saklı `bildirim.cumaMi` bayrağına DEĞİL, firestore.rules
+        // `cumaMiIsaretli` ile aynı şekilde `tarih`'ten taze türetime
+        // güvenilir — script bu koleksiyonun tek yazımını denetleyemez,
+        // ileride cumaMi'yi unutan bir yazım yolu Cuma kısıtlamasını
+        // sessizce delebilirdi.
+        haftaGunuNumarasi(bildirim.tarih) !== 5 &&
         atanabilir &&
         !izinGunuCakisiyor &&
         !ezanGecmisMi;

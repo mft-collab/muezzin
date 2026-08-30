@@ -5,6 +5,14 @@ on:
   schedule:
     - cron: '30 19 * * 0'
 
+# Zamanlanmış çalıştırma ile elle tetiklenen (workflow_dispatch) bir çalıştırma
+# çakışırsa, script'in `haftaPlanlari/{haftaId}` için exists-check + batch.commit
+# arasında transaction koruması yok — ikinci çalıştırma yayınlanmış planı
+# sessizce ezebilir (bkz. kod denetimi). Aynı anda tek çalıştırma garantisi.
+concurrency:
+  group: haftalik-plan
+  cancel-in-progress: false
+
 jobs:
   planla:
     runs-on: ubuntu-latest

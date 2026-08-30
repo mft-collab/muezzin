@@ -121,114 +121,129 @@ async function main() {
     }
     const haftaBitisStr = gunler[6];
 
-    const planDoc = await db.collection('haftaPlanlari').doc(haftaId).get();
-    if (planDoc.exists) {
+    const planRef = db.collection('haftaPlanlari').doc(haftaId);
+
+    // Var olma kontrolü ile TÜM yazımlar tek transaction içinde: zamanlanmış
+    // çalıştırma ile elle tetiklenen (workflow_dispatch) bir çalıştırma
+    // çakışırsa, Firestore bu transaction'ı otomatik yeniden çalıştırır
+    // (ikinci çalıştırma planRef'i artık exists:true görür) — böylece
+    // yayınlanmış bir plan sessizce ezilmez. İstemci tarafındaki
+    // src/services/planServisi.ts `runTransaction` korumasının Admin SDK
+    // eşleniği (bkz. kod denetimi).
+    const islemSonucu = await db.runTransaction(async (transaction) => {
+      const planDoc = await transaction.get(planRef);
+      if (planDoc.exists) {
+        return {
+          yayinlandi: false as const,
+          mevcutGunPlan: planDoc.data()?.gunler as Record<string, Record<Vakit, VakitAtama>> | undefined
+        };
+      }
+
+      // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
+      // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için (bkz.
+      // algoritma denetimi). Önceki hafta hiç üretilmemişse (soğuk başlangıç)
+      // boş dizi kullanılır, mevcut davranışla aynıdır.
+      const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
+      const oncekiPlanDoc = await transaction.get(db.collection('haftaPlanlari').doc(oncekiHaftaId));
+      const oncekiHaftaSonEkibi: string[] = [];
+      if (oncekiPlanDoc.exists) {
+        const sonVakitAtama = oncekiPlanDoc.data()?.gunler?.[oncekiSonGun]?.yatsi;
+        if (sonVakitAtama) {
+          [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
+            if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
+          });
+        }
+      }
+
+      // Tek, paylaşılan atama çekirdeği (bkz. src/lib/planlamaCekirdegi.ts) —
+      // src/services/planServisi.ts'deki istemci "self-healing" akışıyla
+      // AYNI kuralları kullanır: onaylı izindeki veya sabit haftalık izin
+      // gününde olan personel asla atanmaz.
+      const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler, undefined, oncekiHaftaSonEkibi);
+
+      for (const gun of gunler) {
+        const [gY, gM, gD] = gun.split('-').map(Number);
+        const cumaMi = isFriday(new Date(gY, gM - 1, gD));
+
+        for (const vakit of VAKITLER) {
+          const atama = gunPlan[gun][vakit];
+
+          // Bildirim ID'leri kasıtlı olarak deterministiktir (haftaId_tarih_vakit_tip).
+          // Bu, mazeret/vekalet akışlarının Firestore güvenlik kurallarında
+          // getAfter() ile "asil" ve "yedek" belgelerini çapraz doğrulamasını
+          // sağlar (bkz. firestore.rules `isBackupPromotionFromMazeret`).
+          if (atama.asil !== 'Sistem') {
+            const bAsil = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_asil`);
+            transaction.set(bAsil, {
+              haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
+              durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
+              sonGuncelleme: Timestamp.now()
+            });
+          }
+
+          if (atama.yedek !== 'Sistem') {
+            const bYedek = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_yedek`);
+            transaction.set(bYedek, {
+              haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
+              durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
+              sonGuncelleme: Timestamp.now()
+            });
+          }
+        }
+      }
+
+      transaction.set(planRef, {
+        haftaBaslangic: haftaBaslangicStr,
+        haftaBitis: haftaBitisStr,
+        durum: 'yayinda',
+        olusturmaTarihi: Timestamp.now(),
+        gunler: gunPlan
+      });
+
+      // Hiç kimsenin müsait olmadığı (tamamen kapsamsız) günler — sistemdeki
+      // en ağır durum, önceden hiçbir uyarı üretmiyordu (bkz. mimari denetim O3).
+      const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
+      if (kapsamsizGunler.length > 0) {
+        console.error(`${haftaId}: HİÇ KİMSENİN müsait olmadığı günler: ${kapsamsizGunler.join(', ')}`);
+        transaction.set(db.collection('adminUyarilari').doc(), {
+          tip: 'planOlusturulamadi',
+          mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
+          tarih: kapsamsizGunler[0],
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+      }
+
+      // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak —
+      // önceden bu durum sessizce geçiyordu (bkz. algoritma denetimi).
+      const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
+      if (tekKisiliGunler.length > 0) {
+        console.warn(`${haftaId}: yedeksiz kalan günler: ${tekKisiliGunler.join(', ')}`);
+        transaction.set(db.collection('adminUyarilari').doc(), {
+          tip: 'zincirTukendi',
+          mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
+          tarih: tekKisiliGunler[0],
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+      }
+
+      return { yayinlandi: true as const, gunPlan };
+    });
+
+    if (!islemSonucu.yayinlandi) {
       console.log(`Plan (${haftaId}) zaten mevcut, atlanıyor.`);
-      // Bu hafta önceki bir çalıştırmada üretilmiş olabilir — henüz
-      // gerçekleşmemiş (bugünden itibaren) günlerini bellek içi adalet
-      // hesabına dahil et ki bu çalıştırmada üretilecek sonraki haftalar
-      // bu yükten habersiz kalmasın (bkz. algoritma denetimi).
-      const mevcutGunPlan = planDoc.data()?.gunler as Record<string, Record<Vakit, VakitAtama>> | undefined;
-      if (mevcutGunPlan) {
-        gunPlanProjeksiyonuUygula(gunler, mevcutGunPlan, muezzinler, bugunStr);
+      // Bu hafta önceki bir çalıştırmada (ya da bu transaction'ın yeniden
+      // denemesinde) üretilmiş olabilir — henüz gerçekleşmemiş (bugünden
+      // itibaren) günlerini bellek içi adalet hesabına dahil et ki bu
+      // çalıştırmada üretilecek sonraki haftalar bu yükten habersiz kalmasın
+      // (bkz. algoritma denetimi).
+      if (islemSonucu.mevcutGunPlan) {
+        gunPlanProjeksiyonuUygula(gunler, islemSonucu.mevcutGunPlan, muezzinler, bugunStr);
       }
       continue;
     }
 
-    console.log(`${haftaId} haftası için otomatik plan oluşturuluyor...`);
-
-    const batch = db.batch();
-
-    // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
-    // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için (bkz.
-    // algoritma denetimi). Önceki hafta hiç üretilmemişse (soğuk başlangıç)
-    // boş dizi kullanılır, mevcut davranışla aynıdır.
-    const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
-    const oncekiPlanDoc = await db.collection('haftaPlanlari').doc(oncekiHaftaId).get();
-    const oncekiHaftaSonEkibi: string[] = [];
-    if (oncekiPlanDoc.exists) {
-      const sonVakitAtama = oncekiPlanDoc.data()?.gunler?.[oncekiSonGun]?.yatsi;
-      if (sonVakitAtama) {
-        [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
-          if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
-        });
-      }
-    }
-
-    // Tek, paylaşılan atama çekirdeği (bkz. src/lib/planlamaCekirdegi.ts) —
-    // src/services/planServisi.ts'deki istemci "self-healing" akışıyla
-    // AYNI kuralları kullanır: onaylı izindeki veya sabit haftalık izin
-    // gününde olan personel asla atanmaz.
-    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler, undefined, oncekiHaftaSonEkibi);
-
-    for (const gun of gunler) {
-      const [gY, gM, gD] = gun.split('-').map(Number);
-      const cumaMi = isFriday(new Date(gY, gM - 1, gD));
-
-      for (const vakit of VAKITLER) {
-        const atama = gunPlan[gun][vakit];
-
-        // Bildirim ID'leri kasıtlı olarak deterministiktir (haftaId_tarih_vakit_tip).
-        // Bu, mazeret/vekalet akışlarının Firestore güvenlik kurallarında
-        // getAfter() ile "asil" ve "yedek" belgelerini çapraz doğrulamasını
-        // sağlar (bkz. firestore.rules `isBackupPromotionFromMazeret`).
-        if (atama.asil !== 'Sistem') {
-          const bAsil = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_asil`);
-          batch.set(bAsil, {
-            haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
-            durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-            sonGuncelleme: Timestamp.now()
-          });
-        }
-
-        if (atama.yedek !== 'Sistem') {
-          const bYedek = db.collection('bildirimler').doc(`${haftaId}_${gun}_${vakit}_yedek`);
-          batch.set(bYedek, {
-            haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
-            durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-            sonGuncelleme: Timestamp.now()
-          });
-        }
-      }
-    }
-
-    batch.set(db.collection('haftaPlanlari').doc(haftaId), {
-      haftaBaslangic: haftaBaslangicStr,
-      haftaBitis: haftaBitisStr,
-      durum: 'yayinda',
-      olusturmaTarihi: Timestamp.now(),
-      gunler: gunPlan
-    });
-
-    // Hiç kimsenin müsait olmadığı (tamamen kapsamsız) günler — sistemdeki
-    // en ağır durum, önceden hiçbir uyarı üretmiyordu (bkz. mimari denetim O3).
-    const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
-    if (kapsamsizGunler.length > 0) {
-      console.error(`${haftaId}: HİÇ KİMSENİN müsait olmadığı günler: ${kapsamsizGunler.join(', ')}`);
-      batch.set(db.collection('adminUyarilari').doc(), {
-        tip: 'planOlusturulamadi',
-        mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
-        tarih: kapsamsizGunler[0],
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
-    }
-
-    // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak —
-    // önceden bu durum sessizce geçiyordu (bkz. algoritma denetimi).
-    const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
-    if (tekKisiliGunler.length > 0) {
-      console.warn(`${haftaId}: yedeksiz kalan günler: ${tekKisiliGunler.join(', ')}`);
-      batch.set(db.collection('adminUyarilari').doc(), {
-        tip: 'zincirTukendi',
-        mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
-        tarih: tekKisiliGunler[0],
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
-    }
-
-    await batch.commit();
     console.log(`Başarı: ${haftaId} planı ve bildirimleri oluşturuldu.`);
 
     // Bu cron çalıştırması aynı anda birden fazla YENİ hafta üretirse (soğuk
@@ -236,7 +251,7 @@ async function main() {
     // hesabı bu haftanın taze atamalarını görsün diye bellek içi projeksiyon
     // yapılır. Firestore'a yazılmaz — kalıcı güncelleme yine yalnızca
     // scripts/yatsiSonuIslemleri.ts'in günlük işidir (bkz. algoritma denetimi).
-    gunPlanProjeksiyonuUygula(gunler, gunPlan, muezzinler);
+    gunPlanProjeksiyonuUygula(gunler, islemSonucu.gunPlan, muezzinler);
 
     try {
       const tokenToUidMap: Record<string, string> = {};

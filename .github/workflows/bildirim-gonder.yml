@@ -12,6 +12,13 @@ on:
   schedule:
     - cron: '*/10 * * * *'
 
+# Üst üste binen çalıştırmalar aynı "gönderilmemiş" duyuru/izin kararını
+# ikinci kez FCM'e gönderebilir (gönderim, işaretleyen batch.commit'ten önce
+# yapılıyor — bkz. kod denetimi). Aynı anda tek çalıştırma garantisi.
+concurrency:
+  group: bildirim-gonder
+  cancel-in-progress: false
+
 jobs:
   bildirim-gonder:
     runs-on: ubuntu-latest

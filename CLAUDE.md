@@ -127,6 +127,23 @@ Gerçek-zamanlı veri gereken yerlerde `onSnapshot`, tek seferlik okuma yeterli
 olan yerlerde `getDocs`/`getDoc` kullanılır (bkz. `useDuyurular.ts`). Bir hook
 "neden bu veri canlı değil" sorusuna cevap veremiyorsa muhtemelen bug'dır.
 
+### Süper-admin bootstrap (`config/bootstrap`)
+
+Süper-admin e-postaları kaynak koda gömülü DEĞİL, `config/bootstrap`
+dokümanında `superAdminEmailHashes` (SHA-256 hex, `scripts/
+seedSuperAdminConfig.ts` ile yazılır) olarak tutulur — düz metin e-posta
+DEĞİL. Bu doküman herhangi bir giriş yapmış kullanıcıya `allow read` ile açık
+kalmak ZORUNDA (`src/store/useAuthStore.ts` "benim e-postam süper-admin mi"
+sorusunu DOĞRUDAN `getDoc()` ile bu dokümandan cevaplıyor — yeni kullanıcı
+onboarding'inde henüz `muezzins` belgesi olmadığından `isAdmin()` üzerinden
+kontrol mümkün değil). Proje Spark planında kalmayı tercih ettiğinden
+(Cloud Functions Blaze gerektirir) bu okumayı sunucu tarafına taşıyacak bir
+katman YOK — hash formatı bu geniş read kuralının mitigasyonu: doküman sızsa
+bile sızan şey tek yönlü hash, e-postaların kendisi değil. Hash algoritması
+üç yerde AYNI olmalı — birini değiştirirken diğerlerini unutma:
+`firestore.rules` `isSuperAdminEmail`, `src/store/useAuthStore.ts`
+`sha256Hex`, `scripts/seedSuperAdminConfig.ts` `sha256Hex`.
+
 ## Komutlar
 
 ```bash
@@ -151,3 +168,25 @@ Tam doğrulama için `npm run test:all` kullan.
 (Firestore + core, daha büyük), `vendor-firebase-messaging` (boot sonrası lazy
 yüklenir). Yeni bir Firebase alt-paketi eklersen bu ayrımı bozmadan (yani hangi
 chunk'a düşeceğini bilerek) ekle.
+
+## Model Seçimi (Claude Pro — verimli kullanım)
+
+Varsayılan Sonnet. Basit arama/keşif işlerinde Haiku yeterli. **Opus'a geç**
+(`/model opus` veya Agent çağrısında `model: "opus"`):
+
+- **Riskli kod**: `src/lib/mazeretKurallari.ts` (Cuma kısıtlaması — üç ayrı
+  yerde senkron uygulanır: `mazeretServisi.ts`, `firestore.rules`'taki
+  `isSelfBildirimUpdate`/`isValidVekaletCreate`, `scripts/vekaletDevirleriniIsle.ts`),
+  `src/lib/planlamaCekirdegi.ts` (tek kaynak planlama mantığı, hem cron hem
+  istemci tarafından çağrılır), `firestore.rules` geneli, süper-admin bootstrap
+  zinciri (`src/store/useAuthStore.ts` `sha256Hex`, `scripts/
+  seedSuperAdminConfig.ts`, `firestore.rules` `isSuperAdminEmail` — üçü aynı
+  hash algoritmasını paylaşmalı, bkz. "Süper-admin bootstrap" bölümü).
+- **Planlama**: planlama/atama kuralı değiştirirken (adalet kademesi, yük
+  çarpanı, dinlenme kuralı gibi ince ayarlar tüm ekibi etkiler) veya yeni bir
+  mazeret/vekalet kısıtlaması eklerken (üç senkron noktayı baştan tasarlamak
+  gerekir).
+- **Doğrulama**: `mazeretKurallari.ts` veya `planlamaCekirdegi.ts`
+  değişikliğinden sonra `tests/unit/planlamaCekirdegi.test.ts` ve
+  `tests/unit/tieBreaker.test.ts` yeşil olsa bile ikinci bir gözle geçir —
+  üç senkron noktadan biri atlanırsa mazeret engeli sessizce delinebilir.

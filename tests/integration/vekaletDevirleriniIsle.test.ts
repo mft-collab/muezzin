@@ -4,15 +4,6 @@ import { db } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processVekaletDevirleri } from '../../scripts/vekaletDevirleriniIsle.ts';
 import { getTurkeyDateString, getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
-// scripts/vekaletDevirleriniIsle.ts artık sorgularını `tarih >= otuzGunOnce`
-// ile son 30 günle sınırlıyor (bkz. Firebase/GitHub veri akışı optimizasyonu)
-// — bu yüzden test verisi sabit 2026 tarihleri yerine "bugün - N gün" olarak
-// hesaplanır, aksi halde zaman geçtikçe testler pencerenin dışına düşüp
-// sessizce hiçbir belgeyi bulamaz.
-function gunOnce(n: number): string {
-  return getTurkeyDateString(new Date(getTurkeyNow().getTime() - n * 24 * 60 * 60 * 1000));
-}
-
 // haftalikIzinGunu ile AYNI ölçekte (Pazartesi=1 ... Pazar=7) — scripts/
 // vekaletDevirleriniIsle.ts'teki haftaGunuNumarasi ile AYNI formül.
 function haftaGunuNumarasi(tarihStr: string): number {
@@ -21,8 +12,38 @@ function haftaGunuNumarasi(tarihStr: string): number {
   return ((gunTarihi.getDay() + 6) % 7) + 1;
 }
 
-const TARIH_1 = gunOnce(3);
-const TARIH_2 = gunOnce(2);
+// scripts/vekaletDevirleriniIsle.ts artık sorgularını `tarih >= otuzGunOnce`
+// ile son 30 günle sınırlıyor (bkz. Firebase/GitHub veri akışı optimizasyonu)
+// — bu yüzden test verisi sabit 2026 tarihleri yerine "bugüne yakın" olarak
+// hesaplanır, aksi halde zaman geçtikçe testler pencerenin dışına düşüp
+// sessizce hiçbir belgeyi bulamaz.
+//
+// Cuma kısıtlaması artık saklı `cumaMi` alanına değil, `tarih`'ten taze
+// türetime (haftaGunuNumarasi) dayanıyor (bkz. kod denetimi — savunma
+// derinliği asimetrisi düzeltmesi). Bu yüzden TARIH_1 HERHANGİ bir Cuma'ya
+// denk gelirse "kabul edilir" bekleyen diğer tüm testler (Cuma testi hariç)
+// sessizce yanlış-pozitif reddedilirdi (~7 çalıştırmadan 1'i) — en yakın
+// geçmiş Cuma-OLMAYAN gün kullanılır. "Cuma görevi" testi ise ayrıca gerçek
+// bir Cuma'ya denk gelen `tarih` seed eder (bkz. TARIH_CUMA, `bildirimTarih`
+// override'ı).
+function enYakinGecmisCumaOlmayan(n: number): string {
+  let d = new Date(getTurkeyNow().getTime() - n * 24 * 60 * 60 * 1000);
+  while (((d.getDay() + 6) % 7) + 1 === 5) {
+    d = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  }
+  return getTurkeyDateString(d);
+}
+function enYakinGecmisCuma(n: number): string {
+  let d = new Date(getTurkeyNow().getTime() - n * 24 * 60 * 60 * 1000);
+  while (((d.getDay() + 6) % 7) + 1 !== 5) {
+    d = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  }
+  return getTurkeyDateString(d);
+}
+
+const TARIH_1 = enYakinGecmisCumaOlmayan(3);
+const TARIH_2 = enYakinGecmisCumaOlmayan(2);
+const TARIH_CUMA = enYakinGecmisCuma(3);
 
 type TestCase = {
   name: string;
@@ -51,8 +72,10 @@ async function seedKabulEdilmisTalep(overrides: {
   aliciOnayBekliyor?: boolean;
   aliciHaftalikIzinGunu?: number;
   bildirimCumaMi?: boolean;
+  bildirimTarih?: string;
   bildirimDurum?: string;
 } = {}) {
+  const tarih = overrides.bildirimTarih ?? TARIH_1;
   await db.collection('muezzins').doc('muezzin1').set({
     displayName: 'Muezzin One', role: 'muezzin', aktif: true, onayBekliyor: false
   });
@@ -64,10 +87,10 @@ async function seedKabulEdilmisTalep(overrides: {
     ...(overrides.aliciHaftalikIzinGunu !== undefined ? { haftalikIzinGunu: overrides.aliciHaftalikIzinGunu } : {})
   });
 
-  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
+  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${tarih}_ogle_asil`);
   await bildirimRef.set({
     haftaId: 'W2026-05-18',
-    tarih: TARIH_1,
+    tarih,
     vakit: 'ogle',
     uid: 'muezzin1',
     tip: 'asil',
@@ -77,15 +100,15 @@ async function seedKabulEdilmisTalep(overrides: {
     vekaletDevriBekliyor: true
   });
 
-  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${TARIH_1}_ogle_asil_muezzin2`);
+  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${tarih}_ogle_asil_muezzin2`);
   await talepRef.set({
-    bildirimId: `W2026-05-18_${TARIH_1}_ogle_asil`,
+    bildirimId: `W2026-05-18_${tarih}_ogle_asil`,
     haftaId: 'W2026-05-18',
     gonderenUid: 'muezzin1',
     gonderenIsim: 'Muezzin One',
     aliciUid: 'muezzin2',
     aliciIsim: 'Muezzin Two',
-    tarih: TARIH_1,
+    tarih,
     vakit: 'ogle',
     saat: '12:45',
     tip: 'asil',
@@ -229,7 +252,7 @@ const tests: TestCase[] = [
     name: 'Cuma gorevi icin kabul transferi engellenir',
     run: async () => {
       await clearCollections();
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimCumaMi: true });
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimCumaMi: true, bildirimTarih: TARIH_CUMA });
 
       await processVekaletDevirleri(false);
 

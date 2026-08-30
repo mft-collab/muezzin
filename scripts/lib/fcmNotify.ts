@@ -78,16 +78,30 @@ export async function fcmGonderVeTemizle(
 
   const uidsToUpdate = Object.keys(tokensToRemove);
   if (uidsToUpdate.length > 0) {
-    const cleanupBatch = db.batch();
-    for (const uid of uidsToUpdate) {
-      const userRef = db.collection('muezzins').doc(uid);
-      const updates: Record<string, any> = {};
-      tokensToRemove[uid]!.forEach(t => {
-        updates[`fcmTokens.${t}`] = FieldValue.delete();
-      });
-      cleanupBatch.update(userRef, updates);
+    // Bu temizlik en iyi çaba (best-effort) niteliğindedir — burada bir
+    // throw, çağıran script'in (duyuruBildirimGonder.ts/
+    // izinDurumBildirimGonder.ts/haftalikPlanOlustur.ts) `sendEach` ile
+    // gönderimi BAŞARIYLA tamamladıktan sonra "bildirimGonderildi: true"
+    // işaretleyen kendi commit'ine hiç ulaşamamasına yol açardı — bu da
+    // aynı push'un bir sonraki cron çalıştırmasında (10 dk sonra) ikinci
+    // kez, zaten ulaşmış cihazlara tekrar gönderilmesi demektir (bkz. kod
+    // denetimi). Geçersiz token temizliği başarısız olsa bile gönderimin
+    // kendisi zaten tamamlanmıştır — bu adım bir sonraki çalıştırmada aynı
+    // token'lar yeniden başarısız olduğunda tekrar denenir.
+    try {
+      const cleanupBatch = db.batch();
+      for (const uid of uidsToUpdate) {
+        const userRef = db.collection('muezzins').doc(uid);
+        const updates: Record<string, any> = {};
+        tokensToRemove[uid]!.forEach(t => {
+          updates[`fcmTokens.${t}`] = FieldValue.delete();
+        });
+        cleanupBatch.update(userRef, updates);
+      }
+      await cleanupBatch.commit();
+      console.log(`${logEtiketi}: FCM cleanup — ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
+    } catch (cleanupErr) {
+      console.error(`${logEtiketi}: FCM token temizliği başarısız oldu (gönderim etkilenmedi, bir sonraki çalıştırmada tekrar denenecek):`, cleanupErr);
     }
-    await cleanupBatch.commit();
-    console.log(`${logEtiketi}: FCM cleanup — ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
   }
 }
