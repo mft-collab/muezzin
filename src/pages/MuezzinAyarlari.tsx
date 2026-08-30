@@ -58,7 +58,7 @@ export default function MuezzinAyarlari() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-[var(--aura-emerald)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
       </div>
 
-      <div className="max-w-xl mx-auto px-6 pt-12 md:pt-20 relative z-10 space-y-8">
+      <div className="max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto px-6 pt-12 md:pt-20 relative z-10 space-y-8">
         <motion.header
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}

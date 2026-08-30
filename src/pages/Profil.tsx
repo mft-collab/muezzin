@@ -81,7 +81,7 @@ export default function Profil() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-[var(--aura-ruby)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
       </div>
 
-      <div className="max-w-xl mx-auto px-6 pt-12 md:pt-20 relative z-10">
+      <div className="max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto px-6 pt-12 md:pt-20 relative z-10">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-6">
             <div className="w-16 h-16 border border-[var(--glass-border)] rounded-full flex items-center justify-center">
