@@ -324,8 +324,25 @@ export default function MuezzinYonetimi() {
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
  {displayedUsers.length > 0 ? displayedUsers.map((m, idx) => {
  const isOperationalMuezzin = m.role === 'muezzin';
- const rank = isOperationalMuezzin ? sortedMuezzins.findIndex(x => x.id === m.id) + 1 : 0;
+ // "1224" sıralaması (competition ranking): rank, kendinden KESİNLİKLE
+ // daha yüksek görev yüküne sahip kişi sayısı + 1'dir. Önceden
+ // sortedMuezzins.findIndex kullanılıyordu — aynı aylikVakitSayisi'na
+ // sahip iki kişi (tam eşitlik) stabil sort'un koruduğu orijinal
+ // (alfabetik) sıraya göre farklı rozetler (#1/#2) alıyordu, eşitlik
+ // hiçbir yerde görsel olarak belirtilmiyordu (bkz. görsel/veri akışı
+ // denetimi). Bu haliyle eşit yüke sahip herkes AYNI rozeti paylaşır.
+ const rank = isOperationalMuezzin
+ ? sortedMuezzins.filter(x => (x.aylikVakitSayisi || 0) > (m.aylikVakitSayisi || 0)).length + 1
+ : 0;
  const efficiency = isOperationalMuezzin ? Math.min(100, ((m.aylikVakitSayisi || 0) / maxVakit) * 100) : 0;
+ // Tekil `fcmToken` alanı çıkışta/geçersiz-token temizliğinde HİÇ
+ // temizlenmiyor (bkz. useFcmToken.ts unregisterFcmToken, scripts/lib/
+ // fcmNotify.ts fcmGonderVeTemizle — ikisi de yalnızca `fcmTokens`
+ // haritasını buduyor) — bu yüzden tek başına "Bildirim Aktif" göstergesi
+ // için güvenilmez, kişi çıkış yapmış/tüm cihazlarını kaldırmış olsa bile
+ // sonsuza dek true kalabilir (bkz. görsel/veri akışı denetimi). Yalnızca
+ // güncel çoklu-cihaz haritasına bakılır.
+ const hasActiveFcm = !!m.fcmTokens && Object.keys(m.fcmTokens).length > 0;
 
  return (
  <motion.div 
@@ -347,10 +364,18 @@ export default function MuezzinYonetimi() {
  <div className="relative shrink-0">
  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] flex items-center justify-center font-light text-xl sm:text-2xl text-[var(--dynamic-aura,var(--aura-indigo))] shadow-inner group-hover:rotate-3 transition-all duration-700 relative overflow-hidden">
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent z-0" />
- {m.photoURL ? (
- <img src={m.photoURL} alt={m.displayName} className="w-full h-full object-cover relative z-10" />
- ) : (
+ {/* Baş harf her zaman alt katmanda durur — photoURL var olsa da
+ yüklenemezse (süresi dolmuş Google fotoğrafı, CORS, vb.) resim
+ onError ile gizlenip zarifçe bu harfe düşer, kırık resim ikonu
+ görünmez (bkz. görsel/veri akışı denetimi). */}
  <span className="relative z-10">{m.displayName.charAt(0)}</span>
+ {m.photoURL && (
+ <img
+ src={m.photoURL}
+ alt={m.displayName}
+ className="absolute inset-0 w-full h-full object-cover z-20"
+ onError={(e) => { e.currentTarget.style.display = 'none'; }}
+ />
  )}
  </div>
  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[3px] border-[var(--app-bg)] shadow-[var(--spatial-shadow)] ${
@@ -363,15 +388,15 @@ export default function MuezzinYonetimi() {
  </h4>
  <div className="flex items-center gap-2 mt-1">
  <div className="relative flex h-2 w-2">
- {m.fcmToken && (
+ {hasActiveFcm && (
  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] opacity-75" />
  )}
- <span className={`relative inline-flex rounded-full h-2 w-2 ${m.fcmToken ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-[var(--text-primary)]/10'}`} />
+ <span className={`relative inline-flex rounded-full h-2 w-2 ${hasActiveFcm ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-[var(--text-primary)]/10'}`} />
  </div>
  <span className={`text-2xs font-bold tracking-wide uppercase transition-colors duration-500 ${
- m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-[var(--text-secondary)]/35'
+ hasActiveFcm ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-[var(--text-secondary)]/35'
  }`}>
- {m.fcmToken ? 'Bildirim Aktif' : 'Bildirim Kapalı'}
+ {hasActiveFcm ? 'Bildirim Aktif' : 'Bildirim Kapalı'}
  </span>
  </div>
  </div>
@@ -420,7 +445,10 @@ export default function MuezzinYonetimi() {
  <div className="space-y-1.5">
  <p className="premium-label !text-2xs !opacity-35 uppercase tracking-wide">GÖREV YÜKÜ</p>
  <p className="text-xs font-medium text-[var(--dynamic-aura,var(--aura-indigo))] tabular-nums">
- {isOperationalMuezzin ? `${m.aylikVakitSayisi || 0} Vakit` : 'Yönetim'}
+ {/* "Yönetim" eskiden hem admin hem gözlemci için gösteriliyordu —
+ gözlemci yönetim yapmıyor, kartın kendi rol rozetiyle ("GÖZLEMCİ")
+ çelişiyordu (bkz. görsel/veri akışı denetimi). Role göre ayrıştırılır. */}
+ {isOperationalMuezzin ? `${m.aylikVakitSayisi || 0} Vakit` : m.role === 'admin' ? 'Yönetim' : 'Gözlem'}
  </p>
  </div>
  
