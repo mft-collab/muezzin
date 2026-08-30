@@ -38,13 +38,28 @@ jobs:
       # firestore.indexes.json ile karşılaştırarak bu sessiz silinmeyi
       # görünür bir hataya çeviriyoruz.
       - name: Canlıdaki Firestore composite index'lerini indir
+        timeout-minutes: 3
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: |
           echo "$GCP_SA_KEY" > /tmp/gcp-key.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-          npx firebase-tools firestore:indexes --project muezzin-c8485 > live-firestore-indexes.json
+          # Bu adım Firebase API'sine yeni bir ağ bağımlılığı ekliyor — geçici
+          # bir blip/rate-limit YÜZÜNDEN kodla ilgisi olmayan bir deploy
+          # başarısızlığı yaşanmasın diye 3 deneme + artan bekleme (bkz. kod
+          # denetimi). Gerçek drift tespiti (aşağıdaki ayrı adım) deterministik
+          # olduğundan hiç yeniden denenmiyor — yalnızca bu ağ çağrısı deneniyor.
+          basarili=0
+          for deneme in 1 2 3; do
+            if npx firebase-tools firestore:indexes --project muezzin-c8485 > live-firestore-indexes.json; then
+              basarili=1
+              break
+            fi
+            echo "Canlı index listesi alınamadı (deneme $deneme/3)." >&2
+            [ "$deneme" != "3" ] && sleep $((deneme * 5))
+          done
           rm -f /tmp/gcp-key.json
+          [ "$basarili" = "1" ] || { echo "3 denemede de canlı index listesi alınamadı, deploy durduruluyor." >&2; exit 1; }
       - name: Repo'da tanımlı olmayan (elle eklenmiş) index var mı kontrol et
         run: npx tsx scripts/verify-no-index-drift.ts live-firestore-indexes.json
       - name: Deploy to Firebase (hosting + firestore rules + indexes + rtdb rules)
