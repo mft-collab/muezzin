@@ -123,3 +123,23 @@ export function handleFirestoreError(
 
   return new Error(toUserMessage(error));
 }
+
+/**
+ * `onSnapshot`'ın error callback'i için paylaşılan yardımcı. useKrizAlarmlariStore.ts
+ * ve useAdminIzinlerStore.ts'te aynı 3 satırlık desen (handleFirestoreError →
+ * friendly.message → set({loading:false, initialized:true, error})) birbirinden
+ * bağımsız iki kez yazılıyordu — gelecekte biri değişip diğeri unutulursa iki
+ * store'un hata davranışı birbirinden sapabilirdi (bkz. kod denetimi, ikinci tur).
+ * Yalnızca LIST tipi (canlı koleksiyon dinleyicileri) için; store'un veri
+ * alanlarına (alarmlar, izinler vb.) dokunmaz, yalnızca ortak
+ * loading/initialized/error üçlüsünü yazar.
+ */
+export function handleListenerError<T extends { loading: boolean; initialized: boolean; error: string | null }>(
+  set: (partial: Partial<T>) => void,
+  path: string
+): (error: unknown) => void {
+  return (error: unknown) => {
+    const friendly = handleFirestoreError(error, OperationType.LIST, path);
+    set({ loading: false, initialized: true, error: friendly.message } as Partial<T>);
+  };
+}

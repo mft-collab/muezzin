@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { collection, query, onSnapshot, updateDoc, doc, getDoc, runTransaction, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Izin } from '../types';
-import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { handleFirestoreError, handleListenerError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from '../services/telemetryService';
 import { haftalikPlanOlustur } from '../services/planServisi';
 import { getHaftaIdFromDate, izinGunSayisi, toTurkishUpperCase } from '../lib/dateUtils';
@@ -117,13 +117,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       });
 
       set({ izinler: data, loading: false, initialized: true, error: null });
-    }, (err) => {
-      // handleFirestoreError'ın DÖNÜŞ değeri kullanılır — ham err.message
-      // değil, aksi halde ham SDK metni admin'e sızabilir (bkz.
-      // useKrizAlarmlariStore.ts'teki AYNI düzeltme, firestore-errors.ts).
-      const friendly = handleFirestoreError(err, OperationType.LIST, path);
-      set({ error: friendly.message, loading: false, initialized: true });
-    });
+    }, handleListenerError<AdminIzinlerState>(set, path));
 
     return unsubscribe;
   },

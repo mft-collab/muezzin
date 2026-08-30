@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { collection, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { AdminUyarisi } from '../types';
-import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { handleFirestoreError, handleListenerError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from '../services/telemetryService';
 
 interface KrizAlarmlariState {
@@ -50,14 +50,7 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
       });
 
       set({ alarmlar: data, cozulmamisSayisi: activeCount, loading: false, initialized: true, error: null });
-    }, (err) => {
-      // handleFirestoreError'ın DÖNÜŞ değeri (ham SDK mesajını kullanıcıya
-      // uygun Türkçe metne çeviren) kullanılır — ham err.message değil,
-      // aksi halde "Missing or insufficient permissions" gibi ham İngilizce
-      // SDK metni doğrudan admin'e sızabilir (bkz. firestore-errors.ts).
-      const friendly = handleFirestoreError(err, OperationType.LIST, 'adminUyarilari');
-      set({ loading: false, initialized: true, error: friendly.message });
-    });
+    }, handleListenerError<KrizAlarmlariState>(set, 'adminUyarilari'));
 
     return unsubscribe;
   },
