@@ -10,6 +10,10 @@ interface KrizAlarmlariState {
   cozulmamisSayisi: number;
   loading: boolean;
   initialized: boolean;
+  /** adminUyarilari dinleyicisi hata verdiğinde dolar (bkz. kod denetimi —
+   * önceden hata console.error'a düşüp hiçbir yere yazılmıyordu, admin boş
+   * listeyi "uyarı yok" sanıyordu). */
+  error: string | null;
   init: () => () => void;
   /** Bir nöbet uyarısını çözüldü olarak işaretler ve denetim izine kaydeder. */
   alarmCoz: (id: string, auditBaslik: string, auditDetay: string) => Promise<void>;
@@ -24,6 +28,7 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
   cozulmamisSayisi: 0,
   loading: true,
   initialized: false,
+  error: null,
 
   init: () => {
     if (get().initialized) return () => {};
@@ -44,10 +49,14 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
         return a.cozuldu ? 1 : -1;
       });
 
-      set({ alarmlar: data, cozulmamisSayisi: activeCount, loading: false, initialized: true });
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'adminUyarilari');
-      set({ loading: false, initialized: true });
+      set({ alarmlar: data, cozulmamisSayisi: activeCount, loading: false, initialized: true, error: null });
+    }, (err) => {
+      // handleFirestoreError'ın DÖNÜŞ değeri (ham SDK mesajını kullanıcıya
+      // uygun Türkçe metne çeviren) kullanılır — ham err.message değil,
+      // aksi halde "Missing or insufficient permissions" gibi ham İngilizce
+      // SDK metni doğrudan admin'e sızabilir (bkz. firestore-errors.ts).
+      const friendly = handleFirestoreError(err, OperationType.LIST, 'adminUyarilari');
+      set({ loading: false, initialized: true, error: friendly.message });
     });
 
     return unsubscribe;

@@ -116,10 +116,13 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
         return timeB - timeA;
       });
 
-      set({ izinler: data, loading: false, initialized: true });
+      set({ izinler: data, loading: false, initialized: true, error: null });
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, path);
-      set({ error: err instanceof Error ? err.message : String(err), loading: false, initialized: true });
+      // handleFirestoreError'ın DÖNÜŞ değeri kullanılır — ham err.message
+      // değil, aksi halde ham SDK metni admin'e sızabilir (bkz.
+      // useKrizAlarmlariStore.ts'teki AYNI düzeltme, firestore-errors.ts).
+      const friendly = handleFirestoreError(err, OperationType.LIST, path);
+      set({ error: friendly.message, loading: false, initialized: true });
     });
 
     return unsubscribe;
