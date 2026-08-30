@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { toTurkishUpperCase } from '../src/lib/dateUtils.ts';
+import { toTurkishUpperCase, getTurkeyDateString, getTurkeyNow } from '../src/lib/dateUtils.ts';
 
 type BildirimData = {
   haftaId: string;
@@ -130,8 +130,20 @@ function haftaGunuNumarasi(tarihStr: string): number {
 export async function processVekaletDevirleri(dryRun = false) {
   console.log(`Vekalet devirleri uzlaştırılıyor${dryRun ? ' (dry-run)' : ''}...`);
 
+  // `tarih >= otuzGunOnce` sınırı: bu iş her 10 dakikada bir çalışıyor;
+  // aşağıdaki iki sorgu öncesinde `durum`/`vekaletDevredildi` filtresi TEK
+  // BAŞINA koleksiyondaki her kabul edilmiş/devredilmiş talebi — zaten
+  // işlenmiş (bildirimUygulandi/vekaletPlanSenkronEdildi: true) olanlar
+  // dahil — sınırsızca çekiyordu; koleksiyonlar yıllar içinde büyüdükçe her
+  // çalıştırma neredeyse tamamı gereksiz okuma yapıyordu (bkz. Firebase/
+  // GitHub veri akışı denetimi). 30 günlük pencere `temizleGunlukler.ts`'teki
+  // RETENTION_DAYS ile aynı — bu işten daha eski bir görev tarihi zaten
+  // geçmişte kalmıştır, yeniden uzlaştırılacak bir şey kalmaz.
+  const otuzGunOnce = getTurkeyDateString(new Date(getTurkeyNow().getTime() - 30 * 24 * 60 * 60 * 1000));
+
   const talepSnap = await db.collection('vekalet_talepleri')
     .where('durum', '==', 'kabul_edildi')
+    .where('tarih', '>=', otuzGunOnce)
     .get();
 
   const islenecekler = talepSnap.docs.filter((docSnap) => {
@@ -268,6 +280,7 @@ export async function processVekaletDevirleri(dryRun = false) {
   // hemen ardından çalışabilir.
   const devirSnap = await db.collection('bildirimler')
     .where('vekaletDevredildi', '==', true)
+    .where('tarih', '>=', otuzGunOnce)
     .get();
 
   const senkronizeEdilecekler = devirSnap.docs.filter((docSnap) => {

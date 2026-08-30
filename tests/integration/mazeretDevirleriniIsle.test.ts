@@ -2,6 +2,20 @@ process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
 import { db } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processMazeretDevirleri } from '../../scripts/mazeretDevirleriniIsle.ts';
+import { getTurkeyDateString, getTurkeyNow } from '../../src/lib/dateUtils.ts';
+
+// scripts/mazeretDevirleriniIsle.ts artık sorgusunu `tarih >= otuzGunOnce`
+// ile son 30 günle sınırlıyor (bkz. Firebase/GitHub veri akışı optimizasyonu)
+// — bu yüzden test verisi sabit 2026 tarihleri yerine "bugün - N gün" olarak
+// hesaplanır, aksi halde zaman geçtikçe testler pencerenin dışına düşüp
+// sessizce hiçbir belgeyi bulamaz.
+function gunOnce(n: number): string {
+  return getTurkeyDateString(new Date(getTurkeyNow().getTime() - n * 24 * 60 * 60 * 1000));
+}
+
+const TARIH_1 = gunOnce(3);
+const TARIH_2 = gunOnce(2);
+const TARIH_3 = gunOnce(1);
 
 type TestCase = {
   name: string;
@@ -41,7 +55,7 @@ const tests: TestCase[] = [
       // Seed Hafta Plani
       await db.collection('haftaPlanlari').doc('W2026-05-18').set({
         gunler: {
-          '2026-05-22': {
+          [TARIH_1]: {
             sabah: { asil: 'muezzin_asil', yedek: 'muezzin_yedek' }
           }
         }
@@ -56,10 +70,10 @@ const tests: TestCase[] = [
       // ID'ler deterministiktir: {haftaId}_{tarih}_{vakit}_{asil|yedek}
       // (bkz. README) — mazeretDevirleriniIsle.ts, yedek dokümanını tam
       // olarak bu şemayla türetip arıyor.
-      const mazeretRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_asil');
+      const mazeretRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_sabah_asil`);
       await mazeretRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'sabah',
         uid: 'muezzin_asil',
         tip: 'asil',
@@ -68,10 +82,10 @@ const tests: TestCase[] = [
         mazeretPlanSenkronEdildi: false
       });
 
-      const yedekRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_yedek');
+      const yedekRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_sabah_yedek`);
       await yedekRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'sabah',
         uid: 'muezzin_yedek',
         tip: 'yedek', // istemci HENUZ terfi ettirmedi — script'in kendisi terfi ettirecek
@@ -93,8 +107,8 @@ const tests: TestCase[] = [
       assert.equal(yedekDoc.data()?.asilMazeretUid, 'muezzin_asil');
 
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
-      assert.equal(haftaDoc.data()?.gunler['2026-05-22'].sabah.asil, 'muezzin_yedek');
-      assert.equal(haftaDoc.data()?.gunler['2026-05-22'].sabah.yedek, 'Sistem');
+      assert.equal(haftaDoc.data()?.gunler[TARIH_1].sabah.asil, 'muezzin_yedek');
+      assert.equal(haftaDoc.data()?.gunler[TARIH_1].sabah.yedek, 'Sistem');
     }
   },
   {
@@ -114,10 +128,10 @@ const tests: TestCase[] = [
         displayName: 'Yedek', role: 'muezzin', aktif: false // karar sonrasi pasiflesti
       });
 
-      const mazeretRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_asil');
+      const mazeretRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_sabah_asil`);
       await mazeretRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'sabah',
         uid: 'muezzin_asil',
         tip: 'asil',
@@ -125,10 +139,10 @@ const tests: TestCase[] = [
         devirSonucu: 'yedek_atandi',
         mazeretPlanSenkronEdildi: false
       });
-      const yedekRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_sabah_yedek');
+      const yedekRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_sabah_yedek`);
       await yedekRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'sabah',
         uid: 'muezzin_yedek',
         tip: 'yedek',
@@ -146,7 +160,7 @@ const tests: TestCase[] = [
 
       const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
       assert.equal(alarmSnap.size, 1);
-      assert.equal(alarmSnap.docs[0]!.data().tarih, '2026-05-22');
+      assert.equal(alarmSnap.docs[0]!.data().tarih, TARIH_1);
     }
   },
   {
@@ -167,7 +181,7 @@ const tests: TestCase[] = [
       const mazeretRef = db.collection('bildirimler').doc('bildirim_asil_2');
       await mazeretRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-23',
+        tarih: TARIH_2,
         vakit: 'ogle',
         uid: 'muezzin_asil',
         tip: 'asil',
@@ -189,7 +203,7 @@ const tests: TestCase[] = [
       const alarm = alarmSnap.docs[0].data();
       assert.equal(alarm.tip, 'zincirTukendi');
       assert.equal(alarm.cozuldu, false);
-      assert.equal(alarm.tarih, '2026-05-23');
+      assert.equal(alarm.tarih, TARIH_2);
       assert.equal(alarm.vakit, 'ogle');
     }
   },
@@ -215,7 +229,7 @@ const tests: TestCase[] = [
       const bildirimRef = db.collection('bildirimler').doc('bildirim_asil_3');
       await bildirimRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-24',
+        tarih: TARIH_3,
         vakit: 'ikindi',
         uid: 'muezzin_asil',
         tip: 'asil',
@@ -234,7 +248,7 @@ const tests: TestCase[] = [
 
       const alarmSnap = await db.collection('adminUyarilari').get();
       assert.equal(alarmSnap.size, 1);
-      assert.equal(alarmSnap.docs[0].data().tarih, '2026-05-24');
+      assert.equal(alarmSnap.docs[0].data().tarih, TARIH_3);
     }
   }
 ];

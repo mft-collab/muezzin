@@ -87,6 +87,21 @@ const requiredIndexes: RequiredIndex[] = [
     collectionGroup: 'vekalet_talepleri',
     fields: ['aliciUid', 'durum'],
     reason: 'muezzinin bekleyen vekalet tekliflerini listeleme'
+  },
+  {
+    collectionGroup: 'vekalet_talepleri',
+    fields: ['durum', 'tarih'],
+    reason: 'vekaletDevirleriniIsle.ts: kabul edilmis talepleri son 30 gunle sinirli uzlastirma'
+  },
+  {
+    collectionGroup: 'bildirimler',
+    fields: ['durum', 'tarih'],
+    reason: 'mazeretDevirleriniIsle.ts: reddedilmis mazeretleri son 30 gunle sinirli uzlastirma'
+  },
+  {
+    collectionGroup: 'bildirimler',
+    fields: ['vekaletDevredildi', 'tarih'],
+    reason: 'vekaletDevirleriniIsle.ts: devredilmis gorevleri son 30 gunle sinirli haftaPlanlari senkronu'
   }
 ];
 

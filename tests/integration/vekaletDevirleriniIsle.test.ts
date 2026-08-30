@@ -2,6 +2,27 @@ process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
 import { db } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processVekaletDevirleri } from '../../scripts/vekaletDevirleriniIsle.ts';
+import { getTurkeyDateString, getTurkeyNow } from '../../src/lib/dateUtils.ts';
+
+// scripts/vekaletDevirleriniIsle.ts artık sorgularını `tarih >= otuzGunOnce`
+// ile son 30 günle sınırlıyor (bkz. Firebase/GitHub veri akışı optimizasyonu)
+// — bu yüzden test verisi sabit 2026 tarihleri yerine "bugün - N gün" olarak
+// hesaplanır, aksi halde zaman geçtikçe testler pencerenin dışına düşüp
+// sessizce hiçbir belgeyi bulamaz.
+function gunOnce(n: number): string {
+  return getTurkeyDateString(new Date(getTurkeyNow().getTime() - n * 24 * 60 * 60 * 1000));
+}
+
+// haftalikIzinGunu ile AYNI ölçekte (Pazartesi=1 ... Pazar=7) — scripts/
+// vekaletDevirleriniIsle.ts'teki haftaGunuNumarasi ile AYNI formül.
+function haftaGunuNumarasi(tarihStr: string): number {
+  const [y, m, d] = tarihStr.split('-').map(Number);
+  const gunTarihi = new Date(y!, m! - 1, d!);
+  return ((gunTarihi.getDay() + 6) % 7) + 1;
+}
+
+const TARIH_1 = gunOnce(3);
+const TARIH_2 = gunOnce(2);
 
 type TestCase = {
   name: string;
@@ -43,10 +64,10 @@ async function seedKabulEdilmisTalep(overrides: {
     ...(overrides.aliciHaftalikIzinGunu !== undefined ? { haftalikIzinGunu: overrides.aliciHaftalikIzinGunu } : {})
   });
 
-  const bildirimRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_ogle_asil');
+  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
   await bildirimRef.set({
     haftaId: 'W2026-05-18',
-    tarih: '2026-05-22',
+    tarih: TARIH_1,
     vakit: 'ogle',
     uid: 'muezzin1',
     tip: 'asil',
@@ -56,15 +77,15 @@ async function seedKabulEdilmisTalep(overrides: {
     vekaletDevriBekliyor: true
   });
 
-  const talepRef = db.collection('vekalet_talepleri').doc('W2026-05-18_2026-05-22_ogle_asil_muezzin2');
+  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${TARIH_1}_ogle_asil_muezzin2`);
   await talepRef.set({
-    bildirimId: 'W2026-05-18_2026-05-22_ogle_asil',
+    bildirimId: `W2026-05-18_${TARIH_1}_ogle_asil`,
     haftaId: 'W2026-05-18',
     gonderenUid: 'muezzin1',
     gonderenIsim: 'Muezzin One',
     aliciUid: 'muezzin2',
     aliciIsim: 'Muezzin Two',
-    tarih: '2026-05-22',
+    tarih: TARIH_1,
     vakit: 'ogle',
     saat: '12:45',
     tip: 'asil',
@@ -189,8 +210,10 @@ const tests: TestCase[] = [
     name: 'Alicinin sabit haftalik izin gunune denk gelen kabul transferi engellenir',
     run: async () => {
       await clearCollections();
-      // 2026-05-22 haftaGunuNumarasi=5 (Cuma olcegi) ile AYNI.
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 5 });
+      // TARIH_1'in gerçek haftanın-günü numarasıyla (Pazartesi=1..Pazar=7)
+      // AYNI değer — hangi güne denk geldiği değil, çakışmanın kendisi test
+      // ediliyor.
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: haftaGunuNumarasi(TARIH_1) });
 
       await processVekaletDevirleri(false);
 
@@ -244,7 +267,7 @@ const tests: TestCase[] = [
 
       await db.collection('haftaPlanlari').doc('W2026-05-18').set({
         gunler: {
-          '2026-05-22': {
+          [TARIH_1]: {
             ogle: { asil: 'muezzin1', yedek: 'Sistem' }
           }
         }
@@ -253,10 +276,10 @@ const tests: TestCase[] = [
       // vekaletKabulEt (istemci) zaten bildirim.uid'yi degistirip
       // vekaletDevredildi:true yazmis olarak kabul edilir — bu is yalnizca
       // haftaPlanlari'ni bununla senkronize eder.
-      const bildirimRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_ogle_asil');
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
       await bildirimRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'ogle',
         uid: 'muezzin2', // devralan
         tip: 'asil',
@@ -270,7 +293,7 @@ const tests: TestCase[] = [
       assert.equal(bildirimDoc.data()?.vekaletPlanSenkronEdildi, true);
 
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
-      assert.equal(haftaDoc.data()?.gunler['2026-05-22'].ogle.asil, 'muezzin2');
+      assert.equal(haftaDoc.data()?.gunler[TARIH_1].ogle.asil, 'muezzin2');
     }
   },
   {
@@ -280,16 +303,16 @@ const tests: TestCase[] = [
 
       await db.collection('haftaPlanlari').doc('W2026-05-18').set({
         gunler: {
-          '2026-05-22': {
+          [TARIH_1]: {
             ogle: { asil: 'muezzin2', yedek: 'Sistem' }
           }
         }
       });
 
-      const bildirimRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_ogle_asil');
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
       await bildirimRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'ogle',
         uid: 'muezzin2',
         tip: 'asil',
@@ -302,7 +325,7 @@ const tests: TestCase[] = [
 
       // Plan degismeden kalmali — is bu kaydi zaten islenmis sayip atlamali.
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
-      assert.equal(haftaDoc.data()?.gunler['2026-05-22'].ogle.asil, 'muezzin2');
+      assert.equal(haftaDoc.data()?.gunler[TARIH_1].ogle.asil, 'muezzin2');
     }
   },
   {
@@ -316,16 +339,16 @@ const tests: TestCase[] = [
 
       await db.collection('haftaPlanlari').doc('W2026-05-18').set({
         gunler: {
-          '2026-05-22': {
+          [TARIH_1]: {
             ogle: { asil: 'muezzin1', yedek: 'Sistem' }
           }
         }
       });
 
-      const bildirimRef = db.collection('bildirimler').doc('W2026-05-18_2026-05-22_ogle_asil');
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
       await bildirimRef.set({
         haftaId: 'W2026-05-18',
-        tarih: '2026-05-22',
+        tarih: TARIH_1,
         vakit: 'ogle',
         uid: 'muezzin2',
         tip: 'asil',
@@ -343,7 +366,7 @@ const tests: TestCase[] = [
       assert.equal(bildirimDoc.data()?.vekaletPlanSenkronEdildi, true);
 
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
-      assert.equal(haftaDoc.data()?.gunler['2026-05-22'].ogle.asil, 'muezzin2');
+      assert.equal(haftaDoc.data()?.gunler[TARIH_1].ogle.asil, 'muezzin2');
     }
   },
   {
@@ -352,10 +375,10 @@ const tests: TestCase[] = [
       await clearCollections();
       // haftaPlanlari HICH olusturulmadi.
 
-      const bildirimRef = db.collection('bildirimler').doc('W2026-06-01_2026-06-03_yatsi_asil');
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-06-01_${TARIH_2}_yatsi_asil`);
       await bildirimRef.set({
         haftaId: 'W2026-06-01',
-        tarih: '2026-06-03',
+        tarih: TARIH_2,
         vakit: 'yatsi',
         uid: 'muezzin2',
         tip: 'asil',
