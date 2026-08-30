@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck, Megaphone } from 'lucide-react';
+import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck, Megaphone, ServerCrash } from 'lucide-react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
 import { useAdminIzinlerStore } from '../../../store/useAdminIzinlerStore';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
@@ -45,7 +45,9 @@ export default function ExecutiveHeroScreen({
  { open: false, id: null, durum: null, title: '' }
  );
  const alarmlar = useKrizAlarmlariStore(s => s.alarmlar);
+ const alarmlarHatasi = useKrizAlarmlariStore(s => s.error);
  const izinler = useAdminIzinlerStore(s => s.izinler);
+ const izinlerHatasi = useAdminIzinlerStore(s => s.error);
  const izinGuncelle = useAdminIzinlerStore(s => s.izinGuncelle);
  const izinGeriAl = useAdminIzinlerStore(s => s.izinGeriAl);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
@@ -63,8 +65,12 @@ export default function ExecutiveHeroScreen({
  action: {
  label: 'Geri Al',
  onClick: () => {
- izinGeriAl(id).catch(() => {
- showNotification('Geri Alma Başarısız', 'Karar geri alınamadı, lütfen tekrar deneyin.', 'error');
+ izinGeriAl(id).catch((err) => {
+ // kararVer'in ana catch'iyle (aşağıda) AYNI desen — izinGeriAl
+ // handleFirestoreError üzerinden anlamlı Türkçe mesajlar fırlatır
+ // (ör. "İzin talebi bulunamadı."), bunlar önceden sabit bir genel
+ // mesajla eziliyordu (bkz. kod denetimi).
+ showNotification('Geri Alma Başarısız', err instanceof Error ? err.message : 'Karar geri alınamadı, lütfen tekrar deneyin.', 'error');
  });
  }
  },
@@ -395,7 +401,21 @@ export default function ExecutiveHeroScreen({
  <div className="flex flex-col gap-4">
  <AnimatePresence>
  {combinedOperations.length > 0 ? (
- combinedOperations.map((record, idx) => {
+ <>
+ {/* Alarm/izin dinleyicilerinden biri hata verse bile (bkz. kod
+     denetimi) diğer kaynaktan gelen geçerli veri artık tüm listeyi
+     silip atan bir EmptyState'in altında GİZLENMİYOR — yalnızca hangi
+     kaynağın etkilendiğini bildiren küçük bir şerit, mevcut kayıtların
+     üstünde gösterilir. */}
+ {(alarmlarHatasi || izinlerHatasi) && (
+ <div className="spatial-glass !rounded-card p-4 flex items-center gap-3 border border-rose-500/20 bg-rose-500/[0.04]">
+ <ServerCrash size={16} className="text-rose-500 shrink-0" strokeWidth={1.5} />
+ <p className="text-2xs font-medium text-rose-400 tracking-wide">
+ {[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ </p>
+ </div>
+ )}
+ {combinedOperations.map((record, idx) => {
  const isExpanded = expandedId === record.id;
  
  return (
@@ -537,7 +557,19 @@ export default function ExecutiveHeroScreen({
  </AnimatePresence>
  </motion.div>
  );
- })
+ })}
+ </>
+ ) : (alarmlarHatasi || izinlerHatasi) ? (
+ // İkisi de (ya da gösterilecek veri kalmayacak şekilde tek çalışan
+ // kaynak da) hata verdiğinde liste sessizce boş görünmesin — bağlantı
+ // sorununu açıkça göster, "aktif kayıt yok" ile karıştırılmasın.
+ <EmptyState
+ icon={<ServerCrash size={36} strokeWidth={1.2} />}
+ title="Hizmet Akışı Yüklenemedi"
+ description={[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ tone="rose"
+ size="md"
+ />
  ) : (
  <EmptyState
  icon={<Activity size={36} strokeWidth={1.2} />}

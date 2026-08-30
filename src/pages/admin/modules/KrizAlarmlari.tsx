@@ -13,7 +13,7 @@ import { kriziBaslat } from '../../../services/mazeretServisi';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 
 export default function KrizAlarmlari() {
- const { alarmlar, loading, alarmCoz } = useKrizAlarmlariStore();
+ const { alarmlar, loading, error, alarmCoz } = useKrizAlarmlariStore();
  const showNotification = useNotificationStore(s => s.showNotification);
  const [showResolved, setShowResolved] = React.useState(false);
  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
@@ -89,6 +89,20 @@ export default function KrizAlarmlari() {
  };
 
  if (loading) return <AdminLoadingState label="Nöbet Uyarıları Yükleniyor" size="lg" />;
+
+ // Dinleyici hata verdiğinde (bkz. kod denetimi) boş liste "uyarı yok"
+ // gibi görünmesin — bağlantı sorununu açıkça göster.
+ if (error) {
+ return (
+ <EmptyState
+ icon={<ServerCrash size={36} strokeWidth={1.2} />}
+ title="Uyarılar Yüklenemedi"
+ description={error}
+ tone="rose"
+ size="lg"
+ />
+ );
+ }
 
  const filteredAlarmlar = showResolved ? alarmlar : alarmlar.filter(a => !a.cozuldu);
 

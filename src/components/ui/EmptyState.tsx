@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { toTurkishUpperCase } from '../../lib/dateUtils';
 
 type EmptyStateTone = 'neutral' | 'indigo' | 'emerald' | 'rose' | 'amber';
 type EmptyStateSize = 'md' | 'lg';
@@ -50,8 +51,13 @@ export function EmptyState({ icon, title, description, tone = 'neutral', size = 
         {icon}
       </div>
       <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">{title}</h3>
-      <p className="authority-title !text-2xs opacity-40 uppercase tracking-wide leading-relaxed mb-12 max-w-sm">
-        {description}
+      {/* CSS `uppercase` yerine `toTurkishUpperCase()` kullanılır — description
+          artık bazı çağıranlarda (ör. ExecutiveHeroScreen.tsx, KrizAlarmlari.tsx)
+          dinamik Türkçe hata metni taşıyabiliyor, tarayıcının locale'e duyarsız
+          CSS uppercase'i küçük noktalı 'i'yi 'İ' yerine 'I'ya çevirirdi (bkz.
+          kod denetimi — ExecutiveHeroScreen.tsx'teki AYNI sınıf düzeltme). */}
+      <p className="authority-title !text-2xs opacity-40 tracking-wide leading-relaxed mb-12 max-w-sm">
+        {toTurkishUpperCase(description)}
       </p>
       {action && (
         <motion.button
