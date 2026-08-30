@@ -47,10 +47,17 @@ jobs:
           rm -f /tmp/gcp-key.json
       - name: Repo'da tanımlı olmayan (elle eklenmiş) index var mı kontrol et
         run: npx tsx scripts/verify-no-index-drift.ts live-firestore-indexes.json
-      - name: Deploy to Firebase (hosting + firestore rules + indexes)
+      - name: Deploy to Firebase (hosting + firestore rules + indexes + rtdb rules)
         uses: w9jds/firebase-action@v15.23.0
         with:
-          args: deploy --only hosting,firestore:rules,firestore:indexes
+          # `database` (Realtime Database kuralları) eklendi — src/lib/timeSync.ts
+          # RTDB'yi `.info/serverTimeOffset` için kullanıyor ama proje şimdiye
+          # kadar RTDB kurallarını hiç deploy etmiyordu; canlıdaki kurallar
+          # bu repo'nun görünürlüğü/denetimi dışında, elle ne ayarlandıysa
+          # oydu (bkz. kod denetimi). database.rules.json artık `.read`/`.write`'ı
+          # tamamen kapatıyor — `.info/*` yolları rule'lardan BAĞIMSIZ her zaman
+          # okunabilir olduğundan initTimeSync() bundan etkilenmez.
+          args: deploy --only hosting,firestore:rules,firestore:indexes,database
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
           PROJECT_ID: muezzin-c8485
