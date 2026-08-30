@@ -24,7 +24,7 @@ function aktifBildirimSec(bildirimler: Bildirim[], tip: Bildirim['tip']) {
     })[0];
 }
 
-function normalizeDurum(durum: string | undefined) {
+function normalizeDurum(durum: string | undefined): 'bekliyor' | 'onaylandi' | 'reddedildi' | undefined {
   return durum === 'bekliyor' || durum === 'onaylandi' || durum === 'reddedildi' ? durum : undefined;
 }
 

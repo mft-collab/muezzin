@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, type Variants } from 'motion/react';
 import { Activity, Download } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
@@ -182,7 +182,7 @@ export default function SistemAnalitigi() {
     telemetryService.logAudit('Verimlilik Raporu Dışa Aktarma', periodLabel, `Son ${periodDays} günlük kişi bazlı verimlilik raporu CSV olarak dışa aktarıldı.`);
   };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -190,7 +190,7 @@ export default function SistemAnalitigi() {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 30, scale: 0.98 },
     visible: {
       opacity: 1,

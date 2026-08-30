@@ -18,6 +18,7 @@ import { getActiveAuraColor, getSecondaryAuraColor } from '../../lib/auraTheme';
 import { IslamicGeometricBg } from '../../components/ui/IslamicGeometricBg';
 import { playClick } from '../../lib/sounds';
 import { ChunkErrorFallback } from '../../components/ChunkErrorFallback';
+import { toError } from '../../lib/errorUtils';
 
 import { SlimSidebar } from './components/SlimSidebar';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
@@ -302,7 +303,7 @@ export default function AdminPanel() {
  <div className={`spatial-glass-flat p-3 sm:p-4 lg:p-6 min-h-[70dvh] fluid-transition ${isPending ? 'scale-[0.99] opacity-60' : 'scale-100'} !rounded-card`}>
  <ErrorBoundary
  FallbackComponent={({ error, resetErrorBoundary }) => (
- <ChunkErrorFallback error={error} variant="inline" onReset={resetErrorBoundary} />
+ <ChunkErrorFallback error={toError(error)} variant="inline" onReset={resetErrorBoundary} />
  )}
  onReset={() => setSearchParams(prev => prev)}
  >

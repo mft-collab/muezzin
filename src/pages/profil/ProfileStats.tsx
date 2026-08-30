@@ -77,7 +77,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  >
  <div className="flex items-center gap-6">
  <div className={`w-12 h-12 rounded-2xl ${item.bg} ${item.color} flex items-center justify-center transition-all shadow-sm`}>
- {React.cloneElement(item.icon as React.ReactElement, { size: 20, strokeWidth: 1.5 })}
+ {React.cloneElement(item.icon as React.ReactElement<{ size?: number; strokeWidth?: number }>, { size: 20, strokeWidth: 1.5 })}
  </div>
  <div>
  <p className="premium-label !text-2xs !opacity-55 mb-1.5 leading-tight tracking-wide">{item.label}</p>
