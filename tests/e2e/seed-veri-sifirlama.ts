@@ -85,6 +85,24 @@ async function seed() {
   await db.collection('mazeret_detaylari').doc(`${prefix}mazeret`).delete();
   await db.collection('audit_logs').doc(`${prefix}log`).delete();
 
+  // Modal'ın gösterdiği canlı sayı (getCountFromServer, bkz.
+  // veriSifirlamaServisi.ts) koleksiyonun TAMAMINI sayar — yalnızca bu
+  // seed'in yazdığı belgeleri değil. `firebase emulators:exec` TÜM
+  // `npx playwright test` koşusu için TEK bir emülatör örneği başlattığından
+  // (bkz. .github/workflows/test.yml), aynı koşuda önce çalışan başka e2e
+  // spec'leri (haftalık plan/mazeret/vekalet seed'leri) bu koleksiyonlara
+  // kendi belgelerini bırakmış olabilir. Test önceden sıfır önceden-var-olan
+  // belge varsaydığından, spec çalıştırma sırasına/paralelliğine bağlı
+  // olarak flaky bir şekilde başarısız oluyordu (bkz. code-review). Baseline
+  // burada ölçülüp seed sayısına eklenir ki beklenen toplam HER ZAMAN
+  // modal'ın gerçekte göstereceği sayıyla eşleşsin.
+  const baseline = async (koleksiyon: string) => (await db.collection(koleksiyon).get()).size;
+  const [bildirimBaseline, izinBaseline, uyariBaseline] = await Promise.all([
+    baseline('bildirimler'),
+    baseline('izinler'),
+    baseline('adminUyarilari')
+  ]);
+
   const batch = db.batch();
 
   for (let i = 0; i < BILDIRIM_SAYISI; i++) {
@@ -140,11 +158,11 @@ async function seed() {
     prefix,
     muezzinUid: MUEZZIN_UID,
     beklenenSayilar: {
-      bildirimler: BILDIRIM_SAYISI,
+      bildirimler: bildirimBaseline + BILDIRIM_SAYISI,
       haftaPlanlari: 1,
-      izinler: IZIN_SAYISI,
+      izinler: izinBaseline + IZIN_SAYISI,
       vekalet_talepleri: VEKALET_SAYISI,
-      adminUyarilari: UYARI_SAYISI
+      adminUyarilari: uyariBaseline + UYARI_SAYISI
     }
   };
 }
