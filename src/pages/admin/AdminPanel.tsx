@@ -158,7 +158,11 @@ export default function AdminPanel() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: 0.4 }}
  >
-  <Suspense fallback={<div className="h-[280px] w-full fluid-skeleton" />}>
+  {/* SistemAnalitigi'nin gerçek içeriği (grafik kartı min-h-[420px] + kişi
+     tablosu) 280px'ten çok daha uzun — kısa fallback, kod-bölünmüş modül
+     ilk kez indirilirken belirgin bir layout shift yaratıyordu (bkz. kod
+     denetimi bulgusu). */}
+ <Suspense fallback={<div className="min-h-[600px] w-full fluid-skeleton" />}>
     <SistemAnalitigi />
   </Suspense>
  </motion.div>

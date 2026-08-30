@@ -2,7 +2,7 @@ import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
-import { fcmGonderVeTemizle, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
 import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
 
 function formatDateLocal(date: Date): string {
@@ -244,15 +244,7 @@ async function main() {
       muezzinler
         .filter(m => m.notificationSettings?.nobetHatirlatici !== false)
         .forEach(m => {
-          const userTokens: string[] = [];
-          if (m.fcmTokens && typeof m.fcmTokens === 'object') {
-            Object.keys(m.fcmTokens).forEach(t => {
-              if (t.trim().length > 0) userTokens.push(t);
-            });
-          }
-          if (userTokens.length === 0 && m.fcmToken && m.fcmToken.trim().length > 0) {
-            userTokens.push(m.fcmToken);
-          }
+          const userTokens = kullaniciFcmTokenleriniTopla(m);
           userTokens.forEach(t => {
             tokenToUidMap[t] = m.id;
           });

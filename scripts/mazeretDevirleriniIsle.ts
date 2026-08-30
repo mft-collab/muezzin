@@ -1,4 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { getTurkeyDateString, getTurkeyNow } from '../src/lib/dateUtils.ts';
 import type { DocumentReference } from 'firebase-admin/firestore';
 
 type BildirimData = {
@@ -98,8 +99,19 @@ export async function processMazeretDevirleri(dryRun = false) {
   // görevli de kendi mazeretini bildirebilir (bkz. src/services/mazeretServisi.ts),
   // bu durumda devirSonucu doğrudan 'alarm_bekliyor' olur ve aşağıdaki
   // yedek_atandi dalı hiç tetiklenmez (bir yedeğin yedeği olmadığından).
+  //
+  // `tarih >= otuzGunOnce` sınırı: bu iş her 10 dakikada bir çalışıyor ve
+  // öncesinde `durum == reddedildi` filtresi TEK BAŞINA koleksiyondaki her
+  // reddedilmiş mazereti — zaten işlenmiş (mazeretPlanSenkronEdildi: true)
+  // olanlar dahil — sınırsızca çekiyordu; koleksiyon yıllar içinde büyüdükçe
+  // her çalıştırma neredeyse tamamı gereksiz okuma yapıyordu (bkz. Firebase/
+  // GitHub veri akışı denetimi). 30 günlük pencere `temizleGunlukler.ts`'teki
+  // RETENTION_DAYS ile aynı — bu işten daha eski bir görev tarihi zaten
+  // geçmişte kalmıştır, yeniden uzlaştırılacak bir şey kalmaz.
+  const otuzGunOnce = getTurkeyDateString(new Date(getTurkeyNow().getTime() - 30 * 24 * 60 * 60 * 1000));
   const mazeretSnap = await db.collection('bildirimler')
     .where('durum', '==', 'reddedildi')
+    .where('tarih', '>=', otuzGunOnce)
     .get();
 
   const islenecekler = mazeretSnap.docs.filter((docSnap) => {

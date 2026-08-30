@@ -1,5 +1,4 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { LogOut, Info, Settings, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuthStore } from '../store/useAuthStore';
@@ -18,7 +17,6 @@ function SettingsSkeleton() {
 export default function MuezzinAyarlari() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const navigate = useNavigate();
 
   const user = useAuthStore(s => s.user);
   const authInitialized = useAuthStore(s => s.initialized);
@@ -39,8 +37,15 @@ export default function MuezzinAyarlari() {
     // kullandığı çıkış yolu bu olduğundan, AuthGuard.tsx'e eklenen FCM token
     // temizliği düzeltmesi buradan hiç geçmiyordu (bkz. performLogout
     // yorumu, code-review — dördüncü denetim turu).
+    //
+    // `navigate('/')` (salt SPA yönlendirmesi) ARTIK YETERSİZ: performLogout
+    // artık paylaşılan `db` Firestore istemcisini `terminate()` ediyor (bkz.
+    // o fonksiyonun Firestore önbelleği temizliği yorumu) — sayfa sert bir
+    // reload ile yeniden başlamazsa `db` sonlandırılmış durumda kalır ve
+    // navigate sonrası mount olan HER bileşenin Firestore çağrısı sessizce
+    // başarısız olurdu. AdminPanel.tsx'in kendi çıkış yoluyla AYNI desen.
     await performLogout();
-    navigate('/');
+    window.location.reload();
   };
 
   return (

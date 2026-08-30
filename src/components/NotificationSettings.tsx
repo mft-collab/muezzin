@@ -104,7 +104,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
   return (
     <motion.div 
       whileHover={{ y: -4 }}
-      className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
+      className="p-5 sm:p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden"
     >
       {/* flex-col sm:flex-row: başlık uzun (37 karakter) + durum rozeti dar
           mobil genişlikte (≤375px) yan yana sığmıyordu (bkz. KrizAlarmlari.tsx'teki
@@ -230,7 +230,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
                 role="switch"
                 aria-checked={isChecked}
                 aria-label={setting.title}
-                className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
+                className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
                   isChecked ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
                 }`}
               >
@@ -261,7 +261,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
             role="switch"
             aria-checked={theme === 'dark'}
             aria-label="Koyu Tema"
-            className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
+            className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
               theme === 'dark' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
             }`}
           >
@@ -290,7 +290,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
             role="switch"
             aria-checked={ttsEnabled}
             aria-label="Sesli Bildirim Okuma"
-            className={`w-12 h-7 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
+            className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
               ttsEnabled ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
             }`}
           >

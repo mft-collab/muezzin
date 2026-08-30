@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, CalendarClock, Activity, ChevronRight, Check, X, ClipboardCheck, Megaphone } from 'lucide-react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
@@ -10,8 +10,9 @@ import { tr } from 'date-fns/locale';
 import { LiveClock } from '../../../components/LiveClock';
 import { useHaftaPlan } from '../../../hooks/useHaftaPlan';
 import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
-import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { type ActiveModule } from '../config/navConfig';
 
 
@@ -79,7 +80,22 @@ export default function ExecutiveHeroScreen({
  setProcessingId(null);
  }
  };
- const haftaId = useMemo(() => getHaftaIdFromDate(getTurkeyDateString()), []);
+ // `haftaId` önceden mount anında bir kez hesaplanıp donuyordu (bkz. kod
+ // denetimi bulgusu) — bu sekme arka planda açık kalıp Pazartesi gece
+ // yarısını (hafta sınırını) geçerse "HAFTALIK PLAN" kutusu, hiçbir store
+ // değişmediği sürece (dashboard'da başka bir onSnapshot tetiklenmeden)
+ // GEÇEN haftanın verisini göstermeye devam ederdi. useBugunkuGorevlerim.ts'teki
+ // AYNI gün-geçişi izleme deseni: 60sn'de bir Türkiye takvim gününü kontrol
+ // eden bir zamanlayıcı, değiştiğinde state'i günceller.
+ const [currentTarihStr, setCurrentTarihStr] = useState(getTurkeyDateString());
+ useEffect(() => {
+ const interval = setInterval(() => {
+ const yeni = getTurkeyDateString();
+ if (yeni !== currentTarihStr) setCurrentTarihStr(yeni);
+ }, 60000);
+ return () => clearInterval(interval);
+ }, [currentTarihStr]);
+ const haftaId = useMemo(() => getHaftaIdFromDate(currentTarihStr), [currentTarihStr]);
  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
  const { bildirimler: haftaBildirimleri, loading: bildirimLoading } = useHaftaBildirimleri(haftaId);
  const planHazir = Boolean(plan);
@@ -247,8 +263,13 @@ export default function ExecutiveHeroScreen({
  </div>
  {cozulmamisSayisi > 0 && (
  <div className="mt-4 pt-4 border-t border-rose-500/10 relative z-10">
- <p className="text-2xs font-bold text-rose-400 uppercase tracking-wide truncate">
- SON: {alarmlar[0]?.mesaj || 'Tespit Edilemedi'}
+ {/* alarmlar[0].mesaj planServisi.ts/mazeretServisi.ts'in ürettiği serbest,
+     dinamik Türkçe metin (kişi adı/haftaId içerebilir) — record.time
+     (aşağıda) gibi toTurkishUpperCase ile büyütülüyor; CSS `uppercase`
+     tarayıcı/motor davranışına bağımlı bir varsayımdı (bkz. kod denetimi,
+     ConfirmModal.tsx ile AYNI standart). */}
+ <p className="text-2xs font-bold text-rose-400 tracking-wide truncate">
+ SON: {toTurkishUpperCase(alarmlar[0]?.mesaj || 'Tespit Edilemedi')}
  </p>
  </div>
  )}
@@ -306,8 +327,16 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase tracking-wide">
-  {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} görev onay bekliyor` : 'Planlama ekranına git'}
+  {/* tracking-wide kaldırıldı + leading-snug eklendi + "görev" kelimesi
+      çıkarıldı — bu üç eşit-genişlikli kartta (BEKLEYEN İZİN / HAFTALIK
+      PLAN / DUYURULAR) "0/0 görev onay bekliyor" dar genişlikte 3 satıra
+      sarıp kartın alt kenarına sıkışıyordu (manuel görsel denetimde
+      bulundu — leading-snug/tracking normalizasyonu TEK BAŞINA yeterli
+      olmadı, hâlâ 3 satırdı). "Görev" kelimesi bağlamdan zaten belli
+      (kart başlığı "HAFTALIK PLAN") — kaldırılması anlamı korurken
+      metni 2 satıra indiriyor. */}
+  <p className="text-2xs font-bold text-[var(--dynamic-aura,var(--aura-indigo))]/60 uppercase leading-snug">
+  {planHazir ? `${bekleyenOnaySayisi}/${haftalikGorevSayisi} onay bekliyor` : 'Planlama ekranına git'}
   </p>
   </div>
  </motion.div>
@@ -330,7 +359,7 @@ export default function ExecutiveHeroScreen({
  </div>
  </div>
   <div className="mt-4 pt-4 border-t border-[var(--glass-border)]">
-  <p className="text-2xs font-bold text-emerald-500/60 uppercase tracking-wide">Duyuru panelini yönet</p>
+  <p className="text-2xs font-bold text-emerald-500/60 uppercase leading-snug">Duyuru panelini yönet</p>
   </div>
  </motion.div>
  </div>
@@ -350,7 +379,13 @@ export default function ExecutiveHeroScreen({
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)] uppercase tracking-wide">Hizmet Akışı</h2>
  </div>
   <button
-  onClick={() => setActiveTab('ekip')}
+  // Liste (combinedOperations) alarm+izin karışımı — koşulsuz olarak
+  // her zaman 'ekip'e gitmek, listenin altındaki satır-bazlı "DETAYLARI
+  // İNCELE" yönlendirmesiyle (alarmlar için onOpenDrawer('alarmlar'),
+  // aşağıda) çelişiyordu: alarm ağırlıklı bir listede admin'i beklemediği
+  // bir sekmeye götürüyordu (bkz. kod denetimi bulgusu). Artık aynı
+  // dallanmayı üst düğmeye de uyguluyor.
+  onClick={() => (combinedOperations.some(r => r.type === 'alarm') ? onOpenDrawer('alarmlar') : setActiveTab('ekip', 'mazeretler'))}
   className="authority-title !text-2xs !text-[var(--dynamic-aura,var(--aura-indigo))] cursor-pointer hover:text-[var(--text-primary)] transition-all flex items-center gap-2 group tracking-wide font-medium"
   >
   TÜMÜNÜ GÖR <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
@@ -378,7 +413,17 @@ export default function ExecutiveHeroScreen({
 
  <motion.div layout className="flex items-center justify-between relative z-10">
  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
- <div className="w-20 authority-title !text-2xs opacity-30 tracking-wide shrink-0">{record.time.toUpperCase()}</div>
+ {/* record.time date-fns'in tr locale'iyle üretilen serbest metin ("3
+     dakika önce" gibi) — toTurkishUpperCase (bkz. src/lib/dateUtils.ts)
+     kullanılır. record.id.substring(...).toUpperCase() (aşağıda) BİLEREK
+     dokunulmadı — o rastgele/opak bir Firestore ID'si, doğal dil değil.
+     Sabit w-20 (80px) genişlik + satır sarma koruması yoktu — "yaklaşık
+     2 ay önce" gibi daha uzun aralıklar üreten kayıtlarda metin 2 satıra
+     sarıp satırı "1 GÜN ÖNCE" gibi kısa etiketlerle aynı hizada
+     durdurmuyordu (manuel görsel denetimde bulundu). Sabit genişlik
+     kaldırıldı, whitespace-nowrap ile her zaman tek satır garanti edilir
+     — sütun artık içeriğine göre doğal genişlik alır. */}
+ <div className="authority-title !text-2xs opacity-30 tracking-wide shrink-0 whitespace-nowrap">{toTurkishUpperCase(record.time)}</div>
  <div className={`text-sm tracking-tight transition-colors duration-500 ${isExpanded ? 'font-medium text-[var(--text-primary)]' : 'font-light text-[var(--text-primary)]/60'}`}>
  {record.title}
  </div>
@@ -494,12 +539,13 @@ export default function ExecutiveHeroScreen({
  );
  })
  ) : (
- <div className="spatial-glass !rounded-card p-16 text-center flex flex-col items-center gap-4 relative overflow-hidden">
- <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center animate-float">
- <Activity size={24} strokeWidth={1} className="text-[var(--text-secondary)]" />
- </div>
- <p className="authority-title !text-2xs opacity-20 tracking-wide">ŞU AN AKTİF BİR HİZMET KAYDI BULUNMUYOR</p>
- </div>
+ <EmptyState
+ icon={<Activity size={36} strokeWidth={1.2} />}
+ title="Aktif Kayıt Yok"
+ description="ŞU AN AKTİF BİR HİZMET KAYDI (UYARI/İZİN) BULUNMUYOR."
+ tone="neutral"
+ size="md"
+ />
  )}
  </AnimatePresence>
  </div>

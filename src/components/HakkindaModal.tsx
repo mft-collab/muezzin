@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Code, Cpu, Globe, CheckCircle2 } from 'lucide-react';
 import { Logo } from './ui/Logo';
-import { playClick, playSuccess } from '../lib/sounds';
+import { playClick } from '../lib/sounds';
 import { format } from 'date-fns';
 
 interface HakkindaModalProps {
@@ -15,10 +15,6 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
   const handleClose = () => {
     playClick();
     onClose();
-  };
-
-  const handleLinkClick = () => {
-    playSuccess();
   };
 
   // Diğer tüm modal/overlay bileşenleri (Modal.tsx, ConfirmModal, GpsHelpModal,
@@ -144,23 +140,6 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
               </div>
             </motion.div>
 
-            {/* Footer / Credits */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-              className="w-full pt-6 border-t border-[var(--text-primary)]/10 flex flex-col items-center justify-center gap-1 relative z-10"
-            >
-              <span className="text-2xs font-extrabold tracking-[0.2em] text-[var(--text-secondary)] uppercase">
-                Tasarım ve Geliştirme
-              </span>
-              <button 
-                onClick={handleLinkClick}
-                className="text-2xs font-bold tracking-wide text-[var(--text-primary)]/80 hover:text-[var(--text-primary)] transition-colors"
-              >
-                Google DeepMind Advanced Agentic Coding
-              </button>
-            </motion.div>
           </motion.div>
         </div>
       )}

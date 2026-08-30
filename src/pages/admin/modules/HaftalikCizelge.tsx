@@ -15,7 +15,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Muezzin, Vakit, VakitAtama } from '../../../types';
 import { AlertCircle, Bot, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import { telemetryService } from '../../../services/telemetryService';
-import { getHaftaIdFromDate, getTurkeyNow, kisiGunIcinMusaitMi } from '../../../lib/dateUtils';
+import { getHaftaIdFromDate, getTurkeyNow, kisiGunIcinMusaitMi, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
@@ -204,7 +204,7 @@ export default function HaftalikCizelge() {
         rows.push([
           tarih,
           gunAdi,
-          vakit.toUpperCase(),
+          toTurkishUpperCase(vakit),
           getMuezzinName(atama.asil),
           getMuezzinName(atama.yedek)
         ]);

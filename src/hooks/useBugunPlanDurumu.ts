@@ -42,25 +42,29 @@ export function useBugunPlanDurumu(planDateStr: string, vakitKeyForPlan: Vakit) 
   const isAdmin = useAuthStore(state => state.isAdmin);
 
   // Race condition kilidi: bu hook ve HaftalikCizelge aynı anda
-  // haftalikPlanOlustur çağırmasın — yalnızca bir kez tetikle
-  const selfHealingFiredRef = useRef(false);
+  // haftalikPlanOlustur çağırmasın — yalnızca bir kez tetikle.
+  // `haftaId`'ye göre kapsanır (bkz. HaftalikCizelge.tsx
+  // `selfHealingFiredHaftaIdRef` ile AYNI desen) — düz bir boolean
+  // OLSAYDI, Hafta A için tetiklenip henüz `plan` truthy olmadan (hâlâ
+  // işlemde/snapshot yayılmamışken) haftaId Hafta B'ye geçerse (o da
+  // planssızsa) kilit "tetiklendi" takılı kalır ve Hafta B için
+  // self-healing hiç çalışmazdı (bkz. kod denetimi bulgusu).
+  const selfHealingFiredHaftaIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!planLoading && !plan && isAdmin && haftaId && !selfHealingFiredRef.current) {
-      selfHealingFiredRef.current = true;
+    if (!planLoading && !plan && isAdmin && haftaId && selfHealingFiredHaftaIdRef.current !== haftaId) {
+      selfHealingFiredHaftaIdRef.current = haftaId;
       if (import.meta.env.DEV) {
         console.log(`[Self-Healing] Hafta planı bulunamadı (${haftaId}). Yönetici yetkisiyle otomatik oluşturuluyor...`);
       }
       import('../services/planServisi').then(({ haftalikPlanOlustur }) => {
         haftalikPlanOlustur(haftaId).catch(err => {
           console.error('[Self-Healing] Otomatik plan oluşturma başarısız:', err);
-          selfHealingFiredRef.current = false;
+          if (selfHealingFiredHaftaIdRef.current === haftaId) {
+            selfHealingFiredHaftaIdRef.current = null;
+          }
         });
       });
-    }
-    // Plan gelirse kilidi sıfırla (ilerleyen hafta geçişlerinde tekrar çalışabilsin)
-    if (plan && selfHealingFiredRef.current) {
-      selfHealingFiredRef.current = false;
     }
   }, [plan, planLoading, isAdmin, haftaId]);
 

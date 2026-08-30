@@ -15,7 +15,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { AdminLoadingState } from '../components/AdminLoadingState';
 import { duyurularAbone, duyuruYayinla, duyuruSil } from '../../../services/duyuruServisi';
-import { toJsDate } from '../../../lib/dateUtils';
+import { toTurkishLowerCase, toJsDate } from '../../../lib/dateUtils';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 
 export const DuyuruYonetimi: React.FC = () => {
@@ -48,8 +48,13 @@ export const DuyuruYonetimi: React.FC = () => {
  const rawText = formData.icerik.trim();
  let generated = '';
 
- const isWater = rawText.toLowerCase().includes('su') || rawText.toLowerCase().includes('kesint');
- const isFriday = rawText.toLowerCase().includes('cuma') || rawText.toLowerCase().includes('vaaz') || rawText.toLowerCase().includes('yardım');
+ // toTurkishLowerCase (bkz. src/lib/dateUtils.ts) — yönetici metni BÜYÜK
+ // harfle ("KESİNTİ", "YARDIM" gibi) yazdıysa locale'siz `.toLowerCase()`
+ // "İ"yi/"I"yı bozuk çevirip aşağıdaki `.includes('kesint')`/`.includes('yardım')`
+ // aramalarının SESSİZCE eşleşmemesine yol açardı.
+ const rawTextLower = toTurkishLowerCase(rawText);
+ const isWater = rawTextLower.includes('su') || rawTextLower.includes('kesint');
+ const isFriday = rawTextLower.includes('cuma') || rawTextLower.includes('vaaz') || rawTextLower.includes('yardım');
 
  if (templateTone === 'resmi') {
  if (isWater) {

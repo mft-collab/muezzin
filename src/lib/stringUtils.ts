@@ -1,3 +1,5 @@
+import { toTurkishUpperCase, toTurkishLowerCase } from './dateUtils';
+
 /**
  * Metindeki kelimelerin ilk harflerini büyük, diğerlerini küçük yapar (Türkçe uyumlu).
  */
@@ -6,7 +8,7 @@ export const formatName = (text: string) => {
  return text.split(' ')
  .map(word => {
  if (word.length === 0) return '';
- return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1).toLocaleLowerCase('tr-TR');
+ return toTurkishUpperCase(word.charAt(0)) + toTurkishLowerCase(word.slice(1));
  })
  .join(' ');
 };

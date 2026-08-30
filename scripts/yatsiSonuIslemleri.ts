@@ -1,8 +1,9 @@
 import { db, Timestamp, auth } from './lib/firebaseAdminInit.ts';
+import type { DocumentData } from 'firebase-admin/firestore';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { gunlukKredileriHesapla } from '../src/lib/gunlukKrediHesaplama.ts';
-import { fcmGonderVeTemizle, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -55,11 +56,27 @@ export async function processYatsiSonuIslemleri() {
   // — planlamaCekirdegi.ts'teki "saf çekirdek, ince I/O sarmalayıcı" deseniyle
   // aynı, mantık burada birim testle doğrulanabilir.
   const bildirimVerileri = bildirimler.docs.map(doc => doc.data());
-  const { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri } =
-    gunlukKredileriHesapla(bildirimVerileri as { tip: string; durum: string; uid: string; cumaMi?: boolean }[]);
+  const { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri, puanIslenenIndeksleri } =
+    gunlukKredileriHesapla(bildirimVerileri as { tip: string; durum: string; uid: string; cumaMi?: boolean; puanIslendi?: boolean }[]);
 
+  // Tekrar-çalıştırma güvenliği (bkz. gunlukKrediHesaplama.ts `puanIslendi`
+  // yorumu): kredi verilen HER kayıt `puanIslendi:true` ile işaretlenir —
+  // 'bekliyor' kalanlar zaten durum değişimiyle (okundu_varsayilan) bir daha
+  // sorguya girmez, ama 'onaylandi' kalanlar (kullanıcının gün içinde kendi
+  // okudumOnayla'sını verdiği) hiçbir durum değişikliği ALMADIĞINDAN bu
+  // işaret olmadan script aynı gün için ikinci kez çalıştırılırsa (ör.
+  // GitHub Actions'ta manuel "Re-run failed jobs") ikinci kez kredilendirilirdi.
+  // İki indeks kümesi çakışabildiğinden (bekliyor→hem okundu_varsayilan HEM
+  // puanIslendi) her belge için TEK bir birleşik update nesnesi kurulur.
+  const guncellemeler = new Map<number, DocumentData>();
   okunduVarsayilanIndeksleri.forEach((i) => {
-    batch.update(bildirimler.docs[i].ref, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+    guncellemeler.set(i, { durum: 'okundu_varsayilan', pendingAck: false, sonGuncelleme: Timestamp.now() });
+  });
+  puanIslenenIndeksleri.forEach((i) => {
+    guncellemeler.set(i, { ...(guncellemeler.get(i) || {}), puanIslendi: true });
+  });
+  guncellemeler.forEach((alanlar, i) => {
+    batch.update(bildirimler.docs[i].ref, alanlar);
   });
 
   // Asil ve yedek kişilere puanlarını ver
@@ -146,15 +163,7 @@ export async function processYatsiSonuIslemleri() {
         const remindersEnabled = userProfile?.notificationSettings?.nobetHatirlatici !== false;
 
         if (userProfile?.aktif === true && remindersEnabled) {
-          const tokens: string[] = [];
-          if (userProfile.fcmTokens && typeof userProfile.fcmTokens === 'object') {
-            Object.keys(userProfile.fcmTokens).forEach(t => {
-              if (t.trim().length > 0) tokens.push(t);
-            });
-          }
-          if (tokens.length === 0 && userProfile.fcmToken && userProfile.fcmToken.trim().length > 0) {
-            tokens.push(userProfile.fcmToken);
-          }
+          const tokens = kullaniciFcmTokenleriniTopla(userProfile);
 
           const dutyListStr = userDuties[uid].join(', ');
           for (const token of tokens) {

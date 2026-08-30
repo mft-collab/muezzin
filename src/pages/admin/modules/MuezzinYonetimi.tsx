@@ -295,7 +295,11 @@ export default function MuezzinYonetimi() {
  whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.15)' }}
  whileTap={{ scale: 0.9 }}
  onClick={() => m.isInvite ? executeDeleteInvite(m.id) : setConfirmAction({ type: 'delete', data: m })}
- aria-label="Sil"
+ // Davet (isInvite) dalı GERÇEKTEN siler (davetSil -> deleteDoc); bekleyen
+ // bir müezzin kaydı (isInvite:false) dalı ise arşivler (bkz. yukarıdaki
+ // ana liste butonundaki AYNI düzeltme) — statik "Sil" etiketi ikinci
+ // durumda yanıltıcıydı.
+ aria-label={m.isInvite ? 'Daveti sil' : 'Personeli arşive al'}
  className="p-3 bg-[var(--text-primary)]/5 text-[var(--text-secondary)]/30 rounded-xl border border-[var(--text-primary)]/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
  >
  <Trash2 size={16} />
@@ -494,7 +498,13 @@ export default function MuezzinYonetimi() {
       whileHover={{ scale: 1.1, backgroundColor: 'rgba(244,63,94,0.1)' }}
       whileTap={{ scale: 0.9 }}
       onClick={() => setConfirmAction({ type: 'delete', data: m })}
-      aria-label="Personeli sil"
+      // "sil" DEĞİL "arşive al" — bu aksiyon gerçekte hiçbir şeyi silmiyor
+      // (bkz. runConfirmedAction -> archiveUser -> personelArsivle), yalnızca
+      // arşivliyor; aria-label önceden "Personeli sil" diyip ekran okuyucu
+      // kullanıcısını yanlış yönlendiriyordu, doğrulama diyaloğunun kendi
+      // başlığı ("ARŞİVE AL") ve metniyle çelişiyordu (bkz. kod denetimi
+      // bulgusu).
+      aria-label="Personeli arşive al"
       className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
       >
       <Trash2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />

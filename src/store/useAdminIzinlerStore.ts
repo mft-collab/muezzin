@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { collection, query, onSnapshot, updateDoc, doc, deleteDoc, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, onSnapshot, updateDoc, doc, getDoc, runTransaction, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Izin } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from '../services/telemetryService';
 import { haftalikPlanOlustur } from '../services/planServisi';
-import { getHaftaIdFromDate, izinGunSayisi } from '../lib/dateUtils';
+import { getHaftaIdFromDate, izinGunSayisi, toTurkishUpperCase } from '../lib/dateUtils';
 
 /** Yıllık izin kotası (takvim yılı başına gün) — bkz. firestore.rules
  *  isValidMuezzin (yillikIzinKullanilanGun <= 30), aynı sabit orada da
@@ -128,46 +128,69 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
   izinGuncelle: async (id, durum) => {
     const path = `izinler/${id}`;
     try {
-      const izinSnap = await getDoc(doc(db, 'izinler', id));
-      if (!izinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
-      const izinData = izinSnap.data() as Izin;
+      // TÜMÜYLE transaction içinde: hem karar hem (varsa) kota etkisi TEK
+      // atomik yazım. Önceden yalnızca 'onaylandi' dalı transactional'dı;
+      // 'reddedildi' dalı (mevcut durum ne olursa olsun) korumasız, düz bir
+      // `updateDoc` idi. Bu, ZATEN ONAYLANMIŞ (kotaya eklenmiş) bir yıllık
+      // izin daha sonra reddedilirse — ör. iki admin oturumu aynı talebi
+      // aynı anda görüp biri onaylar biri reddederken ikincisinin UI'ı hâlâ
+      // eski 'onay_bekliyor' durumunu gösteriyorsa — önceden eklenen
+      // `yillikIzinKullanilanGun`'un asla geri düşürülmemesine yol açıyordu
+      // (bkz. kod denetimi bulgusu; `izinGeriAl`/`izinSil`'deki AYNI
+      // desenle simetrik hale getirildi). Güncel sunucu durumu her zaman
+      // transaction İÇİNDE (stale bir ön-okumaya değil) taze okunur.
+      await runTransaction(db, async (transaction) => {
+        const izinRef = doc(db, 'izinler', id);
+        const tazeIzinSnap = await transaction.get(izinRef);
+        if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
+        const tazeIzin = tazeIzinSnap.data() as Izin;
+        const mevcutDurum = tazeIzin.durum;
 
-      // Yıllık izin onayı, 30 gün/yıl kotasını muezzins.yillikIzinKullanilanGun
-      // kalıcı sayacına ATOMİK olarak işlemek zorunda — aksi halde iki ayrı
-      // yazım arasında kota kontrolsüz kalırdı. firestore.rules (isValidMuezzin)
-      // bu sayacın 30'u AŞACAK şekilde yazılmasını tamamen reddeder; kota
-      // aşan bir onay burada transaction'ın kendisinde başarısız olur, izin
-      // durumu da değişmeden 'onay_bekliyor' kalır (bkz. kullanıcı kararı:
-      // sert engel, admin override'ı yok).
-      if (durum === 'onaylandi' && izinData.tip === 'yillik') {
-        const gunSayisi = izinGunSayisi(izinData.baslangic, izinData.bitis);
-        await runTransaction(db, async (transaction) => {
-          const izinRef = doc(db, 'izinler', id);
-          const muezzinRef = doc(db, 'muezzins', izinData.uid);
-          const [tazeIzinSnap, muezzinSnap] = await Promise.all([
-            transaction.get(izinRef),
-            transaction.get(muezzinRef),
-          ]);
-          if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
-          if (tazeIzinSnap.data().durum !== 'onay_bekliyor') throw new Error('Bu talep zaten sonuçlandırılmış.');
-          if (!muezzinSnap.exists()) throw new Error('Personel kaydı bulunamadı.');
+        if (mevcutDurum === durum) throw new Error('Bu talep zaten bu durumda.');
 
-          const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
-          const yeniKullanilan = mevcutKullanilan + gunSayisi;
-          if (yeniKullanilan > YILLIK_IZIN_KOTASI) {
-            throw new Error(
-              `Bu onay yıllık izin kotasını aşıyor: talep ${gunSayisi} gün, kullanılan ${mevcutKullanilan}/${YILLIK_IZIN_KOTASI} gün. Kalan kota: ${Math.max(0, YILLIK_IZIN_KOTASI - mevcutKullanilan)} gün.`
-            );
+        const isYillik = tazeIzin.tip === 'yillik';
+        // Kota yalnızca "onaylandi"ya GİRERKEN ya da ONDAN ÇIKARKEN etkilenir.
+        const kotaEtkisiVar = isYillik && (durum === 'onaylandi' || mevcutDurum === 'onaylandi');
+        const muezzinRef = kotaEtkisiVar ? doc(db, 'muezzins', tazeIzin.uid) : null;
+        const muezzinSnap = muezzinRef ? await transaction.get(muezzinRef) : null;
+
+        if (durum === 'onaylandi') {
+          if (mevcutDurum !== 'onay_bekliyor') throw new Error('Bu talep zaten sonuçlandırılmış.');
+          if (isYillik) {
+            if (!muezzinSnap?.exists()) throw new Error('Personel kaydı bulunamadı.');
+            const gunSayisi = izinGunSayisi(tazeIzin.baslangic, tazeIzin.bitis);
+            const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
+            const yeniKullanilan = mevcutKullanilan + gunSayisi;
+            // firestore.rules (isValidMuezzin) bu sayacın 30'u AŞACAK
+            // şekilde yazılmasını da ayrıca reddeder; kota aşan bir onay
+            // burada başarısız olur, izin durumu değişmeden kalır (bkz.
+            // kullanıcı kararı: sert engel, admin override'ı yok).
+            if (yeniKullanilan > YILLIK_IZIN_KOTASI) {
+              throw new Error(
+                `Bu onay yıllık izin kotasını aşıyor: talep ${gunSayisi} gün, kullanılan ${mevcutKullanilan}/${YILLIK_IZIN_KOTASI} gün. Kalan kota: ${Math.max(0, YILLIK_IZIN_KOTASI - mevcutKullanilan)} gün.`
+              );
+            }
+            transaction.update(muezzinRef!, { yillikIzinKullanilanGun: yeniKullanilan });
           }
+        } else if (isYillik && mevcutDurum === 'onaylandi' && muezzinSnap?.exists()) {
+          // Zaten onaylanmış bir yıllık izin reddediliyor — daha önce
+          // kotaya eklenen gün sayısı geri düşülür.
+          const gunSayisi = izinGunSayisi(tazeIzin.baslangic, tazeIzin.bitis);
+          const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
+          transaction.update(muezzinRef!, { yillikIzinKullanilanGun: Math.max(0, mevcutKullanilan - gunSayisi) });
+        }
 
-          transaction.update(izinRef, { durum });
-          transaction.update(muezzinRef, { yillikIzinKullanilanGun: yeniKullanilan });
-        });
-      } else {
-        await updateDoc(doc(db, 'izinler', id), { durum });
-      }
+        // bildirimGonderildi: false — scripts/izinDurumBildirimGonder.ts
+        // (Admin SDK cron) talep sahibine "mazeretDurumu" push bildirimini
+        // gönderdikten sonra bu bayrağı true'ya çevirir. Kararla AYNI
+        // transaction'da yazılması, o script'in sorgusunun tüm izinler
+        // koleksiyonunu taramak yerine tek bir eşitlik filtresiyle
+        // (`== false`) yalnızca henüz bildirilmemiş kararları bulmasını
+        // sağlar (bkz. duyuruServisi.ts'teki AYNI desen).
+        transaction.update(izinRef, { durum, bildirimGonderildi: false });
+      });
 
-      await telemetryService.logAudit('İzin Talebi Kararı', id, `Talep durumu '${durum.toUpperCase()}' olarak güncellendi.`);
+      await telemetryService.logAudit('İzin Talebi Kararı', id, `Talep durumu '${toTurkishUpperCase(durum)}' olarak güncellendi.`);
       // Yalnızca onayda plan yenilemesi gerekir — reddedilen izin zaten
       // atamayı hiç etkilemiyordu (bkz. mimari denetim Y1).
       if (durum === 'onaylandi') {
@@ -200,7 +223,15 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           ]);
           if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
 
-          transaction.update(izinRef, { durum: 'onay_bekliyor' });
+          // bildirimGonderildi silinir — geri alınan bir karar tekrar
+          // verildiğinde (izinGuncelle) bu alan `false` ile yeniden
+          // yazılacak; silinmezse ESKİ kararın `true` değeri kalıp YENİ
+          // karar için hiç push bildirimi gitmezdi. Ayrıca bu alan
+          // `durum == 'onay_bekliyor'` iken üzerinde kalırsa, kullanıcının
+          // kendi bekleyen talebini düzenlediği self-update yolu
+          // (isValidIzin'in katı hasOnly'si) bu fazladan alan yüzünden
+          // reddedilirdi (bkz. firestore.rules).
+          transaction.update(izinRef, { durum: 'onay_bekliyor', bildirimGonderildi: deleteField() });
           // Sayaç yalnızca ONAYLANMIŞ bir izin geri alınırken düşürülmeli —
           // reddedilen izin izinGuncelle'de zaten sayaca hiç eklenmemişti
           // (bkz. L131), aksi halde reddedilen bir kaydı geri al/tekrar onayla
@@ -211,7 +242,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           }
         });
       } else {
-        await updateDoc(doc(db, 'izinler', id), { durum: 'onay_bekliyor' });
+        await updateDoc(doc(db, 'izinler', id), { durum: 'onay_bekliyor', bildirimGonderildi: deleteField() });
       }
 
       await telemetryService.logAudit('İzin Talebi Kararı Geri Alındı', id, 'Talep durumu tekrar \'ONAY BEKLİYOR\' olarak ayarlandı.');
@@ -226,36 +257,33 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
   izinSil: async (id) => {
     const path = `izinler/${id}`;
     try {
-      const izinSnap = await getDoc(doc(db, 'izinler', id));
-      if (!izinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
-      const izinData = izinSnap.data() as Izin;
+      // Kota geri alınıp alınmayacağı kararı artık transaction İÇİNDEKİ
+      // taze okumaya göre veriliyor — önceden bu bir ÖN-okumaya (dış
+      // `getDoc`) bakıyordu: örneğin talep ön-okuma anında 'onay_bekliyor'
+      // iken transaction çalışana kadar başka bir oturum onu onaylarsa
+      // (kota zaten eklendi) bu fonksiyon "else" dalına düşüp kotayı HİÇ
+      // geri düşürmeden sileceğinden kota sızardı; tam tersi sırayla da
+      // (ön-okumada 'onaylandi' ama arada geri alınmışsa) kota İKİNCİ KEZ
+      // düşürülüp yapay olarak eksilirdi (bkz. kod denetimi bulgusu,
+      // izinGuncelle'deki AYNI sınıf düzeltmeyle simetrik).
+      await runTransaction(db, async (transaction) => {
+        const izinRef = doc(db, 'izinler', id);
+        const tazeIzinSnap = await transaction.get(izinRef);
+        if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
+        const tazeIzin = tazeIzinSnap.data() as Izin;
 
-      // Onaylanmış bir yıllık izin doğrudan silinirse, daha önce sayaca
-      // eklenen gün sayısı da aynı transaction içinde geri düşülmeli —
-      // aksi halde kaynak kayıt (baslangic/bitis) artık yok olduğundan bu
-      // hiçbir zaman düzeltilemez (bkz. izinGeriAl'daki AYNI desen; bu
-      // koruma önceden yalnızca "kararı geri al" yolunda vardı, doğrudan
-      // silme yolunda eksikti).
-      if (izinData.tip === 'yillik' && izinData.durum === 'onaylandi') {
-        const gunSayisi = izinGunSayisi(izinData.baslangic, izinData.bitis);
-        await runTransaction(db, async (transaction) => {
-          const izinRef = doc(db, 'izinler', id);
-          const muezzinRef = doc(db, 'muezzins', izinData.uid);
-          const [tazeIzinSnap, muezzinSnap] = await Promise.all([
-            transaction.get(izinRef),
-            transaction.get(muezzinRef),
-          ]);
-          if (!tazeIzinSnap.exists()) return;
-
-          transaction.delete(izinRef);
+        if (tazeIzin.tip === 'yillik' && tazeIzin.durum === 'onaylandi') {
+          const gunSayisi = izinGunSayisi(tazeIzin.baslangic, tazeIzin.bitis);
+          const muezzinRef = doc(db, 'muezzins', tazeIzin.uid);
+          const muezzinSnap = await transaction.get(muezzinRef);
           if (muezzinSnap.exists()) {
             const mevcutKullanilan = muezzinSnap.data().yillikIzinKullanilanGun || 0;
             transaction.update(muezzinRef, { yillikIzinKullanilanGun: Math.max(0, mevcutKullanilan - gunSayisi) });
           }
-        });
-      } else {
-        await deleteDoc(doc(db, 'izinler', id));
-      }
+        }
+
+        transaction.delete(izinRef);
+      });
 
       await telemetryService.logAudit('İzin Talebi Silme', id, 'İzin kaydı dizgeden kalıcı olarak silindi.');
     } catch (err) {

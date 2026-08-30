@@ -7,6 +7,7 @@ import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 import { kibleAcisiHesapla, kibleMesafesiHesapla, ilceKoordinatlariniCek } from '../services/gpsVakitServisi';
 import { hapticLight, hapticQiblaLock } from '../lib/haptic';
 import { playQiblaLock } from '../lib/sounds';
+import { toTurkishLowerCase } from '../lib/dateUtils';
 
 interface KiblePusulasiModalProps {
   isOpen: boolean;
@@ -29,9 +30,13 @@ const FALLBACK_KOORDINATLAR: Record<string, { lat: number; lng: number }> = {
 const VARSAYILAN_KOORDINAT = FALLBACK_KOORDINATLAR.ceyhan;
 
 function ilceAdiniNormallestir(ilceAdi: string): string {
-  return ilceAdi
-    .trim()
-    .toLowerCase()
+  // toTurkishLowerCase (bkz. src/lib/dateUtils.ts) — bunun tam tersi yönde
+  // bir hata: aşağıdaki tablo düz ASCII anahtarlar kullanıyor ("istanbul",
+  // "izmir" gibi), ama GERÇEK ilçe adı "İstanbul"/"İzmir" (büyük noktalı İ)
+  // olarak gelebilir. Locale'siz `.toLowerCase()` "İ"yi TEK bir "i" yerine
+  // "i" + birleşen nokta işaretine çevirir, bu da aşağıdaki `/ı/g` zincirinden
+  // SONRA bile tablo anahtarıyla eşleşmeyen bozuk bir sonuç üretirdi.
+  return toTurkishLowerCase(ilceAdi.trim())
     .replace(/ı/g, 'i')
     .replace(/ş/g, 's')
     .replace(/ğ/g, 'g')

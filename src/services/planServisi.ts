@@ -1,8 +1,8 @@
-import { collection, query, where, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
-import { isFriday, getOncekiHafta } from '../lib/dateUtils';
+import { isFriday, getOncekiHafta, toTurkishUpperCase } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
@@ -67,6 +67,30 @@ function bildirimleriSlotlaraAyir(docs: BildirimQueryDoc[]) {
  acc[key].push(bildirimDoc);
  return acc;
  }, {} as Record<string, BildirimQueryDoc[]>);
+}
+
+// scripts/vekaletDevirleriniIsle.ts'teki `alarmVarMi` ile AYNI dedup
+// deseni. Gece cron'u (scripts/haftalikPlanOlustur.ts) bir haftanın
+// uyarılarını yalnızca `haftaPlanlari/{haftaId}` belgesi İLK
+// OLUŞTURULDUĞUNDA üretir (`if (planDoc.exists) continue`) — ama bu
+// istemci tarafı "self-healing" fonksiyonu belge var olsa bile HER
+// çağrıldığında (korunan slotlar hariç) yeniden hesaplar ve önceden bu
+// kontrolsüzdü: aynı anlaşılmaz/yedeksiz gün, self-healing effect'leri
+// (HaftalikCizelge.tsx, useBugunPlanDurumu.ts), her personel işleminde
+// 3 haftalık yenileme döngüsü (`haftalikPlanlariYenile`) veya "PLANLARI
+// GÜNCELLE" düğmesiyle günde onlarca kez tetiklenebildiğinden, aynı
+// koşul için art arda neredeyse birebir aynı çözülmemiş uyarı kaydı
+// birikiyordu (bkz. kod denetimi bulgusu, Hizmet Cetveli veri akışı
+// analizi).
+async function cozulmemisUyariVarMi(tip: string, tarih: string): Promise<boolean> {
+ const snap = await getDocs(query(
+ collection(db, 'adminUyarilari'),
+ where('tip', '==', tip),
+ where('tarih', '==', tarih),
+ where('cozuldu', '==', false),
+ limit(1)
+ ));
+ return !snap.empty;
 }
 
 function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
@@ -161,7 +185,7 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
     });
 
     if (sonuc === 'updated') {
-      await telemetryService.logAudit('Manuel Görev Atama', tarih, `${vakit.toUpperCase()} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
+      await telemetryService.logAudit('Manuel Görev Atama', tarih, `${toTurkishUpperCase(vakit)} vakti için asil: ${asilAdi}, yedek: ${yedekAdi} ataması yapıldı.`);
     }
     return sonuc;
   } catch (err) {
@@ -273,9 +297,29 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  throw new PlanEszamanlilikCakismasi('Bu hafta için bildirimler bu sırada başka bir işlem tarafından değiştirildi. Lütfen tekrar deneyin.');
  }
 
- const batch = writeBatch(db);
-
+ // NOT ("1000 ifade tavanı" kök neden sınıfı — bkz. firestore.rules'taki
+ // aynı isimli yorumlar, mazeret/vekalet devirlerinin Admin SDK'ya taşınma
+ // gerekçesi): önceden TÜM haftanın (7 gün × 5 vakit × 2 = ~70 belge)
+ // silme+yazma işlemi TEK bir writeBatch'te toplanıp commit ediliyordu.
+ // `isValidBildirim` her belge için ayrı ayrı değerlendirildiğinden,
+ // kümülatif ifade sayısı Firestore Rules emülatörünün "istek başına 1000
+ // ifade" bütçesini AŞABİLİYORDU — yazım tüm belge sayısına ve hangi
+ // slotların korumalı olduğuna bağlı olarak ARALIKLI (bazen olur bazen
+ // olmaz) şekilde sessizce PERMISSION_DENIED ile başarısız oluyordu (bkz.
+ // tests/e2e/haftalik-plan.spec.ts self-healing testindeki flaky
+ // başarısızlık — kök neden burada izlendi). Çözüm: bildirimler yazımı
+ // GÜN BAŞINA ayrı bir batch'e bölünüp sırayla commit edilir (günde en
+ // fazla ~20 işlem — bütçenin çok altında), `haftaPlanlari` belgesi ise
+ // TÜM günler başarıyla yazıldıktan SONRA, ayrı bir son batch'te commit
+ // edilir. Bu, `useHaftaPlan`'ın `!plan` kontrolüne göre self-healing'i
+ // tetikleyen tek kaynak `haftaPlanlari` belgesinin, ait olduğu
+ // bildirimler TAMAMEN yazılmadan asla görünmemesini garanti eder —
+ // kısmi bir başarısızlık durumunda (haftaPlanlari hâlâ yok/eski)
+ // bir sonraki deneme (self-healing veya "PLANLARI GÜNCELLE") zaten
+ // korumasız her slotu silip yeniden yazdığından doğal olarak
+ // kendi kendini düzeltir (idempotent).
  for (const gun of gunler) {
+ const gunBatch = writeBatch(db);
  const [gY, gM, gD] = gun.split('-').map(Number);
  const cumaMi = isFriday(new Date(gY, gM - 1, gD));
 
@@ -287,7 +331,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  if (korumaliSlotMu(slotBildirimleri)) continue;
 
  slotBildirimleri.forEach((bildirimDoc) => {
- batch.delete(bildirimDoc.ref);
+ gunBatch.delete(bildirimDoc.ref);
  });
 
  const atama = gunPlan[gun][vakit];
@@ -295,7 +339,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
  // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
  if (atama.asil !== 'Sistem') {
- batch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_asil`), {
+ gunBatch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_asil`), {
  haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
  durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
  sonGuncelleme: Timestamp.now()
@@ -303,16 +347,20 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  }
 
  if (atama.yedek !== 'Sistem') {
- batch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_yedek`), {
+ gunBatch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_yedek`), {
  haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
  durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
  sonGuncelleme: Timestamp.now()
  });
  }
  }
+
+ await gunBatch.commit();
  }
 
- batch.set(planRef, {
+ const sonBatch = writeBatch(db);
+
+ sonBatch.set(planRef, {
  haftaBaslangic: startStr,
  haftaBitis: haftaBitisStr,
  durum: 'yayinda',
@@ -321,8 +369,8 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  gunler: gunPlan
  }, { merge: true });
 
- if (kapsamsizGunler.length > 0) {
- batch.set(doc(collection(db, 'adminUyarilari')), {
+ if (kapsamsizGunler.length > 0 && !(await cozulmemisUyariVarMi('planOlusturulamadi', kapsamsizGunler[0]))) {
+ sonBatch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'planOlusturulamadi',
  mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
  tarih: kapsamsizGunler[0],
@@ -330,8 +378,8 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  olusturmaTarihi: Timestamp.now()
  });
  }
- if (tekKisiliGunler.length > 0) {
- batch.set(doc(collection(db, 'adminUyarilari')), {
+ if (tekKisiliGunler.length > 0 && !(await cozulmemisUyariVarMi('zincirTukendi', tekKisiliGunler[0]))) {
+ sonBatch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'zincirTukendi',
  mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
  tarih: tekKisiliGunler[0],
@@ -340,7 +388,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  });
  }
 
- await batch.commit();
+ await sonBatch.commit();
  } catch (err) {
  if (err instanceof PlanEszamanlilikCakismasi) throw err;
  throw handleFirestoreError(err, OperationType.WRITE, path);

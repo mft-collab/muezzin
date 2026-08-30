@@ -29,3 +29,14 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: npm run process:vekalet-devirleri
+      - name: Başarısızlığı admin paneline bildir
+        # NOT: diğer altı cron'dan farklı olarak bu adım önceden hiç yoktu —
+        # bu iş sessizce günlerce başarısız kalabilirdi (bkz. Firebase/GitHub
+        # veri akışı denetimi). Sorgular artık son 30 günle sınırlı olduğu
+        # için (bkz. mazeretDevirleriniIsle.ts/vekaletDevirleriniIsle.ts)
+        # uzun süreli sessiz bir kesinti artık pencere dışına düşen eski
+        # kayıtları hiç uzlaştırmadan bırakabilir — bu adım bu riski azaltır.
+        if: failure()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Mazeret ve Vekalet Devirlerini Uzlaştır"

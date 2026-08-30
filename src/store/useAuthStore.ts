@@ -13,6 +13,14 @@ interface AuthState {
  isPending: boolean;
  loading: boolean;
  error: string | null;
+ // `error`'dan kasıtlı olarak ayrı tutulur: `error` kullanıcı tarafından
+ // "TEKRAR DENE" ile dismiss edilebilen geçici/ağ hatalarını taşır, ama
+ // aktif:false (devre dışı hesap) sunucu tarafından belirlenen bir durumdur
+ // ve yalnızca canlı `muezzins/{uid}` dinleyicisi aktif:true görünce
+ // kendiliğinden temizlenmeli — yoksa "TEKRAR DENE" düğmesi devre dışı
+ // hesabı AuthGuard zincirinden geçirip tam uygulamaya sokar (bkz. kod
+ // denetimi: auth bypass).
+ disabledReason: string | null;
  initialized: boolean;
  init: () => () => void;
  setError: (error: string | null) => void;
@@ -26,6 +34,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  isPending: false,
  loading: false, // Start false to avoid initial flash, init will set it
  error: null,
+ disabledReason: null,
  initialized: false,
  
  setError: (error) => set({ error }),
@@ -78,10 +87,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  const currentStoreState = get();
  const shouldShowLoading = !currentStoreState.initialized || currentStoreState.user?.uid !== currentUser?.uid;
  
- set({ 
- user: currentUser, 
- error: null, 
- loading: currentUser ? shouldShowLoading : false 
+ set({
+ user: currentUser,
+ error: null,
+ disabledReason: null,
+ loading: currentUser ? shouldShowLoading : false
  });
 
  if (!currentUser) {
@@ -105,7 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  if (docSnap.exists()) {
  const data = docSnap.data();
  if (data.aktif === false) {
- set({ error: 'Hesabınız devre dışı bırakılmış.', role: null, isAdmin: false, loading: false, initialized: true });
+ set({ disabledReason: 'Hesabınız devre dışı bırakılmış.', error: null, role: null, isAdmin: false, isPending: false, loading: false, initialized: true });
  } else {
  let isAdminResolved = data.role === 'admin';
  if (!isAdminResolved) {
@@ -127,6 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  role: data.role,
  isAdmin: isAdminResolved,
  isPending: !!data.onayBekliyor,
+ disabledReason: null,
  loading: false,
  initialized: true
  });

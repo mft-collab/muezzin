@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useChangeKey } from '../../../hooks/useChangeKey';
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { Save, MapPin } from 'lucide-react';
+import { Save, MapPin, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
 import { AdminLoadingState } from '../components/AdminLoadingState';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
+import { VeriSifirlamaModal } from '../components/VeriSifirlamaModal';
 import { playSuccess, playWarning } from '../../../lib/sounds';
 import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
 
@@ -17,9 +19,18 @@ type StatusMessage = {
 export default function SistemAyarlari() {
  const { settings, loading, updateSettings } = useSystemSettingsStore();
  const { theme } = useThemeStore();
- const [ilceId, setIlceId] = useState('');
- const [ilceAdi, setIlceAdi] = useState('');
- const [hicriDuzeltme, setHicriDuzeltme] = useState(0);
+ // Lazy init — settings.ilceId/ilceAdi'DAN türetilir, sabit '' DEĞİL. Admin
+ // bu sekmeye ayarlar DAHA ÖNCEDEN (başka bir sekmede) yüklenmiş haldeyken
+ // girerse, useChangeKey ilk render'da HER ZAMAN false döner (kendi
+ // referans anahtarını o anki değerle tohumlar) — bu yüzden aşağıdaki
+ // senkron bloğu hiç tetiklenmez ve form '' sabit değerinde TAKILI kalırdı
+ // (manuel doğrulamada bulundu — bkz. premium standart denetimi). Lazy
+ // init, mount anında ne varsa (yüklenmemişse defaultSettings, yüklenmişse
+ // gerçek değer) doğru başlangıç durumunu garanti eder; sonraki gerçek
+ // değişiklikleri hâlâ aşağıdaki useChangeKey bloğu yakalar.
+ const [ilceId, setIlceId] = useState(() => settings.ilceId);
+ const [ilceAdi, setIlceAdi] = useState(() => settings.ilceAdi);
+ const [hicriDuzeltme, setHicriDuzeltme] = useState(() => settings.hicriDuzeltme ?? 0);
  const [saving, setSaving] = useState(false);
  const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
  // İlçe kodu değişikliği, TÜM cemaatin ezan vakti kaynağını değiştiren
@@ -29,17 +40,26 @@ export default function SistemAyarlari() {
  const [pendingLocationChange, setPendingLocationChange] = useState<{
    ilceId: string; ilceAdi: string; hicriDuzeltme: number;
  } | null>(null);
+ const [veriSifirlamaAcik, setVeriSifirlamaAcik] = useState(false);
 
- // Uzak ayar dokümanı değiştiğinde form alanlarını render sırasında
- // doldur — bkz. useBugunkuGorevlerim.ts'teki aynı desen.
- const [lastSettings, setLastSettings] = useState(settings);
- if (settings !== lastSettings) {
- setLastSettings(settings);
- if (settings) {
+ // Uzak ayar dokümanı GERÇEKTEN değiştiğinde form alanlarını render
+ // sırasında doldur (bkz. useChangeKey — proje standardı, aynı desen
+ // VeriSifirlamaModal.tsx'te de kullanılıyor). Önceden `settings !== lastSettings`
+ // OBJE REFERANSINI karşılaştırıyordu — ama useSystemSettingsStore'un
+ // onSnapshot'ı HER tetiklenmede (değer aynı kalsa bile, ör. bu formun
+ // kendi yazdığı updateSettings'in sunucu-onay yankısı) yeni bir obje
+ // üretiyor. Bu da admin İlçe Tanımı gibi bir alana yazarken, arka planda
+ // gelen ilgisiz bir echo snapshot'ının taslağı sessizce silmesine yol
+ // açıyordu (bkz. kod denetimi bulgusu — useBugunkuGorevlerim.ts'teki AYNI
+ // desen orada salt-okunur bir liste için kullanıldığından zararsızdı, bu
+ // aktif düzenlenen forma yanlış uygulanmıştı). Anahtar artık türetilmiş
+ // bir PRİMİTİF (obje referansı değil) — yalnızca gerçek bir alan değeri
+ // değiştiğinde true döner.
+ const settingsKey = `${settings.ilceId}|${settings.ilceAdi}|${settings.hicriDuzeltme ?? 0}`;
+ if (useChangeKey(settingsKey)) {
  setIlceId(settings.ilceId);
  setIlceAdi(settings.ilceAdi);
  setHicriDuzeltme(settings.hicriDuzeltme ?? 0);
- }
  }
 
  const performSave = async (cleanedIlceId: string, cleanedIlceAdi: string, normalizedHicriDuzeltme: number, locationChanged: boolean) => {
@@ -124,10 +144,14 @@ export default function SistemAyarlari() {
 
  return (
   <>
+  {/* spatial-glass — bu kart önceden elle yazılmış "border-none sm:border
+      ... bg-transparent" deseni kullanıyordu (Loglar sekmesindeki TÜM
+      kartların aksine), mobilde tamamen çerçevesiz/şeffaf görünüyordu
+      (bkz. kod denetimi bulgusu, premium standart). */}
   <motion.div
   initial={{ opacity: 0, y: 20 }}
   animate={{ opacity: 1, y: 0 }}
-  className="p-1 sm:p-8 relative overflow-hidden rounded-card border-none sm:border border-[var(--glass-border)] sm:bg-[var(--surface-low)] bg-transparent"
+  className="spatial-glass !rounded-card p-1 sm:p-8 relative overflow-hidden"
   >
   <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8 relative z-10">
   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] bg-[var(--surface-medium)] flex items-center justify-center border border-[var(--glass-border)]">
@@ -245,6 +269,52 @@ export default function SistemAyarlari() {
   </div>
  </form>
  </motion.div>
+
+ {/* TEHLİKELİ BÖLGE: diğer tüm ayar kartlarından görsel olarak AYRIŞTIRILMIŞ
+     (rose tonu, ayrı kart) — bu ekrandaki tek geri alınamaz işlem. Onay,
+     tek-tıkla ConfirmModal DEĞİL, VeriSifirlamaModal'ın kendi "tam metni
+     yaz" akışıyla — bkz. o dosyanın yorumu.
+     spatial-glass — önceden elle yazılmış "border-none sm:border ...
+     bg-transparent" deseni mobilde çerçevesiz görünüyordu (bkz. kod
+     denetimi bulgusu). Rose tonuyla birlikte kullanım deseni
+     MuezzinYonetimi.tsx:245'teki (aynı sınıf "tehlikeli bölge" kartı)
+     AYNISI — !bg-rose-500 (spatial-glass'ın !important background'ını
+     ezmek için) + plain border-rose-500 (spatial-glass'ın border'ını
+     ezmek için codebase'de zaten kanıtlanmış kombinasyon). */}
+ <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.1 }}
+  className="spatial-glass !bg-rose-500/[0.02] border-rose-500/15 !rounded-card p-1 sm:p-8 relative overflow-hidden mt-6"
+ >
+  <div className="flex items-center gap-3 sm:gap-5 mb-6 relative z-10">
+   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+    <AlertTriangle className="text-rose-500 w-5 h-5" strokeWidth={1.6} />
+   </div>
+   <div>
+    <h3 className="text-lg sm:text-xl font-light text-[var(--text-primary)] tracking-tight leading-tight">Tehlikeli Bölge</h3>
+    <p className="authority-title !text-2xs opacity-45 uppercase tracking-wide">Geri alınamaz veri işlemleri</p>
+   </div>
+  </div>
+
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+   <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed max-w-lg">
+    Bildirimler, haftalık planlar, izinler, vekalet talepleri gibi operasyonel verileri toplu olarak siler — yeni bir sezona sıfırdan başlamak için. Mazeret geçmişi ve denetim kayıtları bu işlemden etkilenmez.
+   </p>
+   <motion.button
+    whileHover={{ y: -3, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    type="button"
+    onClick={() => setVeriSifirlamaAcik(true)}
+    className="shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/25 px-6 py-3.5 rounded-[14px] font-bold text-2xs uppercase tracking-wide transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-rose-500/15"
+   >
+    Operasyonel Veriyi Sıfırla
+   </motion.button>
+  </div>
+ </motion.div>
+
+ <VeriSifirlamaModal isOpen={veriSifirlamaAcik} onClose={() => setVeriSifirlamaAcik(false)} />
+
  <ConfirmModal
    isOpen={pendingLocationChange !== null}
    onClose={() => setPendingLocationChange(null)}

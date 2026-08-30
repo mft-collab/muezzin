@@ -17,17 +17,23 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    // `cumaMi` opsiyonel bir alandır (bkz. isValidBildirim yorumu) — eski
-    // belgelerde hiç yok. `data.cumaMi != true` alan tümüyle eksikken map
-    // üzerinde tanımsız bir anahtara erişim hatası fırlatır (rules engine'i
-    // "Property cumaMi is undefined on object" ile reddeder), bu da "eksikse
-    // Cuma değil say" (fail-open) niyetinin TAM TERSİNİ üretiyordu — alan
-    // eksik olan bildirimler mazeret/vekalet güncellemelerinde kalıcı olarak
-    // reddediliyordu (bkz. mimari denetim regresyonu, test:rules ile
-    // yakalandı). `.get(key, default)` kullanmak alan eksikliğini güvenle
-    // ele alır.
+    // ÖNCEDEN saklı, opsiyonel `cumaMi` alanına (bkz. isValidBildirim) bakan
+    // bir `.get('cumaMi', false)` idi — ama bu alan yalnızca belge
+    // OLUŞTURULURKEN yazılıyor (self-update yolu `changed.hasOnly([...])`
+    // ile cumaMi'yi hiç değiştiremiyor), yani asıl "eksikse Cuma değil say"
+    // fail-open varsayımı, alanın eksik olduğu HER durumda (eski belge,
+    // backfill öncesi, ileride eklenecek herhangi bir yazım yolunun alanı
+    // unutması) Cuma kısıtlamasını sessizce atlatıyordu (bkz. kod denetimi:
+    // firestore.rules güvenlik bulgusu). `tarih` (her zaman `isValidBildirim`
+    // ile "YYYY-MM-DD", 10 karakter olarak doğrulanmış, hiçbir yazım yolunda
+    // opsiyonel değil) üzerinden `haftaGunuNumarasi` ile doğrudan hesaplamak
+    // — izinler'deki `izinAraligiCumaIceriyorMu` ile AYNI saf tarih
+    // aritmetiği yaklaşımı — hem saklı alana duyulan güveni tamamen ortadan
+    // kaldırır hem de eski regresyonun kök nedeni olan "eksik alanda undefined
+    // erişim hatası" riskini taşımaz (tarih hiçbir zaman eksik olamaz).
+    // Pazartesi=1 ... Pazar=7 ölçeğinde Cuma=5.
     function cumaMiIsaretli(data) {
-      return data.get('cumaMi', false) == true;
+      return haftaGunuNumarasi(data.tarih) == 5;
     }
 
     // Süper-admin e-postaları config/bootstrap dokümanında tutulur (kaynak kodda
@@ -61,7 +67,7 @@ service cloud.firestore {
     // kullanılırsa reddedilmesin diye şemaya izinli alan olarak dahil edildi.
     function isValidDuyuru(data) {
       return data.keys().hasAll(['baslik', 'icerik', 'tip', 'tarih']) &&
-             data.keys().hasOnly(['baslik', 'icerik', 'tip', 'tarih', 'yazar']) &&
+             data.keys().hasOnly(['baslik', 'icerik', 'tip', 'tarih', 'yazar', 'bildirimGonderildi']) &&
              data.baslik is string && data.baslik.size() > 0 && data.baslik.size() <= 200 &&
              data.icerik is string && data.icerik.size() > 0 && data.icerik.size() <= 5000 &&
              data.tip in ['onemli', 'bilgi', 'duyuru'] &&
@@ -72,7 +78,16 @@ service cloud.firestore {
              // (yorumda belirtildiği gibi) doldurulmaya başlarsa hiçbir şey
              // sınırsız uzunlukta bir değeri engellemiyordu (bkz. code-review,
              // dördüncü denetim turu).
-             (!data.keys().hasAny(['yazar']) || (data.yazar is string && data.yazar.size() <= 100));
+             (!data.keys().hasAny(['yazar']) || (data.yazar is string && data.yazar.size() <= 100)) &&
+             // bildirimGonderildi: duyuruYayinla oluşturma anında `false`
+             // yazar, scripts/duyuruBildirimGonder.ts (Admin SDK — bu kural
+             // ATLANIR) push gönderdikten sonra `true`'ya çevirir. Alan
+             // yalnızca Admin SDK tarafından true'ya çevrilse de, `update`
+             // kuralı da isValidDuyuru çağırdığından (şu an istemcide bir
+             // "duyuru düzenle" akışı olmasa bile) ileride biri eklenirse bu
+             // alan sessizce "fazladan anahtar" ihlaliyle reddedilmesin diye
+             // burada tipli olarak listelenir.
+             (!data.keys().hasAny(['bildirimGonderildi']) || data.bildirimGonderildi is bool);
     }
 
     match /duyurular/{duyuruId} {
@@ -500,7 +515,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor', 'puanIslendi']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -546,7 +561,18 @@ service cloud.firestore {
              // isSelfBildirimUpdate()'teki `!= true` karsilastirmasi.
              (!data.keys().hasAny(['cumaMi']) || data.cumaMi is bool) &&
              (!data.keys().hasAny(['vekaletDevredildi']) || data.vekaletDevredildi is bool) &&
-             (!data.keys().hasAny(['vekaletDevriBekliyor']) || data.vekaletDevriBekliyor is bool);
+             (!data.keys().hasAny(['vekaletDevriBekliyor']) || data.vekaletDevriBekliyor is bool) &&
+             // `puanIslendi`: yalnızca Admin SDK (scripts/yatsiSonuIslemleri.ts,
+             // kural bütçesi yok) yazar — bir bildirimin aylık sayaçlara (bkz.
+             // gunlukKrediHesaplama.ts) zaten kredilendirildiğini işaretler,
+             // script'in aynı gün için tekrar çalıştırılmasında (ör. GitHub
+             // Actions manuel "Re-run") çift kredilendirmeyi önler. Client
+             // hiçbir zaman bu alanı YAZMIYOR ama `hasOnly` her `update`'te
+             // TÜM belgeyi (mevcut + değişen) doğruladığından, bu alan
+             // eklenmezse bu alanı taşıyan HER bildirimde sonraki tüm client
+             // güncellemeleri (okudum onayla, mazeret, vekalet bayrağı) kalıcı
+             // olarak reddedilirdi (bkz. kod denetimi bulgusu).
+             (!data.keys().hasAny(['puanIslendi']) || data.puanIslendi is bool);
     }
 
     // ifade tavanı denetimi — TAM ÖZET (3 tur):
@@ -610,7 +636,21 @@ service cloud.firestore {
       // yok ama desen tutarliligi ve savunma derinligi icin duzeltildi).
       allow get: if isAdmin() || resource == null || (isSignedIn() && resource.data.uid == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if isSignedIn() && isValidMazeretDetay(incoming()) && incoming().uid == request.auth.uid;
+      // `incoming().uid == request.auth.uid` tek başına yalnızca YAZANIN
+      // kim olduğunu doğruluyordu, HANGİ bildirime yazdığını değil — doc ID
+      // (bildirimId) karşılık gelen bildirimler belgesiyle AYNI
+      // deterministik ID'yi kullandığından (bkz. yukarıdaki yorum), giriş
+      // yapmış HERHANGİ bir kullanıcı bir meslektaşının henüz mazeret
+      // bildirmediği bir nöbetin ID'sini önceden `create` ile "işgal"
+      // edebiliyordu — belge var olduktan sonra `update` daima `if false`
+      // olduğundan, gerçek sahip aynı ID'ye ATOMİK batch'iyle (bkz.
+      // mazeretServisi.ts mazeretRetBatch) yazmaya çalıştığında bu bir
+      // update sayılır ve kalıcı olarak reddedilir (bkz. kod denetimi
+      // güvenlik bulgusu). `bildirimId`'nin GERÇEKTEN yazan kişiye ait
+      // olduğunu (bildirimler belgesindeki uid ile) doğrulamak bu işgali
+      // engeller.
+      allow create: if isSignedIn() && isValidMazeretDetay(incoming()) && incoming().uid == request.auth.uid &&
+        get(/databases/$(database)/documents/bildirimler/$(bildirimId)).data.uid == request.auth.uid;
       // Sabit kayıt — mazeret bir kez bildirilir, değişmez.
       allow update, delete: if false;
     }
@@ -871,7 +911,12 @@ service cloud.firestore {
       // ile şekil/iş-kuralı korunuyor; dokunulmadığında (yalnızca durum/
       // redSebebi kararı) eskisi gibi serbest.
       allow update: if (isAdmin() &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis']) &&
+                        // bildirimGonderildi: izinGuncelle karar anında
+                        // `false` yazar, izinGeriAl kararı geri alırken
+                        // siler — scripts/izinDurumBildirimGonder.ts (Admin
+                        // SDK, bu kural ATLANIR) push gönderdikten sonra
+                        // `true`'ya çevirir (bkz. useAdminIzinlerStore.ts).
+                        incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis', 'bildirimGonderildi']) &&
                         (!incoming().diff(existing()).affectedKeys().hasAny(['baslangic', 'bitis']) ||
                          isValidIzinTarihAraligi(incoming().baslangic, incoming().bitis))) ||
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));
