@@ -90,9 +90,15 @@ export default function KrizAlarmlari() {
 
  if (loading) return <AdminLoadingState label="Nöbet Uyarıları Yükleniyor" size="lg" />;
 
- // Dinleyici hata verdiğinde (bkz. kod denetimi) boş liste "uyarı yok"
- // gibi görünmesin — bağlantı sorununu açıkça göster.
- if (error) {
+ const filteredAlarmlar = showResolved ? alarmlar : alarmlar.filter(a => !a.cozuldu);
+
+ // Dinleyici hata verdiğinde (bkz. kod denetimi) daha önce başarıyla
+ // yüklenmiş alarmlar varsa artık GİZLENMİYOR (bkz. ExecutiveHeroScreen.tsx'teki
+ // AYNI sınıf düzeltme, ikinci tur denetim — dinleyici hatası `alarmlar`'ı
+ // sıfırlamıyor, yalnızca `error`'ı set ediyor). Tam sayfa hata yalnızca
+ // gösterilecek hiç veri kalmadığında; aksi halde liste korunup üstüne
+ // küçük bir uyarı şeridi ekleniyor (bkz. aşağıda).
+ if (error && filteredAlarmlar.length === 0) {
  return (
  <EmptyState
  icon={<ServerCrash size={36} strokeWidth={1.2} />}
@@ -103,8 +109,6 @@ export default function KrizAlarmlari() {
  />
  );
  }
-
- const filteredAlarmlar = showResolved ? alarmlar : alarmlar.filter(a => !a.cozuldu);
 
  const colorMap = {
  rose: {
@@ -185,6 +189,13 @@ export default function KrizAlarmlari() {
  </div>
  </motion.button>
  </div>
+
+ {error && filteredAlarmlar.length > 0 && (
+ <div className="spatial-glass !rounded-card p-4 flex items-center gap-3 border border-rose-500/20 bg-rose-500/[0.04]">
+ <ServerCrash size={16} className="text-rose-500 shrink-0" strokeWidth={1.5} />
+ <p className="text-2xs font-medium text-rose-400 tracking-wide">{error}</p>
+ </div>
+ )}
 
  {filteredAlarmlar.length === 0 && (
  <EmptyState

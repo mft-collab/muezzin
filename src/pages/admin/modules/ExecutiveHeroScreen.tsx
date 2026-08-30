@@ -48,6 +48,11 @@ export default function ExecutiveHeroScreen({
  const alarmlarHatasi = useKrizAlarmlariStore(s => s.error);
  const izinler = useAdminIzinlerStore(s => s.izinler);
  const izinlerHatasi = useAdminIzinlerStore(s => s.error);
+ // TEK yerde türetilir — aşağıda hem uyarı şeridinde hem "Hizmet Akışı
+ // Yüklenemedi" EmptyState'inde kullanılıyor; iki bağımsız satırda
+ // tekrarlanırsa biri değişip diğeri unutulduğunda mesajlar birbirinden
+ // sapabilirdi (bkz. kod denetimi, ikinci tur).
+ const hizmetAkisiHatasi = [alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ');
  const izinGuncelle = useAdminIzinlerStore(s => s.izinGuncelle);
  const izinGeriAl = useAdminIzinlerStore(s => s.izinGeriAl);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
@@ -407,11 +412,11 @@ export default function ExecutiveHeroScreen({
      silip atan bir EmptyState'in altında GİZLENMİYOR — yalnızca hangi
      kaynağın etkilendiğini bildiren küçük bir şerit, mevcut kayıtların
      üstünde gösterilir. */}
- {(alarmlarHatasi || izinlerHatasi) && (
+ {hizmetAkisiHatasi && (
  <div className="spatial-glass !rounded-card p-4 flex items-center gap-3 border border-rose-500/20 bg-rose-500/[0.04]">
  <ServerCrash size={16} className="text-rose-500 shrink-0" strokeWidth={1.5} />
  <p className="text-2xs font-medium text-rose-400 tracking-wide">
- {[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ {hizmetAkisiHatasi}
  </p>
  </div>
  )}
@@ -559,14 +564,14 @@ export default function ExecutiveHeroScreen({
  );
  })}
  </>
- ) : (alarmlarHatasi || izinlerHatasi) ? (
+ ) : hizmetAkisiHatasi ? (
  // İkisi de (ya da gösterilecek veri kalmayacak şekilde tek çalışan
  // kaynak da) hata verdiğinde liste sessizce boş görünmesin — bağlantı
  // sorununu açıkça göster, "aktif kayıt yok" ile karıştırılmasın.
  <EmptyState
  icon={<ServerCrash size={36} strokeWidth={1.2} />}
  title="Hizmet Akışı Yüklenemedi"
- description={[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ description={hizmetAkisiHatasi}
  tone="rose"
  size="md"
  />
