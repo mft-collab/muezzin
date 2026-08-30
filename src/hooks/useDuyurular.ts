@@ -10,6 +10,10 @@ export interface Duyuru {
   tip: 'onemli' | 'bilgi' | 'duyuru';
   yazar?: string;
   tarih: import('firebase/firestore').Timestamp | string;
+  /** scripts/duyuruBildirimGonder.ts'in idempotency bayrağı — bu duyuru için
+   *  push bildirimi gönderildi mi. duyuruYayinla yayınlama anında `false`
+   *  yazar. */
+  bildirimGonderildi?: boolean;
 }
 
 export function useDuyurular(count = 3) {

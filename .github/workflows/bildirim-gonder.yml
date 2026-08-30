@@ -1,0 +1,39 @@
+name: Duyuru ve Izin Durumu Bildirimlerini Gonder
+
+# Duyuru yayınlama (duyuruServisi.ts) ve izin kararı (useAdminIzinlerStore.ts
+# izinGuncelle) istemci tarafında gerçekleşir — istemci Firebase SDK'sı FCM
+# push GÖNDEREMEZ (yalnızca Admin SDK gönderebilir). Bu iş, "duyurular" ve
+# "mazeretDurumu" bildirim tercihlerini (bkz. NotificationSettings.tsx)
+# gerçekten push'a çeviren tek yer — mazeret-devirleri.yml'deki (her 10
+# dakika) aynı sıklık deseni, ayrı bir dosyada (tek-iş-tek-workflow kuralı,
+# bkz. diğer altı cron).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+
+jobs:
+  bildirim-gonder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Duyuru bildirimlerini gönder
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npm run process:duyuru-bildirimi
+      - name: İzin durumu bildirimlerini gönder
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npm run process:izin-durum-bildirimi
+      - name: Başarısızlığı admin paneline bildir
+        if: failure()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Duyuru ve İzin Durumu Bildirimlerini Gönder"

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { collection, query, onSnapshot, updateDoc, doc, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, onSnapshot, updateDoc, doc, getDoc, runTransaction, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Izin } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -180,7 +180,14 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           transaction.update(muezzinRef!, { yillikIzinKullanilanGun: Math.max(0, mevcutKullanilan - gunSayisi) });
         }
 
-        transaction.update(izinRef, { durum });
+        // bildirimGonderildi: false — scripts/izinDurumBildirimGonder.ts
+        // (Admin SDK cron) talep sahibine "mazeretDurumu" push bildirimini
+        // gönderdikten sonra bu bayrağı true'ya çevirir. Kararla AYNI
+        // transaction'da yazılması, o script'in sorgusunun tüm izinler
+        // koleksiyonunu taramak yerine tek bir eşitlik filtresiyle
+        // (`== false`) yalnızca henüz bildirilmemiş kararları bulmasını
+        // sağlar (bkz. duyuruServisi.ts'teki AYNI desen).
+        transaction.update(izinRef, { durum, bildirimGonderildi: false });
       });
 
       await telemetryService.logAudit('İzin Talebi Kararı', id, `Talep durumu '${toTurkishUpperCase(durum)}' olarak güncellendi.`);
@@ -216,7 +223,15 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           ]);
           if (!tazeIzinSnap.exists()) throw new Error('İzin talebi bulunamadı.');
 
-          transaction.update(izinRef, { durum: 'onay_bekliyor' });
+          // bildirimGonderildi silinir — geri alınan bir karar tekrar
+          // verildiğinde (izinGuncelle) bu alan `false` ile yeniden
+          // yazılacak; silinmezse ESKİ kararın `true` değeri kalıp YENİ
+          // karar için hiç push bildirimi gitmezdi. Ayrıca bu alan
+          // `durum == 'onay_bekliyor'` iken üzerinde kalırsa, kullanıcının
+          // kendi bekleyen talebini düzenlediği self-update yolu
+          // (isValidIzin'in katı hasOnly'si) bu fazladan alan yüzünden
+          // reddedilirdi (bkz. firestore.rules).
+          transaction.update(izinRef, { durum: 'onay_bekliyor', bildirimGonderildi: deleteField() });
           // Sayaç yalnızca ONAYLANMIŞ bir izin geri alınırken düşürülmeli —
           // reddedilen izin izinGuncelle'de zaten sayaca hiç eklenmemişti
           // (bkz. L131), aksi halde reddedilen bir kaydı geri al/tekrar onayla
@@ -227,7 +242,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
           }
         });
       } else {
-        await updateDoc(doc(db, 'izinler', id), { durum: 'onay_bekliyor' });
+        await updateDoc(doc(db, 'izinler', id), { durum: 'onay_bekliyor', bildirimGonderildi: deleteField() });
       }
 
       await telemetryService.logAudit('İzin Talebi Kararı Geri Alındı', id, 'Talep durumu tekrar \'ONAY BEKLİYOR\' olarak ayarlandı.');

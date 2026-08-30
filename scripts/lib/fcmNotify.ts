@@ -8,6 +8,29 @@ export interface FcmMessage {
 }
 
 /**
+ * Bir `muezzins/{uid}` belgesinden gönderilebilir FCM token listesini
+ * çıkarır: çok-cihazlı `fcmTokens` haritası varsa o kullanılır, yoksa eski
+ * tekil `fcmToken` alanına düşülür. `haftalikPlanOlustur.ts` ve
+ * `yatsiSonuIslemleri.ts` bu mantığı bağımsız birer kopya olarak taşıyordu
+ * (fcmGonderVeTemizle'nin kendisiyle AYNI kök neden) — buraya çıkarıldı.
+ */
+export function kullaniciFcmTokenleriniTopla(data: {
+  fcmTokens?: Record<string, unknown>;
+  fcmToken?: string | null;
+}): string[] {
+  const tokens: string[] = [];
+  if (data.fcmTokens && typeof data.fcmTokens === 'object') {
+    Object.keys(data.fcmTokens).forEach(t => {
+      if (t.trim().length > 0) tokens.push(t);
+    });
+  }
+  if (tokens.length === 0 && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 0) {
+    tokens.push(data.fcmToken);
+  }
+  return tokens;
+}
+
+/**
  * Hazırlanmış FCM mesajlarını gönderir; gönderim başarısız olup token artık
  * geçersizse (`messaging/registration-token-not-registered` veya
  * `messaging/invalid-registration-token`) o token'ı ilgili kullanıcının

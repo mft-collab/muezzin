@@ -67,7 +67,7 @@ service cloud.firestore {
     // kullanılırsa reddedilmesin diye şemaya izinli alan olarak dahil edildi.
     function isValidDuyuru(data) {
       return data.keys().hasAll(['baslik', 'icerik', 'tip', 'tarih']) &&
-             data.keys().hasOnly(['baslik', 'icerik', 'tip', 'tarih', 'yazar']) &&
+             data.keys().hasOnly(['baslik', 'icerik', 'tip', 'tarih', 'yazar', 'bildirimGonderildi']) &&
              data.baslik is string && data.baslik.size() > 0 && data.baslik.size() <= 200 &&
              data.icerik is string && data.icerik.size() > 0 && data.icerik.size() <= 5000 &&
              data.tip in ['onemli', 'bilgi', 'duyuru'] &&
@@ -78,7 +78,16 @@ service cloud.firestore {
              // (yorumda belirtildiği gibi) doldurulmaya başlarsa hiçbir şey
              // sınırsız uzunlukta bir değeri engellemiyordu (bkz. code-review,
              // dördüncü denetim turu).
-             (!data.keys().hasAny(['yazar']) || (data.yazar is string && data.yazar.size() <= 100));
+             (!data.keys().hasAny(['yazar']) || (data.yazar is string && data.yazar.size() <= 100)) &&
+             // bildirimGonderildi: duyuruYayinla oluşturma anında `false`
+             // yazar, scripts/duyuruBildirimGonder.ts (Admin SDK — bu kural
+             // ATLANIR) push gönderdikten sonra `true`'ya çevirir. Alan
+             // yalnızca Admin SDK tarafından true'ya çevrilse de, `update`
+             // kuralı da isValidDuyuru çağırdığından (şu an istemcide bir
+             // "duyuru düzenle" akışı olmasa bile) ileride biri eklenirse bu
+             // alan sessizce "fazladan anahtar" ihlaliyle reddedilmesin diye
+             // burada tipli olarak listelenir.
+             (!data.keys().hasAny(['bildirimGonderildi']) || data.bildirimGonderildi is bool);
     }
 
     match /duyurular/{duyuruId} {
@@ -902,7 +911,12 @@ service cloud.firestore {
       // ile şekil/iş-kuralı korunuyor; dokunulmadığında (yalnızca durum/
       // redSebebi kararı) eskisi gibi serbest.
       allow update: if (isAdmin() &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis']) &&
+                        // bildirimGonderildi: izinGuncelle karar anında
+                        // `false` yazar, izinGeriAl kararı geri alırken
+                        // siler — scripts/izinDurumBildirimGonder.ts (Admin
+                        // SDK, bu kural ATLANIR) push gönderdikten sonra
+                        // `true`'ya çevirir (bkz. useAdminIzinlerStore.ts).
+                        incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis', 'bildirimGonderildi']) &&
                         (!incoming().diff(existing()).affectedKeys().hasAny(['baslangic', 'bitis']) ||
                          isValidIzinTarihAraligi(incoming().baslangic, incoming().bitis))) ||
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));

@@ -3,7 +3,7 @@ import type { DocumentData } from 'firebase-admin/firestore';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { gunlukKredileriHesapla } from '../src/lib/gunlukKrediHesaplama.ts';
-import { fcmGonderVeTemizle, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -163,15 +163,7 @@ export async function processYatsiSonuIslemleri() {
         const remindersEnabled = userProfile?.notificationSettings?.nobetHatirlatici !== false;
 
         if (userProfile?.aktif === true && remindersEnabled) {
-          const tokens: string[] = [];
-          if (userProfile.fcmTokens && typeof userProfile.fcmTokens === 'object') {
-            Object.keys(userProfile.fcmTokens).forEach(t => {
-              if (t.trim().length > 0) tokens.push(t);
-            });
-          }
-          if (tokens.length === 0 && userProfile.fcmToken && userProfile.fcmToken.trim().length > 0) {
-            tokens.push(userProfile.fcmToken);
-          }
+          const tokens = kullaniciFcmTokenleriniTopla(userProfile);
 
           const dutyListStr = userDuties[uid].join(', ');
           for (const token of tokens) {

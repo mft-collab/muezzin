@@ -30,7 +30,15 @@ export function duyurularAbone(
 export async function duyuruYayinla(data: { baslik: string; icerik: string; tip: Duyuru['tip'] }): Promise<void> {
   const path = 'duyurular';
   try {
-    await addDoc(collection(db, path), { ...data, tarih: Timestamp.now() });
+    // bildirimGonderildi: false — scripts/duyuruBildirimGonder.ts (Admin SDK
+    // cron) bu bayrağı push bildirimi gönderdikten sonra true'ya çevirir.
+    // Yayın anında burada açıkça yazılması, o script'in sorgusunun sınırsız
+    // büyüyen koleksiyonu taramak yerine tek bir eşitlik filtresiyle
+    // (`== false`) yalnızca henüz bildirilmemiş duyuruları bulmasını sağlar
+    // (bkz. Firebase/GitHub veri akışı optimizasyonu — mazeretDevirleriniyle
+    // AYNI sınıf sorun, farklı çözüm: zaman penceresi yerine kaynağında
+    // baştan sınırlı bir bayrak).
+    await addDoc(collection(db, path), { ...data, tarih: Timestamp.now(), bildirimGonderildi: false });
     await telemetryService.logAudit('Duyuru Yayınlama', data.baslik, `Yeni duyuru panoda paylaşıldı. Kategori: ${toTurkishUpperCase(data.tip)}`);
   } catch (err) {
     throw handleFirestoreError(err, OperationType.CREATE, path);

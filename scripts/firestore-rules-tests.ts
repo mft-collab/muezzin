@@ -10,6 +10,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -974,6 +975,59 @@ const tests: TestCase[] = [
     }
   },
   {
+    // izinGuncelle karar aninda durum ile AYNI update'te bildirimGonderildi:
+    // false yazar (bkz. useAdminIzinlerStore.ts) — admin disjunct'inin
+    // affectedKeys hasOnly'sine bu alan eklenmezse izinGuncelle her zaman
+    // PERMISSION_DENIED alirdi (bkz. Firebase/GitHub veri akisi
+    // optimizasyonu, duyuru/izin push bildirimi ozelligi).
+    name: 'admin izin kararini bildirimGonderildi:false ile AYNI update icinde yazabilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izinler/kararBekleyen'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-18',
+          bitis: '2026-05-19',
+          tip: 'mazeret',
+          durum: 'onay_bekliyor',
+          sebep: 'Aile',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/kararBekleyen');
+
+      await assertSucceeds(updateDoc(ref, { durum: 'onaylandi', bildirimGonderildi: false }));
+    }
+  },
+  {
+    // izinGeriAl bir karari geri alirken bildirimGonderildi'yi SILER (deleteField)
+    // — aksi halde yeniden karar verildiginde eski true degeri yuzunden yeni
+    // bildirim hic gitmezdi (bkz. useAdminIzinlerStore.ts izinGeriAl yorumu).
+    name: 'admin bir karari geri alirken bildirimGonderildi bayragini silebilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izinler/geriAlinacakKarar'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-18',
+          bitis: '2026-05-19',
+          tip: 'mazeret',
+          durum: 'onaylandi',
+          sebep: 'Aile',
+          olusturmaTarihi: Timestamp.now(),
+          bildirimGonderildi: true
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/geriAlinacakKarar');
+
+      await assertSucceeds(updateDoc(ref, { durum: 'onay_bekliyor', bildirimGonderildi: deleteField() }));
+    }
+  },
+  {
     name: 'admin duyuru yazabilir ve silebilir',
     run: async (env) => {
       const db = testUser(env, 'admin').firestore();
@@ -1016,6 +1070,35 @@ const tests: TestCase[] = [
         icerik: 'Metin',
         tip: 'gecersiz_kategori',
         tarih: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // duyuruYayinla yayin aninda bildirimGonderildi:false yazar (bkz.
+    // duyuruServisi.ts) — bu alan isValidDuyuru'nun hasOnly'sine eklenmezse
+    // her yeni duyuru "fazladan anahtar" ihlaliyle reddedilirdi.
+    name: 'admin duyuruyu bildirimGonderildi:false ile olusturabilir',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+      await assertSucceeds(setDoc(doc(db, 'duyurular/bildirimBayrakli'), {
+        baslik: 'Admin',
+        icerik: 'Metin',
+        tip: 'duyuru',
+        tarih: Timestamp.now(),
+        bildirimGonderildi: false
+      }));
+    }
+  },
+  {
+    name: 'duyurunun bildirimGonderildi alani bool disi bir degerle olusturulamaz',
+    run: async (env) => {
+      const db = testUser(env, 'admin').firestore();
+      await assertFails(setDoc(doc(db, 'duyurular/gecersizBildirimBayrakli'), {
+        baslik: 'Admin',
+        icerik: 'Metin',
+        tip: 'duyuru',
+        tarih: Timestamp.now(),
+        bildirimGonderildi: 'evet'
       }));
     }
   },

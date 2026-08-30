@@ -207,6 +207,14 @@ export interface Izin {
  olusturmaTarihi: Timestamp;
  /** Admin reddederken gerekçe girebilir (bkz. firestore.rules izinler update) */
  redSebebi?: string;
+ /**
+  * scripts/izinDurumBildirimGonder.ts'in idempotency bayrağı — bu karar
+  * (onaylandi/reddedildi) için talep sahibine push bildirimi gönderildi mi.
+  * `izinGuncelle` karar anında `false` yazar, `izinGeriAl` kararı geri
+  * alırken siler (bkz. useAdminIzinlerStore.ts) — aksi halde yeniden karar
+  * verildiğinde eski `true` değeri yüzünden yeni bildirim hiç gitmezdi.
+  */
+ bildirimGonderildi?: boolean;
 }
 
 export interface SystemSettings {
