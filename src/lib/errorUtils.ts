@@ -10,3 +10,13 @@ export function isChunkLoadError(error: Error): boolean {
     error.message.includes('dynamic import')
   );
 }
+
+/**
+ * react-error-boundary v6, yakalanan hatayı `unknown` olarak tipler (JS'te
+ * teorik olarak Error olmayan bir şey de throw edilebilir). React'in
+ * render hatalarında pratikte her zaman bir Error örneği olsa da, tip
+ * güvenliği için burada normalize ediyoruz.
+ */
+export function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
+}

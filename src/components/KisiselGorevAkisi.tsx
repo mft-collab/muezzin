@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
 import { Star, CheckCircle2 } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { GorevKarti } from './GorevKarti';
@@ -32,7 +32,7 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  }, [bugunVakitler?.tarih]);
 
 
- const containerVariants = {
+ const containerVariants: Variants = {
  hidden: { opacity: 0 },
  visible: {
  opacity: 1,
@@ -42,11 +42,11 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  }
  };
 
- const itemVariants = {
+ const itemVariants: Variants = {
  hidden: { opacity: 0, y: 10 },
- visible: { 
- opacity: 1, 
- y: 0, 
+ visible: {
+ opacity: 1,
+ y: 0,
  transition: { duration: shouldAnimate ? 0.5 : 0, ease: 'easeOut' }
  }
  };
