@@ -257,7 +257,7 @@ export const AnaEkranHero = React.memo(({
  <GeriSayim
  ezanSaati={sonraki.ezanSaati}
  baslangicZamani={currentStatus.baslangicZamani}
- mevcutVakit={uiMevcutVakit}
+ mevcutVakit={uiMevcutVakit ?? currentStatus.mevcutVakit}
  sonrakiVakit={sonraki.vakit}
  imsakSaati={currentStatus.imsakSaati}
  sabahEzanSaati={currentStatus.sabahEzanSaati}
@@ -293,7 +293,7 @@ export const AnaEkranHero = React.memo(({
 
  // Compute dynamic premium styles based on state
  let cardStyle = '';
- let indicatorDot = null;
+ let indicatorDot: React.ReactNode = null;
  let labelColor = '';
  let timeColor = '';
 
@@ -324,7 +324,7 @@ export const AnaEkranHero = React.memo(({
   timeColor = 'text-[var(--text-secondary)]/85 font-medium';
  }
 
-  let offsetBadge = null;
+  let offsetBadge: React.ReactNode = null;
   if (gpsEnabled && bugunVakitler && officialVakitler) {
     const officialTimeStr = getVakitSaati(officialVakitler, key);
     const gpsTimeStr = getVakitSaati(bugunVakitler, key);

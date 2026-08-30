@@ -12,6 +12,8 @@ import { ChunkErrorFallback } from './components/ChunkErrorFallback';
 import { VakitMonitor } from './components/VakitMonitor';
 import { telemetryService } from './services/telemetryService';
 import { initTimeSync } from './lib/timeSync';
+import { toError } from './lib/errorUtils';
+import type { ErrorInfo } from 'react';
 import MuezzinAnaEkran from './pages/MuezzinAnaEkran';
 const HaftalikTakvim = lazy(() => import('./pages/HaftalikTakvim'));
 const Profil = lazy(() => import('./pages/Profil'));
@@ -52,14 +54,15 @@ export default function App() {
     initTimeSync();
   }, []);
 
-  const handleError = (error: Error, info: { componentStack: string }) => {
+  const handleError = (rawError: unknown, info: ErrorInfo) => {
+    const error = toError(rawError);
     try {
       telemetryService.addBreadcrumb(
         `React ErrorBoundary: ${error.message.slice(0, 100)}`,
         'system',
-        { componentStack: info.componentStack.slice(0, 300) }
+        { componentStack: (info.componentStack ?? '').slice(0, 300) }
       );
-      telemetryService.logError(error, info.componentStack);
+      telemetryService.logError(error, info.componentStack ?? '');
     } catch (err) {
       console.error("Telemetri hata kaydedici hatası:", err);
     }
@@ -67,7 +70,7 @@ export default function App() {
 
  return (
  <ErrorBoundary
- FallbackComponent={({ error }) => <ChunkErrorFallback error={error} variant="fullPage" autoReload />}
+ FallbackComponent={({ error }) => <ChunkErrorFallback error={toError(error)} variant="fullPage" autoReload />}
  onError={handleError}
  >
  <BrowserRouter>

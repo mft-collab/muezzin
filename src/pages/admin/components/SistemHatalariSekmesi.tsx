@@ -80,7 +80,7 @@ function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   );
 }
 
-function StateSnapshotCard({ snapshot }: { snapshot: EnrichedErrorLog['stateSnapshot'] }) {
+function StateSnapshotCard({ snapshot }: { snapshot: ErrorLog['stateSnapshot'] }) {
   if (!snapshot) {
     return (
       <p className="text-2xs text-[var(--text-secondary)]/75 italic font-light">
