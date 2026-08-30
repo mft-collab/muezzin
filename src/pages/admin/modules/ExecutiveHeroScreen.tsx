@@ -400,19 +400,22 @@ export default function ExecutiveHeroScreen({
 
  <div className="flex flex-col gap-4">
  <AnimatePresence>
- {(alarmlarHatasi || izinlerHatasi) ? (
- // Alarm/izin dinleyicilerinden biri hata verdiğinde (bkz. kod
- // denetimi) liste sessizce boş görünmesin — bağlantı sorununu
- // açıkça göster, "aktif kayıt yok" ile karıştırılmasın.
- <EmptyState
- icon={<ServerCrash size={36} strokeWidth={1.2} />}
- title="Hizmet Akışı Yüklenemedi"
- description={alarmlarHatasi || izinlerHatasi || ''}
- tone="rose"
- size="md"
- />
- ) : combinedOperations.length > 0 ? (
- combinedOperations.map((record, idx) => {
+ {combinedOperations.length > 0 ? (
+ <>
+ {/* Alarm/izin dinleyicilerinden biri hata verse bile (bkz. kod
+     denetimi) diğer kaynaktan gelen geçerli veri artık tüm listeyi
+     silip atan bir EmptyState'in altında GİZLENMİYOR — yalnızca hangi
+     kaynağın etkilendiğini bildiren küçük bir şerit, mevcut kayıtların
+     üstünde gösterilir. */}
+ {(alarmlarHatasi || izinlerHatasi) && (
+ <div className="spatial-glass !rounded-card p-4 flex items-center gap-3 border border-rose-500/20 bg-rose-500/[0.04]">
+ <ServerCrash size={16} className="text-rose-500 shrink-0" strokeWidth={1.5} />
+ <p className="text-2xs font-medium text-rose-400 tracking-wide">
+ {[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ </p>
+ </div>
+ )}
+ {combinedOperations.map((record, idx) => {
  const isExpanded = expandedId === record.id;
  
  return (
@@ -554,7 +557,19 @@ export default function ExecutiveHeroScreen({
  </AnimatePresence>
  </motion.div>
  );
- })
+ })}
+ </>
+ ) : (alarmlarHatasi || izinlerHatasi) ? (
+ // İkisi de (ya da gösterilecek veri kalmayacak şekilde tek çalışan
+ // kaynak da) hata verdiğinde liste sessizce boş görünmesin — bağlantı
+ // sorununu açıkça göster, "aktif kayıt yok" ile karıştırılmasın.
+ <EmptyState
+ icon={<ServerCrash size={36} strokeWidth={1.2} />}
+ title="Hizmet Akışı Yüklenemedi"
+ description={[alarmlarHatasi, izinlerHatasi].filter(Boolean).join(' ')}
+ tone="rose"
+ size="md"
+ />
  ) : (
  <EmptyState
  icon={<Activity size={36} strokeWidth={1.2} />}

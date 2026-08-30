@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, Calendar, User, Trash2, AlertCircle, Undo2 } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { AdminLoadingState } from '../components/AdminLoadingState';
-import { izinGunSayisi, izinOnayCumaEngelMesaji } from '../../../lib/dateUtils';
+import { izinGunSayisi, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
  const { izinler, loading, error, izinGuncelle, izinGeriAl, izinSil } = useAdminIzinlerStore();
@@ -72,7 +72,10 @@ export default function IzinYonetimi() {
  <div className="spatial-glass p-12 rounded-card border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
  <AlertCircle className="text-rose-500 mb-6" size={40} />
  <p className="text-lg font-light text-rose-500 tracking-tight mb-2">Veri Senkronizasyon Hatası</p>
- <p className="authority-title !text-2xs opacity-55 uppercase tracking-wide break-all whitespace-normal w-full max-w-full text-center select-all">{error}</p>
+ {/* CSS uppercase yerine toTurkishUpperCase() — error artık useAdminIzinlerStore'un
+     Türkçeleştirdiği (handleFirestoreError) dinamik metni taşıyor, CSS'in locale'e
+     duyarsız uppercase'i küçük noktalı 'i'yi yanlış büyütürdü (bkz. kod denetimi). */}
+ <p className="authority-title !text-2xs opacity-55 tracking-wide break-all whitespace-normal w-full max-w-full text-center select-all">{toTurkishUpperCase(error)}</p>
  </div>
  );
 
