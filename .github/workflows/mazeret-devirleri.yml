@@ -9,6 +9,10 @@ on:
     # gecikmesi normaldir.
     - cron: '*/10 * * * *'
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   uzlastir:
     runs-on: ubuntu-latest

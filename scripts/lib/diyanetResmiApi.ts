@@ -8,7 +8,7 @@
 import { Timestamp } from 'firebase/firestore';
 import type { Vakitler, VakitKaydi } from '../../src/types.ts';
 import { aylikVakitleriCek } from '../../src/services/ezanVaktiServisi.ts';
-import { db } from './firebaseAdminInit.ts';
+import { db, Timestamp as AdminTimestamp } from './firebaseAdminInit.ts';
 import { getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
 /**
@@ -225,6 +225,27 @@ export async function resmiDiyanetVakitleriCek(ilceId: string, ilceAdi: string):
 }
 
 /**
+ * Resmi API atlanıp fallback zincirine (emushaf/Aladhan) düşüldüğünde,
+ * nedeni zaten kota sayacını tuttuğumuz `config/diyanetResmiApiKota`
+ * belgesine `merge: true` ile ekler (ayrı bir koleksiyon/admin uyarısı
+ * AÇMADAN) — `AYLIK_ISTEK_LIMITI`'nin gerçek Diyanet kotasıyla ne kadar
+ * örtüştüğünü zamanla kalibre edebilmek için. Yazım en iyi çaba
+ * (best-effort): başarısız olursa yalnızca konsola uyarı düşer, cron'un asıl
+ * işini (fallback verisini yazmayı) hiçbir şekilde engellemez.
+ */
+async function dususNedeniniKaydet(neden: 'kota' | 'hata', mesaj: string): Promise<void> {
+  try {
+    await db.collection('config').doc(KOTA_DOC).set({
+      sonDususNedeni: neden,
+      sonDususMesaji: mesaj,
+      sonDususTarihi: AdminTimestamp.now()
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Düşüş nedeni kota belgesine yazılamadı (yalnızca gözlemlenebilirlik, cron devam ediyor):', err);
+  }
+}
+
+/**
  * Sunucu bağlamındaki (Admin SDK) çağıranlar için TEK giriş noktası: önce
  * resmi Diyanet API'sini dener, herhangi bir sebeple başarısız olursa
  * (kimlik bilgisi yok, kota, ağ hatası, cityId uyuşmazlığı) mevcut public
@@ -240,7 +261,9 @@ export async function vakitleriCekOncelikli(
 ): Promise<Vakitler> {
   const kotaMusait = await kotaRezerveEt();
   if (!kotaMusait) {
-    console.warn(`Diyanet resmi API: aylık deneme kotası (${AYLIK_ISTEK_LIMITI}) dolu, mevcut zincire (emushaf/Aladhan) düşülüyor — hiçbir istek yapılmadı.`);
+    const mesaj = `Diyanet resmi API: aylık deneme kotası (${AYLIK_ISTEK_LIMITI}) dolu, mevcut zincire (emushaf/Aladhan) düşülüyor — hiçbir istek yapılmadı.`;
+    console.warn(mesaj);
+    await dususNedeniniKaydet('kota', mesaj);
     return aylikVakitleriCek(yil, ay, ilceId, ilceAdi);
   }
 
@@ -249,7 +272,9 @@ export async function vakitleriCekOncelikli(
     console.log(`Diyanet resmi API'den ${Object.keys(sonuc.gunler).length} gün alındı (ilceId=${ilceId}).`);
     return sonuc;
   } catch (err) {
-    console.warn('Diyanet resmi API başarısız, mevcut zincire (emushaf/Aladhan) düşülüyor:', err instanceof Error ? err.message : err);
+    const hataMesaji = err instanceof Error ? err.message : String(err);
+    console.warn('Diyanet resmi API başarısız, mevcut zincire (emushaf/Aladhan) düşülüyor:', hataMesaji);
+    await dususNedeniniKaydet('hata', hataMesaji);
     return aylikVakitleriCek(yil, ay, ilceId, ilceAdi);
   }
 }
