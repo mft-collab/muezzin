@@ -147,7 +147,7 @@ export default function HaftalikCizelge() {
  );
  }, [editingCell, muezzinler, onayliIzinler]);
 
-  const handlePlanOlustur = async () => {
+  const handlePlanOlustur = useCallback(async () => {
     try {
       setGenerating(true);
       await haftalikPlanOlustur(haftaId);
@@ -159,7 +159,7 @@ export default function HaftalikCizelge() {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [haftaId, showNotification]);
 
   // Self-healing'in her haftaId için EN FAZLA bir kez otomatik tetiklenmesini
   // garanti eden kilit — bkz. useBugunPlanDurumu.ts'teki aynı desen
@@ -189,7 +189,7 @@ export default function HaftalikCizelge() {
         void handlePlanOlustur();
       });
     }
-  }, [plan, planLoading, isAdmin, haftaId, generating]);
+  }, [plan, planLoading, isAdmin, haftaId, generating, handlePlanOlustur]);
 
   const exportWeeklyPlanCSV = () => {
     if (!plan) return;
@@ -411,7 +411,7 @@ export default function HaftalikCizelge() {
         </AnimatePresence>
       </div>
     );
-  }, [plan, haftaBildirimleri, openEdit, getMuezzinName, currentDate]);
+  }, [plan, haftaBildirimleri, openEdit, getMuezzinName, shouldAnimate]);
 
  return (
  <div className="flex flex-col gap-6 lg:gap-10">

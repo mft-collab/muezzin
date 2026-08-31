@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { format, startOfWeek, subWeeks, addWeeks, isSameDay, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useHaftaPlan } from '../hooks/useHaftaPlan';
@@ -49,11 +49,11 @@ export default function HaftalikTakvim() {
  return muezzinMap[uid]?.displayName || 'Bilinmiyor';
  };
 
- const isAssignableUid = (uid: string | undefined) => {
+ const isAssignableUid = useCallback((uid: string | undefined) => {
  if (!uid || uid === 'Sistem' || uid === 'SISTEM') return true;
  const person = muezzinMap[uid];
  return !!person && person.aktif === true && person.role === 'muezzin';
- };
+ }, [muezzinMap]);
 
  const gunlukVeriler = useMemo(() => {
     if (!plan) return [];
@@ -112,7 +112,7 @@ export default function HaftalikTakvim() {
         isPersonalDuty,
       };
     });
-  }, [plan, currentWeekStart, currentUser, muezzinMap, haftaBildirimleri]);
+  }, [plan, currentWeekStart, currentUser, haftaBildirimleri, isAssignableUid]);
 
  return (
  <div className="w-full min-h-screen bg-[var(--app-bg)] relative overflow-hidden transition-colors duration-[3000ms]">

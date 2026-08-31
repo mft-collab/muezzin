@@ -479,5 +479,12 @@ export function useOzelVakitMesaji(
     }
 
     return NULL_DURUM;
+    // `settings.hicriDuzeltme` parseHijriDate'e (satır ~224) doğrudan argüman
+    // olarak geçilmiyor — düzeltme değeri getHijriDate/parseHijriDate
+    // içinde globalThis.__hicriOffset üzerinden okunuyor (bkz.
+    // useSystemSettingsStore.ts) — eslint statik olarak kullanımı göremiyor;
+    // kasıtlı olarak listede tutuluyor, aksi halde admin düzeltmeyi
+    // değiştirdiğinde bu memo yeniden hesaplanmaz.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bugunVakitler, bugunDate, nowDakikaKey, settings.hicriDuzeltme]);
 }

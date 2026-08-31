@@ -3,7 +3,7 @@ import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtana
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
-import { Muezzin, HaftaPlan, Bildirim, Vakit, VakitAtama } from '../src/types';
+import { Muezzin, Vakit, VakitAtama } from '../src/types';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();

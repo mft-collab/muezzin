@@ -64,7 +64,6 @@ async function main() {
     const gunler = plan.gunler || {};
     const planRef = db.collection('haftaPlanlari').doc(planDoc.id);
     const batch = db.batch();
-    let hasPlanUpdate = false;
     let hasBatchWork = false;
 
     for (const tarih of Object.keys(gunler)) {
@@ -116,7 +115,6 @@ async function main() {
             [`gunler.${tarih}.${vakit}.asil`]: asil,
             [`gunler.${tarih}.${vakit}.yedek`]: yedek,
           });
-          hasPlanUpdate = true;
           hasBatchWork = true;
         }
       }

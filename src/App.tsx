@@ -4,7 +4,6 @@ import { AuthGuard } from './components/AuthGuard';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Suspense, lazy, useEffect } from 'react';
-import { SplashLoader } from './components/SplashLoader';
 import { StoreInitializer } from './components/StoreInitializer';
 import { ForegroundNotifications } from './components/ForegroundNotifications';
 import { ChunkErrorFallback } from './components/ChunkErrorFallback';

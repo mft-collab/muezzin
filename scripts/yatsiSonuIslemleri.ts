@@ -1,4 +1,4 @@
-import { db, Timestamp, auth } from './lib/firebaseAdminInit.ts';
+import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import type { DocumentData } from 'firebase-admin/firestore';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';

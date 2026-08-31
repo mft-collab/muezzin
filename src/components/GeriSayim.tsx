@@ -79,8 +79,6 @@ interface GeriSayimProps {
   ogleSaati?: Date;
   /** Akşam prayer time today (used for teheccüd calculation) */
   aksamSaati?: Date;
-  /** Whether it is Ramadan (affects sabah ezan time) */
-  isRamazan?: boolean;
 }
 
 // ─────────────────────────────────────────
@@ -96,7 +94,6 @@ export function GeriSayim({
   gunesSaati,
   ogleSaati,
   aksamSaati,
-  isRamazan,
 }: GeriSayimProps) {
   const now = useTime();
 

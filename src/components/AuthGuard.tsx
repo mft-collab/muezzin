@@ -22,7 +22,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  const isPending = useAuthStore(state => state.isPending);
  const error = useAuthStore(state => state.error);
  const disabledReason = useAuthStore(state => state.disabledReason);
- const isAdmin = useAuthStore(state => state.isAdmin);
  const setError = useAuthStore(state => state.setError);
  const setLoading = useAuthStore(state => state.setLoading);
  
@@ -85,7 +84,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  try {
  await performLogout();
  window.location.reload(); // Hard reset on logout
- } catch (err) {
+ } catch {
+ // yoksay — logout en iyi çaba, çıkış başarısız olsa da kullanıcıyı bloklamaz
  }
  };
 

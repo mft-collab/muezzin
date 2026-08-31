@@ -164,6 +164,12 @@ export const AnaEkranHero = React.memo(({
  return mevcutVakit;
  }, [mevcutVakit, bugunVakitler, currentStatus, now]);
 
+ // `settings.hicriDuzeltme` getHijriDate()'e argüman olarak geçilmiyor —
+ // düzeltme değeri fonksiyon içinde globalThis.__hicriOffset üzerinden
+ // okunuyor (bkz. useSystemSettingsStore.ts) — eslint statik olarak
+ // kullanımı göremiyor; kasıtlı olarak listede tutuluyor, aksi halde admin
+ // düzeltmeyi değiştirdiğinde bu memo yeniden hesaplanmaz.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const hijriDate = useMemo(() => getHijriDate(bugunDate), [bugunDate, settings.hicriDuzeltme]);
  const isRamazan = useMemo(() => hijriDate.includes('Ramazan'), [hijriDate]);
 
@@ -264,7 +270,6 @@ export const AnaEkranHero = React.memo(({
  gunesSaati={currentStatus.gunesSaati}
  ogleSaati={currentStatus.ogleSaati}
  aksamSaati={currentStatus.aksamSaati}
- isRamazan={isRamazan}
  />
  ) : (
  // Ay sonu geçişi gibi geçici veri boşluklarında geri sayım alanının

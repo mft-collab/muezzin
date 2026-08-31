@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Moon, Star, BookOpen, Check, Award, Flame } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Star, BookOpen, Check, Award, Flame } from 'lucide-react';
 import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
 import { useTime } from '../hooks/useTime';
 import { parseVakitToDate } from '../lib/dateUtils';
-import { parseHijriDate, isRamazan } from '../lib/islamicCalendar';
+import { parseHijriDate } from '../lib/islamicCalendar';
 
 import { useSystemSettingsStore } from '../store/useSystemSettingsStore';
 
@@ -82,6 +82,13 @@ export const RamazanHub: React.FC = () => {
     const parsedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
     const { day, month } = parseHijriDate(parsedDate);
     return { day, isRamazan: month === 9 };
+    // `settings.hicriDuzeltme` parseHijriDate'e doğrudan geçilmiyor — hicri
+    // düzeltme değeri getHijriDate() (dateUtils.ts) içinde globalThis.__hicriOffset
+    // üzerinden okunuyor (bkz. useSystemSettingsStore.ts). Bu yüzden eslint
+    // statik olarak kullanımı göremiyor; kasıtlı olarak listede tutuluyor —
+    // aksi halde admin düzeltmeyi değiştirdiğinde bu memo yeniden hesaplanmaz
+    // ve gün stale kalır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bugunVakitler?.tarih, loading, settings.hicriDuzeltme]);
 
   const ramazanGunuStr = `Ramazan-ı Şerif'in ${hijriGunu.day}. Günü`;

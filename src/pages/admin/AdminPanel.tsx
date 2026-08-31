@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -38,7 +38,7 @@ export default function AdminPanel() {
 
  const [isPending, startTransition] = React.useTransition();
 
-  const setActiveTab = (tab: ActiveModule, subtab?: string) => {
+  const setActiveTab = useCallback((tab: ActiveModule, subtab?: string) => {
     startTransition(() => {
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
@@ -52,7 +52,7 @@ export default function AdminPanel() {
         return newParams;
       });
     });
-  };
+  }, [setSearchParams, startTransition]);
 
  const prefetchTab = (tab: ActiveModule) => {
  switch (tab) {
@@ -178,7 +178,7 @@ export default function AdminPanel() {
  default:
  return null;
  }
- }, [activeTab, muezzinlerLength, cozulmamisSayisi, pendingIzinler, statsLoading]);
+ }, [activeTab, muezzinlerLength, cozulmamisSayisi, pendingIzinler, statsLoading, setActiveTab]);
 
  const pageTitle = useMemo(() => {
  switch (activeTab) {
