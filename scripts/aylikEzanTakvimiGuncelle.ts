@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriGrupla, type AylikVakitGrubu } from '../src/services/ezanVaktiServisi.ts';
 import { vakitleriCekOncelikli } from './lib/diyanetResmiApi.ts';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
@@ -17,16 +17,31 @@ async function main() {
     const ilceId = settings?.ilceId || '9148';
     const ilceAdi = settings?.ilceAdi || 'Ceyhan';
 
-    // API her zaman yaklaşık 30-32 günlük veri döner (mevcut günden itibaren).
-    // Önce resmi Diyanet API'sini dener, başarısız olursa (kimlik bilgisi
-    // yok/kota/ağ hatası) mevcut public zincire (emushaf/Aladhan) düşer —
-    // bkz. scripts/lib/diyanetResmiApi.ts.
-    const vakitData = await vakitleriCekOncelikli(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
+    // Resmi Diyanet API başarılı olduğunda zaten yaklaşık 30-32 günlük
+    // kayan bir pencere döner (mevcut günden itibaren, doğal olarak bir
+    // sonraki aya taşar). Ama başarısız olup (kimlik bilgisi yok/kota/ağ
+    // hatası) mevcut public zincire (emushaf/Aladhan) düştüğümüzde,
+    // Aladhan'ın calendarByCity uç noktası istenen (yil, ay) ile KESİN
+    // olarak sınırlıdır — bir sonraki ayı asla döndürmez. Bu cron ayın
+    // 28'inde çalışıp bir sonraki ayı ÖNDEN hazırlamak için var, o yüzden
+    // bu ayı ve bir sonraki ayı ayrı ayrı isteyip birleştiriyoruz; aksi
+    // halde fallback zincirine düşüldüğünde bir sonraki ay hiç yazılmaz
+    // (bkz. 2026-08-28/29 canlı arızası: Eylül verisi bu adım tek bir aya
+    // kilitliyken hiç yazılamamıştı).
+    const buAy = { yil: simdi.getFullYear(), ay: simdi.getMonth() + 1 };
+    const sonrakiAyTarihi = new Date(simdi);
+    sonrakiAyTarihi.setDate(1);
+    sonrakiAyTarihi.setMonth(sonrakiAyTarihi.getMonth() + 1);
+    const sonrakiAy = { yil: sonrakiAyTarihi.getFullYear(), ay: sonrakiAyTarihi.getMonth() + 1 };
 
-    // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
-    // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama
-    // mantığı, mimari denetim O5).
-    const aylar = aylikVakitleriGrupla(vakitData);
+    const aylar: Record<string, AylikVakitGrubu> = {};
+    for (const { yil, ay } of [buAy, sonrakiAy]) {
+      const vakitData = await vakitleriCekOncelikli(yil, ay, ilceId, ilceAdi);
+      // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
+      // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama
+      // mantığı, mimari denetim O5).
+      Object.assign(aylar, aylikVakitleriGrupla(vakitData));
+    }
 
     // Gruplanmış verileri Firestore'a yaz
     for (const [ayId, data] of Object.entries(aylar)) {

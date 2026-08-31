@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { aylikVakitleriCek, aylikVakitleriGrupla } from '../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriCek, aylikVakitleriGrupla, type AylikVakitGrubu } from '../src/services/ezanVaktiServisi.ts';
 import { getTurkeyNow, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 /**
@@ -54,13 +54,28 @@ async function main() {
   // gün tekrar tekrar denenip aylık kotayı hızla tüketirdi (bkz. o dosyadaki
   // yorum). Anahtarsız zincirde (emushaf/Aladhan) kalır; resmi API yalnızca
   // AYDA BİR çalışan aylikEzanTakvimiGuncelle.ts'te kullanılıyor.
-  const vakitData = await aylikVakitleriCek(simdi.getFullYear(), simdi.getMonth() + 1, ilceId, ilceAdi);
+  //
+  // "bugün" ve "yarın" farklı takvim aylarına düşebilir (ayın son günü) —
+  // `aylikVakitleriCek(yil, ay)` Aladhan fallback'inde (calendarByCity)
+  // KESİN olarak tek bir takvim ayına kilitlidir, bir sonraki ayı asla
+  // döndürmez. Bu yüzden her iki tarihin ait olduğu ayı ayrı ayrı çekip
+  // birleştiriyoruz (bkz. 2026-08-31 → 2026-09-01 canlı arızası: Eylül
+  // verisi bu adım tek bir aya kilitliyken hiç yazılamamıştı).
+  const gerekliAylar = new Map<string, { yil: number; ay: number }>();
+  for (const tarih of [bugun, yarin]) {
+    const [y, m] = tarih.split('-').map(Number);
+    gerekliAylar.set(`${y}-${m}`, { yil: y, ay: m });
+  }
 
-  // Kayan pencereyi gerçek takvim ayına göre bölen paylaşılan çekirdek
-  // (bkz. vakitCacheServisi.ts, scripts/aylikEzanTakvimiGuncelle.ts,
-  // useVakitStore.ts — mimari/mantık denetimi O5) — burada elle yeniden
-  // yazılmış aynı mantığın yerine geçer.
-  const gruplar = aylikVakitleriGrupla(vakitData);
+  const gruplar: Record<string, AylikVakitGrubu> = {};
+  for (const { yil, ay } of gerekliAylar.values()) {
+    const parca = await aylikVakitleriCek(yil, ay, ilceId, ilceAdi);
+    // Kayan pencereyi gerçek takvim ayına göre bölen paylaşılan çekirdek
+    // (bkz. vakitCacheServisi.ts, scripts/aylikEzanTakvimiGuncelle.ts,
+    // useVakitStore.ts — mimari/mantık denetimi O5) — burada elle yeniden
+    // yazılmış aynı mantığın yerine geçer.
+    Object.assign(gruplar, aylikVakitleriGrupla(parca));
+  }
 
   for (const [ayId, grup] of Object.entries(gruplar)) {
     const docId = `${ilceId}_${ayId}`;
