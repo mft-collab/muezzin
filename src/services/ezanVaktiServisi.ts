@@ -26,14 +26,29 @@ export async function aylikVakitleriCek(
  // 1. Tercih: Diyanet API (e-mushaf proxy)
  const diyanetUrl = `https://ezanvakti.emushaf.net/vakitler/${ilceId}`;
  const response = await fetch(diyanetUrl);
- 
+
  if (response.ok) {
  const data = await response.json();
  if (Array.isArray(data) && data.length > 0) {
- return parseDiyanetResponse(data, ilceId);
+ const parsed = parseDiyanetResponse(data, ilceId);
+ // Bu uç nokta (yil, ay) parametrelerini yok sayar, "şimdi"den itibaren
+ // kayan bir pencere döner — ay sınırında (ör. 31 Ağustos'ta yarının ait
+ // olduğu Eylül'ü isterken) pencere henüz bir sonraki aya geçmemiş
+ // olabilir. HTTP 200 + boş-olmayan dizi TEK BAŞINA yeterli değil;
+ // döndürülen günlerin GERÇEKTEN istenen aya ait olup olmadığı da
+ // doğrulanmalı — aksi halde çağıran, hiç sahip olmadığı bir ay için
+ // "başarılı" bir yanıt alıp Aladhan'a hiç düşmez (bkz. 2026-08-31 →
+ // 2026-09-01 canlı arızası: emushaf o an yalnızca Ağustos döndürüyordu,
+ // Eylül verisi bu kontrol olmadan hiç yazılmamıştı).
+ const ayOneki = `${yil}-${String(ay).padStart(2, '0')}`;
+ const ayiKapsiyor = Object.keys(parsed.gunler).some((tarih) => tarih.startsWith(ayOneki));
+ if (ayiKapsiyor) {
+ return parsed;
+ }
+ throw new Error(`Diyanet verisi istenen ayı (${ayOneki}) kapsamıyor, Aladhan deneniyor.`);
  }
  }
- 
+
  throw new Error('Diyanet verisi alınamadı, Aladhan deneniyor.');
  } catch (err) {
  console.warn('Diyanet API hatası, Aladhan API devreye giriyor:', err);
