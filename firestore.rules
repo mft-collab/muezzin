@@ -98,7 +98,23 @@ service cloud.firestore {
 
     // ENTITY: Muezzins
     function isValidMuezzin(data) {
-      return data.keys().hasAll(['displayName', 'aktif', 'role', 'email']) &&
+      // `email` KASITLI OLARAK zorunlu alanlar arasında DEĞİL — üretimde
+      // müezzins koleksiyonunun büyük çoğunluğu (personelKaydet'in "yeni
+      // personel" dalı yalnızca invites/{email} yazar; muezzins belgesi
+      // ancak kişi isInvitedSelfMuezzinCreate ile KENDİSİ giriş yaptığında
+      // oluşur) hiç kendi hesabıyla giriş yapmamış, yalnızca çizelgede yer
+      // alan personel — bunların email alanı hiç yok. Bu alan eskiden
+      // hasAll(...) ile zorunlu tutuluyordu; incoming() bir update'te TAM
+      // birleşmiş belgeyi temsil ettiğinden, bu, email'i olmayan HERHANGİ
+      // bir personele yapılan (aktiflik/arşiv/isim/rol/kadro sayacı gibi
+      // email'le ilgisiz) her updateDoc'un PERMISSION_DENIED almasına yol
+      // açıyordu (bkz. veriSifirlamaServisi.ts kadroSayaclariniSifirla
+      // hata denetimi — prod'da 15/17 belge email'siz çıktı). email VAR
+      // olduğunda hâlâ şekli doğrulanır (photoURL/fcmToken ile aynı
+      // "opsiyonel ama varsa geçerli olmalı" deseni); self-registration
+      // (isInvitedSelfMuezzinCreate) zaten create anında email'i ayrıca
+      // zorunlu kılıyor.
+      return data.keys().hasAll(['displayName', 'aktif', 'role']) &&
              data.keys().hasOnly([
                'displayName', 'aktif', 'role', 'email', 'photoURL', 'fcmToken', 'fcmTokens',
                'aylikVakitSayisi', 'aylikCumaSayisi', 'aylikYedekSayisi', 'yillikIzinKullanilanGun',
@@ -107,7 +123,7 @@ service cloud.firestore {
              ]) &&
              data.displayName is string && data.displayName.size() <= 100 &&
              data.role in ['admin', 'muezzin', 'gozlemci'] &&
-             data.email is string && data.email.size() <= 100 &&
+             (!data.keys().hasAny(['email']) || (data.email is string && data.email.size() <= 100)) &&
              data.aktif is bool &&
              (!data.keys().hasAny(['photoURL']) || data.photoURL is string) &&
              (!data.keys().hasAny(['fcmToken']) || data.fcmToken is string || data.fcmToken == null) &&
