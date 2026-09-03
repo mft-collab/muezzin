@@ -151,3 +151,28 @@ Tam doğrulama için `npm run test:all` kullan.
 (Firestore + core, daha büyük), `vendor-firebase-messaging` (boot sonrası lazy
 yüklenir). Yeni bir Firebase alt-paketi eklersen bu ayrımı bozmadan (yani hangi
 chunk'a düşeceğini bilerek) ekle.
+
+## Model Seçimi (Claude Pro — verimli kullanım)
+
+Varsayılan Sonnet. Basit arama/keşif işlerinde Haiku yeterli. **Opus'a geç**
+(`/model opus` veya Agent çağrısında `model: "opus"`):
+
+- **Riskli kod**: `firestore.rules` (`isSelfBildirimUpdate`, `isValidVekaletCreate` —
+  mazeret/vekalet Cuma kısıtlamasının sunucu tarafı zorlayıcısı), `src/lib/mazeretKurallari.ts`
+  ve onunla senkron tutulması gereken üç uygulama noktası (`mazeretServisi.ts`,
+  `vekaletServisi.ts`, `scripts/vekaletDevirleriniIsle.ts` — gerçek, geri dönüşü olmayan
+  görev devri), `src/lib/planlamaCekirdegi.ts`/`tieBreaker.ts` (haftalık nöbet atamasının
+  tek kaynağı, hem cron hem istemci bunu çağırır), `scripts/*.ts` altındaki zamanlanmış
+  cron script'leri ve bunları tetikleyen `.github/workflows/*.yml` (haftalik-plan,
+  gunluk-yatsi-sonu, mazeret-devirleri, aylik-ezan-takvimi, gunluk-log-temizligi,
+  deploy.yml — public repo'da canlıya kendi başına deploy/yazan tetikleyiciler,
+  bkz. kök otomasyon ayarlarındaki soft-deny listesi).
+- **Planlama**: `mazeretKurallari.ts`/vekalet zincirindeki üç uygulama noktasından birini
+  değiştirirken (diğer ikisini birlikte tasarlamak gerekir), ya da yeni bir zamanlanmış
+  script/GitHub Actions workflow eklerken.
+- **Doğrulama**: `firestore.rules`, planlama çekirdeği veya `scripts/` içindeki bir
+  cron/transfer script'ine dokunduktan sonra `npm run test:all` yeşil olsa bile ikinci
+  bir gözle geçir — özellikle Cuma kısıtlamasının üç uygulama noktasında hâlâ tutarlı
+  olduğunu ve `scripts/vekaletDevirleriniIsle.ts`'in taze veriyle yeniden doğrulama
+  mantığını bozmadığını kontrol et. Deploy komutunu (workflow tetikleme, `firebase deploy`)
+  Claude kendi başına çalıştırmaz — bkz. kök otomasyon ayarları.
