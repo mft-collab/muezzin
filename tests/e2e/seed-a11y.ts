@@ -8,7 +8,7 @@
  * zaten kapsanıyor.
  */
 import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
 
@@ -37,7 +37,15 @@ async function ensureUser(uid: string, displayName: string, role: 'admin' | 'mue
     photoURL: '',
     fcmToken: null,
     onayBekliyor: false,
-    kayitTarihi: Timestamp.now(),
+    // firestore.rules isValidMuezzin `kayitTarihi is string` şartı koşuyor
+    // (bkz. o dosyadaki yorum — useAuthStore.ts ISO string yazar, Timestamp
+    // DEĞİL). Burada yanlışlıkla Timestamp.now() yazılmıştı; bu, muezzins
+    // koleksiyonunun TAMAMINI güncelleyen HERHANGİ bir işlemin (ör.
+    // veriSifirlamaServisi.ts kadroSayaclariniSifirla — tek bir writeBatch,
+    // içindeki TEK bir belge kuralı ihlal etse bile TÜMÜ reddedilir)
+    // PERMISSION_DENIED almasına yol açıyordu (bkz. premium denetim P2.5
+    // sonrası CI regresyonu — veri-sifirlama.spec.ts).
+    kayitTarihi: new Date().toISOString(),
   });
 }
 
