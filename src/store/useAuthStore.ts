@@ -9,7 +9,22 @@ let _authInitStarted = false;
 interface AuthState {
  user: User | null;
  role: 'admin' | 'muezzin' | 'gozlemci' | null;
+ // "admin rolü VEYA süper-admin" — firestore.rules `isAdmin()` ile AYNI
+ // anlam. Admin panelinin tamamına erişimi bu belirler; anlamı bilinçli
+ // olarak DEĞİŞTİRİLMEDİ (bkz. premium denetim P1.6).
  isAdmin: boolean;
+ // Yalnızca `config/bootstrap.superAdminEmails` listesindeki gerçek
+ // süper-adminler. `isAdmin`'in DAR bir alt kümesi — geri alınamaz, toplu
+ // yıkıcı işlemler (operasyonel veri sıfırlama, hata günlüklerini toplu
+ // silme) sıradan admin'e değil yalnızca buna açılır (bkz. premium
+ // denetim P1.6; sunucu tarafı karşılığı: firestore.rules `isSuperAdmin()`).
+ isSuperAdmin: boolean;
+ // 'gozlemci' rolü salt-okuma: nöbete hiç atanmaz (bkz.
+ // firestore.rules `isAssignableDutyUidVeri`) ve izin/mazeret/vekalet gibi
+ // hiçbir yazma akışını kullanamaz. Bu bayrak İSTEMCİ tarafı bir
+ // nezaket katmanıdır — gerçek sınır firestore.rules'tadır (bkz. premium
+ // denetim P1.5).
+ isReadOnly: boolean;
  isPending: boolean;
  loading: boolean;
  error: string | null;
@@ -31,6 +46,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  user: null,
  role: null,
  isAdmin: false,
+ isSuperAdmin: false,
+ isReadOnly: false,
  isPending: false,
  loading: false, // Start false to avoid initial flash, init will set it
  error: null,
@@ -55,10 +72,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  // admin'in rolünü yanlışlıkla 'muezzin'e çekerse sunucu hâlâ tam yetki
  // verirdi ama UI admin panelini tamamen gizlerdi (kilitlenme, bkz. yetki
  // denetimi). Bootstrap dokümanı nadiren değiştiğinden bu kontrol uid
- // başına yalnızca BİR kez ve yalnızca role zaten 'admin' DEĞİLSE yapılır
- // (sıradan müezzinler için gereksiz okuma eklemez); getDoc (cache-öncelikli)
- // kullanılır, getDocFromServer DEĞİL — offline-first davranışı bozmamak
- // için.
+ // başına yalnızca BİR kez yapılır; getDoc (cache-öncelikli) kullanılır,
+ // getDocFromServer DEĞİL — offline-first davranışı bozmamak için.
+ //
+ // ÖNCEDEN buraya bir kısayol eklenmişti: kontrol yalnızca role 'admin'
+ // DEĞİLSE çalışıyordu (sıradan admin'ler için bir okumayı kısmak adına).
+ // Bu, rolü zaten 'admin' olan GERÇEK bir süper-admin için
+ // `cachedIsSuperAdminSelf`'i yanlışlıkla `false` bırakıyordu — `isAdmin`
+ // için sonuç aynı çıktığından o zaman zararsızdı, ama `isSuperAdmin`
+ // (yıkıcı işlem kapısı, bkz. premium denetim P1.6) bu değerden
+ // türetildiğinden artık yanlış bir cevap üretirdi. Kısayol kaldırıldı:
+ // ekstra okuma uid başına yalnızca BİR kez ve yalnızca oturum başına
+ // olduğundan maliyeti ihmal edilebilir.
  let superAdminCheckedForUid: string | null = null;
  let cachedIsSuperAdminSelf = false;
 
@@ -95,7 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  });
 
  if (!currentUser) {
- set({ role: null, isAdmin: false, isPending: false, loading: false, initialized: true });
+ set({ role: null, isAdmin: false, isSuperAdmin: false, isReadOnly: false, isPending: false, loading: false, initialized: true });
  return;
  }
 
@@ -115,10 +140,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  if (docSnap.exists()) {
  const data = docSnap.data();
  if (data.aktif === false) {
- set({ disabledReason: 'Hesabınız devre dışı bırakılmış.', error: null, role: null, isAdmin: false, isPending: false, loading: false, initialized: true });
+ set({ disabledReason: 'Hesabınız devre dışı bırakılmış.', error: null, role: null, isAdmin: false, isSuperAdmin: false, isReadOnly: false, isPending: false, loading: false, initialized: true });
  } else {
- let isAdminResolved = data.role === 'admin';
- if (!isAdminResolved) {
  if (superAdminCheckedForUid !== currentUser.uid) {
  try {
  const currentEmail = currentUser.email?.toLowerCase().trim() || '';
@@ -127,15 +150,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  cachedIsSuperAdminSelf = !!currentEmail && superAdminEmails.includes(currentEmail);
  } catch {
  // Çevrimdışı/erişim hatası: role alanına güven, güvenli varsayılan.
+ // (Yıkıcı işlemler bu durumda UI'da kapalı kalır — fail-closed.)
  cachedIsSuperAdminSelf = false;
  }
  superAdminCheckedForUid = currentUser.uid;
  }
- isAdminResolved = cachedIsSuperAdminSelf;
- }
+ const isSuperAdminResolved = cachedIsSuperAdminSelf;
+ const isAdminResolved = data.role === 'admin' || isSuperAdminResolved;
  set({
  role: data.role,
  isAdmin: isAdminResolved,
+ isSuperAdmin: isSuperAdminResolved,
+ // `!isAdminResolved` şartı, yukarıdaki kilitlenme senaryosunun
+ // aynısını salt-okuma tarafında da önler: rolü yanlışlıkla
+ // 'gozlemci'ye çekilmiş bir süper-admin, sunucu ona hâlâ tam
+ // yetki verirken UI'da kendi aksiyonlarından kilitlenmemeli.
+ isReadOnly: data.role === 'gozlemci' && !isAdminResolved,
  isPending: !!data.onayBekliyor,
  disabledReason: null,
  loading: false,

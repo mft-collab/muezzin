@@ -56,6 +56,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div ref={rootRef} className="flex flex-col min-h-screen noise-surface relative overflow-hidden transition-colors duration-[3000ms]">
+      {/* Skip-link + main'in id/odak hedefi yoktu — SPA'da rota değişiminde
+          ekran okuyucu/klavye kullanıcısı için navigasyon geri bildirimi
+          hiç verilmiyordu (bkz. premium denetim, bölüm 2d). Odağın
+          programatik taşınması AnimatedRoutes'ta (App.tsx) yapılır. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[10000] focus:px-5 focus:py-3 focus:rounded-2xl focus:bg-[var(--text-primary)] focus:text-[var(--app-bg)] focus:text-2xs focus:font-bold focus:uppercase focus:tracking-wide"
+      >
+        İçeriğe atla
+      </a>
 
       {/* Google Neural Expressive: Global Circadian Background Auras */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -79,7 +89,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* PWA install/iOS banner'ları nav dock'un ÜZERİNDE ayrıca yüzen sabit
           elemanlar — görünürken alttaki içerikle (ör. AnaEkranHero vakit
           matrisi) çakışmaması için ekstra alt boşluk eklenir. */}
-      <main className={`flex-1 w-full transition-all duration-300 relative z-10 ${
+      <main id="main-content" tabIndex={-1} className={`flex-1 w-full outline-none transition-all duration-300 relative z-10 ${
         isAdminRoute
           ? 'pb-0'
           : isIosPrompt

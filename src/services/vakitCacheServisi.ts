@@ -1,4 +1,4 @@
-import { doc, getDocs, collection, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDocs, collection, setDoc, Timestamp, query, where, documentId } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getTurkeyNow } from '../lib/dateUtils';
 import { aylikVakitleriCek, aylikVakitleriGrupla } from './ezanVaktiServisi';
@@ -6,6 +6,13 @@ import { AylikVakitler, SystemSettings } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 export type VakitCacheKaydi = AylikVakitler & { id: string };
+
+// Firestore'da dogrudan "prefix sorgusu" yok - bir dizi araligi (id >=
+// prefix ve id < prefix + en yuksek olasi karakter) ile taklit edilir.
+// String.fromCharCode(0xf8ff) Unicode ozel-kullanim alaninda pratikte en
+// yuksek kod noktasi; bu kalip Firestore'un kendi dokumantasyonunda
+// onerilen standart idiyomdur.
+const PREFIX_QUERY_UPPER_BOUND_CHAR = String.fromCharCode(0xf8ff);
 
 /**
  * `vakitler` doc id'leri `${ilceId}_${yil-ay}` şeklindedir; koleksiyonda hiçbir
@@ -16,15 +23,22 @@ export type VakitCacheKaydi = AylikVakitler & { id: string };
  */
 export async function listeleVakitCacheleri(ilceId?: string): Promise<VakitCacheKaydi[]> {
   try {
-    const snapshot = await getDocs(collection(db, 'vakitler'));
-    let data = snapshot.docs.map((docSnap) => ({
+    // ilceId verildiğinde (gerçek çağıranların TAMAMI verir) önceden tüm
+    // koleksiyon çekilip istemci tarafında filtreleniyordu — artık doc id
+    // aralık sorgusuyla sunucu tarafında filtreleniyor (bkz. premium
+    // denetim, bölüm 17).
+    const baseCollection = collection(db, 'vakitler');
+    const snapshot = ilceId
+      ? await getDocs(query(
+          baseCollection,
+          where(documentId(), '>=', `${ilceId}_`),
+          where(documentId(), '<', `${ilceId}_${PREFIX_QUERY_UPPER_BOUND_CHAR}`)
+        ))
+      : await getDocs(baseCollection);
+    const data = snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data(),
     })) as VakitCacheKaydi[];
-
-    if (ilceId) {
-      data = data.filter((kayit) => kayit.id.startsWith(`${ilceId}_`));
-    }
 
     return data.sort((a, b) => b.id.localeCompare(a.id));
   } catch (err) {

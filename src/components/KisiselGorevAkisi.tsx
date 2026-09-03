@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { motion, type Variants } from 'motion/react';
-import { Star, CheckCircle2 } from 'lucide-react';
+import { Star, CheckCircle2, Eye } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { GorevKarti } from './GorevKarti';
 import { Bildirim, GunlukVakit } from '../types';
 import { getTurkeyNow, isFriday as isFridayTarih } from '../lib/dateUtils';
 import { useOneShotAnimation } from '../hooks/useOneShotAnimation';
+import { useAuthStore } from '../store/useAuthStore';
+import { GOZLEMCI_SALT_OKUMA_IPUCU } from '../lib/rolMetinleri';
 
 interface Props {
  loading: boolean;
@@ -23,6 +25,11 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  onMazeretHandled
 }) => {
  const shouldAnimate = useOneShotAnimation('kisisel-gorev-akisi');
+ // Gözlemci rolü akışı görebilir ama hiçbir onay/mazeret/devir aksiyonunu
+ // kullanamaz (bkz. premium denetim P1.5) — GorevKarti içindeki düğmeler
+ // zaten devre dışı, buradaki tek satırlık şerit "neden" sorusunu kart
+ // seviyesine inmeden yanıtlar.
+ const isReadOnly = useAuthStore(s => s.isReadOnly);
 
  const isFriday = useMemo(() => {
  if (bugunVakitler?.tarih) {
@@ -67,6 +74,18 @@ export const KisiselGorevAkisi: React.FC<Props> = ({
  <p className={`authority-title text-2xs mt-2.5 tracking-wide font-medium ${isFriday ? 'text-emerald-400/60' : 'opacity-40'}`}>BUGÜNKÜ GÖREV VE ONAY AKIŞI</p>
  </div>
  </motion.div>
+
+ {isReadOnly && (
+ <motion.div
+ variants={itemVariants}
+ className="mb-6 sm:mb-8 flex items-center gap-4 p-5 rounded-card spatial-glass border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.015]"
+ >
+ <div className="w-10 h-10 rounded-2xl bg-[var(--text-primary)]/[0.04] border border-[var(--glass-border)] text-[var(--text-secondary)]/60 flex items-center justify-center shrink-0">
+ <Eye size={17} strokeWidth={1.6} />
+ </div>
+ <p className="authority-title !text-2xs opacity-45 leading-relaxed">{GOZLEMCI_SALT_OKUMA_IPUCU}</p>
+ </motion.div>
+ )}
 
  {loading ? (
  <div className="grid grid-cols-1 gap-6">

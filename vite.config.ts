@@ -27,7 +27,12 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     VitePWA({
       manifestFilename: 'manifest.json',
-      registerType: 'autoUpdate',
+      // 'autoUpdate' + boş onNeedRefresh, yeni sürüm geldiğinde sayfayı
+      // kullanıcıya sormadan sessizce yenileyebiliyordu (bkz. premium
+      // denetim, bölüm 10) — 'prompt' ile sw.js hazır olduğunda yalnızca
+      // registerSW'nin onNeedRefresh callback'i tetiklenir, gerçek yenileme
+      // main.tsx'teki bildirim üzerinden kullanıcı onayına bırakılır.
+      registerType: 'prompt',
       injectRegister: 'auto',
       devOptions: {
         enabled: true,
@@ -117,7 +122,16 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: false,
+    // false: prod stack trace'leri (error_logs'a yazılan errorStack) minified
+    // isimlerden ibaretti — hata izleme altyapısı var ama çıktısı hata
+    // ayıklanamıyordu (bkz. premium denetim, bölüm 7). 'hidden': .map
+    // dosyaları üretilir ama JS'e referans yorumu EKLENMEZ, yani tarayıcıya
+    // hiç servis edilmezler (kaynak kodu public'e sızdırmaz) — CI'da
+    // dist/**/*.map ayrı bir build artifact olarak saklanır (bkz.
+    // .github/workflows/test.yml), Sentry-tarzı harici bir sembolikasyon
+    // servisi olmadığı için ayıklama şimdilik bu artifact'i indirip yerel
+    // source-map araçlarıyla eşlemek şeklinde yapılır.
+    sourcemap: 'hidden',
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
@@ -166,7 +180,21 @@ export default defineConfig(({ mode }) => ({
             return 'vendor-state';
           }
 
-          // 8. Everything else (date-fns, lucide, etc.)
+          // 8-9. lucide-react + date-fns önceden "her şey" kovası
+          // vendor-utils'e (63 KB gz) birlikte düşüyordu — eager admin
+          // sayfalarının ikonları da lazy sayfalar için gereken ikonlarla
+          // aynı chunk'ta boot'ta yükleniyordu (bkz. premium denetim,
+          // bölüm 3). Ayrı chunk'larda önbellek isabeti de birbirinden
+          // bağımsızlaşır: yalnızca ikon güncellenirse date-fns yeniden
+          // indirilmez, tersi de geçerli.
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('date-fns')) {
+            return 'vendor-date';
+          }
+
+          // 10. Everything else
           return 'vendor-utils';
         }
       }

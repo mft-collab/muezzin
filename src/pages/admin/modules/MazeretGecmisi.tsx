@@ -6,7 +6,7 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, FileDown, Filter, Trash2, X } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { exportCsv } from '../../../lib/csvExport';
 import { mazeretKaydiSil } from '../../../services/mazeretServisi';
 import { toTurkishUpperCase } from '../../../lib/dateUtils';
@@ -58,7 +58,7 @@ export default function MazeretGecmisi() {
  exportCsv(headers, rows, `mazeret-gecmisi-${format(new Date(), 'yyyy-MM-dd')}.csv`);
  };
 
- if (loading) return <AdminLoadingState label="Arşiv Kayıtları Senkronize Ediliyor" heightClassName="h-96" />;
+ if (loading) return <LoadingState label="Arşiv Kayıtları Senkronize Ediliyor" heightClassName="h-96" />;
 
  return (
  <div className="flex flex-col gap-8">

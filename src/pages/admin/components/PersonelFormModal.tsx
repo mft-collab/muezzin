@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Modal } from '../../../components/ui/Modal';
+import { FormField } from '../../../components/ui/FormField';
 import { formatName } from '../../../lib/stringUtils';
 import { Muezzin } from '../../../types';
 import { useMuezzinStore } from '../../../store/useMuezzinStore';
@@ -19,6 +20,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  email: '', ad: '', soyad: '', role: 'muezzin' as 'muezzin'|'admin'|'gozlemci', haftalikIzinGunu: 0
  });
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [emailError, setEmailError] = useState<string | null>(null);
  const showNotification = useNotificationStore(s => s.showNotification);
 
  useEffect(() => {
@@ -55,6 +57,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
       );
       return;
     }
+    setEmailError(null);
     setIsSubmitting(true);
     try {
       const fullName = `${formatName(formData.ad)} ${formatName(formData.soyad)}`.trim();
@@ -83,15 +86,21 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
         );
       }
     } catch (err) {
+      // "Geçerli bir e-posta adresi giriniz." (muezzinServisi.ts
+      // personelKaydet) e-posta alanına özgü bir doğrulama hatası — diğer
+      // tüm hatalar (yetki/yazma/ağ) alana bağlanamayacak kadar genel
+      // olduğu için toast'ta kalıyor (bkz. premium denetim, bölüm 14).
+      const message = err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.';
+      if (message === 'Geçerli bir e-posta adresi giriniz.') {
+        setEmailError(message);
+        document.getElementById('personel-email')?.focus();
+        return;
+      }
       // Modal bu noktada hâlâ açık — eskiden burada modal'ın (z-[500],
       // portallanmış) altında kalabilen yerel bir fixed banner kullanılıyordu
       // (bkz. premium standart / mimari denetim); paylaşılan toast sistemi
       // z-[9999]'da olduğundan modal'ın üzerinde güvenle görünür.
-      showNotification(
-        'Kayıt Başarısız',
-        err instanceof Error ? err.message : 'Kayıt sırasında bir hata oluştu. Yetkiniz olmayabilir.',
-        'error'
-      );
+      showNotification('Kayıt Başarısız', message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -100,20 +109,24 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  return (
  <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
- <div className="space-y-4 group">
- <label htmlFor="personel-email" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
+ <FormField
+ label="ERİŞİM E-POSTASI"
+ htmlFor="personel-email"
+ error={emailError}
+ className="group"
+ labelClassName="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700"
+ >
  <input
- id="personel-email"
  type="email"
  required
  maxLength={100}
  value={formData.email}
- onChange={e => setFormData({...formData, email: e.target.value})}
+ onChange={e => { setFormData({...formData, email: e.target.value}); setEmailError(null); }}
  disabled={!!editingUser || isSubmitting}
- className={`w-full spatial-glass-elevated p-6 rounded-3xl text-sm font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 outline-none transition-all duration-700 ${editingUser ? 'opacity-30 cursor-not-allowed' : 'focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:bg-[var(--text-primary)]/[0.05] focus:shadow-[0_0_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)]'}`} 
- placeholder="kurumsal@muezzin.app" 
+ className={`w-full spatial-glass-elevated p-6 rounded-3xl text-sm font-light text-[var(--text-primary)] border border-[var(--text-primary)]/5 aria-[invalid=true]:border-[var(--status-danger)]/40 aria-[invalid=true]:bg-[var(--status-danger)]/[0.04] outline-none transition-all duration-700 ${editingUser ? 'opacity-30 cursor-not-allowed' : 'focus:border-[var(--dynamic-aura,var(--aura-indigo))]/40 focus:bg-[var(--text-primary)]/[0.05] focus:shadow-[0_0_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_15%,transparent)]'}`}
+ placeholder="kurumsal@muezzin.app"
  />
- </div>
+ </FormField>
 
  <div className="grid grid-cols-2 gap-6">
  <div className="space-y-3">

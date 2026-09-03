@@ -41,7 +41,7 @@ interface SelfCheckCardProps {
 /**
  * 4 self-check kartının (Veritabanı/Bildirim/PWA/Ağ) ortak kabuğu — kart
  * çerçevesi, icon-well ve durum rozeti (HAZIR/spinner/başarı/hata) önceden
- * dört kez birebir kopyalanmıştı (bkz. AdminLoadingState.tsx'in aynı
+ * dört kez birebir kopyalanmıştı (bkz. LoadingState.tsx'in aynı
  * gerekçeyle çıkarıldığı "6 dosyada tekrar" örneği, mimari denetim). Her
  * kartın DEĞİŞEN kısmı (ölçüm detayları + eylem butonu) `children` olarak
  * geçilir.

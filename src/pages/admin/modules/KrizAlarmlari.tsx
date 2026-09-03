@@ -8,7 +8,7 @@ import { VAKIT_GORA_ISIMLERI } from '../../../lib/dateUtils';
 import { Vakit, AdminUyarisi } from '../../../types';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { kriziBaslat } from '../../../services/mazeretServisi';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 
@@ -88,7 +88,7 @@ export default function KrizAlarmlari() {
  }
  };
 
- if (loading) return <AdminLoadingState label="Nöbet Uyarıları Yükleniyor" size="lg" />;
+ if (loading) return <LoadingState label="Nöbet Uyarıları Yükleniyor" size="lg" />;
 
  // Dinleyici hata verdiğinde (bkz. kod denetimi) boş liste "uyarı yok"
  // gibi görünmesin — bağlantı sorununu açıkça göster.

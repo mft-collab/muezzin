@@ -24,6 +24,8 @@ import { auth } from '../lib/firebase';
 import { vekaletTeklifEt } from '../services/vekaletServisi';
 import { useAktifIzinlerStore } from '../store/useAktifIzinlerStore';
 import { useVakitBildirimleri } from '../hooks/useVakitBildirimleri';
+import { useAuthStore } from '../store/useAuthStore';
+import { GOZLEMCI_SALT_OKUMA_IPUCU } from '../lib/rolMetinleri';
 
 // Sabit etiketler — IDE i18n tarayicisi JSX literal yakalar; degisken referansi yakalamiyor
 const GOREV_LABELS = {
@@ -93,6 +95,11 @@ export const GorevKarti = React.memo(({
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const aktifIzinler = useAktifIzinlerStore(s => s.aktifIzinler);
  const { bildirimler: vakitBildirimleri } = useVakitBildirimleri(bildirim.tarih, bildirim.vakit as Vakit);
+ // Gözlemci salt-okuma: sunucu tarafı bu yazımları zaten reddediyor
+ // (firestore.rules isSelfBildirimUpdate → isAssignableDutyUid, role ==
+ // 'muezzin'), ama düğmeler etkileşimli kaldığından kullanıcı sebebini
+ // anlamadan PERMISSION_DENIED alıyordu (bkz. premium denetim P1.5).
+ const isReadOnly = useAuthStore(s => s.isReadOnly);
 
  const eligiblePeers = useMemo(() => {
    return muezzinler.filter(m => 
@@ -183,6 +190,13 @@ export const GorevKarti = React.memo(({
  }, [bildirim.id, showNotification]);
 
  const submitMazeret = useCallback(async () => {
+ // Salt-okuma sert kapısı: modal (autoOpenMazeret gibi bildirim kaynaklı
+ // bir yoldan) yine de açılabildiğinden düğmenin disabled olması tek
+ // başına yetmez.
+ if (isReadOnly) {
+ setUiMessage({ type: 'error', text: GOZLEMCI_SALT_OKUMA_IPUCU });
+ return;
+ }
  if (!mazeretSebebi.trim()) {
  const text = 'Lütfen mazeretinizi kısaca belirtin.';
  setUiMessage({ type: 'error', text });
@@ -212,7 +226,7 @@ export const GorevKarti = React.memo(({
  } finally {
  setIsSubmitting(false);
  }
- }, [bildirim.id, mazeretSebebi, saat, showNotification]);
+ }, [bildirim.id, mazeretSebebi, saat, showNotification, isReadOnly]);
 
  const config = getStatusConfig(bildirim);
 
@@ -367,17 +381,20 @@ export const GorevKarti = React.memo(({
  {bildirim.durum === 'bekliyor' && bildirim.vekaletDevriBekliyor !== true && (
  <div className="flex flex-col gap-5">
  <motion.button
- whileHover={isAktif ? { y: -2, scale: 1.02 } : {}}
- whileTap={isAktif ? { scale: 0.98 } : {}}
- onClick={isAktif ? handleOkudum : undefined}
- disabled={!isAktif}
+ whileHover={isAktif && !isReadOnly ? { y: -2, scale: 1.02 } : {}}
+ whileTap={isAktif && !isReadOnly ? { scale: 0.98 } : {}}
+ onClick={isAktif && !isReadOnly ? handleOkudum : undefined}
+ disabled={!isAktif || isReadOnly}
+ title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
  className={`w-full py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
- isAktif
+ isAktif && !isReadOnly
  ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] '
  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/35 cursor-not-allowed border border-[var(--glass-border)]'
  }`}
  >
- {isAktif ? (
+ {isReadOnly ? (
+ <span className="authority-title !text-2xs !text-inherit">SALT GÖZLEM — İŞLEM YAPILAMAZ</span>
+ ) : isAktif ? (
  <>
  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
  <span className="flex items-center justify-center gap-3 relative z-10">
@@ -397,22 +414,31 @@ export const GorevKarti = React.memo(({
  </motion.button>
   <div className="flex w-full sm:flex-1 gap-3.5 flex-col sm:flex-row">
     <motion.button
-      whileHover={{ scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={isReadOnly ? {} : { scale: 1.02, backgroundColor: 'rgba(244, 63, 94, 0.08)' }}
+      whileTap={isReadOnly ? {} : { scale: 0.98 }}
       onClick={() => setIsMazeretModalOpen(true)}
-      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer"
+      disabled={isReadOnly}
+      title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
     >
       {GOREV_LABELS.mazeretBildir}
     </motion.button>
     <motion.button
-      whileHover={{ scale: 1.02, backgroundColor: 'rgba(99, 102, 241, 0.08)' }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={isReadOnly ? {} : { scale: 1.02, backgroundColor: 'rgba(99, 102, 241, 0.08)' }}
+      whileTap={isReadOnly ? {} : { scale: 0.98 }}
       onClick={() => setIsVekaletModalOpen(true)}
-      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer"
+      disabled={isReadOnly}
+      title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
     >
       {GOREV_LABELS.goreviDevret}
     </motion.button>
   </div>
+  {isReadOnly && (
+    <p className="authority-title !text-2xs opacity-40 text-center leading-relaxed">
+      {GOZLEMCI_SALT_OKUMA_IPUCU}
+    </p>
+  )}
   </div>
   )}
 
@@ -429,10 +455,12 @@ export const GorevKarti = React.memo(({
  <span className="authority-title !text-2xs !text-inherit">DİZGE TARAFINDAN TEYİT EDİLDİ</span>
  </div>
  <motion.button
- whileHover={{ scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
- whileTap={{ scale: 0.95 }}
+ whileHover={isReadOnly ? {} : { scale: 1.05, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
+ whileTap={isReadOnly ? {} : { scale: 0.95 }}
  onClick={() => setIsMazeretModalOpen(true)}
- className="px-6 py-2.5 min-h-[44px] flex items-center justify-center bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-2xs font-bold uppercase tracking-wide transition-all"
+ disabled={isReadOnly}
+ title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+ className="px-6 py-2.5 min-h-[44px] flex items-center justify-center bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-full text-2xs font-bold uppercase tracking-wide transition-all disabled:opacity-35 disabled:cursor-not-allowed"
  >
  {GOREV_LABELS.mazeretBildir}
  </motion.button>

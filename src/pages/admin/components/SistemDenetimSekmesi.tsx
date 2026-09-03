@@ -4,7 +4,7 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
 import { motion } from 'motion/react';
 import { ClipboardList, Shield, User } from 'lucide-react';
 import { toTurkishLowerCase } from '../../../lib/dateUtils';
-import { AdminLoadingState } from './AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { EmptyState } from '../../../components/ui/EmptyState';
 
 interface AuditLog {
@@ -48,7 +48,7 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
   // henüz hiç veri okunmamışken "Kayıt Bulunmuyor" boş-durum ekranı yanlışlıkla
   // yanıp söner (bkz. premium standart denetimi — EzanOnbellegi.tsx'teki aynı
   // desen).
-  if (loading) return <AdminLoadingState label="Denetim izleri okunuyor" />;
+  if (loading) return <LoadingState label="Denetim izleri okunuyor" />;
 
   return (
     <div className="space-y-6">

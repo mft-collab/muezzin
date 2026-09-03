@@ -98,6 +98,17 @@ jobs:
           # repo ayarlarında tanımlı değilse push bildirimleri sessizce
           # devre dışı kalır (bkz. src/hooks/useFcmToken.ts).
           VITE_FCM_VAPID_KEY: ${{ secrets.VITE_FCM_VAPID_KEY }}
+      # vite.config.ts'te sourcemap:'hidden' — .map dosyaları dist/'te üretilir
+      # ama firebase.json'un hosting.ignore'u nedeniyle deploy'a dahil edilmez
+      # (public'e sızmaz). Prod'daki bir hatanın minified stack trace'ini
+      # ayıklayabilmek için bu artifact'i indirip yerel source-map araçlarıyla
+      # eşlemek gerekir (bkz. premium denetim, bölüm 7).
+      - name: Upload source maps (debug artifact, not deployed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sourcemaps-${{ github.sha }}
+          path: dist/**/*.map
+          retention-days: 90
       - name: Deploy to Firebase (hosting + firestore rules + indexes)
         uses: w9jds/firebase-action@v15.23.0
         with:

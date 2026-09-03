@@ -10,6 +10,7 @@ import { registerFcmToken } from '../hooks/useFcmToken';
 import { useThemeStore } from '../store/useThemeStore';
 import { useNotificationStore, NOTIFICATION_HISTORY_LIMIT } from '../store/useNotificationStore';
 import { NotificationHistoryPanel } from './NotificationHistoryPanel';
+import { NotificationPrimingModal } from './NotificationPrimingModal';
 
 interface NotificationSettingsProps {
   userData: Muezzin | null;
@@ -20,6 +21,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
   const [isRequesting, setIsRequesting] = useState(false);
   const [uiMessage, setUiMessage] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [primingModalOpen, setPrimingModalOpen] = useState(false);
   const { theme, toggleTheme } = useThemeStore();
   const { ttsEnabled, setTtsEnabled } = useNotificationStore();
 
@@ -54,6 +56,23 @@ export default function NotificationSettings({ userData, user }: NotificationSet
     } finally {
       setIsRequesting(false);
     }
+  };
+
+  // Native tarayıcı promptunu doğrudan tetiklemek yerine — izin bir kez
+  // reddedilirse kullanıcı geri döndürülemez hale geldiği için (bkz.
+  // premium denetim, bölüm 11) — permission hâlâ 'default' iken önce
+  // açıklayıcı bir ara modal gösteriyoruz.
+  const handlePrimaryCtaClick = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      setPrimingModalOpen(true);
+      return;
+    }
+    void handleRequestNotificationPermission();
+  };
+
+  const handlePrimingConfirm = () => {
+    setPrimingModalOpen(false);
+    void handleRequestNotificationPermission();
   };
 
   const handleTestNotification = () => {
@@ -182,7 +201,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
         <motion.button
           whileHover={{ y: -2, scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleRequestNotificationPermission}
+          onClick={handlePrimaryCtaClick}
           disabled={isRequesting}
           className={`w-full mb-6 py-4 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 ${isRequesting ? 'opacity-70 cursor-wait' : ''}`}
         >
@@ -329,6 +348,12 @@ export default function NotificationSettings({ userData, user }: NotificationSet
       </div>
 
       <NotificationHistoryPanel isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <NotificationPrimingModal
+        isOpen={primingModalOpen}
+        onClose={() => setPrimingModalOpen(false)}
+        onConfirm={handlePrimingConfirm}
+        isLoading={isRequesting}
+      />
     </motion.div>
   );
 }

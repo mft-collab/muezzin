@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, ShieldAlert, CheckCircle, Trash2, Wifi, WifiOff, Cpu, Navigation, Layers, Activity, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { AdminLoadingState } from './AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { errorLogsAbone, errorLoglariniTemizle, type EnrichedErrorLog, type Breadcrumb } from '../../../services/telemetryService';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { SUPER_ADMIN_GEREKLI_IPUCU } from '../../../lib/rolMetinleri';
 
 interface ErrorLog extends Partial<EnrichedErrorLog> {
   id: string;
@@ -127,6 +129,12 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   const [selectedError, setSelectedError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<ErrorDetailPanelKey>('stack');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  // TÜM hata günlüklerini toplu ve geri alınamaz biçimde siler — sıradan
+  // admin için fazla geniş bir yetkiydi (bkz. premium denetim P1.6).
+  // Sunucu tarafı da daraltıldı: firestore.rules `error_logs` update/delete
+  // artık `isSuperAdmin()` istiyor, yani bu düğme atlansa bile yazım
+  // reddedilir.
+  const isSuperAdmin = useAuthStore(s => s.isSuperAdmin);
 
   // Roving tabindex ok-tuşu navigasyonu olmadan uygulanmıştı — klavye
   // kullanıcısı Tab ile yalnızca aktif sekmeye ulaşıp diğerlerine hiç
@@ -175,6 +183,10 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   }, []);
 
   const executeClearErrors = async () => {
+    if (!isSuperAdmin) {
+      setConfirmClearOpen(false);
+      return;
+    }
     try {
       await errorLoglariniTemizle();
       setConfirmClearOpen(false);
@@ -188,7 +200,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   // henüz hiç veri okunmamışken "Mükemmel Durum!" boş-durum ekranı yanlışlıkla
   // yanıp söner (bkz. premium standart denetimi — EzanOnbellegi.tsx'teki aynı
   // desen).
-  if (loading) return <AdminLoadingState label="Hata günlükleri okunuyor" />;
+  if (loading) return <LoadingState label="Hata günlükleri okunuyor" />;
 
   return (
     <div className="space-y-6">
@@ -198,11 +210,12 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
           Aktif Dizge Hataları
         </h4>
         <motion.button
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setConfirmClearOpen(true)}
-          disabled={errorLogs.length === 0}
-          className="px-4 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-2xs font-bold uppercase tracking-wide shadow-lg disabled:opacity-30 transition-all flex items-center gap-2"
+          whileHover={isSuperAdmin ? { y: -2, scale: 1.02 } : {}}
+          whileTap={isSuperAdmin ? { scale: 0.98 } : {}}
+          onClick={() => { if (isSuperAdmin) setConfirmClearOpen(true); }}
+          disabled={errorLogs.length === 0 || !isSuperAdmin}
+          title={isSuperAdmin ? undefined : SUPER_ADMIN_GEREKLI_IPUCU}
+          className="px-4 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-2xs font-bold uppercase tracking-wide shadow-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-2"
         >
           <Trash2 size={12} /> TEMİZLE
         </motion.button>

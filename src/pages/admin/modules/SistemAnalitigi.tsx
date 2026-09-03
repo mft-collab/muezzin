@@ -201,7 +201,7 @@ export default function SistemAnalitigi() {
   };
 
   // Önceden `loading` iken TÜM ekran (periyot seçici düğmeler dahil)
-  // AdminLoadingState'in ortalanmış tek bir spinner'ıyla değiştiriliyordu
+  // LoadingState'in ortalanmış tek bir spinner'ıyla değiştiriliyordu
   // — düzen tamamen kayboluyor, admin periyot seçimini yükleme sırasında
   // değiştiremiyordu (bkz. kod denetimi bulgusu). ExecutiveHeroScreen.tsx'in
   // HeroStatSkeleton deseniyle tutarlı olacak şekilde artık yalnızca veriye

@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { duyurularAbone, duyuruYayinla, duyuruSil } from '../../../services/duyuruServisi';
 import { toTurkishLowerCase, toJsDate } from '../../../lib/dateUtils';
 import { useNotificationStore } from '../../../store/useNotificationStore';
@@ -154,7 +154,7 @@ export const DuyuruYonetimi: React.FC = () => {
     }
   };
 
- if (loading) return <AdminLoadingState label="Duyuru Havuzu Senkronize Ediliyor" heightClassName="h-96" />;
+ if (loading) return <LoadingState label="Duyuru Havuzu Senkronize Ediliyor" heightClassName="h-96" />;
 
  return (
  <div className="flex flex-col gap-10">

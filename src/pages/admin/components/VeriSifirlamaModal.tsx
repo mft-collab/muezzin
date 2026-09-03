@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useNotificationStore } from '../../../store/useNotificationStore';
 import { playSuccess, playWarning } from '../../../lib/sounds';
+import { SUPER_ADMIN_GEREKLI_IPUCU } from '../../../lib/rolMetinleri';
 
 // Tek tıkla onaydan (ConfirmModal) KASITLI olarak daha ağır bir sürtünme —
 // bu işlem geri alınamaz ve düzinelerce belgeyi kalıcı olarak siler. Admin
@@ -26,6 +27,13 @@ interface Props {
 
 export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
   const user = useAuthStore(s => s.user);
+  // Süper-admin kapısı SistemAyarlari.tsx'teki tetikleyici düğmede de var;
+  // burada TEKRAR edilir çünkü modal ileride başka bir yerden de
+  // açılabilir ve bu işlem geri alınamaz (bkz. premium denetim P1.6).
+  // Gerçek sınır yine sunucudadır — firestore.rules `isSuperAdmin()`
+  // yalnızca error_logs/telemetry_logs için daraltıldı, diğer
+  // koleksiyonlar admin iş akışlarını kırmamak adına isAdmin()'de kaldı.
+  const isSuperAdmin = useAuthStore(s => s.isSuperAdmin);
   const showNotification = useNotificationStore(s => s.showNotification);
 
   const [sayilar, setSayilar] = useState<Record<SifirlanabilirKoleksiyonAnahtari, number> | null>(null);
@@ -85,7 +93,7 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
   const sayaclarIlgiliMi = secili.has('bildirimler') || secili.has('izinler');
 
   const handleSifirla = async () => {
-    if (!user) return;
+    if (!user || !isSuperAdmin) return;
     setCalisiyor(true);
     setIlerlemeMesaji('Başlatılıyor...');
     try {
@@ -117,7 +125,7 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
     }
   };
 
-  const onayHazir = onayMetni.trim() === ONAY_METNI && secili.size > 0 && !calisiyor;
+  const onayHazir = isSuperAdmin && onayMetni.trim() === ONAY_METNI && secili.size > 0 && !calisiyor;
 
   return (
     <Modal isOpen={isOpen} onClose={calisiyor ? () => {} : onClose} title="OPERASYONEL VERİYİ SIFIRLA">
@@ -128,6 +136,9 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
             <p className="font-semibold text-rose-400">Bu işlem GERİ ALINAMAZ.</p>
             <p>Seçtiğiniz koleksiyonlardaki TÜM belgeler kalıcı olarak silinir. Ekranı açık olan tüm kullanıcılar bunu ANINDA görür (bekleyen görevler/planlar boşalır).</p>
             <p className="opacity-70">Mazeret geçmişi ve denetim kayıtları bu işlemden etkilenmez — kalıcı olarak korunur.</p>
+            {!isSuperAdmin && (
+              <p className="font-semibold text-amber-400 pt-1">{SUPER_ADMIN_GEREKLI_IPUCU}</p>
+            )}
           </div>
         </div>
 

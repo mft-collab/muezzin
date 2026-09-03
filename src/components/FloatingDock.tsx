@@ -221,7 +221,7 @@ export function FloatingDock() {
             exit={{ opacity: 0, y: 8, scale: 0.94 }}
             transition={{ type: 'spring', bounce: 0.1, duration: 0.4 }}
             aria-label="Müezzin menüsü"
-            className="apple-glass px-2 py-1 rounded-card grid grid-cols-4 gap-1 pointer-events-auto touch-manipulation select-none"
+            className="apple-glass px-2 py-1 grid grid-cols-4 gap-1 pointer-events-auto touch-manipulation select-none"
           >
             {APP_LINKS.map((item) => (
               <button

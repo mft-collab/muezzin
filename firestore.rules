@@ -52,6 +52,16 @@ service cloud.firestore {
       );
     }
 
+    // isAdmin()'in DAR alt kümesi: yalnızca config/bootstrap listesindeki
+    // gerçek süper-adminler (muezzins.role == 'admin' TEK BAŞINA yetmez).
+    // Geri alınamaz TOPLU SİLME işlemleri buna bağlanır — "admin panelini
+    // görebilen herkes tüm hata/telemetri geçmişini silebilir" fazla geniş
+    // bir yetkiydi (bkz. premium denetim P1.6). İstemci karşılığı:
+    // useAuthStore `isSuperAdmin`.
+    function isSuperAdmin() {
+      return isSignedIn() && isSuperAdminEmail(request.auth.token.email);
+    }
+
     // ---------------------------------------------------------
     // ENTITY: Duyurular
     // ---------------------------------------------------------
@@ -371,6 +381,15 @@ service cloud.firestore {
                  devirSonucu == 'alarm_bekliyor'
                )
              ) &&
+             // NOT (premium denetim P1.5 — 'gozlemci' salt-okuma): burada
+             // AYRICA bir `role != 'gozlemci'` şartı EKLENMEDİ, çünkü
+             // isAssignableDutyUid zaten `role == 'muezzin'` arıyor — bu,
+             // aranan kısıtın KATI ÜST KÜMESİ (gozlemci de admin de elenir).
+             // Redundant bir terim eklemek, bu dosyada belgeli "1000 ifade
+             // tavanı" bütçesinin en sıkı olduğu kuralı (bildirimler update)
+             // hiçbir güvenlik kazancı olmadan büyütürdü. Regresyon testi:
+             // scripts/firestore-rules-tests.ts "gozlemci bildirim
+             // self-update yapamaz".
              isAssignableDutyUid(request.auth.uid);
     }
 
@@ -423,7 +442,18 @@ service cloud.firestore {
     function isValidVekaletCreate(talepId) {
       let bildirim = get(/databases/$(database)/documents/bildirimler/$(incoming().bildirimId)).data;
       let alici = get(/databases/$(database)/documents/muezzins/$(incoming().aliciUid)).data;
+      // GÖNDEREN'in rolü de doğrulanır (bkz. premium denetim P1.5,
+      // 'gozlemci' salt-okuma): alıcı için zaten `alici.role == 'muezzin'`
+      // aranıyordu ama gönderen tarafında yalnızca "bu bildirim benim mi"
+      // kontrolü vardı. Bildirim OLUŞTURMA anında isValidBildirim
+      // (isAssignableDutyUid) rolü zorunlu kılsa da, rol SONRADAN
+      // 'gozlemci'ye çekilebilir — o kişinin ESKİ bildirimleri üzerinden
+      // hâlâ vekalet teklifi açabilmesi salt-okuma sözünü deler. `!=
+      // 'gozlemci'` (== 'muezzin' değil) bilinçli: mevcut hiçbir meşru
+      // akışı daraltmadan yalnızca gözlemciyi eler.
+      let gonderen = get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data;
       return isValidVekaletTalebi(incoming()) &&
+             gonderen.role != 'gozlemci' &&
              talepId == vekaletTalepId(incoming()) &&
              bildirim.uid == request.auth.uid &&
              bildirim.haftaId == incoming().haftaId &&
@@ -730,9 +760,18 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    // `write` (create+update+delete) eskiden tek satırda `isAdmin()`e açıktı —
+    // yani SistemHatalariSekmesi.tsx'in "TEMİZLE" düğmesi ve
+    // veriSifirlamaServisi.ts'in toplu silmesi sıradan bir admin tarafından da
+    // yürütülebiliyordu (bkz. premium denetim P1.6). Bu koleksiyon SALT
+    // BİRİKTİRME amaçlı: normal bir admin iş akışında hiçbir belgesi
+    // güncellenmez, yalnızca okunur — bu yüzden update/delete'i süper-admin'e
+    // daraltmak hiçbir meşru akışı kırmaz. Retention temizliği zaten Admin SDK
+    // ile (scripts/temizleGunlukler.ts, kurallar ATLANIR) yapılıyor.
     match /error_logs/{docId} {
       allow create: if isSignedIn() && isValidErrorLog(incoming());
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     function isValidAuditLog(data) {
@@ -760,9 +799,13 @@ service cloud.firestore {
              data.timestamp is timestamp;
     }
 
+    // error_logs ile AYNI gerekçe (bkz. yukarıdaki yorum, premium denetim
+    // P1.6): salt-biriktirme koleksiyonu, meşru admin akışında yalnızca
+    // okunur; toplu silme süper-admin'e daraltıldı.
     match /telemetry_logs/{docId} {
       allow create: if isSignedIn() && isValidTelemetryLog(incoming());
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     // ---------------------------------------------------------

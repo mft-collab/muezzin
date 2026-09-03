@@ -8,7 +8,16 @@ import { getTurkeyDateString, isFriday, izinGunSayisi } from '../lib/dateUtils';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from './ui/Modal';
+import { FormField } from './ui/FormField';
 import { useMuezzinStore } from '../store/useMuezzinStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { GOZLEMCI_SALT_OKUMA_IPUCU } from '../lib/rolMetinleri';
+
+interface IzinFormAlanHatalari {
+  baslangic?: string;
+  bitis?: string;
+  sebep?: string;
+}
 
 /** Yıllık izin kotası (takvim yılı başına gün) — bkz. useAdminIzinlerStore.ts
  *  YILLIK_IZIN_KOTASI ve firestore.rules isValidMuezzin. Sunucu tarafı sert
@@ -37,8 +46,16 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
   const [sebep, setSebep] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<IzinFormAlanHatalari>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Gözlemci salt-okuma: MuezzinAnaEkran bu kartı bugün yalnızca
+  // role === 'muezzin' için render ediyor, ama bileşenin kendisi bu
+  // varsayıma bağlı kalmamalı — sunucu (firestore.rules isValidIzin,
+  // role == 'muezzin' şartı) zaten reddediyor, burası kullanıcıya sebebi
+  // gösteren istemci katmanı (bkz. premium denetim P1.5).
+  const isReadOnly = useAuthStore(s => s.isReadOnly);
 
   const yillikKullanilan = useMuezzinStore(s => (user ? s.muezzinMap[user.uid]?.yillikIzinKullanilanGun : undefined)) || 0;
   const yillikKalanKota = Math.max(0, YILLIK_IZIN_KOTASI - yillikKullanilan);
@@ -91,55 +108,64 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || isSubmitting) return;
-
-    if (!baslangic || !bitis || !sebep.trim()) {
-      setErrorMessage('Lütfen tüm alanları doldurun.');
+    if (isReadOnly) {
+      setErrorMessage(GOZLEMCI_SALT_OKUMA_IPUCU);
       return;
     }
 
-    const start = new Date(baslangic);
-    const end = new Date(bitis);
-    const today = new Date(getTurkeyDateString());
+    // Önceden tüm hatalar tek bir errorMessage'a (sağ üstte banner) yazılıyor,
+    // kullanıcı hangi alanın sorunlu olduğunu kendisi eşleştirmek zorunda
+    // kalıyordu — aria-invalid/aria-describedby de hiç yoktu (bkz. premium
+    // denetim, bölüm 14). Artık her hata ilişkili olduğu alana bağlanıyor.
+    const errors: IzinFormAlanHatalari = {};
+    if (!baslangic) errors.baslangic = 'Başlangıç tarihi zorunludur.';
+    if (!bitis) errors.bitis = 'Bitiş tarihi zorunludur.';
+    if (!sebep.trim()) errors.sebep = 'Gerekçe zorunludur.';
 
-    if (start < today) {
-      setErrorMessage('Başlangıç tarihi bugünden önce olamaz.');
-      return;
-    }
+    if (!errors.baslangic && !errors.bitis) {
+      const start = new Date(baslangic);
+      const end = new Date(bitis);
+      const today = new Date(getTurkeyDateString());
 
-    if (end < start) {
-      setErrorMessage('Bitiş tarihi başlangıç tarihinden önce olamaz.');
-      return;
-    }
+      if (start < today) {
+        errors.baslangic = 'Başlangıç tarihi bugünden önce olamaz.';
+      } else if (end < start) {
+        errors.bitis = 'Bitiş tarihi başlangıç tarihinden önce olamaz.';
+      } else if (tip === 'yillik') {
+        // Yıllık izin kotası: erken, kullanıcı dostu uyarı — asıl sert sınır
+        // onay anında sunucu tarafında uygulanır (bkz. useAdminIzinlerStore.ts
+        // izinGuncelle, firestore.rules isValidMuezzin). Bekleyen (henüz
+        // onaylanmamış) diğer yıllık izin talepleri bu hesaba katılmaz —
+        // kota yalnızca ONAYLANMIŞ günler üzerinden işler.
+        const talepGunSayisi = izinGunSayisi(baslangic, bitis);
+        if (talepGunSayisi > yillikKalanKota) {
+          errors.bitis = `Bu talep (${talepGunSayisi} gün) kalan yıllık izin kotanızı (${yillikKalanKota} gün) aşıyor. Bu yıl için ${yillikKullanilan}/${YILLIK_IZIN_KOTASI} gün kullanılmış durumda.`;
+        }
+      }
 
-    // Yıllık izin kotası: erken, kullanıcı dostu uyarı — asıl sert sınır
-    // onay anında sunucu tarafında uygulanır (bkz. useAdminIzinlerStore.ts
-    // izinGuncelle, firestore.rules isValidMuezzin). Bekleyen (henüz
-    // onaylanmamış) diğer yıllık izin talepleri bu hesaba katılmaz —
-    // kota yalnızca ONAYLANMIŞ günler üzerinden işler.
-    if (tip === 'yillik') {
-      const talepGunSayisi = izinGunSayisi(baslangic, bitis);
-      if (talepGunSayisi > yillikKalanKota) {
-        setErrorMessage(
-          `Bu talep (${talepGunSayisi} gün) kalan yıllık izin kotanızı (${yillikKalanKota} gün) aşıyor. Bu yıl için ${yillikKullanilan}/${YILLIK_IZIN_KOTASI} gün kullanılmış durumda.`
-        );
-        return;
+      if (!errors.bitis) {
+        // Friday exclusion validation
+        let hasFriday = false;
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          if (isFriday(d)) {
+            hasFriday = true;
+            break;
+          }
+        }
+        if (hasFriday) {
+          errors.bitis = 'Cuma günü, haftalık mihrap koordinasyonunun aksamaması adına izin kapsamına alınamaz.';
+        }
       }
     }
 
-    // Friday exclusion validation
-    let hasFriday = false;
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      if (isFriday(d)) {
-        hasFriday = true;
-        break;
-      }
-    }
-
-    if (hasFriday) {
-      setErrorMessage('Cuma günü, haftalık mihrap koordinasyonunun aksamaması adına izin kapsamına alınamaz.');
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstErrorField = errors.baslangic ? 'izin-baslangic-tarihi' : errors.bitis ? 'izin-bitis-tarihi' : 'izin-gerekce';
+      document.getElementById(firstErrorField)?.focus();
       return;
     }
 
+    setFieldErrors({});
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsSubmitting(true);
@@ -188,11 +214,14 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
   return (
     <div className="space-y-8">
       {/* Compact Interactive Station Bento Card */}
-      <motion.div 
-        whileHover={{ y: -4, scale: 1.01, boxShadow: '0 20px 40px -15px var(--dynamic-aura, rgba(99, 102, 241, 0.15))' }}
-        whileTap={{ scale: 0.99 }}
-        onClick={() => setIsModalOpen(true)}
-        className="p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden cursor-pointer group hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all duration-500 text-left"
+      <motion.div
+        whileHover={isReadOnly ? {} : { y: -4, scale: 1.01, boxShadow: '0 20px 40px -15px var(--dynamic-aura, rgba(99, 102, 241, 0.15))' }}
+        whileTap={isReadOnly ? {} : { scale: 0.99 }}
+        onClick={() => { if (!isReadOnly) setIsModalOpen(true); }}
+        title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+        className={`p-8 spatial-glass rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)] relative overflow-hidden group transition-all duration-500 text-left ${
+          isReadOnly ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30'
+        }`}
       >
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
         <div className="absolute right-[-10%] top-[-10%] w-40 h-40 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-[60px] rounded-full pointer-events-none" />
@@ -204,13 +233,17 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">İZİN & MAZERET TALEBİ</h4>
             </div>
             <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed max-w-sm font-light">
-              Haftalık izin, yıllık izin ve mazeret taleplerinizi yönetici onayına iletmek için dokunun.
+              {isReadOnly
+                ? GOZLEMCI_SALT_OKUMA_IPUCU
+                : 'Haftalık izin, yıllık izin ve mazeret taleplerinizi yönetici onayına iletmek için dokunun.'}
             </p>
           </div>
-          
-          <button 
+
+          <button
             type="button"
-            className="px-6 py-5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer"
+            disabled={isReadOnly}
+            title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+            className="px-6 py-5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:group-hover:scale-100"
           >
             <Calendar size={13} strokeWidth={2} />
             <span>TALEP OLUŞTUR</span>
@@ -236,30 +269,26 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {/* Start Date */}
-              <div className="space-y-2">
-                <label htmlFor="izin-baslangic-tarihi" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Başlangıç Tarihi</label>
+              <FormField label="Başlangıç Tarihi" htmlFor="izin-baslangic-tarihi" error={fieldErrors.baslangic} labelClassName="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">
                 <input
-                  id="izin-baslangic-tarihi"
                   type="date"
                   value={baslangic}
-                  onChange={e => setBaslangic(e.target.value)}
+                  onChange={e => { setBaslangic(e.target.value); setFieldErrors(prev => ({ ...prev, baslangic: undefined })); }}
                   required
-                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
+                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] aria-[invalid=true]:border-[var(--status-danger)]/40 aria-[invalid=true]:bg-[var(--status-danger)]/[0.04] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
                 />
-              </div>
+              </FormField>
 
               {/* End Date */}
-              <div className="space-y-2">
-                <label htmlFor="izin-bitis-tarihi" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Bitiş Tarihi</label>
+              <FormField label="Bitiş Tarihi" htmlFor="izin-bitis-tarihi" error={fieldErrors.bitis} labelClassName="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">
                 <input
-                  id="izin-bitis-tarihi"
                   type="date"
                   value={bitis}
-                  onChange={e => setBitis(e.target.value)}
+                  onChange={e => { setBitis(e.target.value); setFieldErrors(prev => ({ ...prev, bitis: undefined })); }}
                   required
-                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
+                  className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] aria-[invalid=true]:border-[var(--status-danger)]/40 aria-[invalid=true]:bg-[var(--status-danger)]/[0.04] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
                 />
-              </div>
+              </FormField>
             </div>
 
             {/* Leave Type Select — bir input'u değil bir düğme grubunu etiketliyor,
@@ -297,19 +326,17 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             </div>
 
             {/* Reason Text Area */}
-            <div className="space-y-2">
-              <label htmlFor="izin-gerekce" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">İzin Gerekçesi</label>
+            <FormField label="İzin Gerekçesi" htmlFor="izin-gerekce" error={fieldErrors.sebep} labelClassName="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">
               <textarea
-                id="izin-gerekce"
                 value={sebep}
-                onChange={e => setSebep(e.target.value)}
+                onChange={e => { setSebep(e.target.value); setFieldErrors(prev => ({ ...prev, sebep: undefined })); }}
                 placeholder="Gerekçenizi detaylıca belirtiniz..."
                 rows={3}
                 maxLength={1000}
                 required
                 className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
               />
-            </div>
+            </FormField>
 
             {/* Alerts Feedback */}
             <AnimatePresence>
@@ -339,8 +366,9 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                disabled={isSubmitting}
-                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
+                disabled={isSubmitting || isReadOnly}
+                title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />

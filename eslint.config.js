@@ -5,7 +5,10 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default [
   {
-    ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', '.firebase/**', 'artifacts/**']
+    // coverage/**: `npm run test:unit -- --coverage` çıktısı (zaten
+    // .gitignore'da) — istanbul'un ürettiği JS'i lintlemek anlamsız,
+    // "unused eslint-disable" gibi sahte uyarılar üretiyordu.
+    ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', '.firebase/**', 'artifacts/**', 'coverage/**']
   },
   ...tseslint.configs.recommended,
   jsxA11y.flatConfigs.recommended,

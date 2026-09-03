@@ -13,6 +13,7 @@ import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
 import { getHaftaIdFromDate, getTurkeyNow, toTurkishUpperCase } from '../lib/dateUtils';
 import { getActiveAuraColor, getSecondaryAuraColor } from '../lib/auraTheme';
+import { EmptyState } from '../components/ui/EmptyState';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
 
@@ -209,48 +210,45 @@ export default function HaftalikTakvim() {
   {Array.from({ length: 3 }).map((_, i) => (
   <div key={i} className="spatial-glass p-6 md:p-8 rounded-card border-[var(--glass-border)] flex flex-col md:flex-row gap-8 opacity-50">
   <div className="flex gap-6 items-center">
-  <div className="w-16 h-16 rounded-2xl bg-[var(--text-primary)]/5 animate-pulse" />
+  <div className="w-16 h-16 rounded-2xl skeleton-shimmer" />
   <div className="flex flex-col gap-2">
-  <div className="w-32 h-6 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
-  <div className="w-20 h-3 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
+  <div className="w-32 h-6 rounded-full skeleton-shimmer" />
+  <div className="w-20 h-3 rounded-full skeleton-shimmer" />
   </div>
   </div>
   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8">
   <div className="space-y-4">
-  <div className="w-24 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
-  <div className="w-full h-10 bg-[var(--text-primary)]/5 rounded-xl animate-pulse" />
+  <div className="w-24 h-2 rounded-full skeleton-shimmer" />
+  <div className="w-full h-10 rounded-xl skeleton-shimmer" />
   </div>
   <div className="space-y-4">
-  <div className="w-24 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
-  <div className="w-full h-10 bg-[var(--text-primary)]/5 rounded-xl animate-pulse" />
+  <div className="w-24 h-2 rounded-full skeleton-shimmer" />
+  <div className="w-full h-10 rounded-xl skeleton-shimmer" />
   </div>
   </div>
   </div>
   ))}
   </motion.div>
  ) : !plan ? (
- <motion.div 
+ <motion.div
  key="no-plan"
  initial={{ opacity: 0, scale: 0.98 }}
  animate={{ opacity: 1, scale: 1 }}
  exit={{ opacity: 0 }}
- className="relative z-10 spatial-glass p-16 rounded-card text-center max-w-4xl mx-auto shadow-[var(--spatial-shadow)] border-[var(--glass-border)]"
+ className="relative z-10 max-w-4xl mx-auto"
  >
- <div className="w-24 h-24 bg-[var(--text-primary)]/[0.03] rounded-[32px] flex items-center justify-center mb-10 mx-auto border border-[var(--glass-border)]">
- <Info size={40} className="text-[var(--text-secondary)] opacity-20" />
- </div>
- <h3 className="text-4xl font-light text-[var(--text-primary)] mb-6 tracking-tight apple-thin">Plan Henüz Hazır Değil</h3>
- <p className="text-[var(--text-secondary)]/75 text-sm font-light leading-relaxed max-w-sm mx-auto mb-12">
- Seçilen haftaya ait görev dağılımı henüz onaylanmamış veya dizgeye girilmemiş olabilir.
- </p>
- <motion.button 
- whileHover={{ scale: 1.02 }}
- whileTap={{ scale: 0.98 }}
- onClick={() => setCurrentDate(new Date())}
- className="px-10 py-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)]"
- >
- GÜNCEL HAFTAYA DÖN
- </motion.button>
+ {/* Elle kopyalanmış boş-durum kartı `EmptyState`'ten (admin tarafında 8
+     tüketicisi vardı, müezzin tarafında hiç) görsel olarak sapıyordu —
+     farklı dolgu/ikon boyutu/başlık ölçeği/açıklama tipografisi (bkz.
+     premium denetim, bölüm 4). */}
+ <EmptyState
+ icon={<Info size={36} strokeWidth={1.2} />}
+ title="Plan Henüz Hazır Değil"
+ description="Seçilen haftaya ait görev dağılımı henüz onaylanmamış veya dizgeye girilmemiş olabilir."
+ tone="indigo"
+ size="lg"
+ action={{ label: 'GÜNCEL HAFTAYA DÖN', onClick: () => setCurrentDate(new Date()) }}
+ />
  </motion.div>
  ) : (
  <motion.div 

@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, DatabaseZap, Info, RefreshCw } from 'lucide-
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useSystemSettingsStore } from '../../../store/useSystemSettingsStore';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import {
   listeleVakitCacheleri,
@@ -99,7 +99,7 @@ export default function EzanOnbellegi() {
   }
  };
 
- if (loading) return <AdminLoadingState label="Önbellek kayıtları okunuyor" />;
+ if (loading) return <LoadingState label="Önbellek kayıtları okunuyor" />;
 
  return (
   <div className="flex flex-col gap-6">

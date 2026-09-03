@@ -28,6 +28,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { okudumOnayla } from '../services/okudumServisi';
 import { hapticMedium } from '../lib/haptic';
 import { zamanAsimiIle, IslemZamanAsimi } from '../lib/timeoutUtils';
+import { GOZLEMCI_SALT_OKUMA_IPUCU } from '../lib/rolMetinleri';
 
 const VacationRequestCard = lazy(() => import('../components/VacationRequestCard'));
 
@@ -62,6 +63,12 @@ export default function MuezzinAnaEkran() {
   // firestore.rules); kart burada da admin/gözlemci'ye gösterilmeyip
   // PERMISSION_DENIED ile karşılaşmaları önlenir (bkz. yetki denetimi).
   const role = useAuthStore(s => s.role);
+  // Gözlemci salt-okuma (bkz. premium denetim P1.5): gelen vekalet
+  // teklifleri kutusu görüntülenebilir ama kabul/red aksiyonları
+  // kapatılır — sunucu tarafı zaten reddeder (firestore.rules
+  // isRecipientVekaletStatusUpdate sonrası devir bayrağı
+  // isAssignableDutyUid'e takılır), bu katman sebebi görünür kılar.
+  const isReadOnly = useAuthStore(s => s.isReadOnly);
 
   const { gpsEnabled, gpsLoading, enableGps, disableGps } = useGpsVakitStore();
   const [isQiblaOpen, setIsQiblaOpen] = useState(false);
@@ -96,6 +103,14 @@ export default function MuezzinAnaEkran() {
       cleanParams.delete('bildirimId');
       navigate({ search: cleanParams.toString() }, { replace: true });
 
+      // Salt-okuma (gözlemci) sert kapısı: bildirim derin bağlantısı UI
+      // düğmelerini tamamen atlar, bu yüzden aksiyon burada da kesilir
+      // (bkz. premium denetim P1.5).
+      if (isReadOnly) {
+        showNotification('İşlem Yapılamaz', GOZLEMCI_SALT_OKUMA_IPUCU, 'warning');
+        return;
+      }
+
       if (action === 'onayla') {
         showNotification('İşlem Başlatıldı', 'Göreviniz onaylanıyor...', 'info');
         try {
@@ -122,7 +137,7 @@ export default function MuezzinAnaEkran() {
     };
 
     processAction();
-  }, [searchParams, gorevLoading, currentUser, navigate, showNotification]);
+  }, [searchParams, gorevLoading, currentUser, navigate, showNotification, isReadOnly]);
 
   const handleGpsToggle = async () => {
     if (gpsEnabled) {
@@ -494,11 +509,12 @@ export default function MuezzinAnaEkran() {
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-auto sm:ml-0">
             <motion.button
-              whileHover={{ y: -1, scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              disabled={processingVekaletId === talep.id}
+              whileHover={isReadOnly ? {} : { y: -1, scale: 1.03 }}
+              whileTap={isReadOnly ? {} : { scale: 0.97 }}
+              disabled={processingVekaletId === talep.id || isReadOnly}
+              title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
               onClick={async () => {
-                if (processingVekaletId) return;
+                if (processingVekaletId || isReadOnly) return;
                 setProcessingVekaletId(talep.id);
                 try {
                   // vekaletKabulEt bir runTransaction kullanır — çevrimdışıyken
@@ -530,9 +546,10 @@ export default function MuezzinAnaEkran() {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 whileTap={{ scale: 0.97 }}
-                disabled={processingVekaletId === talep.id}
+                disabled={processingVekaletId === talep.id || isReadOnly}
+                title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
                 onClick={async () => {
-                  if (processingVekaletId) return;
+                  if (processingVekaletId || isReadOnly) return;
                   setProcessingVekaletId(talep.id);
                   setPendingRejectId(null);
                   try {
@@ -554,10 +571,11 @@ export default function MuezzinAnaEkran() {
               </motion.button>
             ) : (
               <motion.button
-                whileHover={{ y: -1, scale: 1.03, backgroundColor: 'rgba(244,63,94,0.15)' }}
-                whileTap={{ scale: 0.97 }}
-                disabled={!!processingVekaletId}
-                onClick={() => setPendingRejectId(talep.id)}
+                whileHover={isReadOnly ? {} : { y: -1, scale: 1.03, backgroundColor: 'rgba(244,63,94,0.15)' }}
+                whileTap={isReadOnly ? {} : { scale: 0.97 }}
+                disabled={!!processingVekaletId || isReadOnly}
+                title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
+                onClick={() => { if (!isReadOnly) setPendingRejectId(talep.id); }}
                 className="px-4 py-2.5 bg-transparent border border-rose-500/20 text-rose-500 hover:text-rose-400 rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer hover:bg-rose-500/5 transition-all disabled:opacity-45 disabled:cursor-wait"
               >
                 REDDET

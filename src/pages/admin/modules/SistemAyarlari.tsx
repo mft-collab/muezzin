@@ -5,11 +5,13 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { Save, MapPin, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { telemetryService } from '../../../services/telemetryService';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { VeriSifirlamaModal } from '../components/VeriSifirlamaModal';
 import { playSuccess, playWarning } from '../../../lib/sounds';
 import { senkronizeGuncelVeGelecekAyCache } from '../../../services/vakitCacheServisi';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { SUPER_ADMIN_GEREKLI_IPUCU } from '../../../lib/rolMetinleri';
 
 type StatusMessage = {
  type: 'success' | 'warning' | 'error';
@@ -41,6 +43,13 @@ export default function SistemAyarlari() {
    ilceId: string; ilceAdi: string; hicriDuzeltme: number;
  } | null>(null);
  const [veriSifirlamaAcik, setVeriSifirlamaAcik] = useState(false);
+ // Operasyonel veri sıfırlama TÜM ekibin bildirim/plan/izin geçmişini geri
+ // alınamaz biçimde siler — bu, "admin panelini görebilen herkes" için
+ // fazla geniş bir yetkiydi (bkz. premium denetim P1.6). Kart görünür kalır
+ // (özelliğin varlığı sıradan admin'den saklanmaz) ama düğme yalnızca
+ // config/bootstrap.superAdminEmails listesindeki baş yöneticiye açıktır;
+ // sunucu tarafı karşılığı firestore.rules `isSuperAdmin()`.
+ const isSuperAdmin = useAuthStore(s => s.isSuperAdmin);
 
  // Uzak ayar dokümanı GERÇEKTEN değiştiğinde form alanlarını render
  // sırasında doldur (bkz. useChangeKey — proje standardı, aynı desen
@@ -140,7 +149,7 @@ export default function SistemAyarlari() {
   await performSave(cleanedIlceId, cleanedIlceAdi, normalizedHicriDuzeltme, false);
  };
 
- if (loading) return <AdminLoadingState label="Dizge ayarları okunuyor" />;
+ if (loading) return <LoadingState label="Dizge ayarları okunuyor" />;
 
  return (
   <>
@@ -301,15 +310,22 @@ export default function SistemAyarlari() {
   </div>
 
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-   <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed max-w-lg">
-    Bildirimler, haftalık planlar, izinler, vekalet talepleri gibi operasyonel verileri toplu olarak siler — yeni bir sezona sıfırdan başlamak için. Mazeret geçmişi ve denetim kayıtları bu işlemden etkilenmez.
-   </p>
+   <div className="space-y-2 max-w-lg">
+    <p className="text-xs text-[var(--text-secondary)]/70 leading-relaxed">
+     Bildirimler, haftalık planlar, izinler, vekalet talepleri gibi operasyonel verileri toplu olarak siler — yeni bir sezona sıfırdan başlamak için. Mazeret geçmişi ve denetim kayıtları bu işlemden etkilenmez.
+    </p>
+    {!isSuperAdmin && (
+     <p className="authority-title !text-2xs opacity-45 leading-relaxed">{SUPER_ADMIN_GEREKLI_IPUCU}</p>
+    )}
+   </div>
    <motion.button
-    whileHover={{ y: -3, scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
+    whileHover={isSuperAdmin ? { y: -3, scale: 1.02 } : {}}
+    whileTap={isSuperAdmin ? { scale: 0.98 } : {}}
     type="button"
-    onClick={() => setVeriSifirlamaAcik(true)}
-    className="shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/25 px-6 py-3.5 rounded-[14px] font-bold text-2xs uppercase tracking-wide transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-rose-500/15"
+    disabled={!isSuperAdmin}
+    title={isSuperAdmin ? undefined : SUPER_ADMIN_GEREKLI_IPUCU}
+    onClick={() => { if (isSuperAdmin) setVeriSifirlamaAcik(true); }}
+    className="shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/25 px-6 py-3.5 rounded-[14px] font-bold text-2xs uppercase tracking-wide transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-rose-500/15 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-rose-500/10"
    >
     Operasyonel Veriyi Sıfırla
    </motion.button>

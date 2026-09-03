@@ -6,7 +6,7 @@ import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, Calendar, User, Trash2, AlertCircle, Undo2 } from 'lucide-react';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
-import { AdminLoadingState } from '../components/AdminLoadingState';
+import { LoadingState } from '../../../components/ui/LoadingState';
 import { izinGunSayisi, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
@@ -66,7 +66,7 @@ export default function IzinYonetimi() {
  }
  };
 
- if (loading) return <AdminLoadingState label="Talep Verileri Senkronize Ediliyor" size="lg" />;
+ if (loading) return <LoadingState label="Talep Verileri Senkronize Ediliyor" size="lg" />;
 
  if (error) return (
  <div className="spatial-glass p-12 rounded-card border-rose-500/20 text-center flex flex-col items-center max-w-full overflow-hidden">
