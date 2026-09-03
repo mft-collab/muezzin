@@ -15,20 +15,17 @@
     ],
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "useUnknownInCatchVariables": true,
+    "strict": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "resolveJsonModule": true
-    // NOT: src/tsconfig.json ile aynı kademeli-strict felsefesi (bkz. o dosyadaki
-    // not) — noImplicitAny henüz açılmadı, ayrı bir migrasyon işi.
+    // "strict" kök tsconfig.json ile aynı gerekçeyle açıldı (bkz. o dosyadaki
+    // not) — tek gerçek hata kaynağı src/vite-env.d.ts'in include'a
+    // eklenmemesiydi (globalThis.__timeOffset ambient bildirimi), düzeltildi.
   },
   "include": [
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "src/vite-env.d.ts"
   ],
   "exclude": [
     "node_modules"

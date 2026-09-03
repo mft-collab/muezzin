@@ -27,6 +27,9 @@ const categoryLabels: Record<Breadcrumb['category'], string> = {
   system: 'DİZGE',
 };
 
+type ErrorDetailPanelKey = 'stack' | 'breadcrumbs' | 'snapshot';
+const ERROR_DETAIL_PANEL_KEYS: readonly ErrorDetailPanelKey[] = ['stack', 'breadcrumbs', 'snapshot'];
+
 function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   if (!breadcrumbs || breadcrumbs.length === 0) {
     return (
@@ -122,8 +125,40 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedError, setSelectedError] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<'stack' | 'breadcrumbs' | 'snapshot'>('stack');
+  const [activePanel, setActivePanel] = useState<ErrorDetailPanelKey>('stack');
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+
+  // Roving tabindex ok-tuşu navigasyonu olmadan uygulanmıştı — klavye
+  // kullanıcısı Tab ile yalnızca aktif sekmeye ulaşıp diğerlerine hiç
+  // geçemiyordu (bkz. premium denetim, bölüm 2c).
+  const handleErrorTabKeyDown = (event: React.KeyboardEvent, currentKey: ErrorDetailPanelKey) => {
+    const currentIndex = ERROR_DETAIL_PANEL_KEYS.indexOf(currentKey);
+    let nextIndex: number | null = null;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (currentIndex + 1) % ERROR_DETAIL_PANEL_KEYS.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (currentIndex - 1 + ERROR_DETAIL_PANEL_KEYS.length) % ERROR_DETAIL_PANEL_KEYS.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = ERROR_DETAIL_PANEL_KEYS.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const nextKey = ERROR_DETAIL_PANEL_KEYS[nextIndex];
+    setActivePanel(nextKey);
+    requestAnimationFrame(() => {
+      document.getElementById(`error-tab-${nextKey}`)?.focus();
+    });
+  };
 
   useEffect(() => {
     const unsub = errorLogsAbone(
@@ -207,7 +242,11 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                     <div className="min-w-0 flex-1">
                       <h4 className="text-sm font-medium text-rose-500/90 leading-tight pr-2">{log.errorMessage}</h4>
 
-                      {/* Cihaz Etiketleri */}
+                      {/* Cihaz Etiketleri — bu div'in kendisi etkileşimli değil, tek işi
+                          üst karttaki aç/kapa onClick'inin buraya taşmasını engellemek
+                          (statik rozet metinleri, klavye/dokunma ile ayrıca erişilecek
+                          bir eylem sunmuyor). */}
+                      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                       <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <span className="px-2.5 py-1 bg-[var(--text-primary)]/[0.03] text-2xs font-sans font-light rounded-lg border border-[var(--glass-border)] text-[var(--text-secondary)]">OS: {log.device?.os}</span>
                         <span className="px-2.5 py-1 bg-[var(--text-primary)]/[0.03] text-2xs font-sans font-light rounded-lg border border-[var(--glass-border)] text-[var(--text-secondary)]">Tarayıcı: {log.device?.browser}</span>
@@ -266,6 +305,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                             aria-controls={`error-panel-${key}`}
                             tabIndex={activePanel === key ? 0 : -1}
                             onClick={() => setActivePanel(key)}
+                            onKeyDown={(e) => handleErrorTabKeyDown(e, key)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all ${
                               activePanel === key
                                 ? 'bg-[var(--text-primary)]/[0.07] text-[var(--text-primary)] shadow-sm'

@@ -101,8 +101,9 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <div className="space-y-4 group">
- <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
+ <label htmlFor="personel-email" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">ERİŞİM E-POSTASI</label>
  <input
+ id="personel-email"
  type="email"
  required
  maxLength={100}
@@ -116,8 +117,9 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="space-y-3">
- <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
+ <label htmlFor="personel-ad" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">PERSONEL ADI</label>
  <input
+ id="personel-ad"
  type="text"
  required
  maxLength={100}
@@ -129,8 +131,9 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  />
  </div>
  <div className="space-y-3">
- <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">SOYADI</label>
+ <label htmlFor="personel-soyad" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">SOYADI</label>
  <input
+ id="personel-soyad"
  type="text"
  required
  maxLength={100}
@@ -145,8 +148,8 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="grid grid-cols-2 gap-6">
  <div className="col-span-2 md:col-span-1 space-y-4 group">
- <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</label>
- <div className="grid grid-cols-3 gap-2.5">
+ <span id="personel-yetki-label" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide group-hover:opacity-100 group-hover:font-black transition-all duration-700">YETKİ SEVİYESİ</span>
+ <div role="group" aria-labelledby="personel-yetki-label" className="grid grid-cols-3 gap-2.5">
  {(
  [
  { value: 'muezzin', label: 'MÜEZZİN', desc: 'Görevli Kadro' },
@@ -158,6 +161,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  key={role.value}
  type="button"
  disabled={isSubmitting}
+ aria-pressed={formData.role === role.value}
  onClick={() => setFormData({ ...formData, role: role.value })}
  className={`p-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all border outline-none ${
  formData.role === role.value
@@ -173,8 +177,8 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  </div>
 
  <div className="col-span-2 md:col-span-1 space-y-4">
- <label className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</label>
- <div className="flex flex-wrap gap-2">
+ <span id="personel-izin-gunu-label" className="authority-title !text-2xs opacity-50 ml-1 tracking-wide">HAFTALIK İZİN GÜNÜ</span>
+ <div role="group" aria-labelledby="personel-izin-gunu-label" className="flex flex-wrap gap-2">
  {[
  { value: 0, label: 'İZİNSİZ' },
  { value: 1, label: 'PZT' },
@@ -191,6 +195,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  key={day.value}
  type="button"
  disabled={day.disabled || isSubmitting}
+ aria-pressed={isSelected}
  onClick={() => setFormData({ ...formData, haftalikIzinGunu: day.value })}
  className={`px-3 py-2.5 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all border outline-none ${
  day.disabled

@@ -44,8 +44,8 @@ async function girisYapVeHaz(page: Page, token: string) {
   await page.routeWebSocket((url) => RTDB_HOST_PATTERN.test(url.hostname), () => {});
 
   await page.goto('/');
-  await page.waitForFunction(() => (window as any).__testSignIn !== undefined, { timeout: 15000 });
-  await page.evaluate((t) => (window as any).__testSignIn(t), token);
+  await page.waitForFunction(() => window.__testSignIn !== undefined, { timeout: 15000 });
+  await page.evaluate((t) => window.__testSignIn!(t), token);
 }
 
 test.describe('Vekalet (Görev Devri) Akışı E2E', () => {

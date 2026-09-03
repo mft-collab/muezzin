@@ -48,8 +48,8 @@ function withFakeNow<T>(isoDate: string, run: () => T): T {
     // Date'in çoklu overload'lı constructor'ını rest-param ile birebir
     // tiplemek pratik değil (ConstructorParameters<typeof Date> son
     // overload'a daralıyor ve args.length karşılaştırmasını bozuyor) —
-    // bu yalnızca test-zamanı bir mock, `any[]` + spread-cast bilinçli.
-    constructor(...args: any[]) {
+    // bu yalnızca test-zamanı bir mock, `unknown[]` + spread-cast bilinçli.
+    constructor(...args: unknown[]) {
       if (args.length === 0) {
         super(fixedTime);
       } else {

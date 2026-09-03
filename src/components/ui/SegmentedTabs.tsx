@@ -23,6 +23,40 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
   const pillLayoutId = `${idPrefix}-pill`;
   const indicatorLayoutId = `${idPrefix}-indicator`;
 
+  // Roving tabindex (tabIndex={isActive ? 0 : -1}, aşağıda) ARIA Authoring
+  // Practices'e göre ok-tuşu navigasyonuyla BİRLİKTE zorunludur — bu olmadan
+  // klavye kullanıcısı Tab ile yalnızca aktif sekmeye ulaşıp diğerlerine hiç
+  // geçemiyordu (bkz. premium denetim, bölüm 2c).
+  const handleTabKeyDown = (event: React.KeyboardEvent, currentId: string) => {
+    const currentIndex = items.findIndex(item => item.id === currentId);
+    if (currentIndex === -1) return;
+    let nextIndex: number | null = null;
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (currentIndex + 1) % items.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (currentIndex - 1 + items.length) % items.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = items.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const next = items[nextIndex];
+    onChange(next.id);
+    requestAnimationFrame(() => {
+      document.getElementById(`${idPrefix}-tab-${next.id}`)?.focus();
+    });
+  };
+
   if (variant === 'segmented') {
     return (
       <div role="tablist" aria-label={ariaLabel} className="flex items-center gap-1.5 bg-[var(--surface-low)] p-1 rounded-[20px] sm:rounded-[24px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] w-full sm:w-auto">
@@ -39,6 +73,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
               aria-controls={`${idPrefix}-panel-${item.id}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(item.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, item.id)}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-8 py-3 sm:py-4 rounded-[16px] sm:rounded-[20px] transition-all duration-700 relative group overflow-hidden ${
                 isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]/25 hover:text-[var(--text-primary)]/55'
               }`}
@@ -89,6 +124,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
               aria-controls={`${idPrefix}-panel-${item.id}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(item.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, item.id)}
               className={`pb-4 text-xs font-medium tracking-wide transition-all relative whitespace-nowrap ${
                 isActive ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)]/70'
               }`}
@@ -129,6 +165,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onChange(item.id)}
+            onKeyDown={(e) => handleTabKeyDown(e, item.id)}
             className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-2xs font-bold uppercase tracking-wide relative group ${
               isActive
                 ? 'text-[var(--text-primary)]'

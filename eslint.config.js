@@ -1,12 +1,14 @@
 import firebaseRulesPlugin from '@firebase/eslint-plugin-security-rules';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default [
   {
     ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', '.firebase/**', 'artifacts/**']
   },
   ...tseslint.configs.recommended,
+  jsxA11y.flatConfigs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: {
@@ -14,9 +16,10 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Bu kod tabanında yaygın kullanılan örtük `any` — tam bir strict
-      // migrasyon ayrı bir iş; şimdilik derleme kırmasın diye kapalı.
-      '@typescript-eslint/no-explicit-any': 'off',
+      // "Yaygın örtük any" gerekçesi bayattı: 2026-09-03 ölçümünde src'de
+      // `as any`/`: any` toplam 0 kullanım çıktı (bkz. premium denetim,
+      // bölüm 9) — tsconfig'te strict:true zaten açık, burada da zorlanıyor.
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       // react-hooks v7'nin React Compiler odaklı yeni kuralları: kod
       // tabanında yaygın (~zararsız, sadece performans/idiom önerisi)

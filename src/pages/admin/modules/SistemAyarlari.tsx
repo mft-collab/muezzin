@@ -184,10 +184,11 @@ export default function SistemAyarlari() {
   <form onSubmit={handleSave} className="space-y-6 sm:space-y-8 relative z-10">
      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
        <div className="space-y-3">
-         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Diyanet İlçe Kodu</label>
+         <label htmlFor="ayarlar-ilce-kodu" className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Diyanet İlçe Kodu</label>
          <div className="relative">
-           <input 
-             type="text" 
+           <input
+             id="ayarlar-ilce-kodu"
+             type="text"
              value={ilceId}
              onChange={(e) => setIlceId(e.target.value)}
              inputMode="numeric"
@@ -199,10 +200,11 @@ export default function SistemAyarlari() {
        </div>
        
        <div className="space-y-3">
-         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">İlçe Tanımı</label>
+         <label htmlFor="ayarlar-ilce-adi" className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">İlçe Tanımı</label>
          <div className="relative">
-           <input 
-             type="text" 
+           <input
+             id="ayarlar-ilce-adi"
+             type="text"
              value={ilceAdi}
              onChange={(e) => setIlceAdi(e.target.value)}
              className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/30 placeholder:italic placeholder:font-normal"
@@ -213,9 +215,10 @@ export default function SistemAyarlari() {
        </div>
 
        <div className="space-y-3">
-         <label className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Hicri Tarih Düzeltmesi</label>
+         <label htmlFor="ayarlar-hicri-duzeltme" className="authority-title !text-2xs opacity-65 ml-1 tracking-wide">Hicri Tarih Düzeltmesi</label>
          <div className="relative">
-           <select 
+           <select
+             id="ayarlar-hicri-duzeltme"
              value={hicriDuzeltme}
              onChange={(e) => setHicriDuzeltme(Number(e.target.value))}
              className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors"

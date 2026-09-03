@@ -12,6 +12,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
@@ -54,6 +55,8 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  return (
  <motion.div
  layout
+ role={type === 'error' ? 'alert' : 'status'}
+ aria-atomic="true"
  initial={{ opacity: 0, y: -8, x: 0 }}
  animate={{ opacity: 1, y: 0, x: 0 }}
  exit={{ opacity: 0, x: '110%', transition: { duration: 0.28, ease: [0.4, 0, 1, 1] } }}
@@ -103,10 +106,22 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  );
 };
 
-export const NotificationContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
- <div className="fixed top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto z-[9999] flex flex-col gap-3 pointer-events-none items-center sm:items-end">
+export const NotificationContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+ // OfflineBanner de mobilde aynı üst bölgede (top-4) merkezde render oluyor —
+ // çevrimdışıyken ikisi üst üste binmesin diye burada aşağı kaydırılıyor
+ // (bkz. premium denetim, bölüm 5).
+ const { isOnline } = useNetworkStatus();
+ return (
+ <div
+ role="region"
+ aria-live="polite"
+ aria-atomic="false"
+ aria-label="Bildirimler"
+ className={`fixed ${isOnline ? 'top-4' : 'top-16'} left-4 right-4 sm:top-6 sm:right-6 sm:left-auto z-[9999] flex flex-col gap-3 pointer-events-none items-center sm:items-end transition-[top] duration-300`}
+ >
  <AnimatePresence mode="popLayout">
  {children}
  </AnimatePresence>
  </div>
-);
+ );
+};

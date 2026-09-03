@@ -64,7 +64,10 @@ export default function NotificationSettings({ userData, user }: NotificationSet
     if (Notification.permission === 'granted') {
       new Notification('Müezzin Hizmet Dizgesi', {
         body: 'Bu bir dizge tanı test bildirimidir. Bağlantınız başarıyla sağlandı!',
-        icon: '/favicon.ico'
+        // '/favicon.ico' public/'te yoktu (yalnızca favicon.svg var) — test
+        // bildiriminin ikonu her zaman bozuk çıkıyordu (bkz. premium denetim,
+        // bölüm 11).
+        icon: '/pwa-192x192.png'
       });
       setUiMessage(null);
     } else {

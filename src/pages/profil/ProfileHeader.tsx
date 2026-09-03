@@ -125,6 +125,10 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  onKeyDown={e => e.key === 'Enter' && handleUpdate()}
  disabled={isUpdating}
  className="bg-[var(--text-primary)]/[0.01] border border-[var(--dynamic-aura,var(--aura-indigo))]/30 px-6 py-4.5 rounded-3xl text-2xl font-light text-[var(--text-primary)] outline-none focus:bg-[var(--text-primary)]/[0.03] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 text-center w-full transition-all apple-thin shadow-[0_0_30px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-50"
+ // Sayfa yüklenirken değil, kullanıcının "düzenle" eylemiyle açtığı bir
+ // inline edit modunda; odağın doğrudan isim alanına gitmesi burada
+ // beklenen davranış.
+ // eslint-disable-next-line jsx-a11y/no-autofocus
  autoFocus
  />
  <div className="absolute inset-0 rounded-3xl border border-[var(--dynamic-aura,var(--aura-indigo))]/20 blur-sm pointer-events-none" />

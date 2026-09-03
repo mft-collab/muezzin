@@ -94,8 +94,8 @@ test.describe('Mazeret Akışı E2E', () => {
 
     // Gerçek bir Firebase Auth oturumu aç (emülatöre karşı) — window.__testSignIn
     // yalnızca VITE_USE_EMULATOR=1 iken src/lib/firebase.ts tarafından set edilir.
-    await page.waitForFunction(() => (window as any).__testSignIn !== undefined, { timeout: 15000 });
-    await page.evaluate((token) => (window as any).__testSignIn(token), customToken);
+    await page.waitForFunction(() => window.__testSignIn !== undefined, { timeout: 15000 });
+    await page.evaluate((token) => window.__testSignIn!(token), customToken);
 
     // Auth ve dashboard'un yerleşmesini bekle (seed edilen asil görev kartı)
     await expect(page.getByText(/YATSI vakti - Asil görev/i).first()).toBeVisible({ timeout: 15000 });

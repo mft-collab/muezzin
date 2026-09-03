@@ -474,6 +474,10 @@ export const GorevKarti = React.memo(({
         placeholder="Nedenini kısaca belirtin..."
         value={mazeretSebebi}
         onChange={(e) => setMazeretSebebi(e.target.value)}
+        // Sayfa yüklenirken değil, kullanıcının "mazeret bildir" eylemiyle
+        // açtığı bir panelde; odağın doğrudan yazılacak alana gitmesi burada
+        // beklenen davranış.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
       />
 

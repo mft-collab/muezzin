@@ -215,7 +215,9 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
     setNetworkTestState('running');
     const start = performance.now();
     try {
-      await fetch(window.location.origin + '/favicon.ico', { method: 'HEAD', cache: 'no-store' });
+      // '/favicon.ico' public/'te yok (yalnızca favicon.svg var) — bu istek
+      // gereksiz yere her zaman 404 dönüyordu (bkz. premium denetim, bölüm 11).
+      await fetch(window.location.origin + '/favicon.svg', { method: 'HEAD', cache: 'no-store' });
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
       setNetworkTestState('success');

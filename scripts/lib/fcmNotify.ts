@@ -81,7 +81,7 @@ export async function fcmGonderVeTemizle(
     const cleanupBatch = db.batch();
     for (const uid of uidsToUpdate) {
       const userRef = db.collection('muezzins').doc(uid);
-      const updates: Record<string, any> = {};
+      const updates: Record<string, FieldValue> = {};
       tokensToRemove[uid]!.forEach(t => {
         updates[`fcmTokens.${t}`] = FieldValue.delete();
       });

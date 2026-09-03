@@ -161,7 +161,10 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
         </div>
 
         {sayaclarIlgiliMi && (
-          <label className={`flex items-center gap-4 p-4 rounded-2xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.02] cursor-pointer ${calisiyor ? 'opacity-50 pointer-events-none' : ''}`}>
+          <label
+            aria-label="Kadro sayaçlarını da sıfırla"
+            className={`flex items-center gap-4 p-4 rounded-2xl border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.02] cursor-pointer ${calisiyor ? 'opacity-50 pointer-events-none' : ''}`}
+          >
             <input
               type="checkbox"
               checked={sayaclariDaSifirla}

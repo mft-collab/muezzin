@@ -237,8 +237,9 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {/* Start Date */}
               <div className="space-y-2">
-                <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Başlangıç Tarihi</label>
-                <input 
+                <label htmlFor="izin-baslangic-tarihi" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Başlangıç Tarihi</label>
+                <input
+                  id="izin-baslangic-tarihi"
                   type="date"
                   value={baslangic}
                   onChange={e => setBaslangic(e.target.value)}
@@ -246,11 +247,12 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                   className="w-full bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner"
                 />
               </div>
-              
+
               {/* End Date */}
               <div className="space-y-2">
-                <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Bitiş Tarihi</label>
-                <input 
+                <label htmlFor="izin-bitis-tarihi" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Bitiş Tarihi</label>
+                <input
+                  id="izin-bitis-tarihi"
                   type="date"
                   value={bitis}
                   onChange={e => setBitis(e.target.value)}
@@ -260,10 +262,11 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               </div>
             </div>
 
-            {/* Leave Type Select */}
+            {/* Leave Type Select — bir input'u değil bir düğme grubunu etiketliyor,
+                bu yüzden <label htmlFor> yerine role="group" + aria-labelledby kullanılıyor. */}
             <div className="space-y-2">
-              <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Muafiyet Türü</label>
-              <div className="grid grid-cols-3 gap-2">
+              <span id="izin-tip-label" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">Muafiyet Türü</span>
+              <div role="group" aria-labelledby="izin-tip-label" className="grid grid-cols-3 gap-2">
                 {(
                   [
                     { id: 'haftalik', label: 'Haftalık' },
@@ -274,6 +277,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                   <button
                     type="button"
                     key={item.id}
+                    aria-pressed={tip === item.id}
                     onClick={() => setTip(item.id)}
                     className={`py-3.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all duration-300 border cursor-pointer ${
                       tip === item.id 
@@ -294,8 +298,9 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
 
             {/* Reason Text Area */}
             <div className="space-y-2">
-              <label className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">İzin Gerekçesi</label>
+              <label htmlFor="izin-gerekce" className="text-2xs font-bold uppercase tracking-wider text-[var(--text-secondary)]/60">İzin Gerekçesi</label>
               <textarea
+                id="izin-gerekce"
                 value={sebep}
                 onChange={e => setSebep(e.target.value)}
                 placeholder="Gerekçenizi detaylıca belirtiniz..."

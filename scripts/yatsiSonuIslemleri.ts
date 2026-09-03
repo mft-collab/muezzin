@@ -151,7 +151,7 @@ export async function processYatsiSonuIslemleri() {
     const uidList = Object.keys(userDuties);
     if (uidList.length > 0) {
       const muezzinsSnap = await db.collection('muezzins').get();
-      const muezzinMap: Record<string, any> = {};
+      const muezzinMap: Record<string, DocumentData> = {};
       muezzinsSnap.docs.forEach(d => {
         muezzinMap[d.id] = d.data();
       });

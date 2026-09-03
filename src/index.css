@@ -97,8 +97,12 @@
 
   /* Light Mode Aura Overrides (Warm honey, malachite, and royal velvet tone presets) */
   --aura-ruby: hsl(var(--aura-ruby-h), 76%, 42%);
-  --aura-amber: hsl(42, 85%, 48%); /* Gilded Honey Gold standard override */
-  --aura-emerald: hsl(var(--aura-emerald-h), 82%, 36%);
+  /* amber/emerald metin kontrastı ölçüldüğünde app-bg üzerinde WCAG AA'nın
+     (4.5:1) altındaydı — sırasıyla 1.96:1 ve 2.74:1 (bkz. premium denetim,
+     bölüm 2a). status-warning/-success'te uygulanan "koyulaştır, tonu koru"
+     mantığıyla yalnızca L değeri ayarlanıp ≥4.5:1'e çekildi. */
+  --aura-amber: hsl(42, 85%, 29%); /* Gilded Honey Gold, 4.85:1 */
+  --aura-emerald: hsl(var(--aura-emerald-h), 82%, 26%); /* 4.84:1 */
   --aura-indigo: hsl(var(--aura-indigo-h), 62%, 48%);
   --aura-rose: hsl(var(--aura-rose-h), 76%, 42%);
   --specular-glow: rgba(255, 255, 255, 0.70);
@@ -190,7 +194,9 @@
   --aura-ruby: hsl(var(--aura-ruby-h), 82%, 52%);
   --aura-amber: hsl(var(--aura-amber-h), 92%, 58%);
   --aura-emerald: hsl(var(--aura-emerald-h), 82%, 48%);
-  --aura-indigo: hsl(var(--aura-indigo-h), 78%, 62%);
+  /* indigo metin kontrastı ölçüldüğünde app-bg üzerinde 3.69:1 idi (AA altı,
+     bkz. premium denetim bölüm 2a) — L değeri 62%→67%'ye çekilerek 4.73:1'e çıkarıldı. */
+  --aura-indigo: hsl(var(--aura-indigo-h), 78%, 67%);
   --aura-rose: hsl(var(--aura-rose-h), 92%, 62%);
   --specular-glow: rgba(255, 255, 255, 0.04);
 }
@@ -368,13 +374,6 @@
   -webkit-text-fill-color: transparent;
 }
 
-@utility glass-liquid {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-  backdrop-filter: blur(50px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: var(--spatial-shadow);
-}
-
 @utility premium-label {
   @apply authority-title;
   font-size: 11px;
@@ -548,7 +547,10 @@
 
 .hover-lift:hover {
   transform: translateY(-8px) scale(1.015);
-  background: rgba(255, 255, 255, 0.04);
+  /* rgba(255,255,255,.04) sabitti — açık temanın açık zemininde görsel olarak
+     no-op'tu (bkz. premium denetim 1). --surface-medium her iki temada da
+     zemine göre ayarlı bir "hafif yükselti" tonu veriyor. */
+  background: var(--surface-medium);
   box-shadow: 0 28px 56px -14px rgba(0, 0, 0, 0.35);
 }
 
@@ -633,11 +635,14 @@
   100% { background-position:  200% 0; }
 }
 .skeleton-shimmer {
+  /* rgba(255,255,255,…) sabitti — açık temada beyaz zemin üzerinde görünmezdi
+     (bkz. premium denetim 1). color-mix ile --text-primary'den türetildiğinde
+     her iki temada da zemine göre kontrastlı bir shimmer bandı oluşuyor. */
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0.04) 25%,
-    rgba(255,255,255,0.09) 50%,
-    rgba(255,255,255,0.04) 75%
+    color-mix(in srgb, var(--text-primary) 4%, transparent) 25%,
+    color-mix(in srgb, var(--text-primary) 9%, transparent) 50%,
+    color-mix(in srgb, var(--text-primary) 4%, transparent) 75%
   ) !important;
   background-size: 200% 100% !important;
   animation: skeleton-sweep 1.8s ease-in-out infinite;
@@ -672,7 +677,7 @@
   
   &:hover {
     transform: translateY(-4px) scale(1.01);
-    background: rgba(255, 255, 255, 0.035);
+    background: var(--surface-medium);
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   
@@ -709,7 +714,7 @@
 @utility fluid-skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: var(--surface-low) !important;
   border-radius: 16px;
   border: 1px solid var(--glass-border);
 

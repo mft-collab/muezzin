@@ -39,8 +39,8 @@ test.describe('Operasyonel Veri Sıfırlama E2E (Tehlikeli Bölge)', () => {
 
   async function girisYapVeAyarlaraGit(page: Page) {
     await page.goto('/');
-    await page.waitForFunction(() => (window as any).__testSignIn !== undefined, { timeout: 15000 });
-    await page.evaluate((t) => (window as any).__testSignIn(t), seed.tokenAdmin);
+    await page.waitForFunction(() => window.__testSignIn !== undefined, { timeout: 15000 });
+    await page.evaluate((t) => window.__testSignIn!(t), seed.tokenAdmin);
     await page.goto('/admin?tab=ayarlar');
   }
 

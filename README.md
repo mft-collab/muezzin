@@ -4,14 +4,14 @@ PWA tabanlı, tamamen ücretsiz (Firebase Spark plan) çalışan ezan nöbet yö
 
 ## Kurulum
 1. `npm install`
-2. `.env` dosyasını `firebase-applet-config.json` ile yapılandırın.
+2. `firebase-applet-config.json` zaten repo'da commit'li (Firebase web config gizli değildir) — ek bir yapılandırma gerekmez. Push bildirimleri veya emülatör bağlantısı gibi opsiyonel özellikler için `.env.example`'ı `.env`'e kopyalayıp ilgili değişkenleri doldurun.
 3. `npm run dev` ile çalıştırın.
 
 ## Mimari Özet
 
 - **İstemci**: React 19 + Vite + Zustand + Tailwind, Firebase client SDK (Firestore/Auth/Messaging) ile doğrudan konuşur; Cloud Functions kullanılmaz (Spark plan).
 - **Otomasyon**: Cloud Functions yerine GitHub Actions cron'ları + `firebase-admin` (bkz. `scripts/`) — haftalık plan üretimi, günlük yatsı-sonu puanlama/arşivleme, aylık ezan takvimi çekme, mazeret devri uzlaştırma, log temizliği.
-- **Roller** (`muezzins/{uid}.role`): `admin` (tam yönetim), `muezzin` (nöbet ataması yapılabilir personel), `gozlemci` (salt okuma, atanamaz).
+- **Roller** (`muezzins/{uid}.role`): `admin` (tam yönetim), `muezzin` (nöbet ataması yapılabilir personel), `gozlemci` — hedef "salt okuma" ama şu an yalnızca `firestore.rules` düzeyinde izin talebi oluşturma engelli; istemci arayüzü hâlâ tam müezzin arayüzünü gösteriyor (bilinen sınırlama, izleme: premium denetim bölüm 13).
 - **Ana koleksiyonler**: `muezzins` (personel), `haftaPlanlari` (haftalık nöbet ızgarası, `bildirimler`'in denormalize önbelleği), `bildirimler` (asıl gerçek kaynak — her gün/vakit/kişi için tek görev kaydı; ID'ler deterministiktir: `{haftaId}_{tarih}_{vakit}_{asil|yedek}`), `vekalet_talepleri` (görev devri teklifleri), `izinler`, `adminUyarilari` (kriz/hata alarmları), `error_logs`/`telemetry_logs`/`audit_logs`.
 - **Güvenlik**: Tüm yetkilendirme `firestore.rules`'da uygulanır (istemci kodu güvenilmez kabul edilir). Kritik akışlar (mazeret devri, vekalet kabulü) `getAfter()` ile aynı transaction içindeki çapraz belge doğrulaması kullanır — bkz. `firestore.rules` içindeki `isBackupPromotionFromMazeret` ve `isAcceptedVekaletBildirimTransfer`.
 
@@ -27,7 +27,7 @@ PWA tabanlı, tamamen ücretsiz (Firebase Spark plan) çalışan ezan nöbet yö
 ## GitHub Secrets Listesi
 - `FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485`: Firebase Admin için JSON anahtarı.
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON`: GitHub Actions için gereken Google servis hesabı anahtarı.
-- `VITE_FCM_VAPID_KEY`: Firebase Console → Proje Ayarları → Cloud Messaging → Web push sertifikaları'ndan alınan public key. Build zamanında `deploy.yml` tarafından gömülür; tanımlı değilse push bildirimleri devre dışı kalır (bkz. `src/hooks/useFcmToken.ts`).
+- `VITE_FCM_VAPID_KEY`: Firebase Console → Proje Ayarları → Cloud Messaging → Web push sertifikaları'ndan alınan public key. Build zamanında `.github/workflows/test.yml`'in `build_and_deploy` job'ı tarafından gömülür; tanımlı değilse push bildirimleri devre dışı kalır (bkz. `src/hooks/useFcmToken.ts`).
 
 ## Otomasyon Takvimi
 GitHub Actions cron ifadeleri her zaman UTC'dir; Türkiye saati UTC+3'tür (yaz/kış saati uygulanmaz).
@@ -40,4 +40,4 @@ GitHub Actions cron ifadeleri her zaman UTC'dir; Türkiye saati UTC+3'tür (yaz/
 
 Her cron job'u `workflow_dispatch` ile elle de tetiklenebilir. Kritik 3 job (haftalık plan, günlük yatsı sonu, aylık takvim) başarısız olursa `adminUyarilari` koleksiyonuna otomatik bir uyarı yazılır (bkz. `scripts/lib/reportWorkflowFailure.ts`) ve admin panelinde görünür.
 
-Deploy (`deploy.yml`), `CI Test Suite` iş akışı main'de başarıyla tamamlandıktan SONRA tetiklenir (`workflow_run`) ve hosting ile birlikte `firestore.rules`/`firestore.indexes.json` dosyalarını da production'a uygular.
+Deploy, ayrı bir `deploy.yml` değil — `.github/workflows/test.yml` içindeki `build_and_deploy` job'ı: `test` job'ına `needs:` ile bağlı, yalnızca `main`'e push'ta ve testler geçtiyse çalışır, hosting ile birlikte `firestore.rules`/`firestore.indexes.json` dosyalarını da production'a uygular. **Bilinen sınırlama**: bu, doğrudan production'a giden tek ortamdır — ayrı bir staging/preview ortamı yoktur (bkz. premium denetim bölüm 16).

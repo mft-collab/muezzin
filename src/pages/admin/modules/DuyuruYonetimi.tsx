@@ -260,9 +260,10 @@ export const DuyuruYonetimi: React.FC = () => {
 
  <form onSubmit={handleCreate} className="space-y-8 pb-4">
  <div className="space-y-3 group">
- <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
+ <label htmlFor="duyuru-baslik" className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">DUYURU BAŞLIĞI</label>
  <div className="relative">
  <input
+ id="duyuru-baslik"
  required
  maxLength={200}
  placeholder="Duyuru başlığını giriniz..."
@@ -274,9 +275,10 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
  
  <div className="space-y-3 group">
- <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
+ <label htmlFor="duyuru-icerik" className="authority-title !text-2xs opacity-40 ml-1 tracking-wide group-hover:opacity-100 transition-opacity">İÇERİK DETAYI</label>
  <div className="relative">
  <textarea
+ id="duyuru-icerik"
  required
  rows={5}
  maxLength={5000}
@@ -396,8 +398,8 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
 
  <div className="space-y-4">
- <label className="authority-title !text-2xs opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</label>
- <div className="grid grid-cols-3 gap-3">
+ <span id="duyuru-kategori-label" className="authority-title !text-2xs opacity-40 ml-1 tracking-wide">DUYURU KATEGORİSİ</span>
+ <div role="group" aria-labelledby="duyuru-kategori-label" className="grid grid-cols-3 gap-3">
  {(['onemli', 'bilgi', 'duyuru'] as const).map((type) => {
  const isSelected = formData.tip === type;
  let activeStyle = '';
@@ -412,6 +414,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  key={type}
  type="button"
+ aria-pressed={isSelected}
  onClick={() => setFormData({...formData, tip: type})}
  className={`py-3.5 rounded-2xl text-2xs font-bold uppercase tracking-wide transition-all border outline-none ${activeStyle}`}
  >

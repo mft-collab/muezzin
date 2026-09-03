@@ -200,6 +200,19 @@ class TelemetryService {
   private readonly BATCH_SIZE = 5;
   private readonly FLUSH_INTERVAL_MS = 10000; // 10 saniye
 
+  // logError() önceden dedup/rate-limit'siz, addDoc ile anında ve batch dışı
+  // yazıyordu — render döngüsünde tekrarlayan bir hata Spark'ın 20K/gün
+  // yazma kotasını tek bir kullanıcı sekmesinde tüketebilirdi (bkz. premium
+  // denetim, bölüm 7/17). Aynı imzalı hata oturum başına en fazla
+  // ERROR_WRITES_PER_SIGNATURE kez, dizge genelinde dakikada en fazla
+  // MAX_ERROR_WRITES_PER_MINUTE kez Firestore'a yazılır.
+  private errorSignatureCounts = new Map<string, number>();
+  private readonly MAX_ERROR_WRITES_PER_SIGNATURE = 3;
+  private errorWriteTimestamps: number[] = [];
+  private readonly MAX_ERROR_WRITES_PER_MINUTE = 5;
+  private readonly ERROR_RATE_WINDOW_MS = 60000;
+  private suppressedErrorCount = 0;
+
   constructor() {
     const savedConsent = localStorage.getItem('muezzin-telemetry-consent');
     this.isEnabled = savedConsent !== 'false';
@@ -453,6 +466,27 @@ class TelemetryService {
     if (!this.isEnabled) return;
     if (!auth.currentUser) return;
 
+    // İmza: mesaj + ilk stack satırı — aynı hatanın tekrarlarını (örn. bir
+    // render döngüsünde saniyede onlarca kez fırlayan aynı istisna) ayırt
+    // etmeden say. Uzunluk Map anahtarı için sorun değil.
+    const signature = `${error.message}::${(error.stack || '').split('\n')[1] || ''}`.slice(0, 300);
+    const signatureCount = this.errorSignatureCounts.get(signature) ?? 0;
+    if (signatureCount >= this.MAX_ERROR_WRITES_PER_SIGNATURE) {
+      this.suppressedErrorCount++;
+      console.warn(`Hata günlüğü bastırıldı (imza kotası doldu): ${signature}`);
+      return;
+    }
+
+    const now = Date.now();
+    this.errorWriteTimestamps = this.errorWriteTimestamps.filter(
+      (ts) => now - ts < this.ERROR_RATE_WINDOW_MS
+    );
+    if (this.errorWriteTimestamps.length >= this.MAX_ERROR_WRITES_PER_MINUTE) {
+      this.suppressedErrorCount++;
+      console.warn('Hata günlüğü bastırıldı (dakikalık yazma kotası doldu).');
+      return;
+    }
+
     try {
       const [stateSnapshot] = await Promise.all([captureStateSnapshot()]);
       const crumbs = getBreadcrumbs();
@@ -463,8 +497,11 @@ class TelemetryService {
       // reddediliyor ve dıştaki catch bloğu bunu yalnızca console.warn ile
       // yutuyordu. En ciddi çökmelerin (en uzun stack'lerin) tam da
       // loglanamayan tür olması riski vardı (bkz. beşinci denetim turu).
+      const suppressedPrefix = this.suppressedErrorCount > 0
+        ? `[${this.suppressedErrorCount} bastırılmış hata sonrası] `
+        : '';
       const payload: EnrichedErrorLog = {
-        errorMessage: error.message.slice(0, 2000),
+        errorMessage: (suppressedPrefix + error.message).slice(0, 2000),
         errorStack: (error.stack || '').slice(0, 8000),
         componentStack: (componentStack || '').slice(0, 8000),
         userId: auth.currentUser.uid,
@@ -475,6 +512,9 @@ class TelemetryService {
       };
 
       await addDoc(collection(db, 'error_logs'), payload);
+      this.errorSignatureCounts.set(signature, signatureCount + 1);
+      this.errorWriteTimestamps.push(now);
+      this.suppressedErrorCount = 0;
     } catch (err) {
       console.warn('Hata günlüğü yazılamadı:', err);
     }

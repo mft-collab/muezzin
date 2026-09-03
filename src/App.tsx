@@ -14,11 +14,26 @@ import { initTimeSync } from './lib/timeSync';
 import { toError } from './lib/errorUtils';
 import type { ErrorInfo } from 'react';
 import MuezzinAnaEkran from './pages/MuezzinAnaEkran';
+import NotFound from './pages/NotFound';
 const HaftalikTakvim = lazy(() => import('./pages/HaftalikTakvim'));
 const Profil = lazy(() => import('./pages/Profil'));
 const MuezzinAyarlari = lazy(() => import('./pages/MuezzinAyarlari'));
 
 const AdminPanel = lazy(() => import('./pages/admin/AdminPanel'));
+
+function handleError(rawError: unknown, info: ErrorInfo) {
+  const error = toError(rawError);
+  try {
+    telemetryService.addBreadcrumb(
+      `React ErrorBoundary: ${error.message.slice(0, 100)}`,
+      'system',
+      { componentStack: (info.componentStack ?? '').slice(0, 300) }
+    );
+    telemetryService.logError(error, info.componentStack ?? '');
+  } catch (err) {
+    console.error("Telemetri hata kaydedici hatası:", err);
+  }
+}
 
 // Müezzin ekranları ↔ admin paneli arası route değişiminde sert kesme yerine
 // kısa bir cross-fade — location.pathname'i key yapıp AnimatePresence'a
@@ -35,13 +50,27 @@ function AnimatedRoutes() {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.18, ease: 'easeInOut' }}
       >
-        <Routes location={location}>
-          <Route path="/" element={<MuezzinAnaEkran />} />
-          <Route path="/takvim" element={<HaftalikTakvim />} />
-          <Route path="/profil" element={<Profil />} />
-          <Route path="/ayarlar" element={<MuezzinAyarlari />} />
-          <Route path="/admin" element={<AdminPanel />} />
-        </Routes>
+        {/* Rota-bazlı sınır: kök ErrorBoundary'nin tek başına olması, örn.
+            admin panelindeki bir çökmenin TÜM uygulamayı (müezzin ekranları
+            dahil) tam-sayfa fallback'e düşürmesi anlamına geliyordu (bkz.
+            premium denetim, bölüm 4). location.pathname'i key yaparak rota
+            değişince boundary'nin de sıfırlanmasını garanti ediyoruz. */}
+        <ErrorBoundary
+          key={location.pathname}
+          FallbackComponent={({ error, resetErrorBoundary }) => (
+            <ChunkErrorFallback error={toError(error)} variant="inline" onReset={resetErrorBoundary} />
+          )}
+          onError={handleError}
+        >
+          <Routes location={location}>
+            <Route path="/" element={<MuezzinAnaEkran />} />
+            <Route path="/takvim" element={<HaftalikTakvim />} />
+            <Route path="/profil" element={<Profil />} />
+            <Route path="/ayarlar" element={<MuezzinAyarlari />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </motion.div>
     </AnimatePresence>
   );
@@ -52,20 +81,6 @@ export default function App() {
   useEffect(() => {
     initTimeSync();
   }, []);
-
-  const handleError = (rawError: unknown, info: ErrorInfo) => {
-    const error = toError(rawError);
-    try {
-      telemetryService.addBreadcrumb(
-        `React ErrorBoundary: ${error.message.slice(0, 100)}`,
-        'system',
-        { componentStack: (info.componentStack ?? '').slice(0, 300) }
-      );
-      telemetryService.logError(error, info.componentStack ?? '');
-    } catch (err) {
-      console.error("Telemetri hata kaydedici hatası:", err);
-    }
-  };
 
  return (
  <ErrorBoundary
