@@ -109,8 +109,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  try {
  await signInWithPopup(auth, provider);
  } catch (popupErr: unknown) {
-  // If popup is blocked or fails, fallback to redirect
-  if (isFirebaseSdkError(popupErr) && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request')) {
+  // If popup is blocked or fails, fallback to redirect.
+  // 'auth/internal-error' EKLENDİ: bu, popup + postMessage el sıkışması
+  // üçüncü taraf çerez/depolama erişimi gerektirdiğinden, tarayıcının
+  // (Chrome/Safari'nin giderek varsayılan hale gelen gizlilik
+  // kısıtlamaları) bunu engellediği durumda Firebase'in verdiği GENEL
+  // hata koduydu — canlıda "Giriş yapılamadı" olarak görünüyordu (bkz.
+  // premium denetim, login ekranı canlı arıza teşhisi). Redirect (tam
+  // sayfa yönlendirme) bu üçüncü taraf bağımlılığını taşımaz.
+  const popupYerineDeneRedirect =
+    isFirebaseSdkError(popupErr) &&
+    (popupErr.code === 'auth/popup-blocked' ||
+      popupErr.code === 'auth/cancelled-popup-request' ||
+      popupErr.code === 'auth/internal-error' ||
+      popupErr.code === 'auth/web-storage-unsupported');
+  if (popupYerineDeneRedirect) {
     sessionStorage.setItem('muezzin:auth_redirect_pending', 'true');
     await signInWithRedirect(auth, provider);
   } else {
