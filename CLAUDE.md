@@ -154,7 +154,9 @@ chunk'a düşeceğini bilerek) ekle.
 
 ## Model Seçimi (Claude Pro — verimli kullanım)
 
-Varsayılan Sonnet. Basit arama/keşif işlerinde Haiku yeterli. **Opus'a geç**
+Varsayılan Sonnet. Basit arama/keşif işlerinde Haiku yeterli — ama `model: "haiku"`'yu
+**açıkça** ver, override'sız bırakmak artık güvenilir şekilde Haiku'ya düşmüyor (bkz.
+kök `CLAUDE.md` → Model Seçimi, 2026-09-03 ölçümü). **Opus'a geç**
 (`/model opus` veya Agent çağrısında `model: "opus"`):
 
 - **Riskli kod**: `firestore.rules` (`isSelfBildirimUpdate`, `isValidVekaletCreate` —
