@@ -148,7 +148,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  <span className="text-2xs font-bold text-[var(--text-secondary)]/15 uppercase tracking-wide">T.C. DİYANET İŞLERİ BAŞKANLIĞI</span>
  <div className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--glass-border)]" />
  </div>
- <p className="text-2xs text-[var(--text-secondary)]/20 font-bold uppercase tracking-[0.1em]">
+ <p className="text-2xs text-muted font-bold uppercase tracking-[0.1em]">
  Güvenli Giriş • Yetkili Hizmet Erişimi
  </p>
  </motion.div>

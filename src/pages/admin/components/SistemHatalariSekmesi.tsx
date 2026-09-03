@@ -68,12 +68,12 @@ function BreadcrumbTrail({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <Clock size={8} className="text-[var(--text-secondary)]/30 flex-shrink-0" />
-              <span className="text-2xs font-mono text-[var(--text-secondary)]/30">
+              <Clock size={8} className="text-muted flex-shrink-0" />
+              <span className="text-2xs font-mono text-muted">
                 {crumb.wallTime ? new Date(crumb.wallTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }) : `+${crumb.timestamp}ms`}
               </span>
               {crumb.data && Object.keys(crumb.data).length > 0 && (
-                <span className="text-2xs font-mono text-[var(--text-secondary)]/20 truncate">
+                <span className="text-2xs font-mono text-muted truncate">
                   {JSON.stringify(crumb.data).slice(0, 60)}
                 </span>
               )}
@@ -112,7 +112,7 @@ function StateSnapshotCard({ snapshot }: { snapshot: ErrorLog['stateSnapshot'] }
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {items.map(({ label, value, icon: Icon }) => (
         <div key={label} className="px-3 py-2 rounded-xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] flex items-start gap-2">
-          <Icon size={10} className="text-[var(--text-secondary)]/30 flex-shrink-0 mt-0.5" />
+          <Icon size={10} className="text-muted flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-2xs text-[var(--text-secondary)]/75 uppercase tracking-wider leading-none mb-0.5">{label}</p>
             <p className="text-2xs text-[var(--text-primary)]/80 font-medium truncate">{value}</p>
@@ -282,9 +282,9 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                   </div>
 
                   <div className="text-right sm:flex-shrink-0 flex flex-col items-end gap-2">
-                    <span className="text-2xs text-[var(--text-secondary)]/50 font-bold block">{formatDate(log.timestamp)}</span>
-                    <span className="text-2xs text-[var(--text-secondary)]/30 font-mono block">ID: {log.id}</span>
-                    <div className="text-[var(--text-secondary)]/30">
+                    <span className="text-2xs text-muted font-bold block">{formatDate(log.timestamp)}</span>
+                    <span className="text-2xs text-muted font-mono block">ID: {log.id}</span>
+                    <div className="text-muted">
                       {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </div>
                   </div>
@@ -322,7 +322,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all ${
                               activePanel === key
                                 ? 'bg-[var(--text-primary)]/[0.07] text-[var(--text-primary)] shadow-sm'
-                                : 'text-[var(--text-secondary)]/40 hover:text-[var(--text-secondary)]/70'
+                                : 'text-muted hover:text-[var(--text-secondary)]/70'
                             }`}
                           >
                             <Icon size={10} />

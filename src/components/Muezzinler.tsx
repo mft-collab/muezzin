@@ -128,7 +128,7 @@ export const Muezzinler = React.memo(({
  <div className="w-20 h-20 rounded-[32px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center shadow-inner animate-float">
  <AlertCircle
  size={36}
- className="text-[var(--text-primary)]/15"
+ className="text-subtle"
  strokeWidth={1}
  />
  </div>

@@ -70,7 +70,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  className={`relative flex flex-col items-center justify-center gap-2 w-full h-[72px] rounded-[20px] transition-all duration-300 group z-10 ${
  isActive
  ? 'text-[var(--text-primary)] shadow-inner'
- : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/60 hover:bg-[var(--text-primary)]/[0.02]'
+ : 'text-subtle hover:text-[var(--text-primary)]/60 hover:bg-[var(--text-primary)]/[0.02]'
  }`}
  >
  <div className={`transition-all duration-700 relative z-10 ${isActive ? 'scale-110' : ''}`}>
@@ -137,7 +137,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  onClick={toggleTheme}
  aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
  title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
- className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
+ className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
  >
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
  {theme === 'dark' ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
@@ -147,7 +147,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  onClick={onLogout}
  aria-label="Oturumu kapat"
  title="Oturumu kapat"
- className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-[var(--text-primary)]/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
+ className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
  >
  <LogOut size={20} strokeWidth={1.5} />
  </button>

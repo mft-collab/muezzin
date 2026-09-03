@@ -304,7 +304,7 @@ export default function MuezzinAnaEkran() {
       <div className={`p-1.5 rounded-xl border transition-all duration-300 relative ${
         gpsEnabled 
           ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
-          : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]/50 group-hover:text-[var(--text-secondary)]/85'
+          : 'bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-muted group-hover:text-[var(--text-secondary)]/85'
       }`}>
         {gpsLoading ? (
           <div className="w-4 h-4 rounded-full border-2 border-[var(--dynamic-aura,var(--aura-indigo))]/20 border-t-[var(--dynamic-aura,var(--aura-indigo))] animate-spin" />
@@ -318,11 +318,11 @@ export default function MuezzinAnaEkran() {
       
       <div className="flex flex-col items-start leading-tight">
         <span className={`text-2xs font-bold tracking-wide transition-colors ${
-          gpsEnabled ? 'text-emerald-400' : 'text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/80'
+          gpsEnabled ? 'text-emerald-400' : 'text-muted group-hover:text-[var(--text-secondary)]/80'
         }`}>
           GPS VAKİT
         </span>
-        <span className="text-2xs text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
+        <span className="text-2xs text-muted group-hover:text-[var(--text-secondary)]/60 uppercase">
           {gpsEnabled ? 'Aktif' : 'Pasif'}
         </span>
       </div>
@@ -335,15 +335,15 @@ export default function MuezzinAnaEkran() {
     >
       <div className="absolute inset-0 rounded-2xl transition-opacity duration-500 opacity-0 group-hover:opacity-100 bg-[var(--text-primary)]/[0.04]" />
       
-      <div className="p-1.5 rounded-xl border bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-[var(--text-secondary)]/50 group-hover:text-[var(--text-secondary)]/85 group-hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all duration-300">
+      <div className="p-1.5 rounded-xl border bg-[var(--text-primary)]/[0.03] border-[var(--glass-border)] text-muted group-hover:text-[var(--text-secondary)]/85 group-hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all duration-300">
         <Compass size={15} className="transition-transform duration-500 group-hover:rotate-180" />
       </div>
       
       <div className="flex flex-col items-start leading-tight">
-        <span className="text-2xs font-bold tracking-wide text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/80">
+        <span className="text-2xs font-bold tracking-wide text-muted group-hover:text-[var(--text-secondary)]/80">
           KIBLE
         </span>
-        <span className="text-2xs text-[var(--text-secondary)]/40 group-hover:text-[var(--text-secondary)]/60 uppercase">
+        <span className="text-2xs text-muted group-hover:text-[var(--text-secondary)]/60 uppercase">
           Pusula
         </span>
       </div>
@@ -437,7 +437,7 @@ export default function MuezzinAnaEkran() {
       ? 'bg-[var(--text-primary)]/[0.01] border-[var(--glass-border)] opacity-60' 
       : 'bg-gradient-to-br from-[var(--status-info)]/15 via-[var(--status-info)]/5 to-transparent border-[var(--status-info)]/25'
   }`}>
-  <Megaphone size={16} className={`${isCurrentDuyuruRead ? 'text-[var(--text-secondary)]/40' : 'text-[var(--status-info)]'} group-hover/item:rotate-12 transition-transform duration-500`} strokeWidth={1.75} />
+  <Megaphone size={16} className={`${isCurrentDuyuruRead ? 'text-muted' : 'text-[var(--status-info)]'} group-hover/item:rotate-12 transition-transform duration-500`} strokeWidth={1.75} />
   {/* Nokta bg-[var(--status-info)] (sabit mavi) ama parıltısı yanlışlıkla
       dynamic-aura'ya (günün vaktine göre amber/ruby/emerald olabilir)
       bağlıydı — nokta ile parıltısı aynı renk olmalı (bkz. GPS aktif
@@ -451,11 +451,11 @@ export default function MuezzinAnaEkran() {
   <h3 className={`text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/item:font-normal transition-all duration-300 truncate ${isCurrentDuyuruRead ? 'opacity-50' : ''}`}>
   {duyurular[activeDuyuruIdx].baslik}
   </h3>
-  <p className="text-2xs text-[var(--text-secondary)]/50 mt-0.5 line-clamp-1">
+  <p className="text-2xs text-muted mt-0.5 line-clamp-1">
   {duyurular[activeDuyuruIdx].icerik}
   </p>
   </div>
-  <ChevronRight size={16} className="text-[var(--text-secondary)]/35 group-hover/item:text-[var(--text-secondary)]/60 group-hover/item:translate-x-0.5 transition-all duration-300 shrink-0" />
+  <ChevronRight size={16} className="text-muted group-hover/item:text-[var(--text-secondary)]/60 group-hover/item:translate-x-0.5 transition-all duration-300 shrink-0" />
   </motion.div>
   </AnimatePresence>
   );
@@ -642,11 +642,11 @@ export default function MuezzinAnaEkran() {
  <Link to="/takvim" className="h-full p-6 spatial-glass hover:bg-[var(--text-primary)]/[0.015] hover:border-[var(--text-primary)]/10 dark:hover:border-[var(--text-primary)]/15 hover:shadow-[var(--spatial-shadow)] transition-all duration-500 flex flex-col justify-between relative overflow-hidden shimmer-trigger group/cal">
  <div className="kinetic-sheen" />
  <div className="w-12 h-12 rounded-2xl bg-[var(--text-primary)]/[0.04] border border-[var(--glass-border)] flex items-center justify-center group-hover/cal:scale-105 group-hover/cal:bg-[var(--text-primary)]/[0.08] transition-all duration-500 mb-6">
- <Calendar size={20} className="text-[var(--text-secondary)]/50 group-hover/cal:text-[var(--text-secondary)]/85 transition-colors duration-500" />
+ <Calendar size={20} className="text-muted group-hover/cal:text-[var(--text-secondary)]/85 transition-colors duration-500" />
  </div>
  <div>
  <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/cal:font-normal transition-all duration-500">Haftalık Plan</h3>
- <p className="text-2xs text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">Koordinasyon Takvimi</p>
+ <p className="text-2xs text-muted mt-1.5 uppercase tracking-wide leading-none">Koordinasyon Takvimi</p>
  </div>
  </Link>
  </motion.div>
@@ -659,11 +659,11 @@ export default function MuezzinAnaEkran() {
  <Link to="/profil" className="h-full p-6 spatial-glass hover:bg-[var(--text-primary)]/[0.015] hover:border-[var(--text-primary)]/10 dark:hover:border-[var(--text-primary)]/15 hover:shadow-[var(--spatial-shadow)] transition-all duration-500 flex flex-col justify-between relative overflow-hidden shimmer-trigger group/prof">
  <div className="kinetic-sheen" />
  <div className="w-12 h-12 rounded-2xl bg-[var(--text-primary)]/[0.04] border border-[var(--glass-border)] flex items-center justify-center group-hover/prof:scale-105 group-hover/prof:bg-[var(--text-primary)]/[0.08] transition-all duration-500 mb-6">
- <ClipboardList size={20} className="text-[var(--text-secondary)]/50 group-hover/prof:text-[var(--text-secondary)]/85 transition-colors duration-500" strokeWidth={1.7} />
+ <ClipboardList size={20} className="text-muted group-hover/prof:text-[var(--text-secondary)]/85 transition-colors duration-500" strokeWidth={1.7} />
  </div>
  <div>
  <h3 className="text-base sm:text-lg font-light text-[var(--text-primary)] group-hover/prof:font-normal transition-all duration-500">Haftalık Görev Özeti</h3>
- <p className="text-2xs text-[var(--text-secondary)]/50 mt-1.5 uppercase tracking-wide leading-none">
+ <p className="text-2xs text-muted mt-1.5 uppercase tracking-wide leading-none">
  {haftalikOzet.toplam} görev • {haftalikOzet.tamamlanan} tamamlandı • {haftalikOzet.bekleyen} bekliyor
  </p>
  </div>

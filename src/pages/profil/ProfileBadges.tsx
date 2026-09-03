@@ -62,13 +62,13 @@ export default function ProfileBadges({ aylikVakitSayisi }: ProfileBadgesProps) 
               }`}
             >
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border ${
-                earned ? badge.activeIcon : 'bg-[var(--text-primary)]/5 text-[var(--text-primary)]/20 border-[var(--text-primary)]/5'
+                earned ? badge.activeIcon : 'bg-[var(--text-primary)]/5 text-subtle border-[var(--text-primary)]/5'
               }`}>
                 {badge.icon}
               </div>
               <div className="space-y-0.5">
                 <p className="text-2xs font-bold text-[var(--text-primary)] leading-none">{badge.label}</p>
-                <p className="text-2xs text-[var(--text-secondary)]/50 leading-tight mt-1">{badge.desc}</p>
+                <p className="text-2xs text-muted leading-tight mt-1">{badge.desc}</p>
               </div>
             </div>
           );

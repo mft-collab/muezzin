@@ -210,7 +210,7 @@ export const DuyuruYonetimi: React.FC = () => {
  onClick={() => setConfirmDelete({ open: true, id: duyuru.id })}
  disabled={deletingId === duyuru.id}
  aria-label="Duyuruyu sil"
- className="p-3 text-[var(--text-primary)]/10 hover:text-rose-500 transition-all rounded-xl border border-transparent hover:border-rose-500/20 disabled:opacity-40"
+ className="p-3 text-subtle hover:text-rose-500 transition-all rounded-xl border border-transparent hover:border-rose-500/20 disabled:opacity-40"
  >
  <Trash2 size={16} />
  </motion.button>
@@ -228,7 +228,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <div className="flex items-center justify-between pt-6 mt-6 border-t border-[var(--glass-border)]">
  <div className="flex flex-col gap-0.5">
  <span className="authority-title !text-2xs opacity-20 uppercase tracking-wide">YAYIN TARİHİ</span>
- <span className="text-2xs font-medium text-[var(--text-primary)]/40 uppercase tracking-wide">
+ <span className="text-2xs font-medium text-faint uppercase tracking-wide">
  {toJsDate(duyuru.tarih)
  ? format(toJsDate(duyuru.tarih)!, 'd MMMM yyyy', { locale: tr })
  : '—'}

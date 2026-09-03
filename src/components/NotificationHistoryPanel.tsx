@@ -20,8 +20,8 @@ export function NotificationHistoryPanel({ isOpen, onClose }: NotificationHistor
     <Modal isOpen={isOpen} onClose={onClose} title="BİLDİRİM GEÇMİŞİ">
       {history.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <BellOff size={28} className="text-[var(--text-secondary)]/30" />
-          <p className="text-2xs text-[var(--text-secondary)]/50 uppercase tracking-wide font-bold">Henüz bildirim yok</p>
+          <BellOff size={28} className="text-muted" />
+          <p className="text-2xs text-muted uppercase tracking-wide font-bold">Henüz bildirim yok</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -60,7 +60,7 @@ export function NotificationHistoryPanel({ isOpen, onClose }: NotificationHistor
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-3">
                         <h4 className="text-xs font-medium text-[var(--text-primary)]">{entry.title}</h4>
-                        <span className="text-2xs text-[var(--text-secondary)]/40 shrink-0">
+                        <span className="text-2xs text-muted shrink-0">
                           {formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: tr })}
                         </span>
                       </div>

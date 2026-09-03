@@ -118,7 +118,7 @@ export default function PersonalHistoryCard({ user }: PersonalHistoryCardProps) 
                       {isConfirmed ? 'HİZMET EDİLDİ' : 'MAZERETLİ DEVR'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-2xs text-[var(--text-secondary)]/40 font-light">
+                  <div className="flex items-center gap-2 text-2xs text-muted font-light">
                     <Clock size={11} className="text-[var(--dynamic-aura,var(--aura-indigo))]/50" />
                     <span>{dateFormatted}, {dayName}</span>
                     <span className="opacity-40">•</span>

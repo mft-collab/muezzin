@@ -281,7 +281,7 @@ export default function SistemAnalitigi() {
               className={`px-5 py-2.5 rounded-[14px] text-2xs font-bold uppercase tracking-wide transition-all ${
                 periodDays === opt.days
                   ? 'bg-[var(--surface-medium)] text-[var(--text-primary)] shadow-lg'
-                  : 'text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)]/70'
+                  : 'text-muted hover:text-[var(--text-primary)]/70'
               }`}
             >
               {opt.label}
@@ -322,7 +322,7 @@ export default function SistemAnalitigi() {
                     <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
                       healthScore >= 80 ? 'text-emerald-500' :
                       healthScore >= 60 ? 'text-amber-500' :
-                      healthScore > 0 ? 'text-rose-500' : 'text-[var(--text-secondary)]/30'
+                      healthScore > 0 ? 'text-rose-500' : 'text-muted'
                     }`}>
                       {healthScore >= 80 ? 'STABİL' : healthScore >= 60 ? 'İZLEME' : healthScore > 0 ? 'KRİTİK' : 'VERİ YOK'}
                     </span>
@@ -457,7 +457,7 @@ export default function SistemAnalitigi() {
                   {kotaToplam}
                 </h3>
                 <div className="flex flex-col">
-                  <span className="text-sm text-[var(--text-secondary)]/50 font-light italic leading-none">belge yazımı</span>
+                  <span className="text-sm text-muted font-light italic leading-none">belge yazımı</span>
                   <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
                     kotaAsildi ? 'text-amber-500' : 'text-emerald-500'
                   }`}>

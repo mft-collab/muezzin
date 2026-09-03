@@ -108,7 +108,7 @@ export default function IzinYonetimi() {
  className={`px-5 py-3 rounded-xl text-2xs font-bold uppercase tracking-wide transition-all duration-500 shrink-0 ${
  filter === btn.id 
  ? 'bg-[var(--text-primary)] text-[var(--app-bg)] shadow-[var(--spatial-shadow)]' 
- : 'bg-transparent text-[var(--text-primary)]/30 hover:text-[var(--text-primary)] hover:bg-[var(--surface-medium)]'
+ : 'bg-transparent text-faint hover:text-[var(--text-primary)] hover:bg-[var(--surface-medium)]'
  }`}
  >
  {btn.label}
@@ -185,7 +185,7 @@ export default function IzinYonetimi() {
  {izin.tip === 'yillik' ? 'Yıllık İzin' : izin.tip === 'haftalik' ? 'Haftalık İzin' : 'Mazeret İzni'}
  </span>
  {izin.tip === 'yillik' && (
- <span className="text-2xs font-medium text-[var(--text-secondary)]/40">
+ <span className="text-2xs font-medium text-muted">
  {izinGunSayisi(izin.baslangic, izin.bitis)} gün · bu yıl kullanılan {muezzinler.find(m => m.id === izin.uid)?.yillikIzinKullanilanGun || 0}/30
  </span>
  )}
@@ -262,7 +262,7 @@ export default function IzinYonetimi() {
  onClick={() => setUndoConfirm({ open: true, id: izin.id! })}
  aria-label="Kararı geri al"
  title="Kararı geri al"
- className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-[var(--text-secondary)]/30 rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all shadow-lg disabled:opacity-40"
+ className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-muted rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all shadow-lg disabled:opacity-40"
  >
  <Undo2 className="w-4 h-4 sm:w-5 sm:h-5" />
  </motion.button>
@@ -274,7 +274,7 @@ export default function IzinYonetimi() {
  whileTap={{ scale: 0.9 }}
  onClick={() => setDeleteConfirm({ open: true, id: izin.id! })}
  aria-label="Kaydı sil"
- className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-[var(--text-secondary)]/30 rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-lg"
+ className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--surface-low)] text-muted rounded-xl sm:rounded-2xl flex items-center justify-center border border-[var(--glass-border)] hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-lg"
  >
  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
  </motion.button>

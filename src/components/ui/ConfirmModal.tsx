@@ -65,7 +65,7 @@ export function ConfirmModal({
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.96 }}
         onClick={onClose}
-        className="px-8 py-4.5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent border-none"
+        className="px-8 py-4.5 text-2xs font-bold uppercase tracking-wide text-muted hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent border-none"
       >
         {toTurkishUpperCase(cancelText)}
       </motion.button>

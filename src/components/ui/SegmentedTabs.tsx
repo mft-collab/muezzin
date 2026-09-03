@@ -126,7 +126,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
               onClick={() => onChange(item.id)}
               onKeyDown={(e) => handleTabKeyDown(e, item.id)}
               className={`pb-4 text-xs font-medium tracking-wide transition-all relative whitespace-nowrap ${
-                isActive ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)]/70'
+                isActive ? 'text-[var(--text-primary)] font-semibold' : 'text-muted hover:text-[var(--text-primary)]/70'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
             className={`px-8 py-3.5 rounded-[20px] transition-all duration-500 whitespace-nowrap text-2xs font-bold uppercase tracking-wide relative group ${
               isActive
                 ? 'text-[var(--text-primary)]'
-                : 'text-[var(--text-primary)]/20 hover:text-[var(--text-primary)]/50 hover:bg-[var(--text-primary)]/[0.02]'
+                : 'text-subtle hover:text-[var(--text-primary)]/50 hover:bg-[var(--text-primary)]/[0.02]'
             }`}
           >
             <span className="relative z-10">{item.label}</span>

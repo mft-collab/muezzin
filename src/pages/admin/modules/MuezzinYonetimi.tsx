@@ -300,7 +300,7 @@ export default function MuezzinYonetimi() {
  // ana liste butonundaki AYNI düzeltme) — statik "Sil" etiketi ikinci
  // durumda yanıltıcıydı.
  aria-label={m.isInvite ? 'Daveti sil' : 'Personeli arşive al'}
- className="p-3 bg-[var(--text-primary)]/5 text-[var(--text-secondary)]/30 rounded-xl border border-[var(--text-primary)]/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
+ className="p-3 bg-[var(--text-primary)]/5 text-muted rounded-xl border border-[var(--text-primary)]/5 hover:text-rose-500 hover:border-rose-500/20 transition-all shadow-sm"
  >
  <Trash2 size={16} />
  </motion.button>
@@ -369,7 +369,7 @@ export default function MuezzinYonetimi() {
  <span className={`relative inline-flex rounded-full h-2 w-2 ${m.fcmToken ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-[var(--text-primary)]/10'}`} />
  </div>
  <span className={`text-2xs font-bold tracking-wide uppercase transition-colors duration-500 ${
- m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-[var(--text-secondary)]/35'
+ m.fcmToken ? 'text-[var(--dynamic-aura,var(--aura-indigo))]/85' : 'text-muted'
  }`}>
  {m.fcmToken ? 'Bildirim Aktif' : 'Bildirim Kapalı'}
  </span>
@@ -402,7 +402,7 @@ export default function MuezzinYonetimi() {
  </span>
  )}
  <span className={`px-2.5 py-1 rounded-md text-2xs font-bold tracking-wide uppercase border shadow-sm ${
- m.role === 'admin' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20' : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)]/50 border-[var(--glass-border)]'
+ m.role === 'admin' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border-[var(--dynamic-aura,var(--aura-indigo))]/20' : 'bg-[var(--text-primary)]/[0.02] text-muted border-[var(--glass-border)]'
  }`}>
  {m.role === 'admin' ? 'YÖNETİCİ' : m.role === 'gozlemci' ? 'GÖZLEMCİ' : 'MÜEZZİN'}
  </span>
@@ -429,7 +429,7 @@ export default function MuezzinYonetimi() {
  <div className="flex justify-between items-center">
  <p className="premium-label !text-2xs !opacity-35 uppercase tracking-wide">HİZMET VERİMİ</p>
  <span className={`text-2xs font-bold tabular-nums ${
- !isOperationalMuezzin ? 'text-[var(--text-secondary)]/40' :
+ !isOperationalMuezzin ? 'text-muted' :
  efficiency >= 70 ? 'text-emerald-500' : efficiency >= 40 ? 'text-amber-500' : 'text-rose-500'
  }`}>
  {isOperationalMuezzin ? `%${Math.round(efficiency)}` : 'Kadro dışı'}
@@ -479,7 +479,7 @@ export default function MuezzinYonetimi() {
       whileTap={{ scale: 0.9 }}
       onClick={() => openEdit(m)}
       aria-label="Personeli düzenle"
-      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer"
+      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-[var(--text-primary)] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer"
       >
       <Edit2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>
@@ -505,7 +505,7 @@ export default function MuezzinYonetimi() {
       // başlığı ("ARŞİVE AL") ve metniyle çelişiyordu (bkz. kod denetimi
       // bulgusu).
       aria-label="Personeli arşive al"
-      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-[var(--text-secondary)]/40 hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
+      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
       >
       <Trash2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>

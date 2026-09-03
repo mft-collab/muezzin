@@ -63,9 +63,9 @@ const CompactCompassDial = React.memo(({ dialRef, qiblaAngle }: CompassDialProps
     >
       {/* 4 Cardinal Directions only for Apple HIG Widget Minimalism */}
       <span className="absolute top-3.5 text-2xs font-bold text-[var(--aura-ruby)] tracking-wide">K</span>
-      <span className="absolute right-4.5 text-2xs font-bold text-[var(--text-secondary)]/50">D</span>
-      <span className="absolute bottom-3.5 text-2xs font-bold text-[var(--text-secondary)]/50">G</span>
-      <span className="absolute left-4.5 text-2xs font-bold text-[var(--text-secondary)]/50">B</span>
+      <span className="absolute right-4.5 text-2xs font-bold text-muted">D</span>
+      <span className="absolute bottom-3.5 text-2xs font-bold text-muted">G</span>
+      <span className="absolute left-4.5 text-2xs font-bold text-muted">B</span>
 
       {/* Astro-Geometric Rings */}
       <div className="absolute w-[80%] h-[80%] rounded-full border border-[var(--glass-border)] opacity-10" />
@@ -464,7 +464,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           }}
         />
 
-        <p className="text-2xs text-[var(--text-secondary)]/50 tracking-[0.18em] uppercase font-bold mb-1">
+        <p className="text-2xs text-muted tracking-[0.18em] uppercase font-bold mb-1">
           Hassas Yön Tayini
         </p>
         <div className="flex items-center gap-1.5">
@@ -478,7 +478,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
               disabled={gpsLoading}
               aria-label="Konumu yenile"
               title="Konumu yenile"
-              className="p-1 rounded-full text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer disabled:opacity-40 border-none bg-transparent"
+              className="p-1 rounded-full text-muted hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer disabled:opacity-40 border-none bg-transparent"
             >
               <RotateCw size={11} className={gpsLoading ? 'animate-spin' : ''} />
             </button>
@@ -616,13 +616,13 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
             çıkabilir — bu, HİZALANDI eşiğinden (3.5°) büyük olabilir (bkz.
             Kıble Pusulası mimari denetimi). Harici bir jeomanyetik model
             olmadan düzeltilemez; kullanıcıya tolerans bırakması söylenir. */}
-        <p className="text-2xs text-[var(--text-secondary)]/40 font-light text-center max-w-[260px] mt-4 leading-relaxed">
+        <p className="text-2xs text-muted font-light text-center max-w-[260px] mt-4 leading-relaxed">
           Manyetik pusulalar birkaç derece sapabilir — kesin yön için ±5° tolerans bırakın ve telefonu metal eşyalardan uzak tutun.
         </p>
 
         {/* Live Heading status when sensors active */}
         {headingState !== null && (
-          <span className="text-2xs text-[var(--text-secondary)]/30 uppercase tracking-widest font-mono mt-6">
+          <span className="text-2xs text-muted uppercase tracking-widest font-mono mt-6">
             Pusula Sapma Açısı: {Math.round(headingState)}° • Kabe Bağıl Açısı: {Math.round(needleRotation)}°
           </span>
         )}

@@ -225,7 +225,7 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
             type="button"
             disabled={!onayHazir}
             onClick={handleSifirla}
-            className="flex-1 bg-rose-600 disabled:bg-[var(--text-primary)]/10 text-white disabled:text-[var(--text-secondary)]/40 text-2xs font-bold uppercase tracking-wide py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:cursor-not-allowed"
+            className="flex-1 bg-rose-600 disabled:bg-[var(--text-primary)]/10 text-white disabled:text-muted text-2xs font-bold uppercase tracking-wide py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:cursor-not-allowed"
           >
             <Trash2 size={16} />
             {calisiyor ? 'SİLİNİYOR...' : 'KALICI OLARAK SİL'}

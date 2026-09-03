@@ -99,10 +99,10 @@ export const SistemDenetimSekmesi = React.memo(({ formatDate }: { formatDate: (t
                   </div>
                 </div>
                 <div className="text-right sm:flex-shrink-0">
-                  <span className="text-2xs text-[var(--text-secondary)]/50 font-bold block">
+                  <span className="text-2xs text-muted font-bold block">
                     {formatDate(log.timestamp)}
                   </span>
-                  <span className="text-2xs text-[var(--text-secondary)]/20 font-mono block mt-1">
+                  <span className="text-2xs text-muted font-mono block mt-1">
                     LOG ID: {log.id}
                   </span>
                 </div>

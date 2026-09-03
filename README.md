@@ -28,6 +28,7 @@ PWA tabanlı, tamamen ücretsiz (Firebase Spark plan) çalışan ezan nöbet yö
 - `FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485`: Firebase Admin için JSON anahtarı.
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON`: GitHub Actions için gereken Google servis hesabı anahtarı.
 - `VITE_FCM_VAPID_KEY`: Firebase Console → Proje Ayarları → Cloud Messaging → Web push sertifikaları'ndan alınan public key. Build zamanında `.github/workflows/test.yml`'in `build_and_deploy` job'ı tarafından gömülür; tanımlı değilse push bildirimleri devre dışı kalır (bkz. `src/hooks/useFcmToken.ts`).
+- `VITE_RECAPTCHA_SITE_KEY`: Firebase Console → Proje Ayarları → App Check → reCAPTCHA Enterprise site key (public, güvenle gömülür). App Check'i etkinleştirir; tanımlı değilse App Check istemci tarafında hiç başlatılmaz (bkz. `src/lib/firebase.ts`). Şu an yalnızca İZLEME modunda — Firebase Console'da "Enforce" açılmadan hiçbir isteği reddetmez.
 
 ## Otomasyon Takvimi
 GitHub Actions cron ifadeleri her zaman UTC'dir; Türkiye saati UTC+3'tür (yaz/kış saati uygulanmaz).

@@ -67,7 +67,7 @@ function SelfCheckCard({ icon: Icon, idleIconColorClass, title, subtitle, state,
           </div>
           <div>
             <h5 className="text-xs font-semibold text-[var(--text-primary)]">{title}</h5>
-            <p className="text-2xs text-[var(--text-secondary)]/50">{subtitle}</p>
+            <p className="text-2xs text-muted">{subtitle}</p>
           </div>
         </div>
 
@@ -284,7 +284,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
             )}
             {dbTestState === 'idle' && (
-              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-muted leading-relaxed font-light">
                 Veritabanı bağlantı hızını ve canlı veri kanallarındaki toplam listener yükünü anlık denetler.
               </p>
             )}
@@ -329,7 +329,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
             )}
             {fcmTestState === 'idle' && (
-              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-muted leading-relaxed font-light">
                 Tarayıcı anlık bildirim izinlerini sorgular. Görev uyarısı dağıtımları için kritiktir.
               </p>
             )}
@@ -382,7 +382,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               </div>
             )}
             {pwaTestState === 'idle' && (
-              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-muted leading-relaxed font-light">
                 Çevrimdışı önbellek durumunu denetler ve arka planda yeni bir güncelleme paketi olup olmadığını sorgular.
               </p>
             )}
@@ -427,7 +427,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-2xs">
                 <span className="text-[var(--text-secondary)]/60">Eşitleme Kuyruğu (Outbox):</span>
-                <span className={`font-semibold ${syncState === 'pending' ? 'text-amber-400 font-bold animate-pulse' : syncState === 'checking' ? 'text-[var(--text-secondary)]/50' : 'text-emerald-400'}`}>
+                <span className={`font-semibold ${syncState === 'pending' ? 'text-amber-400 font-bold animate-pulse' : syncState === 'checking' ? 'text-muted' : 'text-emerald-400'}`}>
                   {syncState === 'pending' ? 'Eşitleme Bekleyen İşlemler Var' : syncState === 'checking' ? 'Sorgulanıyor...' : 'Tüm Veriler Eşitlendi ✓'}
                 </span>
               </div>
@@ -441,7 +441,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
               )}
             </div>
             {networkTestState === 'idle' && (
-              <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light">
+              <p className="text-2xs text-muted leading-relaxed font-light">
                 Cihazın internet gecikmesini test eder ve Firebase'e yazılmış ancak henüz sunucuya ulaşmamış bekleyen çevrimdışı işlemleri doğrular.
               </p>
             )}
@@ -468,21 +468,21 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-1">
-            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">İşletim Sistemi</span>
+            <span className="text-2xs text-muted font-bold uppercase tracking-wider block">İşletim Sistemi</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? ((navigator as NavigatorWithUAData).userAgentData?.platform || navigator.platform || 'Algılanamadı') : 'Bilinmiyor'}</span>
           </div>
           <div className="space-y-1">
-            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Ekran Çözünürlüğü</span>
+            <span className="text-2xs text-muted font-bold uppercase tracking-wider block">Ekran Çözünürlüğü</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'Bilinmiyor'}</span>
           </div>
           <div className="space-y-1">
-            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Çevrimiçi Durumu</span>
+            <span className="text-2xs text-muted font-bold uppercase tracking-wider block">Çevrimiçi Durumu</span>
             <span className={`text-xs font-bold uppercase ${typeof navigator !== 'undefined' && navigator.onLine ? 'text-emerald-400' : 'text-rose-400'}`}>
               {typeof navigator !== 'undefined' && navigator.onLine ? 'BAĞLI' : 'ÇEVRİMDIŞI'}
             </span>
           </div>
           <div className="space-y-1">
-            <span className="text-2xs text-[var(--text-secondary)]/40 font-bold uppercase tracking-wider block">Dil / Yerel Ayar</span>
+            <span className="text-2xs text-muted font-bold uppercase tracking-wider block">Dil / Yerel Ayar</span>
             <span className="text-xs font-medium text-[var(--text-primary)]">{typeof navigator !== 'undefined' ? navigator.language : 'tr-TR'}</span>
           </div>
         </div>
@@ -495,10 +495,10 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
           className="w-full p-4 sm:p-5 flex items-center justify-between bg-[var(--text-primary)]/[0.01] hover:bg-[var(--text-primary)]/[0.02] transition-colors text-left"
         >
           <div className="flex items-center gap-2.5">
-            <Terminal size={16} className="text-[var(--text-secondary)]/50" />
+            <Terminal size={16} className="text-muted" />
             <h5 className="text-xs font-semibold text-[var(--text-secondary)]/70">Geliştirici Sandbox & Test Araçları</h5>
           </div>
-          <div className="text-[var(--text-secondary)]/40">
+          <div className="text-muted">
             {showSandbox ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         </button>

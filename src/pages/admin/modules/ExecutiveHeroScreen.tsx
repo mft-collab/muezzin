@@ -472,7 +472,7 @@ export default function ExecutiveHeroScreen({
  
  <motion.div
  animate={{ rotate: isExpanded ? 90 : 0 }}
- className="text-[var(--text-primary)]/20 group-hover:text-[var(--text-primary)]/40 transition-colors"
+ className="text-subtle group-hover:text-faint transition-colors"
  >
  <ChevronRight size={18} />
  </motion.div>

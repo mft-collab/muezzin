@@ -103,6 +103,10 @@ jobs:
           # repo ayarlarında tanımlı değilse push bildirimleri sessizce
           # devre dışı kalır (bkz. src/hooks/useFcmToken.ts).
           VITE_FCM_VAPID_KEY: ${{ secrets.VITE_FCM_VAPID_KEY }}
+          # Tanımsızsa App Check istemci tarafında hiç başlatılmaz (bkz.
+          # src/lib/firebase.ts) — eksik olması derlemeyi kırmaz, yalnızca
+          # App Check pasif kalır.
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
       # vite.config.ts'te sourcemap:'hidden' — .map dosyaları dist/'te üretilir
       # ama firebase.json'un hosting.ignore'u nedeniyle deploy'a dahil edilmez
       # (public'e sızmaz). Prod'daki bir hatanın minified stack trace'ini

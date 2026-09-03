@@ -97,7 +97,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  <button
  onClick={() => onClose(id)}
  aria-label="Kapat"
- className="flex-shrink-0 p-1 rounded-lg transition-colors text-[var(--text-secondary)]/20 hover:text-[var(--text-secondary)]/60"
+ className="flex-shrink-0 p-1 rounded-lg transition-colors text-muted hover:text-[var(--text-secondary)]/60"
  >
  <X size={14} />
  </button>

@@ -16,7 +16,7 @@
  * Desen tests/e2e/seed-haftalik-plan.ts ile aynı.
  */
 import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
 
@@ -64,6 +64,17 @@ async function seed() {
     displayName: 'E2E Sifirlama Admin', email: `${ADMIN_UID}@example.test`, role: 'admin',
     aktif: true, photoURL: '', fcmToken: null, aylikVakitSayisi: 0
   });
+  // Operasyonel veri sıfırlama artık sıradan admin'e değil yalnızca
+  // config/bootstrap.superAdminEmails listesindeki süper-admin'e açık (bkz.
+  // premium denetim P1.6, VeriSifirlamaModal.tsx). Bu e2e akış "TEHLİKELİ
+  // BÖLGE" düğmesinin gerçekten silme yaptığını doğruladığı için test
+  // kullanıcısının süper-admin olması gerekiyor — merge:true ile yazılır ki
+  // aynı koşuda önce çalışan başka bir seed'in (bkz. scripts/
+  // firestore-rules-tests.ts'teki 'superadmin@example.test' gibi) bootstrap
+  // dokümanındaki diğer alanlarını/e-postalarını SİLMESİN.
+  await db.collection('config').doc('bootstrap').set({
+    superAdminEmails: FieldValue.arrayUnion(`${ADMIN_UID}@example.test`)
+  }, { merge: true });
 
   await ensureUser(MUEZZIN_UID, 'E2E Sifirlama Kisi');
   await db.collection('muezzins').doc(MUEZZIN_UID).set({

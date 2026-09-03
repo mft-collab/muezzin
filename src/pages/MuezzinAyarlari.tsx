@@ -127,7 +127,7 @@ export default function MuezzinAyarlari() {
                   <p className="text-2xs text-[var(--text-secondary)]/75 mt-1">Bu cihazdaki aktif oturumu sonlandırır</p>
                 </div>
               </div>
-              <ShieldCheck size={16} className="text-[var(--text-secondary)]/25" />
+              <ShieldCheck size={16} className="text-muted" />
             </button>
           </div>
         </motion.section>

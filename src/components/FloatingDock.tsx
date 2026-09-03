@@ -300,7 +300,7 @@ export function FloatingDock() {
                   className={`relative min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3 rounded-[16px] sm:rounded-[20px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
                     isActive
                       ? 'text-[var(--dynamic-aura,var(--aura-indigo))] scale-110'
-                      : 'text-[var(--text-primary)]/30 hover:text-[var(--text-primary)]/60'
+                      : 'text-faint hover:text-[var(--text-primary)]/60'
                   }`}
                 >
                   <div className="relative z-10 transition-transform duration-500">

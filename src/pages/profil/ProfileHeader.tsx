@@ -153,7 +153,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  whileHover={{ scale: 1.05, y: -1, backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.95 }}
  onClick={() => { setEditMode(false); setNewName(userData?.displayName || ''); setUpdateError(null); }}
- className="px-5 py-2.5 bg-[var(--text-primary)]/[0.05] border border-[var(--text-primary)]/10 text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide transition-all"
+ className="px-5 py-2.5 bg-[var(--text-primary)]/[0.05] border border-[var(--text-primary)]/10 text-muted hover:text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide transition-all"
  >
  İPTAL
  </motion.button>
@@ -176,7 +176,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  aria-label="İsmi düzenle"
  className="w-12 h-12 shrink-0 flex items-center justify-center bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl transition-all shadow-lg"
  >
- <Edit3 size={18} className="text-[var(--text-secondary)]/40" />
+ <Edit3 size={18} className="text-muted" />
  </motion.button>
  </div>
  )}

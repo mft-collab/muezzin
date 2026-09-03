@@ -201,7 +201,7 @@ export default function SistemAyarlari() {
              value={ilceId}
              onChange={(e) => setIlceId(e.target.value)}
              inputMode="numeric"
-             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/30 placeholder:italic placeholder:font-normal"
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-muted placeholder:italic placeholder:font-normal"
              placeholder="9148"
              required
            />
@@ -216,7 +216,7 @@ export default function SistemAyarlari() {
              type="text"
              value={ilceAdi}
              onChange={(e) => setIlceAdi(e.target.value)}
-             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-[var(--text-secondary)]/30 placeholder:italic placeholder:font-normal"
+             className="w-full bg-[var(--surface-medium)] border border-[var(--glass-border)] rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 outline-none transition-colors placeholder:text-muted placeholder:italic placeholder:font-normal"
              placeholder="Ceyhan"
              required
            />

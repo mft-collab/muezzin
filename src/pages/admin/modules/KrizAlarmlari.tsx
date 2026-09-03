@@ -243,7 +243,7 @@ export default function KrizAlarmlari() {
  {/* Content Matrix */}
  <div className="flex-1 flex flex-col gap-2">
  <div className="flex items-center gap-4">
- <span className={`authority-title !text-2xs font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : styles.typeText}`}>
+ <span className={`authority-title !text-2xs font-bold tracking-wide uppercase ${alarm.cozuldu ? 'text-muted' : styles.typeText}`}>
  {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' :
  alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' :
  alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' :
@@ -262,7 +262,7 @@ export default function KrizAlarmlari() {
  <div className="flex items-center gap-4 mt-1">
  <div className="flex items-center gap-2">
  <span className="authority-title !text-2xs opacity-20 uppercase tracking-wide">TARİH/VAKİT</span>
- <span className={`text-2xs font-bold tracking-wide ${alarm.cozuldu ? 'text-[var(--text-secondary)]/30' : 'text-[var(--text-secondary)]/60'}`}>
+ <span className={`text-2xs font-bold tracking-wide ${alarm.cozuldu ? 'text-muted' : 'text-[var(--text-secondary)]/60'}`}>
  {/* alarm.tarih bir "YYYY-MM-DD" tarih-anahtarı string'i — new Date(...)
  UTC gece yarısı olarak ayrıştırır (Türkiye'nin sabit UTC+3'ü nedeniyle
  bugün görünürde zararsız ama farklı bir TZ'de yanlış günü gösterir),
@@ -274,7 +274,7 @@ export default function KrizAlarmlari() {
  </div>
  </div>
 
- <p className={`text-base font-light leading-relaxed mt-2 max-w-4xl ${alarm.cozuldu ? 'text-[var(--text-secondary)]/20' : 'text-[var(--text-secondary)]/60 italic'}`}>
+ <p className={`text-base font-light leading-relaxed mt-2 max-w-4xl ${alarm.cozuldu ? 'text-muted' : 'text-[var(--text-secondary)]/60 italic'}`}>
  "{alarm.mesaj}"
  </p>
  </div>
@@ -300,7 +300,7 @@ export default function KrizAlarmlari() {
  whileTap={{ scale: 0.98 }}
  disabled={resolvingId === alarm.id}
  onClick={() => handleResolveRequest(alarm)}
- className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)] transition-all border border-[var(--glass-border)] rounded-2xl"
+ className="px-8 py-5 text-2xs font-bold uppercase tracking-wide text-muted hover:text-[var(--text-primary)] transition-all border border-[var(--glass-border)] rounded-2xl"
  >
  {resolvingId === alarm.id ? 'İŞLENİYOR...' : 'ÇÖZÜLDÜ OLARAK İŞARETLE'}
  </motion.button>

@@ -76,7 +76,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
   const titleColorClass = isUser
     ? isFriday ? 'text-emerald-400 opacity-100 font-semibold' : isAsil ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100 font-semibold' : 'text-amber-400 opacity-100 font-semibold'
     : isUnassigned
-    ? 'text-[var(--text-primary)]/40'
+    ? 'text-faint'
     : 'opacity-35';
 
   const dotColorClass = isUser
@@ -92,8 +92,8 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
       ? 'bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))] via-[var(--dynamic-aura,var(--aura-indigo))] to-violet-700 text-[var(--text-primary)] shadow-lg border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
       : 'bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-[var(--text-primary)] shadow-lg border-amber-400/30'
     : isUnassigned
-    ? 'bg-[var(--text-primary)]/[0.01] text-[var(--text-primary)]/20 border-[var(--text-primary)]/[0.03] border-dashed'
-    : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/40 border-[var(--text-primary)]/[0.06]';
+    ? 'bg-[var(--text-primary)]/[0.01] text-subtle border-[var(--text-primary)]/[0.03] border-dashed'
+    : 'bg-[var(--text-primary)]/[0.03] text-faint border-[var(--text-primary)]/[0.06]';
 
   const badgeText = isAsil ? 'ASİL KADRO' : 'DESTEK KUVVET';
   const badgeClass = isAsil 

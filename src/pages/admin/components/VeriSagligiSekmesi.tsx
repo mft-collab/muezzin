@@ -134,7 +134,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  {/* List of Detected Issues */}
  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
  {loading ? (
- <div className="py-16 text-center text-xs text-[var(--text-secondary)]/50 tracking-wider">
+ <div className="py-16 text-center text-xs text-muted tracking-wider">
  Veritabanı taranıyor, lütfen bekleyin...
  </div>
  ) : auditError ? (
@@ -146,7 +146,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  <pre className="text-2xs font-mono bg-black/40 p-4 rounded-xl text-rose-300 max-h-24 overflow-y-auto border border-rose-500/10 max-w-lg mx-auto text-left leading-relaxed">
  {auditError}
  </pre>
- <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed max-w-sm mx-auto">
+ <p className="text-2xs text-muted leading-relaxed max-w-sm mx-auto">
  Bu hata genellikle yetki sınırlarından (Missing or insufficient permissions) veya internet bağlantı uyuşmazlıklarından kaynaklanır. Firebase Firestore kurallarında bu koleksiyonları listeleme izniniz olduğundan emin olun.
  </p>
  </div>
@@ -182,7 +182,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  }`}>
  {err.severity === 'critical' ? 'Kritik Hata' : 'Uyarı'}
  </span>
- <span className="text-2xs font-bold text-[var(--text-secondary)]/30 tracking-wide uppercase">
+ <span className="text-2xs font-bold text-muted tracking-wide uppercase">
  Kategori: {err.category}
  </span>
  </div>
@@ -210,7 +210,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  </span>
  <button 
  onClick={() => setShowLogs(false)} 
- className="text-2xs text-[var(--text-secondary)]/50 hover:text-[var(--text-primary)] transition-colors uppercase tracking-wide font-bold"
+ className="text-2xs text-muted hover:text-[var(--text-primary)] transition-colors uppercase tracking-wide font-bold"
  >
  GİZLE
  </button>

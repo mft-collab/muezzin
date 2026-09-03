@@ -61,7 +61,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  
  <div className="flex items-baseline gap-1">
  <span className="text-4xl font-light text-[var(--text-primary)] tracking-tight tabular-nums">{userData?.aylikVakitSayisi || 0}</span>
- <span className="text-2xs font-bold text-[var(--text-primary)]/40 tracking-wide uppercase"> Vakit</span>
+ <span className="text-2xs font-bold text-faint tracking-wide uppercase"> Vakit</span>
  </div>
  </div>
  

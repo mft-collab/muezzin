@@ -80,6 +80,18 @@
   --text-secondary: hsl(210, 15%, 34%);  /* Soft Graphite Dark Muted for WCAG AA */
   --aura-opacity: 0.16;
 
+  /* text-muted/subtle/faint (P2.6): aşağıdaki 60 satırlık escape-hatch
+     selector yığınının (text-[var(--text-secondary)]/NN gibi Tailwind
+     keyfi-opaklık sınıflarını yakalayıp WCAG-güvenli bir tabana sabitleyen
+     [data-theme='light'] .text-\[...\]/NN blokları) yerini alan üç
+     semantik token. Değerler BİREBİR aynı — davranış değişmedi, yalnızca
+     ~120 çağrı noktasının artık `text-[var(--text-secondary)]/30` yerine
+     tek, anlamlı bir sınıf (`text-muted`) yazması sağlandı (bkz. premium
+     denetim, bölüm 1/P2.6). */
+  --text-muted-opacity: 0.85;
+  --text-subtle-opacity: 0.55;
+  --text-faint-opacity: 0.75;
+
   /* Sinir çizgileri aydinlik modda netlik için belirginlestirildi */
   --glass-border: hsla(210, 15%, 10%, 0.08);
   --spatial-shadow: 0 4px 12px rgba(0, 0, 0, 0.015), 0 20px 32px -8px rgba(0, 0, 0, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -178,6 +190,10 @@
   --text-primary: hsl(var(--bg-h), 12%, 98%);
   --text-secondary: hsl(var(--bg-h), 16%, 72%);
   --aura-opacity: 0.28;
+  /* bkz. [data-theme='light'] bloğundaki text-muted/subtle/faint yorumu */
+  --text-muted-opacity: 0.8;
+  --text-subtle-opacity: 0.4;
+  --text-faint-opacity: 0.55;
   --glass-border: rgba(255, 255, 255, 0.09);
   --spatial-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(0, 0, 0, 0.2), 0 4px 24px -1px rgba(0, 0, 0, 0.03), 0 20px 40px -12px rgba(0, 0, 0, 0.65);
 
@@ -891,57 +907,31 @@
   will-change: transform;
 }
 
-/* Boost low-contrast text primary/secondary opacities in her iki modda da.
-   Ölçüm: text-secondary/30-50 önceki 0.70 değeriyle ışık modunda yalnızca 3.33:1
-   veriyordu, /20-35 için 0.55 ise 2.46:1 — ikisi de WCAG AA 4.5:1'in altında.
-   0.85 floor'u her iki modda da ≥4.5:1 sağlıyor (bkz. tasarım denetimi). Koyu modda
-   bu utility'ler daha önce hiç düzeltilmiyordu (aynı problem orada da vardı). */
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/20,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/25,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/30,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/35,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/40,
-[data-theme='light'] .text-\[var\(--text-secondary\)\]\/50 {
-  color: var(--text-secondary) !important;
-  opacity: 0.85 !important;
+/* text-muted/text-subtle/text-faint tanımları için bkz. [data-theme='light']
+   bloğundaki --text-muted-opacity vd. yorumu (P2.6) — bu üç @utility, ölçülen
+   AYNI WCAG-güvenli opaklık tabanlarını (text-secondary/30-50 önceki 0.70
+   değeriyle ışık modunda 3.33:1, /20-35 için 0.55 ile 2.46:1 veriyordu; 0.85
+   floor'u ≥4.5:1 sağlıyor, bkz. tasarım denetimi) artık escape-hatch selector
+   yığını yerine sınıf adıyla ifade eder; davranış birebir aynı. */
+@utility text-muted {
+  color: var(--text-secondary);
+  opacity: var(--text-muted-opacity);
 }
 
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/20,
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/25,
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/30,
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/35,
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/40,
-[data-theme='dark'] .text-\[var\(--text-secondary\)\]\/50 {
-  color: var(--text-secondary) !important;
-  opacity: 0.8 !important;
+@utility text-subtle {
+  color: var(--text-primary);
+  opacity: var(--text-subtle-opacity);
 }
 
-[data-theme='light'] .text-\[var\(--text-primary\)\]\/10,
-[data-theme='light'] .text-\[var\(--text-primary\)\]\/15,
-[data-theme='light'] .text-\[var\(--text-primary\)\]\/20 {
-  color: var(--text-primary) !important;
-  opacity: 0.55 !important;
+@utility text-faint {
+  color: var(--text-primary);
+  opacity: var(--text-faint-opacity);
 }
 
-[data-theme='dark'] .text-\[var\(--text-primary\)\]\/10,
-[data-theme='dark'] .text-\[var\(--text-primary\)\]\/15,
-[data-theme='dark'] .text-\[var\(--text-primary\)\]\/20 {
-  color: var(--text-primary) !important;
-  opacity: 0.4 !important;
-}
-
-[data-theme='light'] .text-\[var\(--text-primary\)\]\/30,
-[data-theme='light'] .text-\[var\(--text-primary\)\]\/40 {
-  color: var(--text-primary) !important;
-  opacity: 0.75 !important;
-}
-
-[data-theme='dark'] .text-\[var\(--text-primary\)\]\/30,
-[data-theme='dark'] .text-\[var\(--text-primary\)\]\/40 {
-  color: var(--text-primary) !important;
-  opacity: 0.55 !important;
-}
-
+/* text-primary/70,/80 BİLEREK bu üçlüye dahil edilmedi: koyu modda hiç
+   override edilmiyor (native /70=0.7, /80=0.8 farklı kalıyor) — tek bir
+   token'a sıkıştırmak koyu moddaki bu iki değeri eşitleyip görünür bir
+   davranış değişikliğine yol açardı. */
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/70,
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/80 {
   color: var(--text-primary) !important;

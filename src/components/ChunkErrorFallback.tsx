@@ -123,7 +123,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           </p>
           <div className="flex flex-col gap-2">
             <span className="premium-label !text-2xs !opacity-30">{isOffline ? 'BAĞLANTI BEKLENİYOR' : 'OTOMATİK YENİLEME BAŞLATILDI'}</span>
-            <span className="text-2xs text-[var(--text-secondary)]/40 font-mono">Bileşen: {error.message.split('assets/').pop()}</span>
+            <span className="text-2xs text-muted font-mono">Bileşen: {error.message.split('assets/').pop()}</span>
           </div>
         </motion.div>
       </div>

@@ -68,7 +68,7 @@ function PersonelSecici({ label, systemSubLabel, roleSubLabel, value, onSelect, 
               onClick={() => onSelect(m.id)}
               className={`p-4 rounded-2xl flex items-center gap-3 transition-all border outline-none ${
                 isUnavailable
-                  ? 'bg-[var(--text-primary)]/[0.01] text-[var(--text-secondary)]/30 border-[var(--text-primary)]/5 opacity-50 cursor-not-allowed'
+                  ? 'bg-[var(--text-primary)]/[0.01] text-muted border-[var(--text-primary)]/5 opacity-50 cursor-not-allowed'
                   : isSelected
                     ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
                     : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10'
@@ -377,7 +377,7 @@ export default function HaftalikCizelge() {
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3">
                             {asilIsSistem ? (
-                              <Bot size={11} strokeWidth={1.7} className="text-[var(--text-secondary)]/40 shrink-0" />
+                              <Bot size={11} strokeWidth={1.7} className="text-muted shrink-0" />
                             ) : (
                               <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(asilBildirim?.durum)}`} />
                             )}

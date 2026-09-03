@@ -232,7 +232,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">İZİN & MAZERET TALEBİ</h4>
             </div>
-            <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed max-w-sm font-light">
+            <p className="text-2xs text-muted leading-relaxed max-w-sm font-light">
               {isReadOnly
                 ? GOZLEMCI_SALT_OKUMA_IPUCU
                 : 'Haftalık izin, yıllık izin ve mazeret taleplerinizi yönetici onayına iletmek için dokunun.'}
@@ -311,7 +311,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                     className={`py-3.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all duration-300 border cursor-pointer ${
                       tip === item.id 
                         ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
-                        : 'bg-transparent border-[var(--glass-border)] text-[var(--text-secondary)]/40 hover:text-[var(--text-primary)]'
+                        : 'bg-transparent border-[var(--glass-border)] text-muted hover:text-[var(--text-primary)]'
                     }`}
                   >
                     {item.label}
@@ -319,7 +319,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 ))}
               </div>
               {tip === 'yillik' && (
-                <p className="text-2xs text-[var(--text-secondary)]/50 font-light pt-1">
+                <p className="text-2xs text-muted font-light pt-1">
                   Bu yıl için kalan yıllık izin kotanız: <span className="font-bold text-[var(--text-primary)]/70">{yillikKalanKota} / {YILLIK_IZIN_KOTASI} gün</span>
                 </p>
               )}
@@ -395,7 +395,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
       {/* Leave Requests History (Bento Flow) */}
       <div className="space-y-4">
         <div className="flex items-center gap-3 pl-2">
-          <Calendar size={16} className="text-[var(--text-secondary)]/40" />
+          <Calendar size={16} className="text-muted" />
           <h4 className="premium-label !text-2xs !opacity-70 tracking-wide uppercase">İzin Taleplerim ve Durum Akışı</h4>
         </div>
 
@@ -406,7 +406,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
         ) : talepler.length === 0 ? (
           <div className="p-8 text-center spatial-glass rounded-card border-dashed border-[var(--text-primary)]/5 flex flex-col items-center gap-3">
             <div className="w-11 h-11 rounded-[16px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
-              <Calendar size={18} className="text-[var(--text-primary)]/20" strokeWidth={1.5} />
+              <Calendar size={18} className="text-subtle" strokeWidth={1.5} />
             </div>
             <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>
           </div>
@@ -442,7 +442,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                         <span className="text-xs font-semibold text-[var(--text-primary)]">{typeLabel}</span>
                         <span className="text-2xs opacity-40 font-mono">({startFmt} - {endFmt})</span>
                       </div>
-                      <p className="text-2xs text-[var(--text-secondary)]/50 leading-relaxed font-light italic">
+                      <p className="text-2xs text-muted leading-relaxed font-light italic">
                         "{talep.sebep}"
                       </p>
                     </div>
@@ -465,7 +465,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                         className={`w-8 h-8 rounded-xl bg-transparent border flex items-center justify-center transition-all cursor-pointer ${
                           pendingDeleteId === talep.id
                             ? 'border-[var(--status-danger)]/50 text-[var(--status-danger)] animate-pulse'
-                            : 'border-[var(--text-primary)]/5 text-[var(--text-secondary)]/35 hover:text-[var(--status-danger)] hover:border-[var(--status-danger)]/25'
+                            : 'border-[var(--text-primary)]/5 text-muted hover:text-[var(--status-danger)] hover:border-[var(--status-danger)]/25'
                         }`}
                         title={pendingDeleteId === talep.id ? 'Onaylamak için tekrar tıklayın' : 'İptale tıklayın'}
                         aria-label={pendingDeleteId === talep.id ? 'Onaylamak için tekrar tıklayın' : 'İzin talebini iptal et'}
