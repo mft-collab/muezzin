@@ -21,15 +21,21 @@ export function useAktifSistemUyarisi(uid: string | undefined) {
   useEffect(() => {
     if (!uid) return;
 
+    // limit(1) DEĞİL: 'kotaUyarisi' (scripts/kotaKontrol.ts'in günlük Spark
+    // kota tahmini) saha müezzinini hiç ilgilendirmeyen, aksiyona
+    // dönüşmeyen teknik bir ihbardır — tek başına en güncel uyarı olsaydı
+    // gerçek bir arızayı (ör. zincirTukendi) sahadan GİZLERDİ. Bu yüzden
+    // birkaç kayıt okunup saha-dışı tipler eleniyor; sorgu aynı
+    // (cozuldu, olusturmaTarihi) index'ini kullanmaya devam ediyor.
     const q = query(
       collection(db, 'adminUyarilari'),
       where('cozuldu', '==', false),
       orderBy('olusturmaTarihi', 'desc'),
-      limit(1)
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const doc = snapshot.docs[0];
+      const doc = snapshot.docs.find((d) => (d.data() as AdminUyarisi).tip !== 'kotaUyarisi');
       setUyari(doc ? ({ id: doc.id, ...doc.data() } as AdminUyarisi & { id: string }) : null);
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'adminUyarilari');

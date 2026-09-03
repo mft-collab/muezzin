@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, ServerCrash, CalendarX, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, ServerCrash, CalendarX, RefreshCcw, Gauge } from 'lucide-react';
 import { AdminUyarisi } from '../types';
 
 interface SistemUyarisiBannerProps {
@@ -12,6 +12,12 @@ const BASLIKLAR: Record<AdminUyarisi['tip'], string> = {
   apiHatasi: 'DİZGE BAĞLANTI ARIZASI',
   planOlusturulamadi: 'PLANLAMA UYARISI',
   otomasyonHatasi: 'OTOMASYON HATASI',
+  // Normalde saha müezzinine hiç ULAŞMAZ — useAktifSistemUyarisi bu tipi
+  // bilerek eler (kota uyarısı saha tarafında aksiyona dönüşmeyen, yalnızca
+  // yöneticiyi ilgilendiren bir teknik ihbardır). Record<AdminUyarisi['tip']>
+  // eksiksiz olsun ve ileride eleme kaldırılırsa jenerik metne düşmesin diye
+  // yine de tanımlı.
+  kotaUyarisi: 'DİZGE KAPASİTE UYARISI',
 };
 
 function getIcon(tip: AdminUyarisi['tip']) {
@@ -20,6 +26,7 @@ function getIcon(tip: AdminUyarisi['tip']) {
     case 'apiHatasi': return <ServerCrash size={16} strokeWidth={1.5} />;
     case 'planOlusturulamadi': return <CalendarX size={16} strokeWidth={1.5} />;
     case 'otomasyonHatasi': return <RefreshCcw size={16} strokeWidth={1.5} />;
+    case 'kotaUyarisi': return <Gauge size={16} strokeWidth={1.5} />;
     default: return <AlertTriangle size={16} strokeWidth={1.5} />;
   }
 }

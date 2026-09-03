@@ -85,6 +85,11 @@ jobs:
     concurrency:
       group: deploy-production
       cancel-in-progress: false
+    # Yalnızca "Deploy'u etiketle" adımının git tag push edebilmesi için —
+    # varsayılan GITHUB_TOKEN izinleri repo ayarına göre salt-okuma olabilir
+    # (bkz. docs/RUNBOOK.md, rollback prosedürü bu tag'lere bağlı).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -116,3 +121,14 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
           PROJECT_ID: muezzin-c8485
+      # Deploy BAŞARILI olduktan SONRA (bu adımdan önceki adım başarısız
+      # olursa buraya hiç gelinmez) — her production deploy'unun hangi
+      # commit'e karşılık geldiğini işaretler. Rollback prosedürü
+      # (docs/RUNBOOK.md § 2) "son bilinen iyi" firestore.rules sürümünü
+      # bulmak için bu tag'lere bakar. Ayrı bir GitHub Release AÇILMAZ —
+      # yalnızca hafif bir git tag, gürültü/bildirim üretmez.
+      - name: Deploy'u etiketle
+        run: |
+          TAG="release-$(date -u +%Y%m%d-%H%M%S)"
+          git tag "$TAG"
+          git push origin "$TAG"

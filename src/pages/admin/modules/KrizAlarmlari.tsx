@@ -1,6 +1,6 @@
 import React from 'react';
 import { useKrizAlarmlariStore } from '../../../store/useKrizAlarmlariStore';
-import { AlertTriangle, ServerCrash, CalendarX, CheckCircle, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, ServerCrash, CalendarX, CheckCircle, RefreshCcw, Gauge } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -74,6 +74,10 @@ export default function KrizAlarmlari() {
  // olarak AYRI bir kategori (bkz. kod denetimi — önceden hepsi 'apiHatasi'
  // altında ayrıştırılamıyordu).
  case 'otomasyonHatasi': return <RefreshCcw size={24} />;
+ // scripts/kotaKontrol.ts — Spark planının günlük yazma kotasına dair
+ // TAHMİNİ erken uyarı. Bir arıza değil, "yazma hacmi anormal yükseldi"
+ // ihbarı olduğu için 'otomasyonHatasi'ndan ayrı bir kategori.
+ case 'kotaUyarisi': return <Gauge size={24} />;
  default: return <AlertTriangle size={24} />;
  }
  };
@@ -84,6 +88,9 @@ export default function KrizAlarmlari() {
  case 'apiHatasi': return 'amber';
  case 'planOlusturulamadi': return 'indigo';
  case 'otomasyonHatasi': return 'indigo';
+ // Kota uyarısı henüz bir kesinti değil, önlem alınacak bir eşik aşımı —
+ // 'amber' (izleme) tonu, 'rose' (kesinti) değil.
+ case 'kotaUyarisi': return 'amber';
  default: return 'rose';
  }
  };
@@ -240,11 +247,14 @@ export default function KrizAlarmlari() {
  {alarm.tip === 'zincirTukendi' ? 'VERİ ZİNCİRİ KESİNTİSİ' :
  alarm.tip === 'apiHatasi' ? 'API BAĞLANTI ARIZASI' :
  alarm.tip === 'planOlusturulamadi' ? 'PLANLAMA UYARISI' :
- alarm.tip === 'otomasyonHatasi' ? 'OTOMASYON HATASI' : 'NÖBET UYARISI'}
+ alarm.tip === 'otomasyonHatasi' ? 'OTOMASYON HATASI' :
+ alarm.tip === 'kotaUyarisi' ? 'KOTA UYARISI (TAHMİNİ)' : 'NÖBET UYARISI'}
  </span>
  {!alarm.cozuldu && (
  <div className={`px-3 py-1 rounded-xl ${styles.badgeBg} ${styles.badgeText} text-2xs font-bold tracking-wide border ${styles.badgeBorder} animate-pulse`}>
- ACİL MÜDAHALE
+ {/* Kota uyarısı henüz bir kesinti değil — "ACİL MÜDAHALE" rozeti
+ gerçek arızaların aciliyetini enflasyona uğratırdı. */}
+ {alarm.tip === 'kotaUyarisi' ? 'İZLEME GEREKİR' : 'ACİL MÜDAHALE'}
  </div>
  )}
  </div>

@@ -175,7 +175,10 @@ export interface VekaletTalebi {
 }
 
 export interface AdminUyarisi {
- tip: "zincirTukendi" | "apiHatasi" | "planOlusturulamadi" | "otomasyonHatasi";
+ /** 'kotaUyarisi' — scripts/kotaKontrol.ts'in günlük Spark kotası erken
+  * uyarısı; bir arıza DEĞİL, "yazma hacmi anormal yükseldi" ihbarıdır
+  * (bkz. o dosyanın başındaki TAHMİN/proxy açıklaması). */
+ tip: "zincirTukendi" | "apiHatasi" | "planOlusturulamadi" | "otomasyonHatasi" | "kotaUyarisi";
  mesaj: string;
  tarih: string;
  vakit: string | null;

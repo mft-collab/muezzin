@@ -1,0 +1,104 @@
+# Operasyonel Runbook — Müezzin Hizmet Dizgesi
+
+Bu doküman, production'da (`muezzin-c8485`) bir şeyler ters gittiğinde
+izlenecek adımları tarif eder. Hedef kitle: bu depoya erişimi olan
+(Firebase Console + GitHub Actions secrets) bir yönetici/geliştirici.
+
+Genel bağlam: `main`'e her push, testler geçtiyse doğrudan production'a
+deploy edilir (`.github/workflows/test.yml` → `build_and_deploy` job'ı) —
+ayrı bir staging/preview ortamı yoktur (bkz. premium denetim, bölüm 16).
+Bu yüzden geri alma (rollback) prosedürleri özellikle önemlidir.
+
+## 1. Hosting'i geri alma (statik dosyalar — JS/CSS/manifest)
+
+Firebase Hosting, son birkaç deploy'u saklar ve tek komutla geri almayı
+destekler:
+
+```bash
+firebase hosting:rollback --project muezzin-c8485
+```
+
+Alternatif (Firebase Console): **Hosting → Release history** → geri
+dönülecek sürümün yanındaki **⋮ → Rollback**.
+
+Bu komut yalnızca hosting'i (statik dosyaları) etkiler — `firestore.rules`
+ve `firestore.indexes.json` deploy'unu GERİ ALMAZ (aşağıya bakın).
+
+## 2. `firestore.rules`'u geri alma
+
+Firebase CLI'da rules için özel bir "rollback" komutu YOKTUR — her deploy
+tek yönlüdür. Hatalı bir rules deploy'unu düzeltmenin tek yolu, önceki
+GEÇERLİ sürümü yeniden deploy etmektir:
+
+1. Hangi commit'in "son bilinen iyi" durum olduğunu bul. Her başarılı
+   production deploy'u `release-YYYYMMDD-HHmmss` biçiminde bir git tag'i
+   bırakır (bkz. `test.yml`'deki `build_and_deploy` job'ı, "Deploy'u
+   etiketle" adımı) — `git tag -l 'release-*' --sort=-creatordate | head`
+   ile en son etiketleri, `git log --oneline <tag>` ile o andaki
+   `firestore.rules` içeriğini görebilirsin.
+2. O tag'teki `firestore.rules` dosyasını geçici bir worktree'ye çıkar:
+   ```bash
+   git show <tag>:firestore.rules > /tmp/firestore.rules.rollback
+   ```
+3. Yalnızca rules'u (hosting'e veya indexes'e dokunmadan) yeniden deploy et:
+   ```bash
+   cp /tmp/firestore.rules.rollback firestore.rules
+   firebase deploy --only firestore:rules --project muezzin-c8485
+   git checkout -- firestore.rules   # yerel çalışma kopyasını temizle
+   ```
+4. Kalıcı düzeltme için: `main`'de düzeltmeyi içeren yeni bir commit/PR aç
+   — bu geçici deploy bir sonraki `main` push'unda otomatik olarak
+   ÜZERİNE YAZILIR, bu yüzden yalnızca acil durdurma amaçlıdır.
+
+**Önemli**: rules'ta bir hata canlı veri erişimini KİLİTLEYEBİLİR (örn.
+yanlışlıkla `allow read, write: if false` bırakmak) — bu durumda kullanıcı
+raporları/hata izleme (`error_logs`, admin panelinde "Sistem Hataları")
+`PERMISSION_DENIED` patlaması olarak görünür. Şüphede kaldığında, önce
+son tag'teki rules'a dönüp sonra kök nedeni araştır.
+
+## 3. Kota tükenmesi (Firestore Spark plan)
+
+Belirtiler: uygulama genelinde ani `PERMISSION_DENIED` / `RESOURCE_EXHAUSTED`
+hataları, admin panelinde "Sistem Hataları"nda ani bir sıçrama.
+
+1. Firebase Console → **Usage and billing** → günlük okuma/yazma
+   grafiğine bak (kotaya ne kadar yaklaşıldığını gösterir).
+2. `error_logs`'un kendisinin kotayı tükettiğinden şüpheleniyorsan (bir
+   render döngüsünde tekrarlayan bir hata): `telemetryService.ts`'teki
+   `logError` dedup/rate-limit (imza başına oturum içi maks. 3, dizge
+   genelinde dakikada maks. 5 yazım — bkz. premium denetim P0.4) bunu
+   normalde önler; devre dışıysa/bozulduysa kök nedeni orada ara.
+3. Kısa vadeli hafifletme: `workflow_dispatch` ile tetiklenen 10 dakikalık
+   cron'ları (`mazeret-devirleri.yml`, `bildirim-gonder.yml`) GEÇİCİ olarak
+   GitHub Actions'tan devre dışı bırakmak (Actions sekmesi → workflow →
+   "Disable workflow") gün içindeki okuma/yazım hacmini azaltır — ama bu
+   kullanıcı deneyimini (mazeret devri, bildirimler) etkiler, yalnızca
+   gerçek bir kota krizinde başvur.
+4. Kalıcı çözüm kota sınırı DEĞİL kullanım paternidir — sınırsız
+   `onSnapshot` dinleyicileri veya tam-koleksiyon okumaları varsa
+   (bkz. premium denetim, bölüm 17) bunları daraltmak gerçek düzeltmedir.
+
+## 4. Cron/otomasyon kesintisi
+
+Her kritik cron (haftalık plan, günlük yatsı sonu, aylık takvim, mazeret
+devirleri) başarısız olduğunda `scripts/lib/reportWorkflowFailure.ts`
+`adminUyarilari`'na otomatik bir kayıt açar — admin panelinde "Kriz
+Uyarıları" sekmesinde görünür.
+
+1. Admin panel → Kriz Uyarıları'ndan hangi iş'in başarısız olduğunu gör.
+2. GitHub → Actions sekmesi → ilgili workflow → başarısız run'ın loglarına
+   bak (kök neden genelde burada).
+3. Kök nedeni düzeltip elle yeniden tetikle: Actions → ilgili workflow →
+   **Run workflow** (`workflow_dispatch` hepsinde tanımlı).
+4. `adminUyarilari` kaydını admin panelinden "çözüldü" olarak işaretle.
+
+## 5. Deploy sürüm geçmişi
+
+Her production deploy'u bir git tag'i bırakır (`release-YYYYMMDD-HHmmss`,
+bkz. `test.yml`). Belirli bir zamanda hangi kodun canlıda olduğunu görmek
+için:
+
+```bash
+git tag -l 'release-*' --sort=-creatordate | head -20
+git show <tag> --stat
+```

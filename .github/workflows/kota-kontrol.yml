@@ -1,0 +1,43 @@
+name: Kota Kullanım Kontrolü
+
+# Proje Firebase Spark planında (ücretsiz kota: 50K okuma / 20K yazma / gün)
+# ve kota tükendiğinde uygulama sessizce çalışmayı durdurur — hiç kimse
+# önceden haberdar olmaz (bkz. premium denetim P2.3). Bu iş, kotayı
+# gerçekten patlatabilecek tek yolu (kendi kendine tekrar eden makine
+# yazımları: error_logs + telemetry_logs) günde bir kez sayar ve anormal
+# bir sıçramada admin paneline uyarı bırakır. Ölçüm bir TAHMİNDİR —
+# gerekçesi ve sınırları scripts/kotaKontrol.ts başındaki yorumda.
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 Türkiye saati — diğer cron'ların yoğunlaştığı gece penceresinden
+    # (19:30-03:00 UTC: haftalık plan, yatsı sonu, vakit sağlığı, log
+    # temizliği) bilerek uzak. 24 saatlik pencere kayan olduğundan saatin
+    # kendisi ölçümü etkilemez; amaç admin'in güne uyarıyı görerek
+    # başlaması.
+    - cron: '0 5 * * *'
+
+jobs:
+  kota-kontrolu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Paketleri kur
+        run: npm ci
+      - name: Kota kullanımını tahmin et
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        # Script eşik aşımında BAŞARISIZ OLMAZ (uyarıyı kendisi
+        # adminUyarilari'na yazar) — buradaki failure() dalı yalnızca
+        # gerçek script/altyapı hataları için.
+        run: npm run kota:kontrol
+      - name: Başarısızlığı admin paneline bildir
+        if: failure()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowFailure.ts "Kota Kullanım Kontrolü"

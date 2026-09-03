@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
-import { Activity, Download } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { Activity, Download, Gauge } from 'lucide-react';
+import { collection, query, where, onSnapshot, getCountFromServer, Timestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { format, subDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -30,6 +30,16 @@ const GUN_KISALTMA: Record<string, string> = {
   Pazar: 'PAZ',
 };
 
+/**
+ * Kota sağlığı kartının sabitleri — scripts/kotaKontrol.ts'teki
+ * GUNLUK_YAZMA_KOTASI / ESIK_BELGE_SAYISI ile AYNI değerler olmalı; ikisi
+ * de aynı olayı (Spark yazma kotasına doğru anormal tırmanış) gösterir,
+ * biri günlük cron'da uyarı açar, diğeri admin panelinde canlı gösterir.
+ * Değeri değiştirirken iki dosyayı birlikte güncelle.
+ */
+const KOTA_GUNLUK_YAZMA = 20000;
+const KOTA_ESIK_BELGE = 2000;
+
 interface PersonnelStat {
   uid: string;
   displayName: string;
@@ -50,6 +60,8 @@ export default function SistemAnalitigi() {
   const [personnelStatsRaw, setPersonnelStatsRaw] = useState<PersonnelStatRaw[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [kota, setKota] = useState<{ hata: number; telemetri: number } | null>(null);
+  const [kotaLoading, setKotaLoading] = useState(true);
   const muezzinMap = useMuezzinStore(s => s.muezzinMap);
 
   // `displayName` çözümlemesi ana Firestore sorgusundan (aşağıdaki
@@ -172,6 +184,39 @@ export default function SistemAnalitigi() {
 
     return () => unsubscribe();
   }, [periodDays]);
+
+  // KOTA SAĞLIĞI — bilinçli olarak `periodDays`'ten BAĞIMSIZ ve tek
+  // seferlik (onSnapshot değil): pencere her zaman "son 24 saat"tir ve
+  // canlı bir dinleyici, kotayı izlemek için kurulan bir göstergenin
+  // kendisinin sürekli okuma harcaması anlamına gelirdi. `getCountFromServer`
+  // belgeleri çekmez, yalnızca sayar (bkz. veriSifirlamaServisi.ts).
+  useEffect(() => {
+    let iptal = false;
+    const esik = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+
+    void Promise.all([
+      getCountFromServer(query(collection(db, 'error_logs'), where('timestamp', '>=', esik))),
+      getCountFromServer(query(collection(db, 'telemetry_logs'), where('timestamp', '>=', esik))),
+    ])
+      .then(([hataSnap, telemetriSnap]) => {
+        if (iptal) return;
+        setKota({ hata: hataSnap.data().count, telemetri: telemetriSnap.data().count });
+      })
+      .catch(() => {
+        // Sayım başarısızsa kart "ölçülemedi" der — bu bir yardımcı
+        // göstergedir, sayfanın geri kalanını bloke etmemeli.
+        if (!iptal) setKota(null);
+      })
+      .finally(() => {
+        if (!iptal) setKotaLoading(false);
+      });
+
+    return () => { iptal = true; };
+  }, []);
+
+  const kotaToplam = kota ? kota.hata + kota.telemetri : 0;
+  const kotaYuzde = Math.round((kotaToplam / KOTA_GUNLUK_YAZMA) * 1000) / 10;
+  const kotaAsildi = kotaToplam >= KOTA_ESIK_BELGE;
 
   const periodLabel = useMemo(() => PERIOD_OPTIONS.find(p => p.days === periodDays)?.label || `${periodDays} Gün`, [periodDays]);
 
@@ -378,6 +423,75 @@ export default function SistemAnalitigi() {
               </div>
               <p className="authority-title !text-2xs opacity-30 tracking-wide max-w-xs">
                 GÜNLÜK KIRILIM YALNIZCA 7 GÜNLÜK GÖRÜNÜMDE GÖSTERİLİR — AŞAĞIDAKİ TABLODA {periodDays} GÜNLÜK KİŞİ BAZLI ÖZETİ İNCELEYEBİLİRSİNİZ
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* KOTA SAĞLIĞI: Spark planı günlük yazma kotası erken uyarı göstergesi.
+            Uygulama Firebase Spark planında (20K yazma/gün) çalışıyor ve kota
+            tükendiğinde SESSİZCE durur — bu kart, kotayı gerçekten patlatabilecek
+            tek yolu (kendi kendine tekrar eden makine yazımları: error_logs +
+            telemetry_logs) admin'e görünür kılar. Aynı ölçüm günde bir kez
+            scripts/kotaKontrol.ts tarafından da yapılır ve eşik aşılırsa
+            adminUyarilari'na 'kotaUyarisi' düşer (bkz. KrizAlarmlari.tsx). */}
+        <motion.div
+          variants={itemVariants}
+          className="lg:col-span-12 spatial-glass !rounded-card p-8 sm:p-10 relative overflow-hidden shadow-[var(--spatial-shadow)] border border-[var(--text-primary)]/5"
+        >
+          <p className="authority-title mb-8 flex items-center gap-3 !text-2xs opacity-40 font-bold tracking-wide">
+            <Gauge size={14} className={kotaAsildi ? 'text-amber-500' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'} />
+            KOTA SAĞLIĞI — SON 24 SAAT
+          </p>
+
+          {kotaLoading ? (
+            <div className="w-full h-24 fluid-skeleton rounded-2xl" />
+          ) : kota === null ? (
+            <p className="authority-title !text-2xs opacity-30 tracking-wide">
+              KOTA KULLANIMI ÖLÇÜLEMEDİ — GÜNLÜK KOLEKSİYONLARI OKUNAMADI.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-baseline gap-4 flex-wrap">
+                <h3 className="text-5xl sm:text-6xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
+                  {kotaToplam}
+                </h3>
+                <div className="flex flex-col">
+                  <span className="text-sm text-[var(--text-secondary)]/50 font-light italic leading-none">belge yazımı</span>
+                  <span className={`authority-title !text-2xs mt-2 font-bold tracking-wide uppercase ${
+                    kotaAsildi ? 'text-amber-500' : 'text-emerald-500'
+                  }`}>
+                    {kotaAsildi ? 'EŞİK AŞILDI' : 'NORMAL'} • GÜNLÜK KOTANIN ~%{kotaYuzde}'İ
+                  </span>
+                </div>
+              </div>
+
+              {/* Eşiğe (kotanın %10'u) göre doluluk çubuğu — asıl izlenen şey
+                  kotanın tamamı değil, "anormal sıçrama" eşiğine yakınlıktır. */}
+              <div className="w-full h-2 rounded-full bg-[var(--text-primary)]/5 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${kotaAsildi ? 'bg-amber-500' : 'bg-[var(--dynamic-aura,var(--aura-indigo))]'}`}
+                  style={{ width: `${Math.min(100, (kotaToplam / KOTA_ESIK_BELGE) * 100)}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-x-8 gap-y-2">
+                <span className="text-xs text-[var(--text-secondary)]/60">
+                  Hata günlükleri: <span className="font-bold text-[var(--text-primary)]">{kota.hata}</span>
+                </span>
+                <span className="text-xs text-[var(--text-secondary)]/60">
+                  Telemetri: <span className="font-bold text-[var(--text-primary)]">{kota.telemetri}</span>
+                </span>
+                <span className="text-xs text-[var(--text-secondary)]/60">
+                  Uyarı eşiği: <span className="font-bold text-[var(--text-primary)]">{KOTA_ESIK_BELGE}</span>
+                </span>
+              </div>
+
+              <p className="authority-title !text-2xs opacity-30 tracking-wide leading-relaxed max-w-3xl">
+                TAHMİNİ DEĞERDİR — FIRESTORE'UN GERÇEK GÜNLÜK KULLANIM SAYACI SPARK PLANINDA
+                PROGRAMATİK OLARAK OKUNAMAZ. BURADAKİ SAYIM YALNIZCA HATA VE TELEMETRİ
+                GÜNLÜKLERİNİ KAPSAR; DİĞER KOLEKSİYONLARA YAPILAN YAZIMLAR DAHİL DEĞİLDİR.
+                GERÇEK KOTA İÇİN FIREBASE CONSOLE &gt; KULLANIM EKRANINA BAKIN.
               </p>
             </div>
           )}
