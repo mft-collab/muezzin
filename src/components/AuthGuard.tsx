@@ -48,10 +48,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           // Redirect login successful
         }
       } catch (err: unknown) {
+        // Önceden hiç loglanmıyordu; console.error de kullanılmıyor —
+        // vite.config.ts esbuild.drop production build'de TÜM console
+        // çağrılarını siliyor (bkz. login()'deki aynı gerekçe). Kod
+        // doğrudan mesaja ekleniyor.
+        const kod = isFirebaseSdkError(err) ? err.code : 'bilinmeyen-hata';
         if (isFirebaseSdkError(err) && err.code === 'auth/unauthorized-domain') {
           setError('Bu alan adı (domain) henüz Firebase panelinde yetkilendirilmemiş. Lütfen yöneticiye başvurun.');
         } else {
-          setError('Giriş yapılırken bir sorun oluştu. Lütfen tekrar deneyin.');
+          setError(`Giriş yapılırken bir sorun oluştu. Lütfen tekrar deneyin. [${kod}]`);
         }
       } finally {
         sessionStorage.removeItem('muezzin:auth_redirect_pending');
@@ -113,10 +118,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
  }
  } catch (e: unknown) {
+ // Önceden hiç loglanmıyordu — kullanıcıya gösterilen genel mesajın
+ // ARDINDAKİ gerçek Firebase hata kodu (auth/...) hiçbir yerde
+ // görünmüyordu (bkz. premium denetim, login ekranı incelemesi — canlı
+ // bir giriş arızası teşhis edilemez hale geliyordu). console.error
+ // KASITLI OLARAK kullanılmıyor: vite.config.ts esbuild.drop production
+ // build'de TÜM console çağrılarını siliyor, DevTools'ta hiç görünmez —
+ // bu yüzden kod doğrudan (geçici olarak) hata mesajının içine ekleniyor.
+ const kod = isFirebaseSdkError(e) ? e.code : 'bilinmeyen-hata';
  if (isFirebaseSdkError(e) && e.code === 'auth/unauthorized-domain') {
  setError('Bu alan adı (domain) yetkilendirilmemiş. Lütfen localhost veya kayıtlı alan adını kullanın.');
  } else if (!isFirebaseSdkError(e) || e.code !== 'auth/popup-closed-by-user') {
- setError('Giriş yapılamadı. Lütfen internet bağlantınızı ve Google hesabınızı kontrol edin.');
+ setError(`Giriş yapılamadı. Lütfen internet bağlantınızı ve Google hesabınızı kontrol edin. [${kod}]`);
  }
  } finally {
  setIsLoginInProgress(false);
