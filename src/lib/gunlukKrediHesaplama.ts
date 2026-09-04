@@ -6,6 +6,7 @@
  * çekirdek, ince I/O sarmalayıcı" desenini izler: mantık burada test edilir,
  * script yalnızca sorgu/batch-commit yapar.
  */
+import { isFriday } from './dateUtils';
 
 export type GunlukBildirimTipi = 'asil' | 'yedek' | 'gorev_cagrisi' | string;
 
@@ -13,6 +14,19 @@ export interface GunlukKrediGirdisi {
   tip: GunlukBildirimTipi;
   durum: string;
   uid: string;
+  /** Görevin tarihi (YYYY-MM-DD) — Cuma kredisi (aşağıdaki cumaKredi) bu
+   * alandan TAZE hesaplanır, saklı `cumaMi` alanına GÜVENİLMEZ. Bu alan
+   * `bildirimler` şemasında zorunludur (isValidBildirim hasAll), bu yüzden
+   * burada da zorunlu — sorgu (`where('tarih','==',bugün)`) zaten her
+   * belgede garanti ediyor. */
+  tarih: string;
+  /** ARTIK KULLANILMIYOR (bkz. aşağıdaki cumaKredi hesaplaması) — yalnızca
+   * eski çağıranlarla tip uyumu için tutuluyor. `cumaMi` eksik/yanlış olan
+   * (backfill öncesi eski) bir belge, bu alana güvenilseydi Cuma kredisini
+   * sessizce atlıyordu; bu da tieBreaker.ts'in aylikCumaSayisi adalet
+   * kademesini bozabiliyordu (bkz. kod denetimi — "bilinçli olarak
+   * dışarıda bırakılanlar" listesinden, artık tarihten hesaplanarak
+   * kapatıldı). */
   cumaMi?: boolean;
   /** Bu bildirimin aylık sayaçlara ZATEN işlendiğini işaretler (bkz.
    *  `puanIslenenIndeksleri` ve yatsiSonuIslemleri.ts). Yalnızca 'bekliyor'
@@ -78,28 +92,35 @@ export function gunlukKredileriHesapla(bildirimler: GunlukKrediGirdisi[]): Gunlu
   bildirimler.forEach((data, index) => {
     if (data.puanIslendi === true) return;
 
+    // `tarih`ten taze hesaplanır — bkz. yukarıdaki `cumaMi` alan yorumu.
+    // `new Date(y, m-1, d)` yerel saat dilimini kullanır ama saf gün-adı
+    // hesabı için sorun değildir (saat bileşeni yok); firestore.rules
+    // `haftaGunuNumarasi`/`isFriday` ile AYNI takvim mantığı.
+    const [gY, gM, gD] = data.tarih.split('-').map(Number);
+    const cumaMi = isFriday(new Date(gY!, gM! - 1, gD!));
+
     if (data.tip === 'asil') {
       if (data.durum === 'bekliyor') {
         okunduVarsayilanIndeksleri.push(index);
         puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
+        if (cumaMi) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       } else if (data.durum === 'onaylandi') {
         puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
+        if (cumaMi) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       }
     } else if (data.tip === 'gorev_cagrisi') {
       if (data.durum === 'bekliyor') {
         okunduVarsayilanIndeksleri.push(index);
         puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
+        if (cumaMi) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
         uyariUids.push(data.uid);
       } else if (data.durum === 'onaylandi') {
         puanIslenenIndeksleri.push(index);
         asilKredi[data.uid] = (asilKredi[data.uid] || 0) + 1;
-        if (data.cumaMi === true) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
+        if (cumaMi) cumaKredi[data.uid] = (cumaKredi[data.uid] || 0) + 1;
       }
       // durum === 'reddedildi': gorev_cagrisi zaten mazeret akışının ürettiği
       // bir devir değil (kriziBaslat/vekalet ile terfi ettirilir), bu dala

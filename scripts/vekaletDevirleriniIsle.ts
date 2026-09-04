@@ -102,13 +102,20 @@ async function ezanSaatiniGetir(tarih: string, vakit: string): Promise<Date | nu
  * pencerede ezan vakti geçmiş olabilir (bkz. kod denetimi, kritik bulgu).
  * Devam eden bir görevi zaten geçmiş bir vakit için devretmek anlamsız
  * olduğundan, script kendi çalıştığı anda ezan vaktinin geçip geçmediğini
- * TAZE veriyle ayrıca kontrol eder. Sabah vakti hariç tutulur — sabah'ın
- * kendine özgü "yatsı+1sa" kuralı yalnızca kabul anında anlamlıdır ve zaten
- * istemci tarafında uygulandı; veri yoksa (henüz önbelleğe alınmamış ay)
- * mevcut davranışla tutarlı olarak kısıtlama uygulanmaz.
+ * TAZE veriyle ayrıca kontrol eder. Veri yoksa (henüz önbelleğe alınmamış
+ * ay) mevcut davranışla tutarlı olarak kısıtlama uygulanmaz.
+ *
+ * SABAH VAKTİ ARTIK HARİÇ TUTULMUYOR (bkz. "bilinçli olarak dışarıda
+ * bırakılanlar" — premium hata analizi düzeltmesi): önceki sürüm burada
+ * `mazeretKurallari.ts`'teki "yatsı+1sa" MAZERET BİLDİRME SÜRESİ kuralının
+ * bir eşdeğerini aramaya çalışıp bulamayınca sabahı tamamen atlıyordu —
+ * ama bu fonksiyonun sorduğu soru o değil, çok daha basit: "bu vaktin
+ * ezanı ZATEN GEÇTİ Mİ" (devam eden bir görevi geçmiş bir vakit için
+ * devretmek anlamsız). Bu soru sabah için de diğer vakitlerle BİREBİR AYNI
+ * yolla (o vaktin kendi `ezanSaatiniGetir` sonucu) cevaplanabilir — 'sabah'
+ * da `vakitler` belgesindeki `gunler[tarih]` haritasında sıradan bir alan.
  */
 async function ezanVaktiGecmisMi(tarih: string, vakit: string): Promise<boolean> {
-  if (vakit === 'sabah') return false;
   const ezanSaati = await ezanSaatiniGetir(tarih, vakit);
   if (!ezanSaati) return false;
   return Date.now() >= ezanSaati.getTime();

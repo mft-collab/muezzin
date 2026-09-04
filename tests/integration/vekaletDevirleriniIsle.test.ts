@@ -40,13 +40,23 @@ function yakinCuma(): string {
 }
 const CUMA_TARIHI = yakinCuma();
 
+// Cuma OLMAYAN, gelecekteki (bugünden sonraki) en yakın tarih — "ezan henüz
+// geçmedi" senaryosunu Cuma kısıtlamasıyla karışmadan test edebilmek için.
+function yakinCumaOlmayanGelecekGun(): string {
+  for (let n = 1; n <= 10; n++) {
+    const aday = gunOnce(-n); // gunOnce negatif n ile GELECEĞE gider.
+    if (haftaGunuNumarasi(aday) !== 5) return aday;
+  }
+  throw new Error('Cuma olmayan gelecek bir tarih bulunamadı.');
+}
+
 type TestCase = {
   name: string;
   run: () => Promise<void>;
 };
 
 async function clearCollections() {
-  const collections = ['muezzins', 'bildirimler', 'haftaPlanlari', 'adminUyarilari', 'vekalet_talepleri', 'audit_logs'];
+  const collections = ['muezzins', 'bildirimler', 'haftaPlanlari', 'adminUyarilari', 'vekalet_talepleri', 'audit_logs', 'vakitler', 'settings'];
   for (const collection of collections) {
     const snapshot = await db.collection(collection).get();
     const batch = db.batch();
@@ -71,8 +81,12 @@ async function seedKabulEdilmisTalep(overrides: {
   /** Varsayılan TARIH_1 — Cuma testleri gibi tarihin GERÇEKTEN belirli bir
    * haftanın gününe denk gelmesi gereken senaryolar için override edilir. */
   tarih?: string;
+  /** Varsayılan 'ogle' — sabah vaktine özel ezanVaktiGecmisMi regresyonu
+   * için override edilir. */
+  vakit?: string;
 } = {}) {
   const tarih = overrides.tarih ?? TARIH_1;
+  const vakit = overrides.vakit ?? 'ogle';
   await db.collection('muezzins').doc('muezzin1').set({
     displayName: 'Muezzin One', role: 'muezzin', aktif: true, onayBekliyor: false
   });
@@ -84,11 +98,11 @@ async function seedKabulEdilmisTalep(overrides: {
     ...(overrides.aliciHaftalikIzinGunu !== undefined ? { haftalikIzinGunu: overrides.aliciHaftalikIzinGunu } : {})
   });
 
-  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${tarih}_ogle_asil`);
+  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${tarih}_${vakit}_asil`);
   await bildirimRef.set({
     haftaId: 'W2026-05-18',
     tarih: tarih,
-    vakit: 'ogle',
+    vakit,
     uid: 'muezzin1',
     tip: 'asil',
     durum: overrides.bildirimDurum ?? 'bekliyor',
@@ -97,22 +111,33 @@ async function seedKabulEdilmisTalep(overrides: {
     vekaletDevriBekliyor: true
   });
 
-  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${tarih}_ogle_asil_muezzin2`);
+  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${tarih}_${vakit}_asil_muezzin2`);
   await talepRef.set({
-    bildirimId: `W2026-05-18_${tarih}_ogle_asil`,
+    bildirimId: `W2026-05-18_${tarih}_${vakit}_asil`,
     haftaId: 'W2026-05-18',
     gonderenUid: 'muezzin1',
     gonderenIsim: 'Muezzin One',
     aliciUid: 'muezzin2',
     aliciIsim: 'Muezzin Two',
     tarih: tarih,
-    vakit: 'ogle',
+    vakit,
     saat: '12:45',
     tip: 'asil',
     durum: 'kabul_edildi'
   });
 
   return { bildirimRef, talepRef };
+}
+
+/** `settings/system` + `vakitler/{ilceId}_{YYYY-MM}` tohumlar — vekaletDevirleriniIsle.ts'in
+ * `ezanSaatiniGetir`i bu iki belgeye bakıyor. Varsayılan ilceId script'in
+ * kendi varsayılanıyla (9148) aynı. */
+async function ezanVaktiTohumla(tarih: string, vakit: string, saat: string, ilceId = '9148') {
+  await db.collection('settings').doc('system').set({ ilceId }, { merge: true });
+  const ay = tarih.slice(0, 7);
+  await db.collection('vakitler').doc(`${ilceId}_${ay}`).set({
+    gunler: { [tarih]: { [vakit]: saat } }
+  }, { merge: true });
 }
 
 const tests: TestCase[] = [
@@ -302,6 +327,49 @@ const tests: TestCase[] = [
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
       assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+    }
+  },
+  {
+    // "Bilinçli olarak dışarıda bırakılanlar" listesinden kapatılan bulgu:
+    // ezanVaktiGecmisMi önceden `vakit === 'sabah'` için koşulsuz `false`
+    // dönüyordu (kontrolü tamamen atlıyordu) — artık sabah da diğer
+    // vakitlerle AYNI şekilde ("bu vaktin ezanı zaten geçti mi") kontrol
+    // ediliyor. TARIH_1 (3 gün önce) + herhangi bir ezan saati, tanım
+    // gereği geçmişte kalır.
+    name: 'sabah vakti icin ezan zaten gecmisse kabul transferi engellenir (regresyon)',
+    run: async () => {
+      await clearCollections();
+      await ezanVaktiTohumla(TARIH_1, 'sabah', '05:30');
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah' });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+    }
+  },
+  {
+    name: 'sabah vakti icin ezan henuz gecmediyse kabul transferi normal uygulanir',
+    run: async () => {
+      await clearCollections();
+      // Cuma olmayan, gelecekteki bir gün — ezan saati ne olursa olsun "şu
+      // an"dan sonradır ve Cuma kısıtlamasıyla karışmaz.
+      const gelecekGun = yakinCumaOlmayanGelecekGun();
+      await ezanVaktiTohumla(gelecekGun, 'sabah', '05:30');
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah', tarih: gelecekGun });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin2');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
     }
   },
   {

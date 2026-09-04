@@ -79,7 +79,7 @@ export async function processYatsiSonuIslemleri() {
   // aynı, mantık burada birim testle doğrulanabilir.
   const bildirimVerileri = bildirimler.docs.map(doc => doc.data());
   const { asilKredi, cumaKredi, yedekKredi, uyariUids, okunduVarsayilanIndeksleri, puanIslenenIndeksleri } =
-    gunlukKredileriHesapla(bildirimVerileri as { tip: string; durum: string; uid: string; cumaMi?: boolean; puanIslendi?: boolean }[]);
+    gunlukKredileriHesapla(bildirimVerileri as { tip: string; durum: string; uid: string; tarih: string; cumaMi?: boolean; puanIslendi?: boolean }[]);
 
   // Tekrar-çalıştırma güvenliği (bkz. gunlukKrediHesaplama.ts `puanIslendi`
   // yorumu): kredi verilen HER kayıt `puanIslendi:true` ile işaretlenir —
