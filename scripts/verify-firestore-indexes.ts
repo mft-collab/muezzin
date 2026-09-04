@@ -89,6 +89,18 @@ const requiredIndexes: RequiredIndex[] = [
     reason: 'kotaKontrol.ts: acik bir kotaUyarisi olup olmadigini son-50 penceresi olmadan dogrudan sorgulama (dusuk oncelikli bulgu duzeltmesi)'
   },
   {
+    // Kardes [tarih,vakit,cozuldu] indeksi (yukarida) dogrulaniyordu ama
+    // AYNI dedup deseninin tip+tarih varyanti hic dogrulanmiyordu — indeks
+    // dosyasinda da yoktu. Uc filtrenin de ESITLIK olmasi sayesinde
+    // Firestore bunu otomatik tek-alan indeksleri uzerinden zigzag merge
+    // ile sunabildiginden uretimde henuz hata uretmemisti; bu kirilgan bir
+    // dayanak (sorguya bir orderBy/aralik eklenmesi aninda FAILED_PRECONDITION
+    // olurdu) ve dogru cozum acik bileske indekstir.
+    collectionGroup: 'adminUyarilari',
+    fields: ['tip', 'tarih', 'cozuldu'],
+    reason: 'src/services/planServisi.ts cozulmemisUyariVarMi + scripts/vakitVeriSagligiKontrol.ts bugunIcinApiHatasiUyarisiVarMi: gun+tip bazli uyari dedup'
+  },
+  {
     collectionGroup: 'vekalet_talepleri',
     fields: ['aliciUid', 'durum'],
     reason: 'muezzinin bekleyen vekalet tekliflerini listeleme'

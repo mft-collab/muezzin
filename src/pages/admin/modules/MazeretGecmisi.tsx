@@ -12,7 +12,7 @@ import { mazeretKaydiSil } from '../../../services/mazeretServisi';
 import { toTurkishUpperCase } from '../../../lib/dateUtils';
 
 export default function MazeretGecmisi() {
- const { gecmis, loading } = useMazeretGecmisi();
+ const { gecmis, loading, arsivAySayisi } = useMazeretGecmisi();
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  
@@ -66,7 +66,9 @@ export default function MazeretGecmisi() {
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
  <div className="flex flex-col gap-2">
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)]">Mazeret Arşivi</h2>
- <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">{filtered.length} TOPLAM KAYIT LİSTELENDİ</p>
+ {/* Sorgu artık son `arsivAySayisi` ayla sınırlı (bkz. useMazeretGecmisi.ts) —
+     etiket bunu açıkça söylemeli, aksi halde "TOPLAM" yanıltıcı olurdu. */}
+ <p className="authority-title !text-2xs opacity-30 font-medium tracking-wide">SON {arsivAySayisi} AY • {filtered.length} KAYIT LİSTELENDİ</p>
  </div>
  
  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">

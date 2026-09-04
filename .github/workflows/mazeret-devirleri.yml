@@ -33,6 +33,18 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: npm run process:vekalet-devirleri
+      # 1 saatlik mazeret/vekalet penceresinin SUNUCU tarafı zorlayıcısı,
+      # bildirim belgesindeki `mazeretSonBasvuru` damgasıdır (bkz.
+      # firestore.rules `mazeretPenceresiAcik`) ve damga yoksa kural
+      # FAIL-CLOSED davranır. Bu adım, plan üretilirken ezan verisi henüz
+      # olmayan (3 hafta ileri planlanan) günlerin damgasını veri geldiğinde
+      # tamamlar — aksi halde o günlerde mazeret/vekalet kalıcı olarak kapalı
+      # kalırdı. Aynı 10 dakikalık ritimde çalışması kasıtlı: kullanıcı en
+      # fazla bir cron turu bekler.
+      - name: Mazeret penceresi damgalarını tamamla
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npm run process:mazeret-penceresi
       # Bu iş daha önce başarısız olup admin paneline "otomasyonHatasi"
       # uyarısı bırakmışsa, şimdi başarılıysa o uyarıyı otomatik çözer
       # (bkz. reportWorkflowSuccess.ts — "bilinçli olarak dışarıda

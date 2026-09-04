@@ -76,10 +76,25 @@ async function izinEtkilenenHaftalariYenile(izinId: string): Promise<void> {
   }
 }
 
+/** `izinler` dinleyicisinin hata yolundaki yeniden abone olma aralığı — ikincil
+ *  `izin_detaylari` dinleyicisi de AYNI aralığı kullanır (bkz. init). */
+const YENIDEN_ABONE_MS = 15000;
+
+/** `izin_detaylari` için üst üste kaç yeniden abone denemesi yapılacağı.
+ *  Ana `izinler` dinleyicisinin yeniden denemesi `!get().initialized`
+ *  koşuluyla sarılıdır; ikincil dinleyicinin böyle bir doğal durma koşulu
+ *  yok, bu yüzden kalıcı bir hatada (ör. beklenmedik bir permission-denied)
+ *  15 sn'de bir sonsuza dek telemetri üretmesin diye sayı sınırlanır. */
+const DETAY_MAX_YENIDEN_DENEME = 5;
+
 interface AdminIzinlerState {
   izinler: (Izin & { id: string })[];
   loading: boolean;
   error: string | null;
+  /** `izin_detaylari` dinleyicisi kalıcı olarak başarısız oldu mu — true ise
+   *  `sebep` alanları EKSİK'tir ("belirtilmedi" DEĞİL). UI bu ikisini
+   *  ayırt edebilsin diye ayrı tutulur (bkz. IzinYonetimi.tsx). */
+  detaylarHatasi: boolean;
   initialized: boolean;
   /** bkz. useKrizAlarmlariStore.ts'teki AYNI alan yorumu — `isAdmin` hızlı
    * geçişinde çift dinleyici açılmasını önler (düşük öncelikli bulgu). */
@@ -99,6 +114,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
   izinler: [],
   loading: true,
   error: null,
+  detaylarHatasi: false,
   initialized: false,
   initializing: false,
 
@@ -150,26 +166,53 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       // bunu yazmak init()'in guard'ını süresiz kilitleyip store'u oturum
       // boyunca ölü bırakıyordu (premium hata analizi HS-O1).
       set({ error: friendly.message, loading: false, initializing: false });
-      setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
+      setTimeout(() => { if (!get().initialized) get().init(); }, YENIDEN_ABONE_MS);
     });
 
-    const unsubscribeDetaylar = onSnapshot(collection(db, 'izin_detaylari'), (snapshot) => {
-      const map: Record<string, string> = {};
-      snapshot.docs.forEach((d) => {
-        const sebepDeger = d.data().sebep;
-        if (typeof sebepDeger === 'string') map[d.id] = sebepDeger;
+    // İkincil dinleyici: hatası ana izin listesini ENGELLEMEMELİ (bu kısım
+    // kasıtlıydı ve korunuyor) — ama önceden hatada YENİDEN DE DENEMİYORDU.
+    // onSnapshot'ın hata callback'i dinleyiciyi KALICI olarak sonlandırdığından
+    // (SDK kendiliğinden yeniden bağlanmaz) tek bir geçici hata, admin'in
+    // oturumu boyunca TÜM `sebep` sütununu sessizce boşaltıyordu; üstelik UI
+    // bunu "sebep belirtilmedi" diye gösterdiğinden yanlış bilgi veriyordu.
+    // Kardeş dinleyicinin (yukarıda) yeniden abone olma deseni burada da
+    // uygulanır — tek fark, `initialized` guard'ı burada işe yaramadığından
+    // (o bayrak ana listeye aittir) deneme sayısının açıkça sınırlanması.
+    let detayUnsubscribe: (() => void) | null = null;
+    let detayDenemeSayisi = 0;
+    let detaylarKapatildi = false;
+
+    const detaylariDinle = () => {
+      if (detaylarKapatildi) return;
+      detayUnsubscribe = onSnapshot(collection(db, 'izin_detaylari'), (snapshot) => {
+        const map: Record<string, string> = {};
+        snapshot.docs.forEach((d) => {
+          const sebepDeger = d.data().sebep;
+          if (typeof sebepDeger === 'string') map[d.id] = sebepDeger;
+        });
+        sonSebepMap = map;
+        detayDenemeSayisi = 0;
+        if (get().detaylarHatasi) set({ detaylarHatasi: false });
+        birlestirVeYaz();
+      }, (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'izin_detaylari');
+        // Hata anında HEMEN işaretlenir (yeniden deneme başarılı olursa geri
+        // alınır) — aksi halde admin, yeniden deneme penceresi boyunca boş
+        // `sebep` alanlarını "belirtilmedi" sanardı.
+        if (!get().detaylarHatasi) set({ detaylarHatasi: true });
+        if (detaylarKapatildi) return;
+        if (detayDenemeSayisi >= DETAY_MAX_YENIDEN_DENEME) return;
+        detayDenemeSayisi++;
+        setTimeout(detaylariDinle, YENIDEN_ABONE_MS);
       });
-      sonSebepMap = map;
-      birlestirVeYaz();
-    }, (err) => {
-      // Bu ikincil dinleyicinin hatası ana izin listesini engellememeli —
-      // yalnızca telemetriye düşürülür, sebep alanları eksik görünür.
-      handleFirestoreError(err, OperationType.LIST, 'izin_detaylari');
-    });
+    };
+
+    detaylariDinle();
 
     return () => {
       unsubscribeIzinler();
-      unsubscribeDetaylar();
+      detaylarKapatildi = true;
+      detayUnsubscribe?.();
     };
   },
 

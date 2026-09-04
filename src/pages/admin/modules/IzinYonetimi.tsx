@@ -10,7 +10,7 @@ import { LoadingState } from '../../../components/ui/LoadingState';
 import { izinGunSayisi, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 
 export default function IzinYonetimi() {
- const { izinler, loading, error, izinGuncelle, izinGeriAl, izinSil } = useAdminIzinlerStore();
+ const { izinler, loading, error, detaylarHatasi, izinGuncelle, izinGeriAl, izinSil } = useAdminIzinlerStore();
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const [filter, setFilter] = useState<'all' | 'onay_bekliyor' | 'onaylandi' | 'reddedildi'>('all');
  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -210,8 +210,16 @@ export default function IzinYonetimi() {
 
  {/* Reason Matrix */}
  <div className="flex-1 p-4 bg-[var(--surface-low)] rounded-2xl border border-[var(--glass-border)]">
- <p className="text-xs sm:text-sm font-light text-[var(--text-primary)]/65 leading-relaxed italic">
- "{izin.sebep || 'Herhangi bir mazeret detayı belirtilmedi.'}"
+ {/* `sebep` ayrı bir dinleyiciden (izin_detaylari) gelir; o dinleyici
+     kalıcı olarak başarısız olduysa alan BOŞ gelir — bunu "belirtilmedi"
+     diye göstermek yanlış bilgi olurdu (bkz. useAdminIzinlerStore.ts
+     detaylarHatasi). */}
+ <p className={`text-xs sm:text-sm font-light leading-relaxed italic ${!izin.sebep && detaylarHatasi ? 'text-rose-500/70' : 'text-[var(--text-primary)]/65'}`}>
+ {izin.sebep
+   ? `"${izin.sebep}"`
+   : detaylarHatasi
+     ? 'Mazeret detayı yüklenemedi (bağlantı/yetki hatası).'
+     : '"Herhangi bir mazeret detayı belirtilmedi."'}
  </p>
  </div>
 

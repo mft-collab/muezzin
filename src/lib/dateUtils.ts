@@ -90,19 +90,109 @@ export function getMinutesDiff(time1: string | undefined, time2: string | undefi
  return diff;
 }
 
+/**
+ * Bir "YYYY-MM-DD" tarih dizgesini katı biçimde ayrıştırır. Biçim bozuksa
+ * (ör. "2026-5-3", "abc", boş) `null` döner — `Number('abc') === NaN`
+ * sessizce `Invalid Date` üretip ARDINDAN gelen her karşılaştırmayı `false`
+ * yapıyordu (bkz. `normalizeVakitSaati` yorumu, aynı fail-open sınıfı).
+ */
+function parseTarihParcalari(tarih: unknown): [number, number, number] | null {
+ if (typeof tarih !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(tarih)) return null;
+ const [y, m, d] = tarih.split('-').map(Number);
+ if (m! < 1 || m! > 12 || d! < 1 || d! > 31) return null;
+ return [y!, m!, d!];
+}
+
+/**
+ * Ezan vakti dizgelerinin TEK normalize/doğrulama noktası.
+ *
+ * KÖK NEDEN (kod denetimi — "ezan saati biçim asimetrisi"): `vakitler`
+ * koleksiyonundaki saat dizgeleri hiçbir yerde doğrulanmıyordu — üç ayrı API
+ * ayrıştırıcısı (`parseResmiResponse`, `parseDiyanetResponse`,
+ * `parseAladhanResponse`) ham `unknown` değerleri doğrudan `VakitKaydi`'ye
+ * cast ediyordu. Aşağı akışta ise iki taraf FARKLI davranıyordu:
+ *  - `scripts/vekaletDevirleriniIsle.ts` KATI bir `/^\d{2}:\d{2}$/` uyguluyor,
+ *    eşleşmezse `null` döndürüp "ezan geçmedi" varsayıyordu (FAIL-OPEN);
+ *  - istemci (`parseVakitToDate`) hiç doğrulamıyor, `"abc"` gibi bir değerde
+ *    `Invalid Date` üretiyordu — `suAn >= InvalidDate` HER ZAMAN `false`'tur,
+ *    yani "pencere hâlâ açık" (yine FAIL-OPEN).
+ * Yani `"9:05"` gibi tek haneli saatli bir kayıt istemcide pencereyi doğru
+ * kapatırken cron'da devri UYGULATABİLİYORDU.
+ *
+ * Çözüm iki katmanlı: (1) veri KAYNAĞINDA (API ayrıştırıcıları) bu fonksiyonla
+ * normalize/reddet — bozuk değer `vakitler` belgesine hiç ulaşmasın; (2) her
+ * okuma noktası yine bu fonksiyondan geçsin ve ayrıştırılamayan değerde
+ * FAIL-CLOSED davransın (bkz. `mazeretKapaliMi`, `scripts/lib/ezanVakitleri.ts`).
+ *
+ * Kabul edilen girdiler: "H:MM", "HH:MM", "HH:MM:SS" (baştaki/sondaki boşluk
+ * kırpılır). Dönüş her zaman sıfır dolgulu "HH:MM"; geçersizse `null`.
+ */
+export function normalizeVakitSaati(raw: unknown): string | null {
+ if (typeof raw !== 'string') return null;
+ const eslesme = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(raw.trim());
+ if (!eslesme) return null;
+ const saat = Number(eslesme[1]);
+ const dakika = Number(eslesme[2]);
+ if (saat > 23 || dakika > 59) return null;
+ return `${String(saat).padStart(2, '0')}:${String(dakika).padStart(2, '0')}`;
+}
+
+/**
+ * Bir (tarih, "HH:MM") çiftini GERÇEK bir UTC anına çevirir — çalıştığı
+ * makinenin saat diliminden BAĞIMSIZ. Türkiye DST uygulamadığından (sabit
+ * UTC+3) doğru an doğrudan hesaplanabilir.
+ *
+ * `parseVakitToDate`'ten farkı KASITLI: o, `getTurkeyNow()`'un "kaydırılmış"
+ * yerel çerçevesinde çalışır (istemci içi karşılaştırmalar için tutarlı ama
+ * epoch değeri gerçek an DEĞİLDİR). Firestore'a `Timestamp` olarak YAZILACAK
+ * ya da Admin SDK'da `Date.now()` ile karşılaştırılacak her değer bu
+ * fonksiyondan gelmelidir (bkz. scripts/vekaletDevirleriniIsle.ts'teki
+ * `Date.UTC(..., hh - 3, mm)` deseni — premium hata analizi MV-O1/O2).
+ */
+export function ezanAniUtc(tarih: unknown, vakitSaati: unknown): Date | null {
+ const parcalar = parseTarihParcalari(tarih);
+ const saat = normalizeVakitSaati(vakitSaati);
+ if (!parcalar || !saat) return null;
+ const [y, m, d] = parcalar;
+ const [hh, mm] = saat.split(':').map(Number);
+ const an = new Date(Date.UTC(y, m - 1, d, hh! - 3, mm!));
+ return isNaN(an.getTime()) ? null : an;
+}
+
+/**
+ * "YYYY-MM-DD" biçiminde bir önceki günün tarihini döner (ay/yıl sınırlarını
+ * doğru geçer). Sabah vaktinin mazeret penceresi bir ÖNCEKİ günün yatsısına
+ * bağlı olduğundan (bkz. `mazeretKapaliMi`) hem istemci hem cron tarafında
+ * gereklidir — UTC aritmetiği kullanır, yerel saat dilimi/DST'den etkilenmez.
+ */
+export function oncekiGunTarihi(tarih: unknown): string | null {
+ const parcalar = parseTarihParcalari(tarih);
+ if (!parcalar) return null;
+ const [y, m, d] = parcalar;
+ const onceki = new Date(Date.UTC(y, m - 1, d - 1));
+ if (isNaN(onceki.getTime())) return null;
+ return `${onceki.getUTCFullYear()}-${String(onceki.getUTCMonth() + 1).padStart(2, '0')}-${String(onceki.getUTCDate()).padStart(2, '0')}`;
+}
+
 export function parseVakitToDate(tarih: string, vakitSaati: string): Date | null {
- if (!vakitSaati || !tarih) return null;
- const [year, month, day] = tarih.split('-').map(Number);
- const [hour, minute] = vakitSaati.split(':').map(Number);
- 
- // Önce gerçek bir UTC tarihi oluşturup sonra Türkiye farkını eklemek 
- // yerine, getTurkeyNow() üzerinden gelen "kaydırılmış" zamanı baz alarak 
- // setHours yapıyoruz. Bu, karşılaştırmaların (now >= target) her zaman 
+ const parcalar = parseTarihParcalari(tarih);
+ const saat = normalizeVakitSaati(vakitSaati);
+ // Biçim doğrulaması EKLENDİ (bkz. `normalizeVakitSaati` yorumu): önceden
+ // `"abc"`/`"9:05"` gibi değerler `Number(...)` üzerinden NaN'a düşüp
+ // `Invalid Date` döndürüyordu, çağıranların `if (!date)` kontrolü bunu
+ // yakalamıyordu ve sonraki her karşılaştırma sessizce `false` oluyordu.
+ if (!parcalar || !saat) return null;
+ const [year, month, day] = parcalar;
+ const [hour, minute] = saat.split(':').map(Number);
+
+ // Önce gerçek bir UTC tarihi oluşturup sonra Türkiye farkını eklemek
+ // yerine, getTurkeyNow() üzerinden gelen "kaydırılmış" zamanı baz alarak
+ // setHours yapıyoruz. Bu, karşılaştırmaların (now >= target) her zaman
  // tutarlı olmasını sağlar.
  const date = getTurkeyNow();
  date.setFullYear(year, month - 1, day);
- date.setHours(hour, minute, 0, 0);
- return date;
+ date.setHours(hour!, minute!, 0, 0);
+ return isNaN(date.getTime()) ? null : date;
 }
 
 export const GUNLER_TR: Record<number, string> = {

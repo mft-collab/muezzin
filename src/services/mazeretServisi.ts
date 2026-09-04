@@ -60,7 +60,13 @@ export async function mazeretZamanKontrolYap(
 
   const referansSaatYok = vakit === 'sabah' ? !oncekiGunYatsiSaati : !vakitSaati;
   if (referansSaatYok) {
-    console.warn(`[mazeret] ${tarih} ${vakit} için ezan/yatsı saati bulunamadı — süre kısıtlaması bu talepte uygulanamadı.`);
+    // FAIL-CLOSED (kod denetimi): önceden bu durumda süre kısıtlaması hiç
+    // uygulanmıyordu (`mazeretKapaliMi` `{ kapali: false }` dönüyordu). Artık
+    // pencere KAPALI sayılır — hem burada hem sunucu tarafında (damga yoksa
+    // firestore.rules yazımı reddeder). Telemetri olayı, verinin gerçekten
+    // eksik olduğu (ör. ay henüz önbelleğe alınmamış) durumları görünür
+    // tutmak için korunuyor.
+    console.warn(`[mazeret] ${tarih} ${vakit} için ezan/yatsı saati bulunamadı/bozuk — pencere KAPALI sayılıyor (fail-closed).`);
     telemetryService.logEvent({
       eventType: 'performance',
       eventName: 'MAZERET_SURE_KISITLAMASI_ATLANDI',

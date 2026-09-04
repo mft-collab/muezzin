@@ -1,8 +1,33 @@
 import { GunlukVakit, Vakit, Vakitler, VakitKaydi } from '../types';
-import { getTurkeyNow, parseVakitToDate } from '../lib/dateUtils';
+import { getTurkeyNow, normalizeVakitSaati, parseVakitToDate } from '../lib/dateUtils';
 import { Timestamp } from 'firebase/firestore';
 
 const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
+
+/**
+ * Bir API gün kaydının ALTI vaktini de normalize eder; herhangi biri
+ * ayrıştırılamıyorsa `null` döner ve çağıran o günü tamamen atlar.
+ *
+ * KAYNAKTA DOĞRULAMA (kod denetimi — "ezan saati biçim asimetrisi"): bu üç
+ * ayrıştırıcı (`parseDiyanetResponse`, `parseAladhanResponse` ve
+ * scripts/lib/diyanetResmiApi.ts `parseResmiResponse`) ham `unknown` değerleri
+ * doğrudan `VakitKaydi`'ye cast edip Firestore'a yazıyordu. `"9:05"` (tek
+ * haneli saat) veya `"abc"` gibi tek bir bozuk değer, aşağı akıştaki iki
+ * tüketicinin FARKLI davranması nedeniyle sessiz bir fail-open'a dönüşüyordu
+ * (ayrıntı: src/lib/dateUtils.ts `normalizeVakitSaati`). Kök neden çözümü,
+ * bozuk verinin `vakitler` belgesine HİÇ ulaşmamasıdır; tüketici taraftaki
+ * fail-closed davranış ise savunma derinliğidir.
+ */
+export function vakitKaydiniNormalize(ham: Record<string, unknown>): VakitKaydi | null {
+ const alanlar: (keyof VakitKaydi)[] = ['sabah', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'];
+ const sonuc = {} as VakitKaydi;
+ for (const alan of alanlar) {
+ const saat = normalizeVakitSaati(ham[alan]);
+ if (!saat) return null;
+ sonuc[alan] = saat;
+ }
+ return sonuc;
+}
 
 /**
  * NAMAZ VAKTİ SERVİSİ — Master Level Implementation
@@ -229,14 +254,19 @@ function parseDiyanetResponse(data: DiyanetGunRaw[], ilceId: string): Vakitler {
  const [d, m, y] = dateKey.split('.');
  dateKey = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
  }
- gunler[dateKey] = {
+ const kayit = vakitKaydiniNormalize({
  sabah: gun.Imsak,
  gunes: gun.Gunes,
  ogle: gun.Ogle,
  ikindi: gun.Ikindi,
  aksam: gun.Aksam,
  yatsi: gun.Yatsi
- } as VakitKaydi;
+ });
+ if (!kayit) {
+ console.warn('Diyanet API: vakit saati biçimi bozuk, gün atlandı:', dateKey, gun);
+ return;
+ }
+ gunler[dateKey] = kayit;
  });
  return {
  ilceId,
@@ -259,14 +289,19 @@ function parseAladhanResponse(data: AladhanGunRaw[], ilceId: string): Vakitler {
  const formattedDate = `${y}-${m}-${d}`;
  const vaktiAyikla = (key: string): string | undefined =>
  typeof timings[key] === 'string' ? (timings[key] as string).split(' ')[0] : undefined;
- gunler[formattedDate] = {
+ const kayit = vakitKaydiniNormalize({
  sabah: vaktiAyikla('Fajr'),
  gunes: vaktiAyikla('Sunrise'),
  ogle: vaktiAyikla('Dhuhr'),
  ikindi: vaktiAyikla('Asr'),
  aksam: vaktiAyikla('Maghrib'),
  yatsi: vaktiAyikla('Isha')
- } as VakitKaydi;
+ });
+ if (!kayit) {
+ console.warn('Aladhan API: vakit saati biçimi bozuk, gün atlandı:', formattedDate, timings);
+ return;
+ }
+ gunler[formattedDate] = kayit;
  });
  return {
  ilceId,

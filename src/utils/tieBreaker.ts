@@ -41,7 +41,40 @@ export function tieBreakerSirala(
  const bWasActive = oncekiVakitUidler.includes(b.id);
  if (aWasActive !== bWasActive) return aWasActive ? 1 : -1;
 
- // 1.2 Sürekli Yedek Kilidi Kırıcı: SOS artık yalnızca dünkü ASİLİ eler
+ // 1.2 Cuma Adaleti: Cuma yüküne uygulanan 1.5x ağırlık (planlamaCekirdegi.ts
+ // `cumaCarpani`) yalnızca O HAFTANIN birikiminde yaşar; hafta bitince sıfırlanır
+ // ve ay ilerledikçe aylikVakitSayisi'nin (kalıcı, büyük) toplamı tarafından
+ // bastırılır (bkz. algoritma denetimi). Bu yüzden Cuma vakitlerinde, bu ay kaç
+ // kez Cuma yapıldığı KALICI ve bağımsız bir kademe olarak önce karşılaştırılır.
+ //
+ // NEDEN SÜREKLİ-YEDEK KİLİDİ KIRICIDAN (aşağıdaki 1.4) ÖNCE: iki kademe de
+ // sirali[0]'ı (asil) belirlemek için yarışır, ama etki alanları asimetrik:
+ //  - Sürekli-yedek kilidi HAFTANIN 7 GÜNÜNDEN HERHANGİ BİRİNDE kırılabilir;
+ //    Cuma'da devreye girmezse en geç ertesi gün (Cumartesi) girer, yani
+ //    kilit yalnızca 1 gün ötelenir — SINIRLI bir gecikme.
+ //  - Cuma adaleti YALNIZCA Cuma günü düzeltilebilir. Cuma'da bastırılırsa o
+ //    haftanın Cuma'sı kalıcı olarak kaybedilir ve aylikCumaSayisi farkı bir
+ //    daha ASLA kapanmaz — SINIRSIZ bir adaletsizlik.
+ // Ölçüm (26 haftalık simülasyon, bu sıralama düzeltmesinden ÖNCE): 3 kişilik
+ // kadroda TEK bir kişinin sabit haftalık izin günü (haftalikIzinGunu) olması
+ // yetiyordu — bir kişi her Çarşamba+Perşembe yedek kalıp Cuma'ya tam olarak
+ // streak=2 ile giriyor, tier "sürekli yedek" her Cuma tetikleniyor ve 26
+ // haftanın 26'sında AYNI kişi Cuma asili oluyordu (onun aylikCumaSayisi
+ // 25'e çıkarken diğer ikisi 0'da kaldı); Cuma adaleti kademesi hiç
+ // çalışamıyordu. Ters yönde böyle bir kaçış YOK: Cuma günü geri itilen
+ // kişinin art arda yedek sayacı büyümeye devam eder ve tier 1.4 onu en geç
+ // ertesi gün asile terfi ettirir.
+ //
+ // İki kademe BİRBİRİNİ YOK ETMEZ, birleşir: Cuma sayıları EŞİTSE karar
+ // aşağıdaki 1.4'e düşer, yani sürekli yedek kalan kişi Cuma günü de
+ // terfi edebilir.
+ if (isFriday) {
+ const cumaA = aylikCumaSayilari[a.id] || 0;
+ const cumaB = aylikCumaSayilari[b.id] || 0;
+ if (cumaA !== cumaB) return cumaA - cumaB;
+ }
+
+ // 1.4 Sürekli Yedek Kilidi Kırıcı: SOS artık yalnızca dünkü ASİLİ eler
  // (premium hata analizi PL-K1), yani SOS'tan muaf olan iki kişi burada
  // doğrudan ASİL/yedek için yarışıyor — art arda ARD_ARDA_YEDEK_ESIGI kez
  // yedek kalmış biri bu kez ASİLE TERFİ ETTİRİLİR (öne alınır), tersi değil.
@@ -60,17 +93,7 @@ export function tieBreakerSirala(
  const esikB = (ardArdaYedekSayilari[b.id] || 0) >= ARD_ARDA_YEDEK_ESIGI;
  if (esikA !== esikB) return esikA ? -1 : 1;
 
- // 1.5 Cuma Adaleti: haftalık yüke uygulanan 1.5x çarpanı ay ilerledikçe
- // aylikVakitSayisi'nin (kalıcı, büyük) toplamı tarafından bastırılıyordu
- // (bkz. algoritma denetimi). Bu yüzden Cuma vakitlerinde, bu ay kaç kez
- // Cuma yapıldığı kalıcı ve bağımsız bir kademe olarak önce karşılaştırılır.
- if (isFriday) {
- const cumaA = aylikCumaSayilari[a.id] || 0;
- const cumaB = aylikCumaSayilari[b.id] || 0;
- if (cumaA !== cumaB) return cumaA - cumaB;
- }
-
- // 2. Ağırlıklı Toplam Yük (Cuma vakitleri 1.5 kat yük sayılır)
+ // 2. Ağırlıklı Toplam Yük
  //
  // aylikYedekSayisi: yedeklik daha önce yalnızca HAFTALIK yükte (aşağıdaki
  // buHaftakiYukler) 0.5x ağırlıkla sayılıyor, hafta bitince bu ağırlık
@@ -83,9 +106,26 @@ export function tieBreakerSirala(
  // artırılan kalıcı sayaç) aynı ağırlıkla toplama dahil edilerek bu kilit
  // zamanla kırılır: sürekli yedek kalan kişinin toplamı gerçek yükünü
  // yansıtmaya başlar ve bir noktada asil'e terfi eder.
- const multiplier = isFriday ? 1.5 : 1;
- const totalA = (a.aylikVakitSayisi || 0) + ((a.aylikYedekSayisi || 0) * YEDEK_YUK_CARPANI) + ((buHaftakiYukler[a.id] || 0) * multiplier);
- const totalB = (b.aylikVakitSayisi || 0) + ((b.aylikYedekSayisi || 0) * YEDEK_YUK_CARPANI) + ((buHaftakiYukler[b.id] || 0) * multiplier);
+ //
+ // CUMA 1.5x ÇARPANI BURADA UYGULANMAZ (bkz. planlamaCekirdegi.ts
+ // `cumaCarpani`). Bu kademe eskiden `buHaftakiYukler`i Cuma günlerinde
+ // GEÇİCİ olarak 1.5 ile çarpıyordu; o, "Cuma görevi 1.5 yük sayılır"
+ // kuralının Cuma yükü BİRİKİME hiç işlenmediği dönemdeki VEKİLİYDİ.
+ // PL-O3 ile çarpan asıl ait olduğu yere — Cuma gününün KENDİ yük
+ // katkısının birikimine (planlamaCekirdegi.ts) — taşınınca buradaki
+ // çarpan hem gereksiz hem de ZARARLI hale geldi:
+ //   1) tieBreakerSirala günde BİR kez, o günün yükü daha birikime
+ //      İŞLENMEDEN çağrılır (planlamaCekirdegi.ts). Yani Cuma günü burada
+ //      1.5 ile çarpılan değer Cuma'nın kendi yükü DEĞİL, Pazartesi–Perşembe
+ //      birikimidir — Cuma'lıkla hiç ilgisi olmayan bir büyüklük.
+ //   2) Toplamın diğer iki terimi (aylikVakitSayisi, aylikYedekSayisi)
+ //      çarpılmadığından, çarpan Cuma günleri "bu hafta"nın "bu ay"a göre
+ //      ağırlığını sessizce %50 artırıyor, yani sıralamayı Cuma'lıkla
+ //      ilgisiz bir eksende kaydırıyordu.
+ // Kural artık TEK yerde uygulanır: Cuma günü yapılan görev birikime 1.5
+ // katkı verir, o katkı da sonraki tüm karşılaştırmalara olduğu gibi girer.
+ const totalA = (a.aylikVakitSayisi || 0) + ((a.aylikYedekSayisi || 0) * YEDEK_YUK_CARPANI) + (buHaftakiYukler[a.id] || 0);
+ const totalB = (b.aylikVakitSayisi || 0) + ((b.aylikYedekSayisi || 0) * YEDEK_YUK_CARPANI) + (buHaftakiYukler[b.id] || 0);
 
  if (Math.abs(totalA - totalB) > 0.1) {
  return totalA - totalB;

@@ -10,6 +10,13 @@ on:
   schedule:
     - cron: '0 22 * * *' # 01:00 Türkiye saati — gece yarısı geçişinden hemen sonra
 
+# Çakışan iki koşu, `bugunIcinApiHatasiUyarisiVarMi` dedup'ını (sorgu +
+# ayrı yazım, transaction değil) ikisi de "uyarı yok" görerek atlatıp aynı
+# gün için iki `adminUyarilari` belgesi üretir. Diğer cron'lardaki AYNI desen.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   saglik-kontrolu:
     runs-on: ubuntu-latest

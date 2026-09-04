@@ -2,6 +2,7 @@ import { deleteDoc, doc, getDoc, runTransaction, serverTimestamp, setDoc, update
 import { auth, db } from '../lib/firebase';
 import { mazeretZamanKontrolYap } from './mazeretServisi';
 import { Bildirim, Vakit, VekaletTalebi } from '../types';
+import { vekaletDevriBekliyorGecerliMi } from '../lib/slotKorumasi';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 function buildVekaletTalebiId(
@@ -32,15 +33,16 @@ export async function vekaletTeklifEt(
   // atlatılabilir (bkz. mimari denetim K3/K4). Bildirim belgesindeki
   // (eski belgelerde eksik olabilen) `cumaMi` alanına GÜVENMEZ, `tarih`'ten
   // taze türetir — bkz. src/services/mazeretServisi.ts `mazeretZamanKontrolYap`.
-  // DİKKAT: yalnızca Cuma kısıtlaması sunucu tarafında da (firestore.rules
-  // `isValidVekaletCreate` → `cumaMiIsaretli`) doğrulanır. 1 saatlik zaman
-  // penceresinin firestore.rules'ta bir karşılığı YOKTUR (ezan vakti verisi
-  // rule bütçesine sığmadan okunamıyor) — bu satır, o kural için TEK
-  // uygulama noktasıdır; istemci bypass edilirse (doğrudan SDK/REST çağrısı)
-  // yalnızca zaman penceresi atlatılabilir (Cuma yine engellenir). Kabulden
-  // sonraki gerçek transfer anında ezan vaktinin geçip geçmediği ayrıca
-  // scripts/vekaletDevirleriniIsle.ts'te (Admin SDK, taze veriyle) tekrar
-  // kontrol edilir (bkz. kod denetimi, kritik bulgu).
+  // GÜNCELLEME (kod denetimi — cihaz saati bypass'ı): 1 saatlik zaman
+  // penceresinin ARTIK sunucu tarafı karşılığı VAR — firestore.rules
+  // `isValidVekaletCreate` → `mazeretPenceresiAcik`, bildirim belgesindeki
+  // önceden hesaplanmış `mazeretSonBasvuru` damgasını Firestore'un KENDİ
+  // `request.time` değeriyle karşılaştırır. Bu satır artık yalnızca bir
+  // UX/erken-ret katmanıdır: `getTurkeyNow()`, RTDB zaman senkronu
+  // (src/lib/timeSync.ts) hiç ateşlemezse cihazın saatine düşer ve GÜVENLİK
+  // SINIRI SAYILMAZ. Kabulden sonraki gerçek transfer anında ezan vaktinin
+  // geçip geçmediği ayrıca scripts/vekaletDevirleriniIsle.ts'te (Admin SDK,
+  // taze veriyle) tekrar kontrol edilir.
   const mazeretDurumu = await mazeretZamanKontrolYap(tarih, vakit, saat);
   if (mazeretDurumu.kapali) {
     throw new Error(mazeretDurumu.sebep ?? 'Bu görev için görev devri (vekalet) kullanılamaz.');
@@ -95,6 +97,12 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
   // (bkz. mimari denetim K4). Aşağıdaki transaction'daki 'beklemede' ve
   // bildirim 'bekliyor' kontrolleri otoriter kalır; bu yalnızca erken bir
   // reddir, kabulü tetikleyen esas doğrulama değildir.
+  // Kabulün SUNUCU tarafı zorlayıcısı iki yerdedir (ikisi de bu
+  // transaction'ın yazımlarını kapsar): firestore.rules
+  // `isRecipientVekaletStatusUpdate` → `vekaletKabulPenceresiAcik` (talep
+  // durumu yazımı) ve `isVekaletDevriBekliyorIsareti` → `mazeretPenceresiAcik`
+  // (bildirimdeki niyet bayrağı). Cihaz saati geri alınmış bir istemci bu
+  // yüzden pencereyi artık atlatamaz.
   const onKontrolSnap = await getDoc(talepRef);
   if (!onKontrolSnap.exists()) throw new Error('Vekalet talebi bulunamadı.');
   const onKontrolTalep = onKontrolSnap.data() as VekaletTalebi;
@@ -147,7 +155,19 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
       // kontrolüyle (kaybedene admin uyarısı üreterek) çözülürdü — bunu
       // burada erkenden reddetmek kullanıcıya anında doğru geri bildirim
       // verir (bkz. kod denetimi race condition bulgusu).
-      if (bildirim.vekaletDevriBekliyor === true) {
+      //
+      // ZAMAN AŞIMI (aynı kök neden — bkz. src/lib/slotKorumasi.ts
+      // VEKALET_DEVRI_BEKLEME_ASIMI_MS): düz `=== true` kontrolü, uzlaştırma
+      // cron'u 30 günlük sorgu penceresinden daha uzun süre durursa bu görevi
+      // vekalete KALICI OLARAK kapatıyordu — bayrağı temizleyecek tek yol o
+      // script olduğundan hiç kimse bir daha o bildirim için devir kabul
+      // edemezdi. Bayat bir bayrak "devam eden devir" sayılmaz. Burada istemci
+      // saati kullanılıyor olması güvenlik sorunu değil: bu kontrol yalnızca
+      // erken/UX reddidir (yukarıdaki yoruma bkz.), otoriter olan
+      // firestore.rules ve scripts/vekaletDevirleriniIsle.ts'tir — saati
+      // kaydırılmış bir cihaz en fazla, bu kontrol hiç yokken de var olan
+      // "iki kabul yarışı" durumunu üretir ve onu cron zaten çözer.
+      if (vekaletDevriBekliyorGecerliMi(bildirim)) {
         throw new Error('Bu görev için zaten bekleyen başka bir vekalet devri var.');
       }
 

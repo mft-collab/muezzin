@@ -3,7 +3,8 @@ import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, gunIzinliUidler, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
 import { korumaliSlotMu as korumaliSlotVerisiMi, guncelSlotBildirimleriniSec, SlotBildirimVerisi } from '../lib/slotKorumasi';
-import { isFriday, getOncekiHafta, getTurkeyDateString, getTurkeyNow, toTurkishUpperCase } from '../lib/dateUtils';
+import { isFriday, getOncekiHafta, getTurkeyDateString, getTurkeyNow, oncekiGunTarihi, toTurkishUpperCase } from '../lib/dateUtils';
+import { mazeretSonBasvuruHesapla } from '../lib/mazeretKurallari';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
 
@@ -30,6 +31,63 @@ export class PlanCevrimdisiEngellendi extends Error {
     super('Bağlantı yok (veriler yerel önbellekten okunuyor). Plan üretimi, sunucudaki güncel çizelgeyi bozmamak için iptal edildi. Bağlantı sağlandığında tekrar deneyin.');
     this.name = 'PlanCevrimdisiEngellendi';
   }
+}
+
+/**
+ * Haftanın her (gün, vakit) slotu için `mazeretSonBasvuru` damgasını —
+ * mazeret/vekalet penceresinin KAPANDIĞI gerçek anı — hesaplar.
+ *
+ * Bu damga, 1 saatlik pencerenin SUNUCU tarafı zorlayıcısıdır: firestore.rules
+ * onu Firestore'un kendi `request.time` değeriyle karşılaştırır (bkz.
+ * `mazeretPenceresiAcik`). Gece cron'u da AYNI formülü (`mazeretSonBasvuruHesapla`)
+ * scripts/lib/ezanVakitleri.ts üzerinden kullanır — self-healing ile üretilen
+ * bir hafta, cron'un ürettiğiyle aynı damgalara sahip olmalıdır.
+ *
+ * Ezan verisi okunamazsa (ay henüz önbellekte yok, çevrimdışı, bozuk değer)
+ * ilgili slot için damga ÜRETİLMEZ; kural tarafı bunu "pencere kapalı" sayar
+ * (fail-closed) ve scripts/mazeretPenceresiBackfill.ts 10 dakika içinde
+ * tamamlar. Bu fonksiyon bu yüzden asla fırlatmaz — plan üretimi ezan verisine
+ * bağımlı hale getirilmemelidir.
+ */
+async function haftaMazeretPencereleri(gunler: string[]): Promise<Record<string, Timestamp>> {
+ const sonuc: Record<string, Timestamp> = {};
+ try {
+ const settingsSnap = await getDoc(doc(db, 'settings', 'system'));
+ const ilceId = (settingsSnap.data()?.ilceId as string) || '9148';
+
+ // Sabah vakti bir ÖNCEKİ günün yatsısına bağlı olduğundan (ay sınırını
+ // geçebilir) o günlerin ayları da okunur.
+ const gerekliGunler = new Set<string>();
+ gunler.forEach((gun) => {
+ gerekliGunler.add(gun);
+ const onceki = oncekiGunTarihi(gun);
+ if (onceki) gerekliGunler.add(onceki);
+ });
+ const aylar = new Set(Array.from(gerekliGunler).map((gun) => gun.slice(0, 7)));
+
+ const gunVakitleri: Record<string, Record<string, unknown>> = {};
+ await Promise.all(Array.from(aylar).map(async (ay) => {
+ const snap = await getDoc(doc(db, 'vakitler', `${ilceId}_${ay}`));
+ const harita = snap.exists() ? snap.data()?.gunler : null;
+ if (harita && typeof harita === 'object') Object.assign(gunVakitleri, harita);
+ }));
+
+ for (const gun of gunler) {
+ const onceki = oncekiGunTarihi(gun);
+ for (const vakit of VAKITLER) {
+ const an = mazeretSonBasvuruHesapla(
+ gun,
+ vakit,
+ gunVakitleri[gun]?.[vakit],
+ onceki ? gunVakitleri[onceki]?.yatsi : null
+ );
+ if (an) sonuc[`${gun}_${vakit}`] = Timestamp.fromDate(an);
+ }
+ }
+ } catch (err) {
+ console.warn('[plan] mazeret penceresi damgaları hesaplanamadı — bildirimler damgasız yazılacak (fail-closed; cron tamamlar).', err);
+ }
+ return sonuc;
 }
 
 type BildirimQueryDoc = QueryDocumentSnapshot<DocumentData>;
@@ -368,6 +426,11 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // ağır durum, önceden hiçbir uyarı üretmiyordu (bkz. mimari denetim O3).
  const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
 
+ // Mazeret penceresi damgaları eşzamanlılık kontrolünden ÖNCE hesaplanır —
+ // bu okumalar (settings + en fazla 2 `vakitler` belgesi) kontrol ile commit
+ // arasındaki pencereyi genişletmemeli (bkz. hemen aşağıdaki yorum).
+ const mazeretPencereleri = await haftaMazeretPencereleri(gunler);
+
  // Commit'ten hemen önce eşzamanlılık kontrolü yapılıp SONRA batch kurulur —
  // aradaki pencere olabildiğince küçük tutulur. haftaPlanlari VE
  // bildirimler'in ikisi de yeniden kontrol edilir (bkz. bildirimlerParmakIzi
@@ -425,13 +488,20 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
 
  const atama = gunPlan[gun][vakit];
 
+ // 1 saatlik mazeret/vekalet penceresinin sunucu tarafı damgası (bkz.
+ // `haftaMazeretPencereleri` ve firestore.rules `mazeretPenceresiAcik`).
+ // Hesaplanamadıysa alan hiç yazılmaz — pencere kural tarafında kapalı
+ // sayılır, cron veri geldiğinde damgayı tamamlar.
+ const pencereDamgasi = mazeretPencereleri[slotKey];
+ const pencereAlani = pencereDamgasi ? { mazeretSonBasvuru: pencereDamgasi } : {};
+
  // Bildirim ID'leri deterministiktir (haftaId_tarih_vakit_tip) — bkz.
  // firestore.rules `isBackupPromotionFromMazeret` ve scripts/haftalikPlanOlustur.ts.
  if (atama.asil !== 'Sistem') {
  gunBatch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_asil`), {
  haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
  durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
- sonGuncelleme: Timestamp.now()
+ sonGuncelleme: Timestamp.now(), ...pencereAlani
  });
  }
 
@@ -439,7 +509,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  gunBatch.set(doc(db, 'bildirimler', `${haftaId}_${gun}_${vakit}_yedek`), {
  haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
  durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
- sonGuncelleme: Timestamp.now()
+ sonGuncelleme: Timestamp.now(), ...pencereAlani
  });
  }
  }

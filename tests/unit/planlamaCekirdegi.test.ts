@@ -276,6 +276,112 @@ describe('haftalikPlanUret', () => {
     expect(Object.values(cumaAsilSayisi).every((n) => n <= 2)).toBe(true);
   });
 
+  it('sabit haftalık izin günü olan 3 kişilik kadroda Cuma görevi tek kişide toplanmaz (tier sırası regresyonu)', () => {
+    // ÖLÇÜLEN KÖK HATA: tie-breaker'da "art arda yedek kilidi kırıcı" kademesi
+    // "Cuma adaleti" kademesinden ÖNCE çalışıyordu. Kadroda TEK bir kişinin
+    // sabit haftalık izin günü olması, bir kişinin her Çarşamba+Perşembe yedek
+    // kalıp Cuma'ya tam olarak streak=2 ile girmesine yol açıyor; kilit kırıcı
+    // her Cuma tetiklenip o kişiyi asile terfi ettiriyor ve Cuma adaleti
+    // kademesi HİÇ çalışamıyordu. 26 haftalık simülasyonda ölçülen sonuç:
+    // Cuma dağılımı {aaa:0, bbb:26, ccc:0} (26 Cuma'nın 26'sı aynı kişide).
+    // Doğru sırada (Cuma adaleti önce) aynı simülasyon {8,9,9} veriyor.
+    //
+    // Bu test 8 haftalık kısaltılmış hâli: kimse 8 Cuma'nın yarısından
+    // fazlasını yapmamalı ve HERKES en az bir Cuma yapmış olmalı.
+    let muezzinler: MuezzinAday[] = [
+      muezzin('aaa', { haftalikIzinGunu: 1 }), // Pazartesi sabit izinli
+      muezzin('bbb'),
+      muezzin('ccc'),
+    ];
+    const cumaAsilSayisi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+    let oncekiHaftaSonEkibi: string[] = [];
+    let oncekiGunPlan: Record<string, Record<Vakit, { asil: string; yedek: string }>> | undefined;
+
+    for (let h = 0; h < 8; h++) {
+      const gunler: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const gun = new Date(2026, 7, 3);
+        gun.setDate(gun.getDate() + h * 7 + i);
+        gunler.push(`${gun.getFullYear()}-${String(gun.getMonth() + 1).padStart(2, '0')}-${String(gun.getDate()).padStart(2, '0')}`);
+      }
+      const oncekiArdArda = oncekiHaftaninArdArdaYedekSayilariniHesapla(oncekiGunPlan, muezzinler.map((m) => m.id));
+      const plan = haftalikPlanUret(gunler, muezzinler, [], undefined, oncekiHaftaSonEkibi, oncekiArdArda);
+
+      const haftaAsil: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      const haftaYedek: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      for (const gun of gunler) {
+        for (const vakit of VAKITLER) {
+          const atama = plan[gun][vakit];
+          if (atama.asil !== 'Sistem') haftaAsil[atama.asil]++;
+          if (atama.yedek !== 'Sistem') haftaYedek[atama.yedek]++;
+        }
+      }
+      const cumaAtama = plan[gunler[4]].ogle; // gunler[4] = Cuma
+      if (cumaAtama.asil !== 'Sistem') cumaAsilSayisi[cumaAtama.asil]++;
+
+      muezzinler = muezzinler.map((m) => ({
+        ...m,
+        aylikVakitSayisi: (m.aylikVakitSayisi || 0) + haftaAsil[m.id],
+        aylikYedekSayisi: (m.aylikYedekSayisi || 0) + haftaYedek[m.id],
+        aylikCumaSayisi: (m.aylikCumaSayisi || 0) + (cumaAtama.asil === m.id ? 1 : 0),
+      }));
+      oncekiHaftaSonEkibi = [plan[gunler[6]].yatsi.asil].filter((uid) => uid !== 'Sistem');
+      oncekiGunPlan = plan;
+    }
+
+    // Eski (hatalı) sırada: {aaa:0, bbb:8, ccc:0}.
+    expect(Math.max(...Object.values(cumaAsilSayisi))).toBeLessThanOrEqual(4);
+    expect(Object.values(cumaAsilSayisi).every((n) => n > 0)).toBe(true);
+  });
+
+  it('Cuma yükü haftalık birikime TAM OLARAK 1.5 kat işlenir (tek uygulama — PL-O3 / çift ağırlık regresyonu)', () => {
+    // Cuma ağırlığı ARTIK TEK yerde uygulanır: gün planı üretilirken o günün
+    // KENDİ yük katkısında (cumaCarpani). tieBreaker.ts tier 2'deki eski
+    // "buHaftakiYukler * 1.5" mekanizması kaldırıldı — o, tieBreakerSirala
+    // günün yükü birikime işlenmeden ÖNCE çağrıldığı için Cuma günü
+    // Pazartesi–Perşembe birikimini (Cuma'lıkla ilgisiz bir büyüklüğü)
+    // ölçekliyordu.
+    //
+    // Kurgu (4 kişi, SOS/streak karışmasın diye Cuma ve Cumartesi zorlanıyor):
+    //   Cuma  2026-08-07: asil=ccc, yedek=aaa (zorlanmış)
+    //   Cmt   2026-08-08: asil=aaa, yedek=bbb (zorlanmış — Pazar SOS'u yalnız
+    //                     aaa'yı bloklasın diye)
+    //   Pazar 2026-08-09: TAZE hesap. Adaylar bbb, ccc, ddd.
+    // Haftalık yükler (5 vakit): ccc = 5*1*1.5 = 7.5 ; bbb = 5*0.5 = 2.5 ;
+    //                            ddd = 0.
+    // ccc'nin ağırlıklı toplamı 7.5; aylık sayaçlarla bbb ve ddd'yi ccc'nin
+    // İKİ YANINA yerleştirip ccc'nin yükünü (6.5, 8) aralığına hapsediyoruz:
+    //   - Çarpan hiç uygulanmasaydı ccc = 5.0  -> ilk sırada olurdu.
+    //   - Çarpan iki kez uygulansaydı ccc = 11.25 -> son sırada olurdu.
+    // Yalnızca TEK uygulama (7.5) aşağıdaki iki beklentiyi birlikte sağlar.
+    const forced: Record<string, { asil: string; yedek: string }> = {
+      '2026-08-07': { asil: 'ccc', yedek: 'aaa' },
+      '2026-08-08': { asil: 'aaa', yedek: 'bbb' },
+    };
+    const korunmusAtama = (gun: string) => forced[gun] ?? null;
+    const gunler = ['2026-08-07', '2026-08-08', '2026-08-09'];
+
+    // (1) ddd'nin aylık yükü 6 -> ddd(6) < bbb(4+2.5=6.5) < ccc(7.5)
+    const planA = haftalikPlanUret(
+      gunler,
+      [muezzin('aaa'), muezzin('bbb', { aylikVakitSayisi: 4 }), muezzin('ccc'), muezzin('ddd', { aylikVakitSayisi: 6 })],
+      [],
+      korunmusAtama
+    );
+    expect(planA['2026-08-09'].sabah.asil).toBe('ddd');
+
+    // (2) ddd'nin aylık yükü 8 -> ccc(7.5) < ddd(8); bbb hâlâ 6.5 ama SOS'suz
+    //     en düşük ccc değil... bbb 6.5 < ccc 7.5, bu yüzden bbb'yi de yukarı
+    //     alıyoruz: aylik 6 -> bbb = 8.5. Sıra: ccc(7.5) < ddd(8) < bbb(8.5).
+    const planB = haftalikPlanUret(
+      gunler,
+      [muezzin('aaa'), muezzin('bbb', { aylikVakitSayisi: 6 }), muezzin('ccc'), muezzin('ddd', { aylikVakitSayisi: 8 })],
+      [],
+      korunmusAtama
+    );
+    expect(planB['2026-08-09'].sabah.asil).toBe('ccc');
+  });
+
   it('oncekiHaftaSonEkibi verilmezse (varsayılan boş dizi) SOS kısıtlaması uygulanmaz', () => {
     const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c'), muezzin('d')];
 

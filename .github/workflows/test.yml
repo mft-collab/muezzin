@@ -120,14 +120,37 @@ jobs:
       # tutulmasın diye kısaltıldı — prod'daki bir hatanın stack trace'ini
       # ayıklamak için bu artifact'i indirip yerel source-map araçlarıyla
       # eşlemek gerekir.
+      # v4 idi — aynı dosyadaki diğer upload-artifact adımı (Playwright
+      # trace) zaten v7 kullanıyordu. v7'nin `name`/`path`/`retention-days`
+      # girdileri v4 ile birebir uyumlu (doğrulandı), sürüm hizalandı.
       - name: Upload source maps (debug artifact, not deployed)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sourcemaps-${{ github.sha }}
           path: dist/**/*.map
           retention-days: 14
+      # SHA'ya sabitlendi (eskiden `@v15.23.0` — DEĞİŞTİRİLEBİLİR bir git
+      # tag'i). Bu adım `GCP_SA_KEY` ile TAM servis hesabı anahtarını
+      # üçüncü taraf bir action'a veriyor; tag upstream'de başka bir
+      # commit'e taşınırsa (ya da bakımcının hesabı ele geçirilirse) bu
+      # kimlik bilgisi sessizce dışarı sızdırılabilirdi. SHA, v15.23.0
+      # etiketinin 2026-09-04'te işaret ettiği commit'tir (annotated tag
+      # 8d318104... → commit 0134e55e...), iki bağımsız API yoluyla
+      # doğrulandı.
+      #
+      # KALAN RİSK — TAM DEĞİL: bu bir "docker" action ve action.yaml'i
+      # `docker://w9jds/firebase-action:v15.23.0` imajını çalıştırıyor —
+      # yani asıl kod Docker Hub'daki DEĞİŞTİRİLEBİLİR bir imaj tag'inden
+      # geliyor, SHA pin'i yalnızca action.yaml/entrypoint.sh'i sabitler.
+      # 2026-09-04 itibarıyla o tag'in digest'i
+      # sha256:634ae5b502d9c462d6e86012270a569a698a7ecec7729836e8566f4cd23d9c37.
+      # TODO: imajı da sabitlemek ancak action'ı fork'layıp `image:`
+      # satırını digest'e çevirerek ya da bu adımı doğrudan
+      # `npm i -g firebase-tools && firebase deploy` ile değiştirerek
+      # mümkün — ikisi de deploy yolunu değiştirdiğinden ayrı ve
+      # doğrulanabilir bir değişiklik olarak yapılmalı.
       - name: Deploy to Firebase (hosting + firestore rules + indexes)
-        uses: w9jds/firebase-action@v15.23.0
+        uses: w9jds/firebase-action@0134e55ecfe4bdbb457d879e7de8e86593457d65 # v15.23.0
         with:
           args: deploy --only hosting,firestore:rules,firestore:indexes
         env:

@@ -1,7 +1,8 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
-import { db } from '../../scripts/lib/firebaseAdminInit.ts';
+import { db, Timestamp } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processIzinDurumBildirimleri } from '../../scripts/izinDurumBildirimGonder.ts';
+import { GONDERIM_CLAIM_ALANI, GONDERIM_CLAIM_BAYATLAMA_MS } from '../../scripts/lib/gonderimClaim.ts';
 
 type TestCase = {
   name: string;
@@ -141,6 +142,66 @@ const tests: TestCase[] = [
 
       const sonuc = await processIzinDurumBildirimleri(false);
       assert.equal(sonuc.kararSayisi, 0);
+    }
+  },
+  {
+    // CIFT PUSH KOK NEDENI: gonderim ile "gonderildi" commit'i arasinda
+    // surec olurse bayrak hic kalicilasmaz ve eski kodda karar her 10
+    // dakikada bir yeniden bildiriliyordu. Bu senaryo, o cokmus kosunun
+    // biraktigi TAZE damgayi taklit eder (bkz. scripts/lib/gonderimClaim.ts).
+    name: 'Taze "gonderiliyor" damgasi tasiyan izin karari bu turda yeniden gonderilmez',
+    run: async () => {
+      await clearCollections();
+      await db.collection('muezzins').doc('muezzin_claim').set({
+        displayName: 'Claim',
+        role: 'muezzin',
+        aktif: true,
+        fcmTokens: { fake_token_c: new Date() }
+      });
+      const izinRef = db.collection('izinler').doc('izinClaimTaze');
+      await izinRef.set({
+        uid: 'muezzin_claim',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onaylandi',
+        bildirimGonderildi: false,
+        [GONDERIM_CLAIM_ALANI]: Timestamp.now()
+      });
+
+      const sonuc = await processIzinDurumBildirimleri(false);
+      assert.equal(sonuc.kararSayisi, 0);
+      assert.equal(sonuc.mesajSayisi, 0);
+
+      const izinDoc = await izinRef.get();
+      assert.equal(izinDoc.data()?.bildirimGonderildi, false);
+      assert.ok(izinDoc.data()?.[GONDERIM_CLAIM_ALANI]);
+    }
+  },
+  {
+    // Damga bayatlayinca kayit yeniden denenmeli — aksi halde bu mekanizma
+    // bildirimleri KALICI olarak kilitlerdi. (Alici muezzin kaydi yok, yani
+    // sifir mesaj: entegrasyon suitinde gercek FCM'e cikilmaz.)
+    name: 'Bayatlamis damga tasiyan izin karari yeniden islenir ve damga silinir',
+    run: async () => {
+      await clearCollections();
+      const izinRef = db.collection('izinler').doc('izinClaimBayat');
+      await izinRef.set({
+        uid: 'olmayan_uid',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onaylandi',
+        bildirimGonderildi: false,
+        [GONDERIM_CLAIM_ALANI]: Timestamp.fromMillis(Date.now() - GONDERIM_CLAIM_BAYATLAMA_MS - 60_000)
+      });
+
+      const sonuc = await processIzinDurumBildirimleri(false);
+      assert.equal(sonuc.kararSayisi, 1);
+
+      const izinDoc = await izinRef.get();
+      assert.equal(izinDoc.data()?.bildirimGonderildi, true);
+      assert.equal(izinDoc.data()?.[GONDERIM_CLAIM_ALANI], undefined);
     }
   }
 ];

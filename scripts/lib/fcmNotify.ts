@@ -1,5 +1,6 @@
 import { getMessaging } from 'firebase-admin/messaging';
 import { db, FieldValue } from './firebaseAdminInit.ts';
+import { parcaliBatchUygula, type BatchIslemi } from './firestoreBatch.ts';
 
 export interface FcmMessage {
   token: string;
@@ -181,16 +182,18 @@ export async function fcmGonderVeTemizle(
 
   const uidsToUpdate = Object.keys(tokensToRemove);
   if (uidsToUpdate.length > 0) {
-    const cleanupBatch = db.batch();
-    for (const uid of uidsToUpdate) {
+    // Tek bir `db.batch()` idi: kullanıcı sayısı 500'ü aşarsa commit
+    // TAMAMEN fırlatır ve gönderim başarılı olsa bile bayat token temizliği
+    // bir daha hiç yapılamaz (bkz. `parcaliBatchUygula` — yukarıdaki
+    // SEND_CHUNK_SIZE ile AYNI sınıf sınır, yazma tarafında).
+    await parcaliBatchUygula(uidsToUpdate.map<BatchIslemi>((uid) => (batch) => {
       const userRef = db.collection('muezzins').doc(uid);
       const updates: Record<string, FieldValue> = {};
       tokensToRemove[uid]!.forEach(t => {
         updates[`fcmTokens.${t}`] = FieldValue.delete();
       });
-      cleanupBatch.update(userRef, updates);
-    }
-    await cleanupBatch.commit();
+      batch.update(userRef, updates);
+    }));
     console.log(`${logEtiketi}: FCM cleanup — ${uidsToUpdate.length} kullanıcıdan geçersiz tokenlar temizlendi.`);
   }
 

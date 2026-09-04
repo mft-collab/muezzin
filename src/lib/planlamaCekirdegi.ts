@@ -188,13 +188,19 @@ export function haftalikPlanUret(
     const gunAsilUidleri = new Set<string>();
     const gunYedekUidleri = new Set<string>();
 
-    // "Cuma vakitleri 1.5x ağırlıklı" (bkz. CLAUDE.md) önceden yalnızca
-    // tieBreaker.ts'in tier 2 karşılaştırmasında (o haftanın TOPLAMINI Cuma
-    // günü GEÇİCİ olarak 1.5 ile çarpan ayrı bir mekanizma) uygulanıyordu;
-    // burada, haftalık yük BİRİKİMİNİN kendisinde hiç uygulanmıyordu — yani
-    // Cuma yapan biri hafta içi kalan günlerdeki karşılaştırmalarda normal
-    // bir gün yapmış gibi görünüyordu (premium hata analizi PL-O3). Bu
-    // çarpan, tier 2'deki geçici çarpandan bağımsız — kalıcı birikime işler.
+    // "Cuma vakitleri 1.5x ağırlıklı" (bkz. CLAUDE.md) kuralının TEK uygulama
+    // noktası. Önceden bu ağırlık yalnızca tieBreaker.ts'in tier 2
+    // karşılaştırmasında (o haftanın TOPLAMINI Cuma günü GEÇİCİ olarak 1.5 ile
+    // çarpan ayrı bir mekanizma) yaşıyordu; haftalık yük BİRİKİMİNİN kendisinde
+    // hiç uygulanmıyordu — yani Cuma yapan biri hafta içi kalan günlerdeki
+    // karşılaştırmalarda normal bir gün yapmış gibi görünüyordu (premium hata
+    // analizi PL-O3). Ağırlık buraya taşındıktan sonra tier 2'deki geçici
+    // çarpan hem gereksiz hem zararlı kaldığı için KALDIRILDI (bkz.
+    // tieBreaker.ts tier 2 yorumu): tieBreakerSirala gün başında, o günün yükü
+    // daha eklenmeden çağrıldığından oradaki çarpan Cuma'nın kendi yükünü
+    // değil, Pazartesi–Perşembe birikimini ölçekliyordu. Artık 1.5 TEK bir
+    // yerde, TEK bir kez uygulanır: Cuma gününün kendi katkısı birikime 1.5
+    // katıyla girer ve sonraki tüm karşılaştırmalara olduğu gibi taşınır.
     const cumaCarpani = isFriday ? 1.5 : 1;
 
     for (const vakit of VAKITLER) {

@@ -17,6 +17,14 @@ on:
     # başlaması.
     - cron: '0 5 * * *'
 
+# Denetimin saydığı dört dosyaya EK olarak burada da eksikti: çakışan iki
+# koşu `acikKotaUyarilariniGetir` dedup'ını (sorgu + ayrı yazım, transaction
+# değil) ikisi de "açık uyarı yok" görerek atlatıp aynı gün için iki
+# `kotaUyarisi` belgesi üretir. Diğer cron'lardaki AYNI desen.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   kota-kontrolu:
     runs-on: ubuntu-latest

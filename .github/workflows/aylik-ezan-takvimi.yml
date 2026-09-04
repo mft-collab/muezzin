@@ -5,6 +5,13 @@ on:
   schedule:
     - cron: '0 1 28 * *'
 
+# Çakışan iki koşu, resmi Diyanet API'sinin aylık kotasını iki katına
+# çıkarır (bkz. scripts/lib/diyanetResmiApi.ts) ve aynı `vakitler`
+# belgesine eşzamanlı yazar. Diğer cron'lardaki AYNI desen.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   takvim:
     runs-on: ubuntu-latest

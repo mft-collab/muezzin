@@ -1,6 +1,6 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
-import { db, FieldValue } from '../../scripts/lib/firebaseAdminInit.ts';
+import { db, FieldValue, Timestamp } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processVekaletDevirleri } from '../../scripts/vekaletDevirleriniIsle.ts';
 import { getTurkeyDateString, getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
@@ -50,6 +50,16 @@ function yakinCumaOlmayanGelecekGun(): string {
   throw new Error('Cuma olmayan gelecek bir tarih bulunamadı.');
 }
 
+// `seedKabulEdilmisTalep`'in VARSAYILAN tarihi artık GELECEKTE bir gün.
+// Gerekçe (kod denetimi — "ezan saati biçim asimetrisi"): script'in
+// `ezanVaktiGecmisMi` kontrolü artık FAIL-CLOSED — ezan saati okunamıyorsa
+// transfer reddedilir. Fixture bu yüzden her zaman gerçek bir ezan saati
+// tohumlar; "transfer uygulanmalı" senaryolarının çalışabilmesi için de o
+// ezanın henüz GEÇMEMİŞ olması, yani günün gelecekte olması gerekir.
+// (Önceden varsayılan 3 gün ÖNCESİYDİ ve testler yalnızca "ezan verisi yok →
+// kısıtlama uygulanmaz" fail-open davranışı sayesinde geçiyordu.)
+const GELECEK_GUN = yakinCumaOlmayanGelecekGun();
+
 type TestCase = {
   name: string;
   run: () => Promise<void>;
@@ -78,15 +88,30 @@ async function seedKabulEdilmisTalep(overrides: {
   aliciHaftalikIzinGunu?: number;
   bildirimCumaMi?: boolean;
   bildirimDurum?: string;
-  /** Varsayılan TARIH_1 — Cuma testleri gibi tarihin GERÇEKTEN belirli bir
-   * haftanın gününe denk gelmesi gereken senaryolar için override edilir. */
+  /** Varsayılan GELECEK_GUN — Cuma testleri gibi tarihin GERÇEKTEN belirli
+   * bir haftanın gününe denk gelmesi gereken senaryolar için override edilir. */
   tarih?: string;
   /** Varsayılan 'ogle' — sabah vaktine özel ezanVaktiGecmisMi regresyonu
    * için override edilir. */
   vakit?: string;
+  /** Tohumlanacak ezan saati. `null` verilirse `vakitler` belgesine HİÇ saat
+   * yazılmaz (fail-closed senaryosu); bozuk bir dizge ("9:05", "abc")
+   * verilerek biçim doğrulaması da test edilebilir. */
+  ezanSaati?: string | null;
+  /** Talep belgesindeki alanları bildirimden desenkronize etmek için
+   * (Fix 3 — "script talep/bildirim alanlarını karıştırıyor" regresyonu). */
+  talepOverrides?: Record<string, unknown>;
 } = {}) {
-  const tarih = overrides.tarih ?? TARIH_1;
+  const tarih = overrides.tarih ?? GELECEK_GUN;
   const vakit = overrides.vakit ?? 'ogle';
+  const ezanSaati = overrides.ezanSaati === undefined ? '12:45' : overrides.ezanSaati;
+  if (ezanSaati !== null) {
+    await ezanVaktiTohumla(tarih, vakit, ezanSaati);
+  } else {
+    // `settings/system` yine yazılır (ilceId çözümlenebilsin) ama `vakitler`
+    // belgesi hiç oluşturulmaz — script'in fail-closed dalını tetikler.
+    await db.collection('settings').doc('system').set({ ilceId: '9148' }, { merge: true });
+  }
   await db.collection('muezzins').doc('muezzin1').set({
     displayName: 'Muezzin One', role: 'muezzin', aktif: true, onayBekliyor: false
   });
@@ -123,7 +148,8 @@ async function seedKabulEdilmisTalep(overrides: {
     vakit,
     saat: '12:45',
     tip: 'asil',
-    durum: 'kabul_edildi'
+    durum: 'kabul_edildi',
+    ...(overrides.talepOverrides ?? {})
   });
 
   return { bildirimRef, talepRef };
@@ -267,7 +293,7 @@ const tests: TestCase[] = [
       // TARIH_1'in gerçek haftanın-günü numarasıyla (Pazartesi=1..Pazar=7)
       // AYNI değer — hangi güne denk geldiği değil, çakışmanın kendisi test
       // ediliyor.
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: haftaGunuNumarasi(TARIH_1) });
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: haftaGunuNumarasi(GELECEK_GUN) });
 
       await processVekaletDevirleri(false);
 
@@ -348,8 +374,7 @@ const tests: TestCase[] = [
     name: 'sabah vakti icin ezan zaten gecmisse kabul transferi engellenir (regresyon)',
     run: async () => {
       await clearCollections();
-      await ezanVaktiTohumla(TARIH_1, 'sabah', '05:30');
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah' });
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah', tarih: TARIH_1, ezanSaati: '05:30' });
 
       await processVekaletDevirleri(false);
 
@@ -367,9 +392,7 @@ const tests: TestCase[] = [
       await clearCollections();
       // Cuma olmayan, gelecekteki bir gün — ezan saati ne olursa olsun "şu
       // an"dan sonradır ve Cuma kısıtlamasıyla karışmaz.
-      const gelecekGun = yakinCumaOlmayanGelecekGun();
-      await ezanVaktiTohumla(gelecekGun, 'sabah', '05:30');
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah', tarih: gelecekGun });
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ vakit: 'sabah', tarih: GELECEK_GUN, ezanSaati: '05:30' });
 
       await processVekaletDevirleri(false);
 
@@ -379,6 +402,134 @@ const tests: TestCase[] = [
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
       assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
+    }
+  },
+  // ---------------------------------------------------------------
+  // Fix 2 — ezan saati BİÇİM ASİMETRİSİ (fail-open) regresyonları
+  //
+  // Eski kod: cron KATI bir /^\d{2}:\d{2}$/ uyguluyor, eşleşmezse `null` →
+  // "ezan geçmedi" sayıp transferi UYGULUYORDU; istemci ise hiç doğrulama
+  // yapmadığından aynı veride pencereyi doğru kapatıyordu. Yani tek haneli
+  // saatli ("9:05") ya da bozuk ("abc") tek bir kayıt, ezanı çoktan geçmiş
+  // bir görevin devredilmesine yol açabiliyordu.
+  // ---------------------------------------------------------------
+  {
+    name: 'FIX2: tek haneli saatli ("9:05") gecmis ezan artik dogru ayristirilir ve transfer engellenir',
+    run: async () => {
+      await clearCollections();
+      // TARIH_1 = 3 gün önce; saat ne olursa olsun ezan geçmiştir. Eski KATI
+      // regex bu değeri reddedip `null` döndürdüğü için transfer UYGULANIRDI.
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ tarih: TARIH_1, ezanSaati: '9:05' });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+    }
+  },
+  {
+    name: 'FIX2: tek haneli saatli ("9:05") GELECEK ezan yanlislikla "gecmis" sayilmaz',
+    run: async () => {
+      await clearCollections();
+      // Ayna kontrol: normalize etmek yalnızca "her şeyi reddet" demek
+      // değildir — gelecekteki bir gün için aynı biçim doğru ayrıştırılıp
+      // transfer NORMAL uygulanmalıdır.
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ tarih: GELECEK_GUN, ezanSaati: '9:05' });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin2');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'uygulandi');
+    }
+  },
+  {
+    name: 'FIX2: ayristirilamayan ezan saati ("abc") FAIL-CLOSED transferi engeller',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ tarih: GELECEK_GUN, ezanSaati: 'abc' });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+      const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
+      assert.equal(alarmSnap.size, 1);
+    }
+  },
+  {
+    name: 'FIX2: ezan verisi hic yoksa FAIL-CLOSED transferi engeller',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ tarih: GELECEK_GUN, ezanSaati: null });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+    }
+  },
+  // ---------------------------------------------------------------
+  // Fix 3 — talep/bildirim alan kaynagi tutarliligi
+  //
+  // Eski kod: ezan-geçmiş kontrolü `talep.tarih`/`talep.vakit` ile, Cuma ve
+  // izin-günü kontrolleri `bildirim.tarih` ile yapılıyordu. Talep ile bildirim
+  // desenkronize olursa (firestore.rules'un eski koşulsuz admin update dalı
+  // buna izin veriyordu) aynı kararın bileşenleri FARKLI görevler hakkında
+  // hesaplanıyordu. Artık üçü de `bildirim.*`'dan okunur ve korelasyon ayrıca
+  // doğrulanır.
+  // ---------------------------------------------------------------
+  {
+    name: 'FIX3: talep.tarih bildirimden desenkronize edilmisse transfer reddedilir',
+    run: async () => {
+      await clearCollections();
+      // Talep GELECEKTEKİ bir tarihi gösteriyor (ezan geçmemiş görünür), ama
+      // bildirimin GERÇEK tarihi 3 gün önce (ezanı çoktan geçmiş). Eski kod
+      // ezan kontrolünü talepten yaptığı için transferi UYGULARDI.
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({
+        tarih: TARIH_1,
+        ezanSaati: '12:45',
+        talepOverrides: { tarih: GELECEK_GUN }
+      });
+      await ezanVaktiTohumla(GELECEK_GUN, 'ogle', '12:45');
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+
+      // Admin uyarısı BİLDİRİMİN gerçek gün/vaktiyle yazılmalı (tek kaynak) —
+      // admin'in gördüğü kayıt, kararın verildiği görevle aynı olmalı.
+      const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
+      assert.equal(alarmSnap.size, 1);
+      assert.equal(alarmSnap.docs[0]!.data().tarih, TARIH_1);
+      assert.equal(alarmSnap.docs[0]!.data().vakit, 'ogle');
+    }
+  },
+  {
+    name: 'FIX3: talep.vakit bildirimden desenkronize edilmisse transfer reddedilir',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({
+        tarih: GELECEK_GUN,
+        talepOverrides: { vakit: 'yatsi' }
+      });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
     }
   },
   {
@@ -511,6 +662,101 @@ const tests: TestCase[] = [
 
       const bildirimDoc = await bildirimRef.get();
       assert.equal(bildirimDoc.data()?.vekaletPlanSenkronEdildi, true);
+    }
+  },
+  {
+    // KÖK NEDEN (kod denetimi): `vekaletDevriBekliyor`u temizleyen TEK yol bu
+    // script ve uzlaştırma sorgusu `tarih >= otuzGunOnce` ile sınırlı. İş 30
+    // günden uzun durursa (GitHub Actions zamanlanmış workflow'ları repo 60
+    // gün hareketsiz kalınca kendiliğinden devre dışı bırakır) o pencerenin
+    // dışındaki bayrak BİR DAHA temizlenemez ve slot hem self-heal'e hem
+    // admin'in elle atamasına karşı sonsuza dek kilitlenir. Bayat bayrak
+    // süpürmesi, o kilidi cron yeniden çalışır çalışmaz kırar.
+    name: 'Bayat vekaletDevriBekliyor bayragi temizlenir ve admin uyarisi uretilir',
+    run: async () => {
+      await clearCollections();
+      const eskiTarih = gunOnce(60); // 30 gunluk uzlastirma penceresinin DISINDA
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-04-01_${eskiTarih}_ogle_asil`);
+      await bildirimRef.set({
+        haftaId: 'W2026-04-01',
+        tarih: eskiTarih,
+        vakit: 'ogle',
+        uid: 'muezzin1',
+        tip: 'asil',
+        durum: 'bekliyor',
+        vekaletDevriBekliyor: true,
+        // 5 gun once yazilmis bir bayrak — 48 saatlik esigin cok otesinde.
+        sonGuncelleme: Timestamp.fromMillis(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.vekaletDevriBekliyor, false);
+      // Sahiplik DEGISMEZ — devir uygulanmadi, yalnizca kilit acildi.
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const alarmSnap = await db.collection('adminUyarilari')
+        .where('tarih', '==', eskiTarih)
+        .where('vakit', '==', 'ogle')
+        .get();
+      assert.equal(alarmSnap.size, 1);
+      assert.equal(alarmSnap.docs[0]?.data().cozuldu, false);
+
+      // Idempotent: ikinci calistirma yeni bir alarm uretmez.
+      await processVekaletDevirleri(false);
+      const alarmSnap2 = await db.collection('adminUyarilari')
+        .where('tarih', '==', eskiTarih)
+        .where('vakit', '==', 'ogle')
+        .get();
+      assert.equal(alarmSnap2.size, 1);
+    }
+  },
+  {
+    name: 'Taze (esik altindaki) vekaletDevriBekliyor bayragina DOKUNULMAZ',
+    run: async () => {
+      await clearCollections();
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-04-01_${TARIH_2}_ikindi_asil`);
+      await bildirimRef.set({
+        haftaId: 'W2026-04-01',
+        tarih: TARIH_2,
+        vakit: 'ikindi',
+        uid: 'muezzin1',
+        tip: 'asil',
+        durum: 'bekliyor',
+        vekaletDevriBekliyor: true,
+        sonGuncelleme: Timestamp.fromMillis(Date.now() - 10 * 60 * 1000) // 10 dk
+      });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.vekaletDevriBekliyor, true);
+      const alarmSnap = await db.collection('adminUyarilari').get();
+      assert.equal(alarmSnap.empty, true);
+    }
+  },
+  {
+    // FAIL-CLOSED: yasini bilemedigimiz bir bayragi bayat sayip gercek bir
+    // devri iptal etmek, birkac gun fazla kilitli kalmaktan daha kotudur.
+    name: 'sonGuncelleme damgasi olmayan bayraga dokunulmaz (fail-closed)',
+    run: async () => {
+      await clearCollections();
+      const bildirimRef = db.collection('bildirimler').doc(`W2026-04-01_${TARIH_1}_aksam_asil`);
+      await bildirimRef.set({
+        haftaId: 'W2026-04-01',
+        tarih: TARIH_1,
+        vakit: 'aksam',
+        uid: 'muezzin1',
+        tip: 'asil',
+        durum: 'bekliyor',
+        vekaletDevriBekliyor: true
+      });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.vekaletDevriBekliyor, true);
     }
   }
 ];

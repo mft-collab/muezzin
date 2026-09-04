@@ -121,7 +121,9 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  set({ loading: true });
  }
 
- const fetchFallback = async (yil: number, ay: number) => {
+ /** API tazelemesi BAŞARILI olduysa `true`, aksi halde `false` döner —
+  *  çağıran (`fallbackTetikle`) yeniden deneme kararını buna göre verir. */
+ const fetchFallback = async (yil: number, ay: number): Promise<boolean> => {
  try {
  const data = (await aylikVakitleriCek(yil, ay, settings.ilceId, settings.ilceAdi)) as unknown as Vakitler;
  // Bu abonelik iptal edildiyse (ilçe değişti / gece yarısı geçişiyle
@@ -129,7 +131,7 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  // önbellek yazımı zararsız (hangi ilçe için olursa olsun geçerli bir
  // önbellekleme), o yüzden ondan ÖNCE değil, yalnızca state güncellemesinden
  // önce kontrol edilir.
- if (iptalEdildi) return;
+ if (iptalEdildi) return true;
  set({ currentMonthData: data });
  get()._processData();
  // Yalnızca admin bu önbelleği Firestore'a yazabilir (bkz. firestore.rules
@@ -155,11 +157,55 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  );
  }
  }
+ return true;
  } catch (err) {
  console.error('VakitStore Fallback API Hatası:', err);
- if (iptalEdildi) return;
+ if (iptalEdildi) return false;
  set({ loading: false, initializing: false, initialized: true });
+ return false;
  }
+ };
+
+ // --- Fallback tetikleyici (tek kilit + sınırlı yeniden deneme) --------------
+ //
+ // Aşağıdaki İKİ yol da (belge hiç yok / belge var ama bugün-yarın eksik) aynı
+ // ayın verisini API'den çeker, bu yüzden TEK bir kilidi paylaşırlar.
+ //
+ // Önceden her yolun kendi `...Denendi` bayrağı vardı ve bayrak fetch'ten ÖNCE
+ // `true`'ya çekiliyordu: tek bir başarısız API çağrısı (ağ kesintisi, Diyanet
+ // API'si geçici olarak kapalı) bayrağı KALICI olarak kilitliyor, kullanıcı gece
+ // yarısı yeniden aboneliğe kadar (saatlerce) boş vakit ekranında kalıyordu —
+ // hiçbir yeniden deneme yapılmadan. Kilit artık:
+ //   - eşzamanlı/çift çağrıyı hâlâ engeller (`calisiyor`) — `persistentLocalCache`
+ //     ile "belge yok" snapshot'ının İKİ KEZ gelmesine karşı korumanın asıl
+ //     amacı buydu (premium hata analizi HS-O6),
+ //   - yalnızca BAŞARIDAN SONRA kalıcı olur (`basarili`),
+ //   - başarısızlıkta sınırlı sayıda, 15 sn arayla yeniden dener — bu aralık
+ //     dosyanın kendi `onSnapshot` hata yolundaki yeniden abone olma
+ //     zamanlayıcısıyla aynıdır.
+ const FALLBACK_YENIDEN_DENEME_MS = 15000;
+ const FALLBACK_MAX_DENEME = 3;
+ let fallbackCalisiyor = false;
+ let fallbackBasarili = false;
+ let fallbackDenemeSayisi = 0;
+
+ const fallbackTetikle = (yil: number, ay: number) => {
+ if (iptalEdildi || fallbackCalisiyor || fallbackBasarili) return;
+ fallbackCalisiyor = true;
+ fallbackDenemeSayisi++;
+ void fetchFallback(yil, ay).then((basarili) => {
+ fallbackCalisiyor = false;
+ if (iptalEdildi) return;
+ if (basarili) {
+ fallbackBasarili = true;
+ return;
+ }
+ if (fallbackDenemeSayisi >= FALLBACK_MAX_DENEME) {
+ console.warn('VakitStore: fallback API tazelemesi üst üste başarısız oldu, bir sonraki snapshot/gün geçişine kadar beklenecek.');
+ return;
+ }
+ setTimeout(() => fallbackTetikle(yil, ay), FALLBACK_YENIDEN_DENEME_MS);
+ });
  };
 
  // Doküman Firestore'da mevcut olsa bile içindeki `gunler` haritasında
@@ -167,23 +213,16 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  // çalışmasına kadar geçen boşluk). _processData bu durumda sessizce
  // null üretip spinner'ı kapatıyordu — kullanıcı "Vakitler güncelleniyor"
  // ekranında sonsuza dek takılı kalıyordu. Eksik günü tespit edip API'den
- // tek seferlik bir tazeleme tetikleyerek kendi kendine onarım sağlanır.
- let eksikGunIcinTazelemeDenendi = false;
+ // tazeleme tetikleyerek kendi kendine onarım sağlanır. Tekrar/eşzamanlılık
+ // kontrolü `fallbackTetikle`'nin paylaşılan kilidindedir (yukarı bkz.).
  const eksikGunuTazele = () => {
- if (eksikGunIcinTazelemeDenendi) return;
+ if (fallbackBasarili || fallbackCalisiyor) return;
  if (!get().bugunVakitler || !get().yarinVakitler) {
- eksikGunIcinTazelemeDenendi = true;
  console.warn('VakitStore: doküman(lar) mevcut ama bugün/yarın verisi eksik, API üzerinden tazeleniyor...');
- fetchFallback(tarih.getFullYear(), tarih.getMonth() + 1);
+ fallbackTetikle(tarih.getFullYear(), tarih.getMonth() + 1);
  }
  };
 
- // `persistentLocalCache` etkinken onSnapshot "belge yok" durumunu İKİ KEZ
- // tetikleyebilir (önce yerel önbellekten, sonra sunucudan) — bu bayrak
- // olmadan `fetchFallback` (dış API çağrısı + admin oturumundaysa çift
- // Firestore yazımı) iki kez tetiklenebiliyordu (premium hata analizi
- // HS-O6, bkz. hemen altındaki eksikGunuTazele ile aynı desen).
- let dokumanYokIcinFetchDenendi = false;
  const unsubscribeBuAy = onSnapshot(
  doc(db, 'vakitler', buAyDocId),
  (snap) => {
@@ -191,9 +230,14 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  set({ currentMonthData: snap.data() as Vakitler });
  get()._processData();
  eksikGunuTazele();
- } else if (!dokumanYokIcinFetchDenendi) {
- dokumanYokIcinFetchDenendi = true;
- fetchFallback(tarih.getFullYear(), tarih.getMonth() + 1);
+ } else {
+ // `persistentLocalCache` etkinken onSnapshot "belge yok" durumunu İKİ
+ // KEZ tetikleyebilir (önce yerel önbellekten, sonra sunucudan);
+ // `fallbackTetikle`'nin `calisiyor` kilidi bu çift tetiklemeyi
+ // (dış API çağrısı + admin oturumundaysa çift Firestore yazımı)
+ // engeller (premium hata analizi HS-O6) — AMA eski koddaki gibi
+ // başarısız bir denemeden sonra kalıcı olarak kilitlemez.
+ fallbackTetikle(tarih.getFullYear(), tarih.getMonth() + 1);
  }
  },
  (err) => {

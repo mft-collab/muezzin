@@ -28,6 +28,65 @@ export interface SlotBildirimVerisi {
 export const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi', 'okundu_varsayilan'];
 
 /**
+ * `vekaletDevriBekliyor` bayrağının EN FAZLA bu kadar süre koruma sağlaması.
+ *
+ * KÖK NEDEN (kod denetimi): bu bayrak, istemcinin vekaleti kabul ettiği an ile
+ * scripts/vekaletDevirleriniIsle.ts'in GERÇEK transferi uyguladığı an
+ * arasındaki ~10-15 dakikalık pencerede slotu korumak için var. Bayrağı
+ * TEMİZLEYEN tek yer o script; script'in uzlaştırma sorgusu ise
+ * `tarih >= otuzGunOnce` ile sınırlı. Cron/workflow 30 günden uzun süre
+ * çalışmazsa (GitHub Actions zamanlanmış iş'leri repo 60 gün hareketsiz
+ * kalırsa kendiliğinden devre dışı bırakır — gerçekçi bir senaryo) o pencerenin
+ * dışında kalan her bayrak BİR DAHA ASLA temizlenemez ve slot hem self-heal'e
+ * hem ADMIN'İN ELLE ATAMASINA (`vakitAtamasiniGuncelle` → 'protected') karşı
+ * SONSUZA DEK kilitlenir; admin'in UI'dan kurtarma yolu yoktur.
+ *
+ * Çözüm bir zaman aşımı: meşru bir bekleyen devir cron'un normal 10 dakikalık
+ * temposunda çözülür, dolayısıyla 48 saatten eski bir bayrak TANIM GEREĞİ
+ * takılmıştır. Süre dolduğunda bayrak koruma sağlamayı bırakır — slot normal
+ * bir 'bekliyor' slotu gibi davranır, yani hem plan yeniden üretimi hem admin
+ * ataması onu kurtarabilir. Bayrağın kendisi Firestore'da kalır (denetim izi);
+ * script yeniden çalışmaya başladığında `vekaletDevirleriniIsle.ts`'in bayat
+ * bayrak süpürmesi onu temizler ve admin'e bir uyarı bırakır.
+ */
+export const VEKALET_DEVRI_BEKLEME_ASIMI_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * `vekaletDevriBekliyor` bayrağı HÂLÂ koruma sağlıyor mu (yani bayat değil mi)?
+ *
+ * Zaman damgası olarak `sonGuncelleme` kullanılır: bayrağı yazan TEK yol
+ * (`src/services/vekaletServisi.ts` `vekaletKabulEt`) onu `sonGuncelleme` ile
+ * AYNI yazımda set eder ve firestore.rules `isVekaletDevriBekliyorIsaretiIcin`
+ * bunu zorunlu kılar (`changed.hasOnly(['vekaletDevriBekliyor',
+ * 'sonGuncelleme'])` + `incoming().sonGuncelleme is timestamp`). Dolayısıyla
+ * ayrı bir alan (ve ayrı bir kural değişikliği) gerekmez: bayrak `true` iken
+ * `sonGuncelleme`, bayrağın yazıldığı andır. Bayrak `true` kalırken belgeye
+ * dokunan diğer yollar (mazeret → durum 'reddedildi', yatsı sonu →
+ * 'okundu_varsayilan') zaten KENDİ BAŞLARINA koruma sağladığından, saatin
+ * onlar tarafından ileri alınması koruma kararını değiştirmez. 10 dakikalık
+ * `mazeretPenceresiBackfill.ts` yalnızca `mazeretSonBasvuru` yazar,
+ * `sonGuncelleme`'ye DOKUNMAZ — yani saati sessizce tazeleyen periyodik bir iş
+ * yoktur (kontrol edildi).
+ *
+ * DAMGA OKUNAMIYORSA "TAZE" (koruyucu) sayılır — fail-closed. Bunun gerçek
+ * nedeni offline-first mimarisi: `serverTimestamp()` henüz sunucuda
+ * çözülmemişken yerel snapshot'ta `sonGuncelleme` `null` görünür (Firestore
+ * web SDK varsayılanı). Çevrimdışı bir cihazın az önce kabul ettiği bir devir
+ * tam olarak bu görünümdedir ve KORUNMALIDIR. Bu, düzeltilen hatayı geri
+ * getirmez: takılı kalmış gerçek bir bayrağın `sonGuncelleme`'si sunucuda
+ * çözülmüş, ESKİ ve okunabilir bir Timestamp'tir.
+ */
+export function vekaletDevriBekliyorGecerliMi(
+  data: Pick<SlotBildirimVerisi, 'vekaletDevriBekliyor' | 'sonGuncelleme'>,
+  simdiMs: number = Date.now()
+): boolean {
+  if (data.vekaletDevriBekliyor !== true) return false;
+  const damgaMs = data.sonGuncelleme?.toMillis?.();
+  if (typeof damgaMs !== 'number' || !Number.isFinite(damgaMs)) return true;
+  return simdiMs - damgaMs <= VEKALET_DEVRI_BEKLEME_ASIMI_MS;
+}
+
+/**
  * Slottaki hangi belgeler korumayı SAĞLIYOR — yani bu slotun taze
  * hesaplamadan muaf tutulmasının sebebi hangileri.
  *
@@ -42,7 +101,10 @@ export const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi', 'okundu_varsayilan']
  * pencerede bu bayrak OLMADAN korumaliSlotMu slotu yine korumasız
  * sanıp, script daha transferi uygulamadan bir admin manuel ataması
  * veya haftalık plan yeniden üretimi kabul edilmiş devri sessizce
- * ezebilirdi — vekaletDevredildi'nin bu geçişteki AYNI rolü.
+ * ezebilirdi — vekaletDevredildi'nin bu geçişteki AYNI rolü. Bu bayrağın
+ * koruması ZAMAN AŞIMLIDIR (bkz. `vekaletDevriBekliyorGecerliMi` ve
+ * VEKALET_DEVRI_BEKLEME_ASIMI_MS) — bayat bir bayrak slotu sonsuza dek
+ * kilitlemez.
  * manuelAtama: true — vakitAtamasiniGuncelle (admin'in elle ataması)
  * yazar. `durum` bu anda hâlâ 'bekliyor' kaldığından (kişi henüz
  * onaylamadı/reddetmedi), bu bayrak olmadan taze bir manuel atama hiçbir
@@ -50,14 +112,15 @@ export const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi', 'okundu_varsayilan']
  * sessizce eziliyordu (premium hata analizi PL-K2).
  */
 export function korumaSaglayanBildirimler(
-  slotBildirimleri: (SlotBildirimVerisi | undefined)[]
+  slotBildirimleri: (SlotBildirimVerisi | undefined)[],
+  simdiMs: number = Date.now()
 ): SlotBildirimVerisi[] {
   return slotBildirimleri.filter((data): data is SlotBildirimVerisi =>
     !!data && (
       KORUNAN_DURUMLAR.includes(data.durum as string) ||
       data.tip === 'gorev_cagrisi' ||
       data.vekaletDevredildi === true ||
-      data.vekaletDevriBekliyor === true ||
+      vekaletDevriBekliyorGecerliMi(data, simdiMs) ||
       data.manuelAtama === true
     )
   );
@@ -76,12 +139,16 @@ export function korumaSaglayanBildirimler(
  * - `gorev_cagrisi`: admin'in elle başlattığı acil çağrı.
  * - `vekaletDevredildi` / `vekaletDevriBekliyor`: devam eden ya da
  *   tamamlanmış bir görev devri; izin, devrin KARŞI tarafını da ilgilendirir,
- *   bu yüzden otomatik olarak ezilmez (admin müdahalesine bırakılır).
+ *   bu yüzden otomatik olarak ezilmez (admin müdahalesine bırakılır). BAYAT
+ *   (bkz. `vekaletDevriBekliyorGecerliMi`) bir `vekaletDevriBekliyor` artık
+ *   "devam eden bir devir" DEĞİLDİR, bu yüzden burada da engelleyici sayılmaz —
+ *   aksi halde zaman aşımı yalnızca korumanın bir yarısını çözer, onaylı izin
+ *   yolu kilitli kalırdı.
  */
-function izinIleEzilebilirKoruma(data: SlotBildirimVerisi): boolean {
+function izinIleEzilebilirKoruma(data: SlotBildirimVerisi, simdiMs: number): boolean {
   if (data.durum === 'reddedildi' || data.durum === 'okundu_varsayilan') return false;
   if (data.tip === 'gorev_cagrisi') return false;
-  if (data.vekaletDevredildi === true || data.vekaletDevriBekliyor === true) return false;
+  if (data.vekaletDevredildi === true || vekaletDevriBekliyorGecerliMi(data, simdiMs)) return false;
   return data.durum === 'onaylandi' || data.manuelAtama === true;
 }
 
@@ -103,16 +170,21 @@ function izinIleEzilebilirKoruma(data: SlotBildirimVerisi): boolean {
  */
 export function korumaliSlotMu(
   slotBildirimleri: (SlotBildirimVerisi | undefined)[],
-  izinliUidler?: ReadonlySet<string>
+  izinliUidler?: ReadonlySet<string>,
+  /** Enjekte edilebilir "şimdi" (epoch ms) — yalnızca `vekaletDevriBekliyor`
+   * zaman aşımı için kullanılır. `getTurkeyNow()` DEĞİL `Date.now()`: burada
+   * bir SÜRE farkı hesaplanıyor, `getTurkeyNow()` ise sunum amaçlı kaydırılmış
+   * (gerçek epoch olmayan) bir Date döner. */
+  simdiMs: number = Date.now()
 ): boolean {
-  const koruyanlar = korumaSaglayanBildirimler(slotBildirimleri);
+  const koruyanlar = korumaSaglayanBildirimler(slotBildirimleri, simdiMs);
   if (koruyanlar.length === 0) return false;
   if (!izinliUidler || izinliUidler.size === 0) return true;
 
   // Koruyan belgelerden BİRİ bile ezilemez türdeyse (mazeret/görev
   // çağrısı/vekalet/geçmiş gün) slot bütünüyle korunur — kısmi silme, aynı
   // slotun bildirim belgeleriyle plan belgesini birbirinden ayırırdı.
-  if (!koruyanlar.every(izinIleEzilebilirKoruma)) return true;
+  if (!koruyanlar.every((data) => izinIleEzilebilirKoruma(data, simdiMs))) return true;
 
   return !koruyanlar.some((data) => !!data.uid && izinliUidler.has(data.uid));
 }

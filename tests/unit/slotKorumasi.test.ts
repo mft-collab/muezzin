@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   korumaliSlotMu,
   guncelSlotBildirimleriniSec,
+  vekaletDevriBekliyorGecerliMi,
+  VEKALET_DEVRI_BEKLEME_ASIMI_MS,
   SlotBildirimVerisi,
 } from '../../src/lib/slotKorumasi';
 import { haftalikPlanUret, MuezzinAday, VAKITLER } from '../../src/lib/planlamaCekirdegi';
@@ -221,8 +223,13 @@ describe('korumaliSlotMu — onaylı izin ezmesi', () => {
   });
 
   it('görev çağrısını ve devam eden vekalet devrini izin EZMEZ', () => {
+    const simdi = 1_800_000_000_000;
     expect(korumaliSlotMu([{ tip: 'gorev_cagrisi', uid: 'a', durum: 'bekliyor' }], new Set(['a']))).toBe(true);
-    expect(korumaliSlotMu([{ tip: 'asil', uid: 'a', durum: 'bekliyor', vekaletDevriBekliyor: true }], new Set(['a']))).toBe(true);
+    expect(korumaliSlotMu(
+      [{ tip: 'asil', uid: 'a', durum: 'bekliyor', vekaletDevriBekliyor: true, sonGuncelleme: ts(simdi - 60_000) }],
+      new Set(['a']),
+      simdi
+    )).toBe(true);
     expect(korumaliSlotMu([{ tip: 'asil', uid: 'a', durum: 'bekliyor', vekaletDevredildi: true }], new Set(['a']))).toBe(true);
   });
 
@@ -234,6 +241,85 @@ describe('korumaliSlotMu — onaylı izin ezmesi', () => {
       { tip: 'yedek', uid: 'b', durum: 'reddedildi', sonGuncelleme: ts(10) },
     ];
     expect(korumaliSlotMu(karma, new Set(['a']))).toBe(true);
+  });
+});
+
+describe('vekaletDevriBekliyor zaman aşımı (kilitlenen slot kurtarması)', () => {
+  const SIMDI = 1_800_000_000_000;
+  const taze = (yasMs: number): SlotBildirimVerisi => ({
+    tip: 'asil',
+    uid: 'a',
+    durum: 'bekliyor',
+    vekaletDevriBekliyor: true,
+    sonGuncelleme: ts(SIMDI - yasMs),
+  });
+
+  it('bayrak eşiğin ALTINDAKİ bir yaşta slotu korur (normal ~10-15 dk uzlaştırma penceresi)', () => {
+    expect(vekaletDevriBekliyorGecerliMi(taze(15 * 60 * 1000), SIMDI)).toBe(true);
+    expect(korumaliSlotMu([taze(15 * 60 * 1000)], undefined, SIMDI)).toBe(true);
+  });
+
+  it('eşiğin TAM sınırında hâlâ korur, aşınca bırakır', () => {
+    expect(vekaletDevriBekliyorGecerliMi(taze(VEKALET_DEVRI_BEKLEME_ASIMI_MS), SIMDI)).toBe(true);
+    expect(vekaletDevriBekliyorGecerliMi(taze(VEKALET_DEVRI_BEKLEME_ASIMI_MS + 1), SIMDI)).toBe(false);
+  });
+
+  it('KÖK NEDEN: uzlaştırma cron\'u 30 günlük sorgu penceresinden uzun süre durduğunda slot artık kalıcı kilitlenmez', () => {
+    // Senaryo: bayrak 45 gün önce yazıldı, scripts/vekaletDevirleriniIsle.ts o
+    // gün bugüne kadar hiç çalışmadı. Bayrağı temizleyecek tek yol o script ve
+    // onun sorgusu `tarih >= otuzGunOnce` ile sınırlı — yani bu talep artık
+    // pencerenin DIŞINDA, bayrak bir daha asla temizlenmeyecek. Eski kodda bu
+    // slot hem self-heal'e hem admin'in elle atamasına (planServisi.ts
+    // vakitAtamasiniGuncelle -> 'protected') karşı SONSUZA DEK kilitliydi.
+    const kirkBesGun = 45 * 24 * 60 * 60 * 1000;
+    const bayat = taze(kirkBesGun);
+
+    expect(vekaletDevriBekliyorGecerliMi(bayat, SIMDI)).toBe(false);
+    // Slotta başka bir koruma sebebi yoksa slot artık serbest: admin elle
+    // atayabilir, self-heal yeniden hesaplayabilir.
+    expect(korumaliSlotMu([bayat], undefined, SIMDI)).toBe(false);
+  });
+
+  it('bayat bayrak, onaylı izin yolundaki korumayı da bloklamaz', () => {
+    // izinIleEzilebilirKoruma'da da aynı yaş kontrolü kullanılmalı — aksi
+    // halde zaman aşımı korumanın yalnızca bir yarısını çözerdi.
+    const bayatAmaOnayli: SlotBildirimVerisi = {
+      tip: 'asil',
+      uid: 'a',
+      durum: 'onaylandi',
+      vekaletDevriBekliyor: true,
+      sonGuncelleme: ts(SIMDI - 45 * 24 * 60 * 60 * 1000),
+    };
+    expect(korumaliSlotMu([bayatAmaOnayli], new Set(['a']), SIMDI)).toBe(false);
+
+    const tazeVeOnayli: SlotBildirimVerisi = { ...bayatAmaOnayli, sonGuncelleme: ts(SIMDI - 60_000) };
+    expect(korumaliSlotMu([tazeVeOnayli], new Set(['a']), SIMDI)).toBe(true);
+  });
+
+  it('bayat bayrak, slotun DİĞER koruma sebeplerini ortadan kaldırmaz', () => {
+    const bayatAmaReddedildi: SlotBildirimVerisi = {
+      tip: 'asil',
+      uid: 'a',
+      durum: 'reddedildi',
+      vekaletDevriBekliyor: true,
+      sonGuncelleme: ts(SIMDI - 45 * 24 * 60 * 60 * 1000),
+    };
+    expect(korumaliSlotMu([bayatAmaReddedildi], undefined, SIMDI)).toBe(true);
+  });
+
+  it('zaman damgası okunamıyorsa TAZE (koruyucu) sayılır — çevrimdışı serverTimestamp senaryosu', () => {
+    // Firestore web SDK, henüz sunucuda çözülmemiş bir serverTimestamp'i yerel
+    // snapshot'ta null döndürür. Çevrimdışı bir cihazın AZ ÖNCE kabul ettiği
+    // devir tam olarak böyle görünür ve korunmalıdır. Gerçekten takılmış bir
+    // bayrağın damgası ise sunucuda çözülmüş, eski ve okunabilir bir
+    // Timestamp'tir — düzeltme bu yüzden bu fail-closed'dan etkilenmez.
+    expect(vekaletDevriBekliyorGecerliMi({ vekaletDevriBekliyor: true, sonGuncelleme: null }, SIMDI)).toBe(true);
+    expect(vekaletDevriBekliyorGecerliMi({ vekaletDevriBekliyor: true }, SIMDI)).toBe(true);
+  });
+
+  it('bayrak hiç yoksa/false ise zaman damgasına bakılmaksızın koruma sağlamaz', () => {
+    expect(vekaletDevriBekliyorGecerliMi({ vekaletDevriBekliyor: false, sonGuncelleme: ts(SIMDI) }, SIMDI)).toBe(false);
+    expect(vekaletDevriBekliyorGecerliMi({}, SIMDI)).toBe(false);
   });
 });
 

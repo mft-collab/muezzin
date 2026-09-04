@@ -109,6 +109,31 @@ penceresinin saf karar fonksiyonudur: Cuma günleri (asil veya yedek fark
 etmeksizin) her zaman kapalı, sabah vakti önceki günün yatsısına göre kapanır,
 diğer vakitler ezandan 1 saat öncesine kadar açık. Bu kısıtlama üç yerde ayrıca
 uygulanır — birini değiştirirken diğerlerini unutma:
+
+**1 saatlik zaman penceresi — sunucu tarafı (`mazeretSonBasvuru` damgası).**
+İki kısıtlamanın (Cuma / 1 saat) uygulanma biçimi FARKLIDIR. Cuma, kurallarda
+`tarih`ten taze hesaplanabilir; ezan saati hesaplanamaz (CEL "HH:MM"
+ayrıştıramaz ve `bildirimler` update kuralı belgeli "1000 ifade" tavanına
+yakındır). Bu yüzden pencerenin **kapandığı an**, plan üretiminde önceden
+hesaplanıp `bildirimler.mazeretSonBasvuru` alanına gerçek bir `Timestamp`
+olarak yazılır; `firestore.rules` `mazeretPenceresiAcik()` bunu Firestore'un
+kendi `request.time`'ı ile karşılaştırır. İstemcinin `getTurkeyNow()`'u
+(RTDB zaman senkronu — `src/lib/timeSync.ts` — hiç ateşlemezse CİHAZ SAATİ)
+yalnızca UX'tir, **güvenlik sınırı değildir**. Kural FAIL-CLOSED'dır: damga
+yoksa mazeret/vekalet reddedilir. Damgayı yazan/tamamlayan yollar:
+`scripts/haftalikPlanOlustur.ts`, `src/services/planServisi.ts` (self-healing)
+ve 10 dakikada bir çalışan `scripts/mazeretPenceresiBackfill.ts` (ezan verisi
+plan üretiminden sonra geldiğinde tamamlar). Formülün tek kaynağı
+`mazeretKurallari.ts`'teki `mazeretSonBasvuruHesapla`; Admin SDK tarafı
+`scripts/lib/ezanVakitleri.ts` (`EzanVakitOkuyucu`) üzerinden okur.
+
+**Ezan saati dizgeleri.** `vakitler` belgesindeki "HH:MM" değerleri
+`src/lib/dateUtils.ts`'teki `normalizeVakitSaati` ile hem KAYNAKTA (üç API
+ayrıştırıcısı: `ezanVaktiServisi.ts`'teki ikisi + `scripts/lib/diyanetResmiApi.ts`)
+hem her okuma noktasında doğrulanır; ayrıştırılamayan bir değer her yerde
+FAIL-CLOSED (pencere kapalı / transfer reddedilir) davranır. Eskiden cron katı
+bir regex ile, istemci ise hiç doğrulamadan okuyordu — `"9:05"` gibi tek bir
+kayıt cron'da sessiz bir fail-open üretiyordu.
 - `src/services/mazeretServisi.ts` (`mazeretBildir`) — istemci tarafı, hem
   asil hem yedek için.
 - `firestore.rules` `isSelfBildirimUpdate()` — sunucu tarafı, `cumaMiIsaretli()`
@@ -163,11 +188,16 @@ Varsayılan Sonnet. Basit arama/keşif işlerinde Haiku yeterli — ama `model: 
 kök `CLAUDE.md` → Model Seçimi, 2026-09-03 ölçümü). **Opus'a geç**
 (`/model opus` veya Agent çağrısında `model: "opus"`):
 
-- **Riskli kod**: `firestore.rules` (`isSelfBildirimUpdate`, `isValidVekaletCreate` —
-  mazeret/vekalet Cuma kısıtlamasının sunucu tarafı zorlayıcısı), `src/lib/mazeretKurallari.ts`
-  ve onunla senkron tutulması gereken üç uygulama noktası (`mazeretServisi.ts`,
+- **Riskli kod**: `firestore.rules` (`isSelfBildirimUpdate`, `isValidVekaletCreate`,
+  `isRecipientVekaletStatusUpdate`, `isVekaletDevriBekliyorIsareti` ve ortak
+  `mazeretPenceresiAcik` — mazeret/vekalet Cuma VE 1 saatlik pencere
+  kısıtlamalarının sunucu tarafı zorlayıcısı), `src/lib/mazeretKurallari.ts`
+  ve onunla senkron tutulması gereken uygulama noktaları (`mazeretServisi.ts`,
   `vekaletServisi.ts`, `scripts/vekaletDevirleriniIsle.ts` — gerçek, geri dönüşü olmayan
-  görev devri), `src/lib/planlamaCekirdegi.ts`/`tieBreaker.ts` (haftalık nöbet atamasının
+  görev devri — ayrıca `mazeretSonBasvuru` damgasını üreten
+  `scripts/lib/ezanVakitleri.ts`, `scripts/haftalikPlanOlustur.ts`,
+  `scripts/mazeretPenceresiBackfill.ts`, `src/services/planServisi.ts`),
+  `src/lib/planlamaCekirdegi.ts`/`tieBreaker.ts` (haftalık nöbet atamasının
   tek kaynağı, hem cron hem istemci bunu çağırır), `scripts/*.ts` altındaki zamanlanmış
   cron script'leri ve bunları tetikleyen `.github/workflows/*.yml` (haftalik-plan,
   gunluk-yatsi-sonu, mazeret-devirleri, aylik-ezan-takvimi, gunluk-log-temizligi,

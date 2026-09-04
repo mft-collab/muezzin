@@ -1,5 +1,7 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { toTurkishUpperCase, getTurkeyDateString, getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { EzanVakitOkuyucu } from './lib/ezanVakitleri.ts';
+import { VEKALET_DEVRI_BEKLEME_ASIMI_MS } from '../src/lib/slotKorumasi.ts';
 
 type BildirimData = {
   haftaId: string;
@@ -66,58 +68,41 @@ type MuezzinData = {
  */
 
 /**
- * Belirli bir tarih/vakit için ezan saatini `vakitler` koleksiyonundan okur —
- * src/services/mazeretServisi.ts'teki `getEzanVakti` ile AYNI mantık, Admin
- * SDK bağlamına taşınmış (bkz. scripts/vakitVeriSagligiKontrol.ts'teki AYNI
- * ilceId/vakitler okuma deseni).
- */
-async function ezanSaatiniGetir(tarih: string, vakit: string): Promise<Date | null> {
-  const settingsDoc = await db.collection('settings').doc('system').get();
-  const ilceId = (settingsDoc.data()?.ilceId as string) || '9148';
-  const ay = tarih.slice(0, 7);
-  const vakitDoc = await db.collection('vakitler').doc(`${ilceId}_${ay}`).get();
-  if (!vakitDoc.exists) return null;
-  const saat = vakitDoc.data()?.gunler?.[tarih]?.[vakit];
-  if (typeof saat !== 'string' || !/^\d{2}:\d{2}$/.test(saat)) return null;
-  const [sy, sm, sd] = tarih.split('-').map(Number);
-  const [hh, mm] = saat.split(':').map(Number);
-  // `new Date(sy, sm-1, sd, hh, mm)` saati ÇALIŞTIĞI MAKİNENİN yerel saat
-  // diliminde yorumlar — bu script'i tetikleyen GitHub Actions runner'ı UTC
-  // çalışır, Türkiye ise sabit UTC+3'tür. Böyle kurulan bir Date, "13:00"
-  // ezanını "13:00 UTC" (=16:00 TRT) sanıp gerçek ezandan 3 SAAT SONRA
-  // "geçti" sayıyordu — bu pencerede istemci baypasıyla açılan bir talep
-  // devredilebiliyordu (premium hata analizi MV-O1/O2 — buradaki asıl
-  // bulgu). Türkiye DST uygulamadığından (sabit UTC+3), doğru UTC anı
-  // runner'ın yerel saat diliminden BAĞIMSIZ, doğrudan hesaplanabilir.
-  return new Date(Date.UTC(sy!, sm! - 1, sd!, hh! - 3, mm!));
-}
-
-/**
- * `src/lib/mazeretKurallari.ts`'teki "ezandan 1 saat kala kapanır" penceresi
- * yalnızca istemci tarafında (vekaletServisi.ts `vekaletTeklifEt`/
- * `vekaletKabulEt`, kabul ANINDA) kontrol ediliyordu — firestore.rules bu
- * süre kısıtlamasını hiç doğrulamıyor (yalnızca Cuma kısıtlaması `cumaMi`
- * alanıyla sunucu tarafında da korunuyor). Kabul ile bu script'in GERÇEK
- * transferi uyguladığı an arasında ~10-15 dakikalık bir gecikme var; bu
- * pencerede ezan vakti geçmiş olabilir (bkz. kod denetimi, kritik bulgu).
- * Devam eden bir görevi zaten geçmiş bir vakit için devretmek anlamsız
- * olduğundan, script kendi çalıştığı anda ezan vaktinin geçip geçmediğini
- * TAZE veriyle ayrıca kontrol eder. Veri yoksa (henüz önbelleğe alınmamış
- * ay) mevcut davranışla tutarlı olarak kısıtlama uygulanmaz.
+ * "Bu vaktin ezanı ZATEN GEÇTİ Mİ" — devam eden bir görevi geçmiş bir vakit
+ * için devretmek anlamsız olduğundan, script kendi çalıştığı anda TAZE veriyle
+ * ayrıca kontrol eder. Kabul ile bu script'in GERÇEK transferi uyguladığı an
+ * arasında ~10-15 dakikalık bir gecikme var; bu pencerede ezan vakti geçmiş
+ * olabilir (bkz. kod denetimi, kritik bulgu).
  *
- * SABAH VAKTİ ARTIK HARİÇ TUTULMUYOR (bkz. "bilinçli olarak dışarıda
- * bırakılanlar" — premium hata analizi düzeltmesi): önceki sürüm burada
- * `mazeretKurallari.ts`'teki "yatsı+1sa" MAZERET BİLDİRME SÜRESİ kuralının
- * bir eşdeğerini aramaya çalışıp bulamayınca sabahı tamamen atlıyordu —
- * ama bu fonksiyonun sorduğu soru o değil, çok daha basit: "bu vaktin
- * ezanı ZATEN GEÇTİ Mİ" (devam eden bir görevi geçmiş bir vakit için
- * devretmek anlamsız). Bu soru sabah için de diğer vakitlerle BİREBİR AYNI
- * yolla (o vaktin kendi `ezanSaatiniGetir` sonucu) cevaplanabilir — 'sabah'
- * da `vakitler` belgesindeki `gunler[tarih]` haritasında sıradan bir alan.
+ * NOT — bu, 1 SAATLİK mazeret/vekalet penceresi DEĞİLDİR ve olmamalıdır:
+ * pencere açıkken (ör. ezandan 70 dk önce) yapılan meşru bir kabul, bu iş
+ * 55 dk kala çalıştığında reddedilmemelidir. 1 saatlik pencere artık
+ * firestore.rules'ta, `bildirimler.mazeretSonBasvuru` damgası ile SUNUCU
+ * saatinde (`request.time`) uygulanıyor (bkz. `mazeretPenceresiAcik`) —
+ * yani teklif/kabul yazımının kendisi zaten pencere dışında kabul edilmiyor.
+ *
+ * FAIL-CLOSED (kod denetimi — "ezan saati biçim asimetrisi"): ezan saati
+ * okunamıyorsa (ay henüz önbelleğe alınmamış, değer bozuk: "9:05"/"abc")
+ * önceden `false` — yani "ezan geçmedi, devri UYGULA" — dönülüyordu. Aynı veri
+ * istemcide pencereyi doğru kapatıp cron'da fail-open olabildiğinden, bozuk
+ * tek bir kayıt ezanı geçmiş bir görevin devredilmesine yol açabiliyordu.
+ * Artık `null` sonuç "geçmiş say" (kapalı) olarak yorumlanır: transfer
+ * reddedilir ve admin uyarısı üretilir — sessizce yanlış davranmak yerine
+ * görünür şekilde durur. Saat dizgesinin ayrıştırılması artık tek noktadan
+ * (scripts/lib/ezanVakitleri.ts → `normalizeVakitSaati`/`ezanAniUtc`)
+ * yapılıyor; istemci de AYNI fonksiyonları kullanıyor.
+ *
+ * SABAH VAKTİ HARİÇ TUTULMAZ: 'sabah' da `vakitler` belgesindeki
+ * `gunler[tarih]` haritasında sıradan bir alandır ve "ezanı geçti mi" sorusu
+ * diğer vakitlerle birebir aynı yolla cevaplanır (premium hata analizi
+ * düzeltmesi).
  */
-async function ezanVaktiGecmisMi(tarih: string, vakit: string): Promise<boolean> {
-  const ezanSaati = await ezanSaatiniGetir(tarih, vakit);
-  if (!ezanSaati) return false;
+async function ezanVaktiGecmisMi(okuyucu: EzanVakitOkuyucu, tarih: string, vakit: string): Promise<boolean> {
+  const ezanSaati = await okuyucu.ezanAni(tarih, vakit);
+  if (!ezanSaati) {
+    console.warn(`[vekalet] ${tarih} ${vakit}: ezan saati okunamadı/bozuk — transfer FAIL-CLOSED reddediliyor.`);
+    return true;
+  }
   return Date.now() >= ezanSaati.getTime();
 }
 
@@ -162,6 +147,10 @@ function haftaGunuNumarasi(tarihStr: string): number {
 export async function processVekaletDevirleri(dryRun = false) {
   console.log(`Vekalet devirleri uzlaştırılıyor${dryRun ? ' (dry-run)' : ''}...`);
 
+  // Tek okuyucu örneği: `settings/system` ve okunan `vakitler` ay belgeleri
+  // çalıştırma boyunca önbelleklenir (bkz. scripts/lib/ezanVakitleri.ts).
+  const okuyucu = new EzanVakitOkuyucu();
+
   // `tarih >= otuzGunOnce` sınırı: bu iş her 10 dakikada bir çalışıyor;
   // aşağıdaki iki sorgu öncesinde `durum`/`vekaletDevredildi` filtresi TEK
   // BAŞINA koleksiyondaki her kabul edilmiş/devredilmiş talebi — zaten
@@ -199,9 +188,28 @@ export async function processVekaletDevirleri(dryRun = false) {
     const bildirimRef = db.collection('bildirimler').doc(talep.bildirimId);
     let sonuc: 'uygulandi' | 'reddedildi' | 'zatenUygulanmis' | 'atlandi' = 'atlandi';
 
-    // Transaction dışında okunur — vakit verisi transaction'ın kilitlediği
-    // varlıklardan bağımsız, harici/nadiren değişen bir veri kaynağı.
-    const ezanGecmisMi = await ezanVaktiGecmisMi(talep.tarih, talep.vakit);
+    // TEK KAYNAK (kod denetimi — "script talep/bildirim alanlarını
+    // karıştırıyor"): ezan-geçmiş kontrolü eskiden `talep.tarih`/`talep.vakit`
+    // ile, Cuma ve izin-günü kontrolleri ise `bildirim.tarih` ile yapılıyordu.
+    // OLUŞTURMA anında kurallar bu ikisini birbirine sabitliyor
+    // (isValidVekaletCreate: `bildirim.tarih == incoming().tarih` vb.), ama
+    // `vekalet_talepleri` update kuralının admin dalı hiçbir şema doğrulaması
+    // yapmadığından sonradan desenkronize olabiliyorlardı — o durumda aynı
+    // kararın üç bileşeni FARKLI görevler hakkında hesaplanırdı. Artık üçü de
+    // MUTASYONA UĞRAYAN belgeden, yani `bildirim.*`'dan okunur; ayrıca
+    // aşağıdaki `korelasyonTutarli` talep<->bildirim eşitliğini açıkça
+    // doğrular ve bozuksa transferi reddeder. (Kök neden ayrıca
+    // firestore.rules'ta `isAdminVekaletUpdate` ile kapatıldı.)
+    //
+    // Bildirim transaction DIŞINDA bir kez okunur (vakit verisi transaction'ın
+    // kilitlediği varlıklardan bağımsız, harici bir kaynak); transaction içinde
+    // TAZE bildirimin tarih/vakit'inin bu ön okumayla aynı kaldığı ayrıca
+    // doğrulanır — arada değişmişse karar bayat veriyle verilmiş olurdu.
+    const onOkumaSnap = await bildirimRef.get();
+    const onOkumaVeri = onOkumaSnap.exists ? (onOkumaSnap.data() as BildirimData) : null;
+    const kontrolTarih = onOkumaVeri?.tarih ?? talep.tarih;
+    const kontrolVakit = onOkumaVeri?.vakit ?? talep.vakit;
+    const ezanGecmisMi = await ezanVaktiGecmisMi(okuyucu, kontrolTarih, kontrolVakit);
 
     await db.runTransaction(async (transaction) => {
       const freshTalep = await transaction.get(talepDoc.ref);
@@ -251,7 +259,23 @@ export async function processVekaletDevirleri(dryRun = false) {
       // satır o düzeltmeden nasibini almamıştı (premium hata analizi MV-O1,
       // bu script'in kendi "istemcinin verisine GÜVENİLMİYOR" ilkesiyle de
       // tutarsızdı, bkz. yukarıdaki izinGunuCakisiyor'un taze hesaplanması).
+
+      // Talep ile bildirim arasındaki korelasyon: OLUŞTURMA anında
+      // isValidVekaletCreate bunları birebir eşitliyor. Burada yeniden
+      // doğrulanır — eşleşmiyorlarsa hangi görevin devredildiği belirsizdir ve
+      // hiçbir kontrol güvenilir sonuç vermez, bu yüzden transfer reddedilir.
+      // `kontrolTarih`/`kontrolVakit` karşılaştırması ayrıca ön okuma ile
+      // transaction arasındaki değişimi yakalar (ezan kararı bayat olurdu).
+      const korelasyonTutarli =
+        bildirim.tarih === kontrolTarih &&
+        bildirim.vakit === kontrolVakit &&
+        bildirim.tarih === talep.tarih &&
+        bildirim.vakit === talep.vakit &&
+        bildirim.tip === talep.tip &&
+        bildirim.haftaId === talep.haftaId;
+
       const uygun =
+        korelasyonTutarli &&
         bildirim.durum === 'bekliyor' &&
         bildirim.uid === talep.gonderenUid &&
         haftaGunuNumarasi(bildirim.tarih) !== 5 &&
@@ -263,7 +287,10 @@ export async function processVekaletDevirleri(dryRun = false) {
         // Alarm dedup okuması, bu daldaki İLK yazımdan ÖNCE yapılmalı
         // (Firestore transaction'larında tüm okumalar yazımlardan önce
         // gelir) — bu yola gelene kadar hiçbir yazım yapılmamış olur.
-        const alarmSnap = await transaction.get(cozulmemisAlarmSorgusu(talep.tarih, talep.vakit));
+        // Alarm dedup'ı ve aşağıdaki alarm kaydı da AYNI tek kaynağı
+        // (bildirimden türeyen kontrolTarih/kontrolVakit) kullanır — admin'in
+        // gördüğü uyarı, kararın verildiği görevle aynı gün/vakti göstermeli.
+        const alarmSnap = await transaction.get(cozulmemisAlarmSorgusu(kontrolTarih, kontrolVakit));
 
         // vekaletDevriBekliyor temizlenir — transfer kalıcı olarak
         // başarısız olduğundan bu bayrağın planServisi.ts `korumaliSlotMu`
@@ -291,9 +318,9 @@ export async function processVekaletDevirleri(dryRun = false) {
         if (alarmSnap.empty) {
           transaction.set(db.collection('adminUyarilari').doc(), {
             tip: 'zincirTukendi',
-            mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi/ezan vakti geçti). Admin müdahalesi gerekir.`,
-            tarih: talep.tarih,
-            vakit: talep.vakit,
+            mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi/ezan vakti geçti veya okunamadı/talep-bildirim eşleşmesi bozuldu). Admin müdahalesi gerekir.`,
+            tarih: kontrolTarih,
+            vakit: kontrolVakit,
             cozuldu: false,
             olusturmaTarihi: Timestamp.now()
           });
@@ -383,7 +410,88 @@ export async function processVekaletDevirleri(dryRun = false) {
     });
   }
 
-  console.log(`Tamamlandi. transferUygulandi=${transferUygulandi}, transferReddedildi=${transferReddedildi}, planSenkronlandi=${planSenkronlandi}`);
+  const bayatTemizlendi = await bayatDevirBayraklariniTemizle(dryRun);
+
+  console.log(`Tamamlandi. transferUygulandi=${transferUygulandi}, transferReddedildi=${transferReddedildi}, planSenkronlandi=${planSenkronlandi}, bayatBayrakTemizlendi=${bayatTemizlendi}`);
+}
+
+/**
+ * BAYAT `vekaletDevriBekliyor` SÜPÜRMESİ.
+ *
+ * Kök neden (kod denetimi): bu bayrak yalnızca yukarıdaki uzlaştırma
+ * döngüsünde temizlenir, o döngü de `vekalet_talepleri.tarih >= otuzGunOnce`
+ * ile sınırlıdır. Bu iş 30 günden uzun süre çalışmazsa (GitHub Actions
+ * zamanlanmış workflow'ları repo 60 gün hareketsiz kalınca kendiliğinden devre
+ * dışı bırakır) pencerenin dışında kalan talebin bayrağı ARTIK HİÇBİR ZAMAN
+ * temizlenmez; slot `src/lib/slotKorumasi.ts` `korumaliSlotMu` üzerinden hem
+ * self-heal'e hem admin'in elle atamasına karşı sonsuza dek kilitli kalır.
+ *
+ * 30 GÜNLÜK SINIR NEDEN BU SORGUYA KONULMADI: o sınır, TERMİNAL durumdaki
+ * (kabul_edildi / vekaletDevredildi) ve dolayısıyla yıllar içinde SINIRSIZ
+ * biriken belgeleri her 10 dakikada bir yeniden okumamak için var (bkz.
+ * yukarıdaki `otuzGunOnce` yorumu). `vekaletDevriBekliyor == true` ise GEÇİCİ
+ * bir durumdur ve tam olarak bu süpürme sayesinde drenajı garanti edilir:
+ * normal işleyişte sonuç kümesi 0-2 belgedir, birikmez. Yani sınırın koruduğu
+ * maliyet burada zaten yok — sınırı bu sorguya taşımak ise düzeltilen hatanın
+ * ta kendisini geri getirirdi.
+ *
+ * Zaman aşımı eşiği ve "damga okunamıyorsa dokunma" davranışı tek kaynaktan
+ * gelir: src/lib/slotKorumasi.ts (istemci tarafı koruma kararı ile bu
+ * süpürmenin AYNI eşiği kullanması gerekir, aksi halde istemci bir slotu
+ * serbest sayarken cron bayrağı hâlâ canlı sanabilirdi).
+ */
+async function bayatDevirBayraklariniTemizle(dryRun: boolean): Promise<number> {
+  const bekleyenSnap = await db.collection('bildirimler')
+    .where('vekaletDevriBekliyor', '==', true)
+    .get();
+
+  const simdiMs = Date.now();
+  let temizlenen = 0;
+
+  for (const bekleyenDoc of bekleyenSnap.docs) {
+    const veri = bekleyenDoc.data() as BildirimData & { sonGuncelleme?: { toMillis(): number } };
+    const damgaMs = veri.sonGuncelleme?.toMillis?.();
+    // Damga yoksa/okunamıyorsa DOKUNMA (fail-closed) — yaşını bilemediğimiz
+    // bir bayrağı bayat sayıp gerçek bir devri iptal etmek, birkaç gün fazla
+    // kilitli kalmaktan daha kötüdür.
+    if (typeof damgaMs !== 'number' || !Number.isFinite(damgaMs)) continue;
+    if (simdiMs - damgaMs <= VEKALET_DEVRI_BEKLEME_ASIMI_MS) continue;
+
+    const yasSaat = Math.round((simdiMs - damgaMs) / (60 * 60 * 1000));
+    console.log(`${veri.tarih} ${veri.vakit} (${veri.tip}): bayat vekaletDevriBekliyor bayragi (${yasSaat} saat) temizleniyor.`);
+    temizlenen++;
+    if (dryRun) continue;
+
+    await db.runTransaction(async (transaction) => {
+      const fresh = await transaction.get(bekleyenDoc.ref);
+      if (!fresh.exists) return;
+      const freshVeri = fresh.data() as BildirimData & { sonGuncelleme?: { toMillis(): number } };
+      if (freshVeri.vekaletDevriBekliyor !== true) return;
+      const freshDamga = freshVeri.sonGuncelleme?.toMillis?.();
+      // Belge bu arada tazelendiyse (ör. yeni bir kabul) dokunma.
+      if (typeof freshDamga !== 'number' || Date.now() - freshDamga <= VEKALET_DEVRI_BEKLEME_ASIMI_MS) return;
+
+      const alarmSnap = await transaction.get(cozulmemisAlarmSorgusu(freshVeri.tarih, freshVeri.vakit));
+
+      transaction.update(bekleyenDoc.ref, { vekaletDevriBekliyor: false, sonGuncelleme: Timestamp.now() });
+      if (alarmSnap.empty) {
+        transaction.set(db.collection('adminUyarilari').doc(), {
+          // `tip` kasitli olarak 'zincirTukendi' — `cozulmemisAlarmSorgusu`
+          // dedup'i `tip`e gore daralmiyor (bkz. o fonksiyonun yorumu),
+          // dolayisiyla `vakit` alani NULL OLMAYAN her uyarinin ayni tipte
+          // kalmasi o yorumun dayandigi degismezi korur.
+          tip: 'zincirTukendi',
+          mesaj: `${freshVeri.tarih} ${toTurkishUpperCase(freshVeri.vakit)} görevinde bekleyen bir vekalet devri ${yasSaat} saattir uygulanamadı (uzlaştırma işi bu süre boyunca çalışmamış olabilir). Devir iptal edildi, görev önceki sahibinde kaldı ve slot yeniden düzenlenebilir. Devrin gerçekten yapılması gerekiyorsa yeniden teklif edilmelidir.`,
+          tarih: freshVeri.tarih,
+          vakit: freshVeri.vakit,
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+      }
+    });
+  }
+
+  return temizlenen;
 }
 
 import { fileURLToPath } from 'url';

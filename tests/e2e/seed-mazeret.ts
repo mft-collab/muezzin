@@ -43,6 +43,40 @@ function turkeyTodayStr(): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Mazeret/vekalet penceresinin SUNUCU tarafı damgası (bkz. firestore.rules
+ * `mazeretPenceresiAcik`). Kural bu alanı Firestore'un KENDİ `request.time`
+ * değeriyle karşılaştırır — testin `page.clock.setFixedTime` ile dondurduğu
+ * TARAYICI saati burada geçerli değildir. Alan yoksa kural FAIL-CLOSED
+ * davranır ve akış "Bu işlem için yetkiniz yok" ile düşer; bu yüzden seed,
+ * pencerenin GERÇEK zamanda açık olduğu bir damga yazar.
+ */
+function acikPencereDamgasi() {
+  return Timestamp.fromMillis(Date.now() + 6 * 60 * 60 * 1000);
+}
+
+/**
+ * `vakitler/{ilceId}_{YYYY-MM}` + `settings/system` tohumlar.
+ *
+ * `mazeretZamanKontrolYap` (src/services/mazeretServisi.ts) ezan saatini
+ * çağıran açıkça vermediğinde (ör. `vekaletKabulEt`) buradan okur ve saat
+ * bulunamazsa artık FAIL-CLOSED davranır — yani seed edilmemiş bir emülatörde
+ * akış "ezan vakti bilinmiyor" ile dururdu. Saatler, testlerin dondurduğu
+ * "bugün 10:00" Türkiye saatine göre kasıtlı olarak İLERİDEDİR (pencere açık).
+ */
+async function vakitleriTohumla(todayStr: string) {
+  const ilceId = '9148';
+  await db.collection('settings').doc('system').set({ ilceId }, { merge: true });
+  await db.collection('vakitler').doc(`${ilceId}_${todayStr.slice(0, 7)}`).set({
+    gunler: {
+      [todayStr]: {
+        sabah: '04:10', gunes: '05:42', ogle: '12:45',
+        ikindi: '16:30', aksam: '19:51', yatsi: '21:18'
+      }
+    }
+  }, { merge: true });
+}
+
 async function seed(): Promise<string> {
   try {
     await auth.deleteUser(UID);
@@ -82,6 +116,8 @@ async function seed(): Promise<string> {
   const todayStr = turkeyTodayStr();
   const haftaId = `W${todayStr}`;
 
+  await vakitleriTohumla(todayStr);
+
   // mazeret_detaylari (bkz. firestore.rules) doc ID'leri bildirimler ile
   // AYNI (deterministik: haftaId_tarih_vakit_tip) ve kural gereği sabit/
   // değişmez (`allow update, delete: if false`). Bu ID'ler bugünün tarihine
@@ -105,7 +141,8 @@ async function seed(): Promise<string> {
     pendingAck: true,
     retSebebi: null,
     olusturmaTarihi: Timestamp.now(),
-    sonGuncelleme: Timestamp.now()
+    sonGuncelleme: Timestamp.now(),
+    mazeretSonBasvuru: acikPencereDamgasi()
   });
 
   await db.collection('bildirimler').doc(`${haftaId}_${todayStr}_yatsi_yedek`).set({
@@ -118,7 +155,8 @@ async function seed(): Promise<string> {
     pendingAck: true,
     retSebebi: null,
     olusturmaTarihi: Timestamp.now(),
-    sonGuncelleme: Timestamp.now()
+    sonGuncelleme: Timestamp.now(),
+    mazeretSonBasvuru: acikPencereDamgasi()
   });
 
   return auth.createCustomToken(UID);

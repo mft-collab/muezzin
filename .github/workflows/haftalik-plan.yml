@@ -5,6 +5,15 @@ on:
   schedule:
     - cron: '30 19 * * 0'
 
+# Zamanlanmış Pazar koşusuyla bir workflow_dispatch (ya da "Re-run")
+# çakışırsa haftalikPlanOlustur.ts'in `planDoc.exists` varlık kontrolü
+# (TRANSACTION DEĞİL) iki süreçte de "plan yok" görebilir: aynı hafta için
+# iki kez `adminUyarilari` belgesi (otomatik ID, dedup yok) ve iki kez
+# "plan yayınlandı" FCM push'u üretilirdi. Diğer cron'lardaki AYNI desen.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   planla:
     runs-on: ubuntu-latest

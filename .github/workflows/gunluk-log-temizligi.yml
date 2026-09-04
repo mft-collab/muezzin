@@ -9,6 +9,12 @@ on:
     # — TTL policy Firebase Console/gcloud CLI'dan ayrıca yapılandırılabilir.
     - cron: '0 3 * * 1'
 
+# Çakışan iki koşu aynı belgeleri silmeye çalışıp gereksiz Spark silme
+# kotası harcar. Diğer cron'lardaki AYNI desen.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   temizle:
     runs-on: ubuntu-latest

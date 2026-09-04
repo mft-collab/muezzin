@@ -36,6 +36,47 @@ service cloud.firestore {
       return haftaGunuNumarasi(data.tarih) == 5;
     }
 
+    // ---------------------------------------------------------
+    // 1 SAATLİK MAZERET/VEKALET PENCERESİ — SUNUCU TARAFI ZORLAYICI
+    // ---------------------------------------------------------
+    // KÖK NEDEN (kod denetimi): "ezan vaktine 1 saat kala pencere kapanır"
+    // kuralı YALNIZCA istemcide (src/lib/mazeretKurallari.ts + iki servis)
+    // uygulanıyordu ve `getTurkeyNow()`, RTDB zaman senkronu (src/lib/timeSync.ts)
+    // hiç ateşlemezse — offline açılan bir PWA, engellenmiş/erişilemeyen RTDB —
+    // `globalThis.__timeOffset` 0 kalacağından DOĞRUDAN CİHAZIN saatidir. Saati
+    // 45 dakika geri alınmış bir cihaz, ezandan 30 dakika önce (kapalı olması
+    // gereken pencerede) mazeret bildirebiliyor / vekalet teklifi açıp
+    // kabul ettirebiliyordu; scripts/vekaletDevirleriniIsle.ts'in kendi kontrolü
+    // "ezan ZATEN GEÇTİ Mİ" olduğundan (1 saatlik pencere DEĞİL) devri
+    // uyguluyordu. İstemci saat senkronu bir UX kolaylığıdır, GÜVENLİK SINIRI
+    // DEĞİLDİR.
+    //
+    // MİMARİ SEÇİM (bkz. iki alternatifin karşılaştırması):
+    //  (a) SEÇİLEN — pencerenin KAPANDIĞI an, plan üretiminde (Admin SDK,
+    //      güvenilir) önceden hesaplanıp `bildirimler.mazeretSonBasvuru`
+    //      alanına gerçek bir `timestamp` olarak yazılır; kural yalnızca
+    //      Firestore'un KENDİ sunucu saatiyle (`request.time` — istemci
+    //      tarafından yazılamaz/etkilenemez) tek bir karşılaştırma yapar.
+    //  (b) REDDEDİLEN — kuralın `vakitler/{ilceId}_{YYYY-MM}` belgesini okuyup
+    //      "HH:MM" dizgesini CEL'de ayrıştırması. Bu, `settings/system` +
+    //      `vakitler` için İKİ ek get() ve ~20 ek terim demekti; üstelik tam da
+    //      bu dosyada belgeli "istek başına 1000 ifade" tavanına en yakın kural
+    //      (`bildirimler` update) içinde. Ayrıca bozuk bir saat dizgesini
+    //      (bkz. `normalizeVakitSaati`) CEL'de güvenle ele almak mümkün değil.
+    // (a) bütün ayrıştırma/doğrulama yükünü güvenilir Admin SDK koduna taşır,
+    // sabah istisnasını (yatsı+1sa) ve normal vakitleri TEK bir alanla aynı
+    // şekilde ifade eder ve kuralı 3 terime indirir.
+    //
+    // FAIL-CLOSED: alan yoksa (eski belge, ezan verisi henüz yok, bozuk saat
+    // dizgesi) pencere KAPALI sayılır. `cumaMi`'nin eski fail-open hatasının
+    // (yukarıdaki yorum) tekrarlanmaması için bu bilinçli bir tercihtir; eksik
+    // damgalar scripts/mazeretPenceresiBackfill.ts ile (10 dakikada bir)
+    // tamamlanır.
+    function mazeretPenceresiAcik(bildirimVeri) {
+      let sonBasvuru = bildirimVeri.get('mazeretSonBasvuru', null);
+      return sonBasvuru is timestamp && request.time < sonBasvuru;
+    }
+
     // Süper-admin e-postaları config/bootstrap dokümanında tutulur (kaynak kodda
     // gömülü değildir). Doküman yoksa veya alan eksikse boş liste varsayılır.
     function isSuperAdminEmail(email) {
@@ -97,7 +138,14 @@ service cloud.firestore {
              // "duyuru düzenle" akışı olmasa bile) ileride biri eklenirse bu
              // alan sessizce "fazladan anahtar" ihlaliyle reddedilmesin diye
              // burada tipli olarak listelenir.
-             (!data.keys().hasAny(['bildirimGonderildi']) || data.bildirimGonderildi is bool);
+             (!data.keys().hasAny(['bildirimGonderildi']) || data.bildirimGonderildi is bool) &&
+             // bildirimGonderimBaslangici: duyuruBildirimGonder.ts'in iki
+             // fazlı "gönderiliyor" damgası (bkz. scripts/lib/gonderimClaim.ts).
+             // Normalde 3. FAZ'da silinir, ama süreç ölürse belgede kalır —
+             // `bildirimGonderildi` ile AYNI gerekçeyle burada listelenmek
+             // ZORUNDA, aksi halde damgayı taşıyan bir duyuruya yapılan her
+             // istemci update'i "fazladan anahtar" ihlaliyle reddedilirdi.
+             (!data.keys().hasAny(['bildirimGonderimBaslangici']) || data.bildirimGonderimBaslangici is timestamp);
     }
 
     match /duyurular/{duyuruId} {
@@ -332,6 +380,13 @@ service cloud.firestore {
              incoming().vakit == existing().vakit &&
              incoming().tip == existing().tip &&
              changed.hasOnly(['durum', 'pendingAck', 'sonGuncelleme', 'devirSonucu']) &&
+             // 1 saatlik mazeret penceresi — SUNUCU saatiyle (bkz.
+             // `mazeretPenceresiAcik` yorumu). Yalnızca mazeret (reddedildi)
+             // yolunu kapsar: "okudum" onayı (bekliyor→onaylandi) bir mazeret
+             // değildir, ezandan sonra bile yapılabilmelidir. Tek bir yerde
+             // (iki reddedildi dalının ORTAK önkoşulu olarak) yazıldı —
+             // `bildirimler` update kuralının belgeli ifade bütçesi için.
+             (incoming().durum == 'onaylandi' || mazeretPenceresiAcik(existing())) &&
              // Diğer zaman damgası alanları gibi (bkz. isValidBildirim)
              // sonGuncelleme burada da tiplenmemişti — gerçek çağıranlar
              // zaten serverTimestamp() gönderiyor ama sema doğrulaması
@@ -465,8 +520,43 @@ service cloud.firestore {
              // mazeret icin uygulanan Cuma kisitlamasi bu yoldan atlatilabilir
              // (bkz. algoritma denetimi).
              !cumaMiIsaretli(bildirim) &&
+             // 1 saatlik pencere — teklif AÇMA anı (bkz. `mazeretPenceresiAcik`
+             // yorumu). `bildirim` zaten yukarıda get() edildi: ek okuma YOK.
+             // Damga TALEP belgesine KOPYALANMAZ, her zaman bildirimden okunur:
+             // kopyalanan bir alan sonradan desenkronize olabilirdi (bkz.
+             // `vekalet_talepleri` update kuralındaki admin dalının aynı sınıf
+             // riski ve scripts/vekaletDevirleriniIsle.ts'in tek-kaynak düzeltmesi).
+             mazeretPenceresiAcik(bildirim) &&
              alici.role == 'muezzin' &&
              alici.aktif == true;
+    }
+
+    // Admin'in bir vekalet talebinde DEĞİŞTİREMEYECEĞİ alanlar (bkz.
+    // `vekalet_talepleri` update kuralındaki gerekçe). `bildirimId` dahil tüm
+    // korelasyon anahtarları ve taraflar sabit kalır — böylece bir talebin
+    // hangi bildirime/güne/vakte ait olduğu, oluşturma anında
+    // `isValidVekaletCreate`'in doğruladığı halinden asla sapamaz.
+    function isAdminVekaletUpdate() {
+      return incoming().diff(existing()).unchangedKeys().hasAll([
+               'bildirimId', 'haftaId', 'gonderenUid', 'aliciUid',
+               'tarih', 'vakit', 'tip', 'olusturmaTarihi'
+             ]) &&
+             incoming().durum in ['beklemede', 'kabul_edildi', 'reddedildi'];
+    }
+
+    // Vekalet KABULÜ (`vekalet_talepleri.durum` -> 'kabul_edildi') için 1
+    // saatlik pencere kontrolü. `isVekaletDevriBekliyorIsareti` aynı kabulün
+    // bildirim tarafını zaten kapatıyor, ama scripts/vekaletDevirleriniIsle.ts
+    // GERÇEK transferi yalnızca `vekalet_talepleri.durum == 'kabul_edildi'`
+    // sorgusuyla bulur (bildirimdeki niyet bayrağını ŞART KOŞMAZ) — yani tek
+    // başına bu durum yazımı da transferi tetikleyebilir. Bu yüzden iki yazım
+    // da ayrı ayrı kapatılmalıdır.
+    function vekaletKabulPenceresiAcik(bildirimId) {
+      let yol = /databases/$(database)/documents/bildirimler/$(bildirimId);
+      // exists() ile kısa devre: silinmiş bir bildirime ait talep için get()
+      // hiç çalışmaz (bkz. isAssignableDutyUid'deki aynı desen) ve pencere
+      // kapalı sayılır (fail-closed).
+      return exists(yol) && mazeretPenceresiAcik(get(yol).data);
     }
 
     function isRecipientVekaletStatusUpdate() {
@@ -480,7 +570,12 @@ service cloud.firestore {
                'tip', 'olusturmaTarihi'
              ]) &&
              changed.hasOnly(['durum', 'sonGuncelleme']) &&
-             incoming().durum in ['kabul_edildi', 'reddedildi'];
+             incoming().durum in ['kabul_edildi', 'reddedildi'] &&
+             // REDDETME her zaman serbesttir (pencere kapandıktan sonra da
+             // alıcı teklifi geri çevirebilmelidir); yalnızca KABUL, sunucu
+             // saatiyle doğrulanan 1 saatlik pencereye tabidir. `||` kısa
+             // devresi sayesinde red yolunda hiç get() yapılmaz.
+             (incoming().durum == 'reddedildi' || vekaletKabulPenceresiAcik(existing().bildirimId));
     }
 
     // NOT (ifade tavanı denetimi — 3. tur, KÖK NEDEN ÇÖZÜMÜ): vekalet-kabul
@@ -515,6 +610,12 @@ service cloud.firestore {
       return changed.hasOnly(['vekaletDevriBekliyor', 'sonGuncelleme']) &&
              incoming().vekaletDevriBekliyor == true &&
              incoming().sonGuncelleme is timestamp &&
+             // Vekalet KABULÜ de 1 saatlik pencereye tabidir — teklif pencere
+             // açıkken gönderilmiş olsa bile kabul, pencere kapandıktan sonra
+             // yapılamaz (bkz. src/services/vekaletServisi.ts vekaletKabulEt'in
+             // istemci tarafı kontrolü — o CİHAZ SAATİNE dayanır). Burada
+             // `existing()` zaten bildirim belgesidir: ek get() maliyeti YOK.
+             mazeretPenceresiAcik(existing()) &&
              talep.bildirimId == docId &&
              talep.aliciUid == request.auth.uid &&
              talep.durum == 'kabul_edildi';
@@ -561,7 +662,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor', 'puanIslendi', 'manuelAtama']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor', 'puanIslendi', 'manuelAtama', 'mazeretSonBasvuru']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -624,7 +725,16 @@ service cloud.firestore {
              // onaylamadan/reddetmeden önce (durum hâlâ 'bekliyor') sonraki bir
              // plan yeniden üretiminin ezmesini önler (premium hata analizi
              // PL-K2, bkz. vekaletDevredildi/vekaletDevriBekliyor ile aynı desen).
-             (!data.keys().hasAny(['manuelAtama']) || data.manuelAtama is bool);
+             (!data.keys().hasAny(['manuelAtama']) || data.manuelAtama is bool) &&
+             // mazeretSonBasvuru: mazeret/vekalet penceresinin KAPANDIĞI an
+             // (bkz. `mazeretPenceresiAcik`). ŞEMADA opsiyoneldir — bu alanı
+             // taşımayan ESKİ belgeler geçerli kalmalı, aksi halde onlara
+             // yapılan HER admin update'i (arşivleme, yeniden atama) kalıcı
+             // olarak reddedilirdi (bkz. `puanIslendi` yorumundaki aynı sınıf
+             // bulgu). Güvenlik kararı ise opsiyonel DEĞİLDİR: alan eksikse
+             // `mazeretPenceresiAcik` false döner, yani mazeret/vekalet
+             // yazımları fail-closed reddedilir.
+             (!data.keys().hasAny(['mazeretSonBasvuru']) || data.mazeretSonBasvuru is timestamp);
     }
 
     // ifade tavanı denetimi — TAM ÖZET (3 tur):
@@ -747,7 +857,25 @@ service cloud.firestore {
       allow get: if isAdmin() || resource == null || isVekaletParticipant(existing());
       allow list: if isAdmin() || isVekaletParticipant(existing());
       allow create: if isSignedIn() && isValidVekaletCreate(talepId);
-      allow update: if isAdmin() || isRecipientVekaletStatusUpdate();
+      // ADMIN DALI ŞEMA DOĞRULAMASI (kod denetimi — "script talep/bildirim
+      // alanlarını karıştırıyor" bulgusunun KÖK NEDENİ): bu dal eskiden
+      // KOŞULSUZ `isAdmin()` idi — hiçbir şema/alan kısıtı yoktu. Talep ve ona
+      // bağlı bildirim belgesi OLUŞTURMA anında `isValidVekaletCreate` ile
+      // birebir eşitleniyor (`bildirim.tarih == incoming().tarih` vb.), ama
+      // oluşturmadan SONRA bir admin yazımı bu eşitliği bozabiliyordu; o
+      // noktadan itibaren scripts/vekaletDevirleriniIsle.ts'in bazı kontrolleri
+      // (Cuma, izin günü) `bildirim.*`, bazıları (ezan geçmiş mi) `talep.*`
+      // okuduğu için FARKLI görevler hakkında karar veriyordu. Script tarafı
+      // artık tek kaynağa (`bildirim.*`) çekildi VE talep<->bildirim
+      // korelasyonunu ayrıca doğruluyor; burası ise sorunu kaynağında keser:
+      // admin bir talebin KİMLİK/KORELASYON alanlarını (hangi bildirime, hangi
+      // gün/vakit/tip'e, kimler arasında) hiçbir zaman değiştiremez. Meşru
+      // admin işlemleri daralmaz: bugün admin arayüzünde `vekalet_talepleri`'ne
+      // YAZAN hiçbir yol yok (yalnızca okuma hook'ları ve
+      // veriSifirlamaServisi'nin toplu SİLME'si — o `allow delete` altında);
+      // ileride bir onarım gerekirse `durum`/`sonGuncelleme` ve görüntülenen
+      // isim/saat alanları hâlâ düzenlenebilir kalır.
+      allow update: if (isAdmin() && isAdminVekaletUpdate()) || isRecipientVekaletStatusUpdate();
       // 'reddedildi' de silinebilir olmalı: talep ID'si deterministik
       // (haftaId_tarih_vakit_tip_aliciUid) olduğundan, reddedilen bir talep
       // silinmeden aynı kişiye bir daha teklif gönderilemiyordu — setDoc bu
@@ -964,7 +1092,22 @@ service cloud.firestore {
              // açıyordu; Firestore alan bazında değil BELGE bazında güvenlik
              // sağladığından bu, `izinler` açık kaldığı sürece kapatılamazdı
              // (premium hata analizi FR-O3).
-             data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi', 'redSebebi']) &&
+             //
+             // `bildirimGonderildi` / `bildirimGonderimBaslangici`: yalnızca
+             // Admin SDK (scripts/izinDurumBildirimGonder.ts — bu kural ATLANIR)
+             // ve izinGuncelle/izinGeriAl yazar. `puanIslendi`'nin
+             // isValidBildirim'de yol açtığı bulgunun BİREBİR AYNISI burada da
+             // vardı: `hasOnly` her update'te TÜM belgeyi doğruladığından, bu
+             // alanları taşıyan bir izin belgesi 'onay_bekliyor' durumuna geri
+             // dönerse (cron `bildirimGonderildi: true` yazarken adminin
+             // izinGeriAl'i araya girerse — izinGeriAl bayrağı silse de bu
+             // yarış penceresi gerçektir) sahibinin kendi bekleyen talebini
+             // düzenlediği self-update dalı (aşağıdaki `izinler` update
+             // kuralı) KALICI olarak reddedilirdi. İkisi de tipli ve
+             // opsiyonel olarak listelenir.
+             data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi', 'redSebebi', 'bildirimGonderildi', 'bildirimGonderimBaslangici']) &&
+             (!data.keys().hasAny(['bildirimGonderildi']) || data.bildirimGonderildi is bool) &&
+             (!data.keys().hasAny(['bildirimGonderimBaslangici']) || data.bildirimGonderimBaslangici is timestamp) &&
              data.uid == request.auth.uid &&
              // İzin (leave) yalnızca nöbete atanabilen 'muezzin' rolü icin
              // anlamlidir — admin ve gozlemci hicbir zaman nobete

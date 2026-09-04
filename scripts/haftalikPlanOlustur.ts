@@ -2,6 +2,7 @@ import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
+import { EzanVakitOkuyucu } from './lib/ezanVakitleri.ts';
 import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
 import { Muezzin, Vakit, VakitAtama } from '../src/types';
 
@@ -62,6 +63,10 @@ function gunPlanProjeksiyonuUygula(
 
 async function main() {
   console.log("Haftalık plan oluşturma başladı...");
+
+  // `vakitler` okumalarını (ay belgeleri) çalıştırma boyunca önbellekleyen tek
+  // okuyucu — 3 hafta × 7 gün × 5 vakit için ayrı okuma yapmaz.
+  const okuyucu = new EzanVakitOkuyucu();
 
   // Plan/bildirim yazımı ile FCM duyurusu ayrı başarısızlık alanlarıdır: bir
   // FCM arızası plan üretimini geri almamalı (plan zaten commit edildi), ama
@@ -165,6 +170,7 @@ async function main() {
     console.log(`${haftaId} haftası için otomatik plan oluşturuluyor...`);
 
     const batch = db.batch();
+    let eksikSonBasvuru = 0;
 
     // Bir önceki haftanın son vaktinin (Pazar yatsı) ASİLİNİ oku — hafta
     // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için (bkz.
@@ -203,6 +209,21 @@ async function main() {
       for (const vakit of VAKITLER) {
         const atama = gunPlan[gun][vakit];
 
+        // `mazeretSonBasvuru`: mazeret/vekalet penceresinin KAPANDIĞI gerçek
+        // an — firestore.rules'un `request.time` (SUNUCU saati) ile
+        // karşılaştırdığı tek güvenilir damga (bkz. firestore.rules
+        // `mazeretPenceresiAcik`). İstemcinin `getTurkeyNow()`'u cihaz saatine
+        // düşebildiğinden 1 saatlik pencerenin OTORİTER uygulaması budur;
+        // burada, güvenilir Admin SDK bağlamında ve doğrulanmış ezan verisiyle
+        // hesaplanır. Ezan verisi henüz yoksa (ör. 3 hafta ileri planlanan bir
+        // gün, o ayın `vakitler` belgesi daha yazılmadan) alan YAZILMAZ ve
+        // pencere kural tarafında KAPALI sayılır (fail-closed); eksik damgalar
+        // scripts/mazeretPenceresiBackfill.ts tarafından (10 dakikada bir)
+        // veri geldiğinde tamamlanır.
+        const sonBasvuru = await okuyucu.mazeretSonBasvuru(gun, vakit);
+        if (!sonBasvuru) eksikSonBasvuru++;
+        const pencereAlani = sonBasvuru ? { mazeretSonBasvuru: Timestamp.fromDate(sonBasvuru) } : {};
+
         // Bildirim ID'leri kasıtlı olarak deterministiktir (haftaId_tarih_vakit_tip).
         // Bu, mazeret/vekalet akışlarının Firestore güvenlik kurallarında
         // getAfter() ile "asil" ve "yedek" belgelerini çapraz doğrulamasını
@@ -212,7 +233,7 @@ async function main() {
           batch.set(bAsil, {
             haftaId, tarih: gun, vakit, uid: atama.asil, tip: 'asil',
             durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-            sonGuncelleme: Timestamp.now()
+            sonGuncelleme: Timestamp.now(), ...pencereAlani
           });
         }
 
@@ -221,10 +242,14 @@ async function main() {
           batch.set(bYedek, {
             haftaId, tarih: gun, vakit, uid: atama.yedek, tip: 'yedek',
             durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-            sonGuncelleme: Timestamp.now()
+            sonGuncelleme: Timestamp.now(), ...pencereAlani
           });
         }
       }
+    }
+
+    if (eksikSonBasvuru > 0) {
+      console.warn(`${haftaId}: ${eksikSonBasvuru} slot için ezan verisi yok — mazeretSonBasvuru damgası yazılamadı; mazeret/vekalet o slotlarda veri gelene kadar KAPALI kalır (bkz. scripts/mazeretPenceresiBackfill.ts).`);
     }
 
     batch.set(db.collection('haftaPlanlari').doc(haftaId), {

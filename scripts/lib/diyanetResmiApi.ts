@@ -7,7 +7,7 @@
 // tip uyumu için var, hiçbir zaman bu haliyle Firestore'a gitmiyor.
 import { Timestamp } from 'firebase/firestore';
 import type { Vakitler, VakitKaydi } from '../../src/types.ts';
-import { aylikVakitleriCek } from '../../src/services/ezanVaktiServisi.ts';
+import { aylikVakitleriCek, vakitKaydiniNormalize } from '../../src/services/ezanVaktiServisi.ts';
 import { db, Timestamp as AdminTimestamp } from './firebaseAdminInit.ts';
 import { getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
@@ -171,18 +171,24 @@ function parseResmiResponse(data: MonthlyGunRaw[], ilceId: string): Vakitler {
       return;
     }
     const dateKey = isoUzun.slice(0, 10); // "YYYY-MM-DD"
-    if (!gun.fajr || !gun.sunrise || !gun.dhuhr || !gun.asr || !gun.maghrib || !gun.isha) {
-      console.warn('Diyanet resmi API: vakit alanı eksik, atlandı:', dateKey);
-      return;
-    }
-    gunler[dateKey] = {
+    // Alan varlığı + BİÇİM doğrulaması tek noktada (bkz.
+    // src/services/ezanVaktiServisi.ts `vakitKaydiniNormalize` yorumu —
+    // "kaynakta doğrulama"): eskiden yalnızca "alan dolu mu" bakılıyor,
+    // "9:05"/"abc" gibi ayrıştırılamayan bir değer Firestore'a olduğu gibi
+    // yazılıyordu.
+    const kayit = vakitKaydiniNormalize({
       sabah: gun.fajr,
       gunes: gun.sunrise,
       ogle: gun.dhuhr,
       ikindi: gun.asr,
       aksam: gun.maghrib,
       yatsi: gun.isha
-    };
+    });
+    if (!kayit) {
+      console.warn('Diyanet resmi API: vakit alanı eksik/biçimi bozuk, atlandı:', dateKey);
+      return;
+    }
+    gunler[dateKey] = kayit;
   });
 
   if (Object.keys(gunler).length === 0) {

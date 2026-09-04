@@ -1,5 +1,7 @@
-import { db } from './lib/firebaseAdminInit.ts';
-import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage, type FcmGonderici } from './lib/fcmNotify.ts';
+import { db, FieldValue, Timestamp } from './lib/firebaseAdminInit.ts';
+import { fcmGonderVeTemizle, FcmGonderimBasarisizHatasi, kullaniciFcmTokenleriniTopla, type FcmMessage, type FcmGonderici } from './lib/fcmNotify.ts';
+import { parcaliBatchUygula, type BatchIslemi } from './lib/firestoreBatch.ts';
+import { GONDERIM_CLAIM_ALANI, gonderimClaimBayatMi, gonderimClaimSerbestBirak, gonderimClaimYaz } from './lib/gonderimClaim.ts';
 
 type IzinData = {
   uid: string;
@@ -9,6 +11,7 @@ type IzinData = {
   durum: 'onay_bekliyor' | 'onaylandi' | 'reddedildi';
   redSebebi?: string;
   bildirimGonderildi?: boolean;
+  bildirimGonderimBaslangici?: unknown;
 };
 
 type MuezzinData = {
@@ -37,6 +40,9 @@ const TIP_ETIKETI: Record<IzinData['tip'], string> = {
  * optimizasyonu — mazeretDevirleriniIsle.ts'teki AYNI prensip, kaynağında
  * baştan sınırlı bir bayrakla).
  *
+ * Gönderim İKİ FAZLI bir "claim" ile idempotent kılınır (claim → send →
+ * mark); gerekçenin tamamı `scripts/lib/gonderimClaim.ts` içindedir.
+ *
  * @param gonderici Yalnızca testler için — bkz. `fcmGonderVeTemizle`.
  */
 export async function processIzinDurumBildirimleri(
@@ -54,13 +60,33 @@ export async function processIzinDurumBildirimleri(
     return { kararSayisi: 0, mesajSayisi: 0 };
   }
 
+  // Hâlâ TAZE bir "gönderiliyor" damgası taşıyan kayıtlar, gönderimin
+  // gerçekleşip gerçekleşmediği BİLİNMEYEN bir koşuya aittir; damga
+  // bayatlayana kadar dokunulmaz (bkz. gonderimClaim.ts).
+  const simdiMs = Date.now();
+  const islenecekler = izinSnap.docs.filter((docSnap) =>
+    gonderimClaimBayatMi((docSnap.data() as IzinData).bildirimGonderimBaslangici, simdiMs)
+  );
+  const beklemedeSayisi = izinSnap.size - islenecekler.length;
+  if (beklemedeSayisi > 0) {
+    console.log(`${beklemedeSayisi} izin kararı, önceki bir koşunun taze "gönderiliyor" damgasını taşıyor — bu turda atlandı.`);
+  }
+  if (islenecekler.length === 0) {
+    return { kararSayisi: 0, mesajSayisi: 0 };
+  }
+
   const tumMesajlar: FcmMessage[] = [];
   const tokenToUidMap: Record<string, string> = {};
-  const markBatch = db.batch();
+  // Yalnızca gerçekten PUSH ÜRETEN kayıtlar claim'lenir: mesaj üretmeyen
+  // kayıtlarda (karara varılmamış, alıcı kaydı yok, tercih kapalı, token
+  // yok) hiçbir dış yan etki olmadığından "gönderildi mi" belirsizliği de
+  // yoktur — onları yalnızca işaretlemek yeterli ve gereksiz yazma
+  // üretmez (Spark yazma kotası).
+  const claimlenecekRefler: FirebaseFirestore.DocumentReference[] = [];
   let kararSayisi = 0;
   let mesajSayisi = 0;
 
-  for (const docSnap of izinSnap.docs) {
+  for (const docSnap of islenecekler) {
     const izin = docSnap.data() as IzinData;
 
     // Yalnızca kararı verilmiş talepler ilgilenir — `bildirimGonderildi`
@@ -68,16 +94,11 @@ export async function processIzinDurumBildirimleri(
     // false yazıldığından bu dal normalde hiç tetiklenmez; yine de taze
     // veriyle yeniden doğrulanır (bkz. mazeretDevirleriniIsle.ts'teki AYNI
     // savunma derinliği ilkesi).
-    if (izin.durum !== 'onaylandi' && izin.durum !== 'reddedildi') {
-      if (!dryRun) markBatch.update(docSnap.ref, { bildirimGonderildi: true });
-      continue;
-    }
+    if (izin.durum !== 'onaylandi' && izin.durum !== 'reddedildi') continue;
     kararSayisi++;
 
     const muezzinSnap = await db.collection('muezzins').doc(izin.uid).get();
     const muezzin = muezzinSnap.exists ? (muezzinSnap.data() as MuezzinData) : null;
-
-    if (!dryRun) markBatch.update(docSnap.ref, { bildirimGonderildi: true });
 
     if (!muezzin || muezzin.notificationSettings?.mazeretDurumu === false) continue;
     const tokens = kullaniciFcmTokenleriniTopla(muezzin);
@@ -98,6 +119,7 @@ export async function processIzinDurumBildirimleri(
       });
     });
     mesajSayisi += tokens.length;
+    claimlenecekRefler.push(docSnap.ref);
   }
 
   console.log(`${kararSayisi} yeni izin kararı, ${mesajSayisi} alıcı cihaza gönderilecek.`);
@@ -107,13 +129,29 @@ export async function processIzinDurumBildirimleri(
     return { kararSayisi, mesajSayisi };
   }
 
-  // SIRA ÖNEMLİ — bkz. duyuruBildirimGonder.ts'teki AYNI yorum: tam bir FCM
-  // arızasında fcmGonderVeTemizle firlatir, markBatch commit EDİLMEZ ve
-  // `bildirimGonderildi` false kalır (karar bir sonraki koşuda yeniden
-  // bildirilir); script 1 ile çıktığından workflow'un başarı adımı da
-  // çalışmaz.
-  await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM izin durumu bildirimi', gonderici);
-  await markBatch.commit();
+  // 1. FAZ — CLAIM (gönderimden ÖNCE kalıcılaşır; bkz. duyuruBildirimGonder.ts'teki
+  // AYNI üç fazlı akış ve gonderimClaim.ts'teki kök neden açıklaması).
+  await gonderimClaimYaz(claimlenecekRefler, Timestamp.now());
+
+  // 2. FAZ — SEND. Tam arızada (FcmGonderimBasarisizHatasi) hiçbir mesajın
+  // ulaşmadığı KESİN olduğundan damga hemen geri alınır: kayıt bayatlama
+  // süresini beklemeden bir sonraki koşuda yeniden denenir. Hata çağıranına
+  // kadar çıkıp process.exit(1) ürettiğinden workflow'un `if: success()`
+  // adımı da çalışmaz.
+  try {
+    await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM izin durumu bildirimi', gonderici);
+  } catch (err) {
+    if (err instanceof FcmGonderimBasarisizHatasi) {
+      await gonderimClaimSerbestBirak(claimlenecekRefler);
+    }
+    throw err;
+  }
+
+  // 3. FAZ — MARK: bu turda ele alınan TÜM kayıtlar (mesaj üretmeyenler
+  // dahil) işaretlenir, damga silinir.
+  await parcaliBatchUygula(islenecekler.map<BatchIslemi>((docSnap) => (batch) => {
+    batch.update(docSnap.ref, { bildirimGonderildi: true, [GONDERIM_CLAIM_ALANI]: FieldValue.delete() });
+  }));
   console.log(`Tamamlandi. kararSayisi=${kararSayisi}`);
   return { kararSayisi, mesajSayisi };
 }

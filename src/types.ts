@@ -115,6 +115,20 @@ export interface Bildirim {
   */
  cumaMi?: boolean;
  /**
+  * Mazeret/vekalet penceresinin KAPANDIĞI an — plan üretiminde (gece cron'u
+  * ya da istemci self-healing'i) doğrulanmış ezan verisinden ÖNCEDEN
+  * hesaplanır: sabah dışı vakitlerde ezan − 1 saat, sabahta önceki günün
+  * yatsısı + 1 saat (bkz. src/lib/mazeretKurallari.ts `mazeretSonBasvuruHesapla`).
+  *
+  * 1 saatlik pencerenin OTORİTER (sunucu tarafı) zorlayıcısı budur:
+  * firestore.rules `mazeretPenceresiAcik` bunu Firestore'un kendi
+  * `request.time` değeriyle karşılaştırır — istemcinin `getTurkeyNow()`'u
+  * (RTDB zaman senkronu ateşlemezse cihaz saati) bir güvenlik sınırı değildir.
+  * Kasıtlı olarak opsiyonel: alan eksikse kural FAIL-CLOSED davranır (pencere
+  * kapalı) ve scripts/mazeretPenceresiBackfill.ts damgayı tamamlar.
+  */
+ mazeretSonBasvuru?: Timestamp;
+ /**
   * Bu görev bir vekalet (görev devri) kabulüyle mi el değiştirdi —
   * vekaletServisi.ts `vekaletKabulEt` tarafından yazılır. `durum` bu
   * geçişte değişmediğinden (hâlâ 'bekliyor' olabilir), planServisi.ts

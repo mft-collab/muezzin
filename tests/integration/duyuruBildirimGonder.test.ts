@@ -1,7 +1,8 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
-import { db } from '../../scripts/lib/firebaseAdminInit.ts';
+import { db, Timestamp } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processDuyuruBildirimleri } from '../../scripts/duyuruBildirimGonder.ts';
+import { GONDERIM_CLAIM_ALANI, GONDERIM_CLAIM_BAYATLAMA_MS } from '../../scripts/lib/gonderimClaim.ts';
 
 type TestCase = {
   name: string;
@@ -113,6 +114,78 @@ const tests: TestCase[] = [
       const sonuc = await processDuyuruBildirimleri(true);
       assert.equal(sonuc.duyuruSayisi, 1);
       assert.equal(sonuc.mesajSayisi, 2);
+    }
+  },
+  {
+    // ÇİFT PUSH KÖK NEDENİ: gönderim ile "gönderildi" commit'i arasında
+    // süreç ölürse bayrak hiç kalıcılaşmaz. Bu senaryo, o çökmüş koşunun
+    // biraktigi TAZE damgayi taklit eder — bir sonraki koşu bu duyuruyu
+    // YENİDEN GÖNDERMEMELİ (bkz. scripts/lib/gonderimClaim.ts).
+    name: 'Taze "gonderiliyor" damgasi tasiyan duyuru bu turda yeniden gonderilmez',
+    run: async () => {
+      await clearCollections();
+      const duyuruRef = db.collection('duyurular').doc('duyuruClaimTaze');
+      await duyuruRef.set({
+        baslik: 'Yarim Kalan',
+        icerik: 'Icerik',
+        tip: 'duyuru',
+        bildirimGonderildi: false,
+        [GONDERIM_CLAIM_ALANI]: Timestamp.now()
+      });
+
+      const sonuc = await processDuyuruBildirimleri(false);
+      assert.equal(sonuc.duyuruSayisi, 0);
+      assert.equal(sonuc.mesajSayisi, 0);
+
+      // Bayrak da damga da DEĞİŞMEMİŞ olmalı — kayıt hâlâ belirsiz durumda.
+      const duyuruDoc = await duyuruRef.get();
+      assert.equal(duyuruDoc.data()?.bildirimGonderildi, false);
+      assert.ok(duyuruDoc.data()?.[GONDERIM_CLAIM_ALANI]);
+    }
+  },
+  {
+    // Damga bayatlayınca (ölü süreç kesinleşince) kayıt yeniden denenmeli —
+    // aksi halde bu mekanizma bildirimleri KALICI olarak kilitlerdi.
+    name: 'Bayatlamis damga tasiyan duyuru yeniden islenir ve damga silinir',
+    run: async () => {
+      await clearCollections();
+      const duyuruRef = db.collection('duyurular').doc('duyuruClaimBayat');
+      await duyuruRef.set({
+        baslik: 'Bayat',
+        icerik: 'Icerik',
+        tip: 'duyuru',
+        bildirimGonderildi: false,
+        [GONDERIM_CLAIM_ALANI]: Timestamp.fromMillis(Date.now() - GONDERIM_CLAIM_BAYATLAMA_MS - 60_000)
+      });
+
+      const sonuc = await processDuyuruBildirimleri(false);
+      assert.equal(sonuc.duyuruSayisi, 1);
+
+      const duyuruDoc = await duyuruRef.get();
+      assert.equal(duyuruDoc.data()?.bildirimGonderildi, true);
+      assert.equal(duyuruDoc.data()?.[GONDERIM_CLAIM_ALANI], undefined);
+    }
+  },
+  {
+    // İleri tarihli bir damga (bozuk veri / istemci müdahalesi) bir kaydı
+    // SÜRESİZ kilitleyen bir kilide dönüşmemeli.
+    name: 'Ileri tarihli damga bayat sayilir, kayit islenir',
+    run: async () => {
+      await clearCollections();
+      const duyuruRef = db.collection('duyurular').doc('duyuruClaimGelecek');
+      await duyuruRef.set({
+        baslik: 'Gelecek',
+        icerik: 'Icerik',
+        tip: 'duyuru',
+        bildirimGonderildi: false,
+        [GONDERIM_CLAIM_ALANI]: Timestamp.fromMillis(Date.now() + 365 * 24 * 60 * 60 * 1000)
+      });
+
+      const sonuc = await processDuyuruBildirimleri(false);
+      assert.equal(sonuc.duyuruSayisi, 1);
+
+      const duyuruDoc = await duyuruRef.get();
+      assert.equal(duyuruDoc.data()?.bildirimGonderildi, true);
     }
   }
 ];
