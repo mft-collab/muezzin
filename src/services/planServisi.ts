@@ -227,11 +227,22 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  throw new Error('Planlama için en az 1 aktif müezzin gereklidir.');
  }
 
- const izinSnapshot = await getDocs(query(collection(db, 'izinler'), where('durum', '==', 'onaylandi')));
- const onayliIzinler = izinSnapshot.docs.map(doc => doc.data() as OnayliIzin);
  const gunler = haftaGunleri(haftaId);
  const haftaBitisStr = gunler[6];
  const startStr = haftaId.substring(1);
+ // `bitis >= startStr` — bu haftadan ÖNCE bitmiş onaylı izinlerin bu
+ // planlamayla hiçbir ilgisi yok (haftalikPlanUret zaten her gün için
+ // `gun >= izin.baslangic && gun <= izin.bitis` kontrol ediyor), ama
+ // filtresiz sorgu yıllar içinde birikmiş TÜM onaylı izin geçmişini her
+ // çağrıda okuyordu (düşük öncelikli bulgu — Spark okuma kotası).
+ // `durum+bitis` bileşik index'i zaten mevcut (bkz. useAktifIzinlerStore.ts
+ // aynı desen).
+ const izinSnapshot = await getDocs(query(
+   collection(db, 'izinler'),
+   where('durum', '==', 'onaylandi'),
+   where('bitis', '>=', startStr)
+ ));
+ const onayliIzinler = izinSnapshot.docs.map(doc => doc.data() as OnayliIzin);
 
  const planRef = doc(db, 'haftaPlanlari', haftaId);
  const mevcutPlanSnap = await getDoc(planRef);
@@ -251,7 +262,12 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const oncekiHaftaSonEkibi: string[] = [];
  if (oncekiPlanSnap.exists()) {
  const sonVakitAtama = (oncekiPlanSnap.data().gunler || {})[oncekiSonGun]?.yatsi;
- if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem') {
+ // 'SISTEM' (büyük harf) — eski verilerde kalmış, artık hiçbir yazım
+ // yolunun üretmediği bir değer (bkz. HaftalikTakvim.tsx/GorevKarti.tsx'in
+ // savunmacı kontrolleri) — burada da 'Sistem' ile aynı işlem görür,
+ // aksi halde hayalet bir "uid" SOS listesine girip anlamsızca bloklardı
+ // (düşük öncelikli bulgu).
+ if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem' && sonVakitAtama.asil !== 'SISTEM') {
  oncekiHaftaSonEkibi.push(sonVakitAtama.asil);
  }
  }
@@ -276,6 +292,13 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  if (!korumaliSlotMu(slotBildirimleri)) return null;
 
  const mevcutAtama = mevcutGunler[gun]?.[vakit];
+ // 'SISTEM' (büyük harf) — eski `haftaPlanlari` verilerinde kalmış olabilir
+ // (bkz. HaftalikTakvim.tsx/GorevKarti.tsx'in savunmacı kontrolleri); bu
+ // önbellekten okunurken 'Sistem'e normalize edilmezse aşağıdaki `|| 'Sistem'`
+ // fallback'i tetiklenmez ('SISTEM' truthy olduğundan) ve bu değer canlı bir
+ // bildirim belgesine `uid: 'SISTEM'` olarak sızabilirdi (düşük öncelikli bulgu).
+ const mevcutAsil = mevcutAtama?.asil === 'SISTEM' ? undefined : mevcutAtama?.asil;
+ const mevcutYedek = mevcutAtama?.yedek === 'SISTEM' ? undefined : mevcutAtama?.yedek;
  const asilBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'asil');
  const yedekBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'yedek');
  // Öncelik `bildirimler`'de (canlı gerçek) — `mevcutAtama` bu fonksiyon
@@ -285,8 +308,8 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // slotu sessizce eski sahibine geri döndürebiliyordu (bkz. mimari denetim
  // O8). `mevcutAtama` yalnızca hiçbir bildirim belgesi yoksa devreye girer.
  return {
- asil: asilBildirim?.data()?.uid || mevcutAtama?.asil || 'Sistem',
- yedek: yedekBildirim?.data()?.uid || mevcutAtama?.yedek || 'Sistem',
+ asil: asilBildirim?.data()?.uid || mevcutAsil || 'Sistem',
+ yedek: yedekBildirim?.data()?.uid || mevcutYedek || 'Sistem',
  // Mazeret bildirilmiş (reddedildi) bir bildirim — bu kişi bu görevi
  // ARTIK YAPMAYACAK (mazeretDevirleriniIsle.ts bir yedeği terfi
  // ettirecek, ~10-15 dk gecikmeli); `uid` alanı reddedilme anında hâlâ

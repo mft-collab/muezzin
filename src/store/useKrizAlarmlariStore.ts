@@ -10,6 +10,13 @@ interface KrizAlarmlariState {
   cozulmamisSayisi: number;
   loading: boolean;
   initialized: boolean;
+  /** `initialized`den AYRI bir bayrak — `initialized` yalnızca BAŞARILI ilk
+   * yüklemede true olur (HS-O1 retry mekanizması bunu gerektirir). Bu
+   * bayrak init() çağrıldığı anda SENKRON true olur, ilk snapshot henüz
+   * gelmemişken (onSnapshot asenkron) `isAdmin` hızlı false→true→false→true
+   * geçişi yaparsa (AdminPanel.tsx) init()'in tekrar çağrılıp İKİNCİ bir
+   * dinleyici açmasını engeller (düşük öncelikli bulgu). */
+  initializing: boolean;
   /** adminUyarilari dinleyicisi hata verdiğinde dolar (bkz. kod denetimi —
    * önceden hata console.error'a düşüp hiçbir yere yazılmıyordu, admin boş
    * listeyi "uyarı yok" sanıyordu). */
@@ -28,10 +35,12 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
   cozulmamisSayisi: 0,
   loading: true,
   initialized: false,
+  initializing: false,
   error: null,
 
   init: () => {
-    if (get().initialized) return () => {};
+    if (get().initialized || get().initializing) return () => {};
+    set({ initializing: true });
 
     const q = query(collection(db, 'adminUyarilari'), orderBy('olusturmaTarihi', 'desc'));
 
@@ -49,7 +58,7 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
         return a.cozuldu ? 1 : -1;
       });
 
-      set({ alarmlar: data, cozulmamisSayisi: activeCount, loading: false, initialized: true, error: null });
+      set({ alarmlar: data, cozulmamisSayisi: activeCount, loading: false, initializing: false, initialized: true, error: null });
     }, (err) => {
       // handleFirestoreError'ın DÖNÜŞ değeri (ham SDK mesajını kullanıcıya
       // uygun Türkçe metne çeviren) kullanılır — ham err.message değil,
@@ -59,7 +68,7 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
       // `initialized:true` YAZILMAZ (bkz. useAdminIzinlerStore.ts'teki AYNI
       // düzeltme, premium hata analizi HS-O1) — dinleyici hata sonrası
       // kalıcı öldüğünden, bunu yazmak store'u oturum boyunca kilitliyordu.
-      set({ loading: false, error: friendly.message });
+      set({ loading: false, initializing: false, error: friendly.message });
       setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
     });
 

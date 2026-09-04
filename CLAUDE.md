@@ -111,15 +111,19 @@ diğer vakitler ezandan 1 saat öncesine kadar açık. Bu kısıtlama üç yerde
 uygulanır — birini değiştirirken diğerlerini unutma:
 - `src/services/mazeretServisi.ts` (`mazeretBildir`) — istemci tarafı, hem
   asil hem yedek için.
-- `firestore.rules` `isSelfBildirimUpdate()` — sunucu tarafı, bildirim
-  belgesindeki `cumaMi` alanına bakar (oluşturma anında hesaplanır, opsiyonel
-  alan — eski belgelerde olmayabilir).
-- `firestore.rules` `isValidVekaletCreate` (talep oluşturma) ve
-  `scripts/vekaletDevirleriniIsle.ts` (GERÇEK transfer — "1000 ifade tavanı"
-  kök neden çözümü sonrası artık CEL'de değil, Admin SDK'da taze veriyle
-  yeniden doğrulanıyor) ve `src/services/vekaletServisi.ts` — vekalet
-  (gönüllü görev devri) de aynı Cuma kısıtlamasına tabi, aksi halde mazeret
-  engelini bu yoldan atlatmak mümkün olurdu (bkz. algoritma denetimi).
+- `firestore.rules` `isSelfBildirimUpdate()` — sunucu tarafı, `cumaMiIsaretli()`
+  ile bildirim belgesinin `tarih` alanından TAZE hesaplar (saklı, opsiyonel
+  `cumaMi` alanına GÜVENMEZ — o alan eksik/eski bir belgede fail-open bir
+  bypass'a yol açıyordu, bkz. kod denetimi kök neden çözümü).
+- `firestore.rules` `isValidVekaletCreate` (talep oluşturma, aynı şekilde
+  `tarih`ten taze hesaplar) ve `scripts/vekaletDevirleriniIsle.ts` (GERÇEK
+  transfer — "1000 ifade tavanı" kök neden çözümü sonrası artık CEL'de
+  değil, Admin SDK'da taze veriyle yeniden doğrulanıyor; bu script de
+  `haftaGunuNumarasi(tarih)` ile taze hesaplar, ÖNCEDEN saklı `cumaMi`
+  bayrağına güvenip fail-open olabiliyordu — premium hata analizi MV-O1)
+  ve `src/services/vekaletServisi.ts` — vekalet (gönüllü görev devri) de
+  aynı Cuma kısıtlamasına tabi, aksi halde mazeret engelini bu yoldan
+  atlatmak mümkün olurdu (bkz. algoritma denetimi).
 
 ### Firestore dinleyici deseni
 

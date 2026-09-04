@@ -1,7 +1,7 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { aylikVakitleriGrupla, type AylikVakitGrubu } from '../src/services/ezanVaktiServisi.ts';
 import { vakitleriCekOncelikli } from './lib/diyanetResmiApi.ts';
-import { getTurkeyNow } from '../src/lib/dateUtils.ts';
+import { getTurkeyNow, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 
 async function main() {
@@ -88,6 +88,12 @@ async function main() {
     await db.collection('adminUyarilari').add({
       tip: 'apiHatasi',
       mesaj: `Vakit güncelleme hatası: ${message}`,
+      // AdminUyarisi.tarih/vakit zorunlu alanlar — önceden hiç yazılmıyordu.
+      // Bu uyarı gün/vakte özgü değil (aylık cron'un genel başarısızlığı),
+      // bu yüzden çalışma günü + null vakit yazılır (bkz. yatsiSonuIslemleri.ts
+      // aynı desen).
+      tarih: getTurkeyDateString(simdi),
+      vakit: null,
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });

@@ -84,6 +84,11 @@ const requiredIndexes: RequiredIndex[] = [
     reason: 'useAktifSistemUyarisi: muezzine cozulmemis en guncel sistem uyarisini canli dinletme'
   },
   {
+    collectionGroup: 'adminUyarilari',
+    fields: ['cozuldu', 'tip'],
+    reason: 'kotaKontrol.ts: acik bir kotaUyarisi olup olmadigini son-50 penceresi olmadan dogrudan sorgulama (dusuk oncelikli bulgu duzeltmesi)'
+  },
+  {
     collectionGroup: 'vekalet_talepleri',
     fields: ['aliciUid', 'durum'],
     reason: 'muezzinin bekleyen vekalet tekliflerini listeleme'

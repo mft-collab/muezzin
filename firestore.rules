@@ -1040,7 +1040,15 @@ service cloud.firestore {
                         // `true`'ya çevirir (bkz. useAdminIzinlerStore.ts).
                         incoming().diff(existing()).affectedKeys().hasOnly(['durum', 'redSebebi', 'baslangic', 'bitis', 'bildirimGonderildi']) &&
                         (!incoming().diff(existing()).affectedKeys().hasAny(['baslangic', 'bitis']) ||
-                         isValidIzinTarihAraligi(incoming().baslangic, incoming().bitis))) ||
+                         isValidIzinTarihAraligi(incoming().baslangic, incoming().bitis)) &&
+                        // `durum` değeri önceden hiç doğrulanmıyordu — admin
+                        // dalı yalnızca hangi ALANLARIN değiştiğine bakıyordu,
+                        // DEĞERİNE değil; geçersiz bir durum değeri sessizce
+                        // kabul edilip izinDurumBildirimGonder.ts'in eşleşen
+                        // hiçbir dalına girmeden yutuluyordu (düşük öncelikli
+                        // bulgu).
+                        (!incoming().diff(existing()).affectedKeys().hasAny(['durum']) ||
+                         incoming().durum in ['onay_bekliyor', 'onaylandi', 'reddedildi'])) ||
                     (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor' && isValidIzin(incoming()));
       allow delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && existing().durum == 'onay_bekliyor');
     }

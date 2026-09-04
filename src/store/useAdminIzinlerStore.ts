@@ -81,6 +81,9 @@ interface AdminIzinlerState {
   loading: boolean;
   error: string | null;
   initialized: boolean;
+  /** bkz. useKrizAlarmlariStore.ts'teki AYNI alan yorumu — `isAdmin` hızlı
+   * geçişinde çift dinleyici açılmasını önler (düşük öncelikli bulgu). */
+  initializing: boolean;
   init: () => () => void;
   izinGuncelle: (id: string, durum: 'onaylandi' | 'reddedildi') => Promise<void>;
   /** Yanlışlıkla verilmiş bir onay/red kararını geri alır, talebi tekrar bekleme durumuna döndürür. */
@@ -97,9 +100,11 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
   loading: true,
   error: null,
   initialized: false,
+  initializing: false,
 
   init: () => {
-    if (get().initialized) return () => {};
+    if (get().initialized || get().initializing) return () => {};
+    set({ initializing: true });
 
     const path = 'izinler';
     const q = query(collection(db, path));
@@ -128,7 +133,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
         return timeB - timeA;
       });
 
-      set({ izinler: data, loading: false, initialized: true, error: null });
+      set({ izinler: data, loading: false, initializing: false, initialized: true, error: null });
     };
 
     const unsubscribeIzinler = onSnapshot(q, (snapshot) => {
@@ -144,7 +149,7 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       // KALICI olarak sonlandırdığından (SDK otomatik yeniden bağlanmaz),
       // bunu yazmak init()'in guard'ını süresiz kilitleyip store'u oturum
       // boyunca ölü bırakıyordu (premium hata analizi HS-O1).
-      set({ error: friendly.message, loading: false });
+      set({ error: friendly.message, loading: false, initializing: false });
       setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
     });
 

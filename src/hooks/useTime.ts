@@ -38,7 +38,12 @@ function stopGlobalClock() {
  * Shares a single global interval across all subscribers to conserve CPU & battery.
  */
 export function useTime() {
-  const [now, setNow] = useState(globalNow);
+  // `globalNow` son abone ayrılınca donuyor (saat durduruluyor) — yeni bir
+  // abone dakikalar sonra mount olursa `useState(globalNow)` bayat bir
+  // zamanla ilk render'ı yapardı (düzelme ancak bir sonraki saniye tick'ine
+  // kadar gecikirdi). Taze bir başlangıç değeri için lazy initializer
+  // kullanılır (düşük öncelikli bulgu).
+  const [now, setNow] = useState(() => getTurkeyNow());
 
   useEffect(() => {
     listeners.add(setNow);

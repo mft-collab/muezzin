@@ -3,6 +3,7 @@ import { db } from '../lib/firebase';
 import type { Muezzin, Izin, HaftaPlan, Vakit } from '../types';
 import { telemetryService } from './telemetryService';
 import { toTurkishUpperCase } from '../lib/dateUtils';
+import { zamanAsimiIle } from '../lib/timeoutUtils';
 
 // Denetlenen belgeler tanım gereği güvenilmez olabilir (eksik/bozuk alanlar
 // aranan şey) — bu yüzden `Muezzin`/`Izin`/`HaftaPlan` yerine bunların
@@ -313,7 +314,11 @@ export async function veriHatalariniOnar(errors: AuditError[], onLog: (message: 
  if (op.type === 'update') batch.update(op.ref, op.data!);
  else batch.delete(op.ref);
  });
- await batch.commit();
+ // Çevrimdışıyken (persistentLocalCache) askıda kalabilecek commit'i
+ // sarmalar — aksi halde admin "işleniyor..." ekranında süresiz
+ // kilitlenebilirdi (düşük öncelikli bulgu, bkz. veriSifirlamaServisi.ts
+ // aynı düzeltme).
+ await zamanAsimiIle(batch.commit());
  }
  onLog(`Tebrikler! Tüm veri uyuşmazlıkları başarıyla giderildi ve onarıldı.`);
 

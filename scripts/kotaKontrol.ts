@@ -1,4 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 /**
  * Günlük Firestore yazma kotası "erken uyarı" kontrolü.
@@ -47,17 +48,6 @@ const GUNLUK_YAZMA_KOTASI = 20000;
  */
 const ESIK_BELGE_SAYISI = 2000;
 
-/**
- * Açık (çözülmemiş) bir kota uyarısı ararken taranacak en güncel uyarı
- * sayısı. Doğrudan `tip == 'kotaUyarisi' && cozuldu == false` sorgusu YENİ
- * bir bileşik index (ve bir index deploy'u) gerektirirdi; bunun yerine
- * `useAktifSistemUyarisi`'nin zaten kullandığı mevcut
- * (cozuldu, olusturmaTarihi) index'i üzerinden en güncel N açık uyarı
- * okunup `tip` istemci tarafında elenir. N belge okuma günde bir kez
- * ihmal edilebilir bir maliyettir.
- */
-const TARANACAK_ACIK_UYARI_SAYISI = 50;
-
 const UYARI_TIPI = 'kotaUyarisi';
 
 /** Son 24 saatte koleksiyona düşen belge sayısı — `count()` toplaması
@@ -73,15 +63,24 @@ async function son24SaatBelgeSayisi(koleksiyon: string, esik: Timestamp): Promis
 
 /** Zaten açık bir kota uyarısı varsa her gün yenisini üretmeyelim — admin
  * paneli aynı sorunun kopyalarıyla dolar ve gerçek uyarılar kaybolur (bkz.
- * scripts/mazeretDevirleriniIsle.ts'teki `alarmVarMi` ile aynı gerekçe). */
+ * scripts/mazeretDevirleriniIsle.ts'teki `alarmVarMi` ile aynı gerekçe).
+ *
+ * Önceden yalnızca "en son 50 açık uyarı" taranıp istemci tarafında
+ * `tip === UYARI_TIPI` filtreleniyordu — başka bir kaynaktan (ör.
+ * vakitVeriSagligiKontrol.ts, dedup'ı olmayan günlük uyarılar) gelen bir
+ * sel bu 50'lik pencereyi doldurursa, kotaUyarisi kendi türünü artık
+ * göremeyip her gün yenisini üretiyordu (düşük öncelikli bulgu — iki
+ * bulgu birbirini besliyordu). Doğrudan `tip` eşitliğiyle sorgulamak
+ * (yalnızca eşitlik filtreleri, orderBy yok — composite index gerekmez)
+ * bu pencere sınırını tamamen ortadan kaldırır. */
 async function acikKotaUyarisiVarMi(): Promise<boolean> {
   const snap = await db.collection('adminUyarilari')
     .where('cozuldu', '==', false)
-    .orderBy('olusturmaTarihi', 'desc')
-    .limit(TARANACAK_ACIK_UYARI_SAYISI)
+    .where('tip', '==', UYARI_TIPI)
+    .limit(1)
     .get();
 
-  return snap.docs.some((d) => d.data().tip === UYARI_TIPI);
+  return !snap.empty;
 }
 
 async function main() {
@@ -118,6 +117,8 @@ async function main() {
       `${ESIK_BELGE_SAYISI} eşiğini aştı. Bu bir TAHMİNDİR, gerçek toplam kullanım (diğer koleksiyonlara yazımlar dahil) ` +
       `daha yüksektir. Olası neden: telemetryService.ts'teki hata yazma sınırının (rate-limit) devre dışı kalması veya ` +
       `bir render döngüsünde tekrarlayan hata. Firebase Console > Kullanım ekranından gerçek kotayı doğrulayın.`,
+    tarih: getTurkeyDateString(),
+    vakit: null,
     cozuldu: false,
     olusturmaTarihi: Timestamp.now(),
   });

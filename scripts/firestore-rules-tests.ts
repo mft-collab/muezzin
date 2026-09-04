@@ -1079,6 +1079,31 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Düşük öncelikli bulgu: admin dalı hangi ALANLARIN değiştiğini
+    // kontrol ediyordu ama `durum`un DEĞERİNİ hiç doğrulamıyordu — şema
+    // dışı bir değer sessizce kabul edilip izinDurumBildirimGonder.ts'in
+    // hiçbir dalına girmeden yutulabiliyordu.
+    name: 'admin izin kararini sema disi bir durum degeriyle guncelleyemez',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izinler/semaDisiDurumDenemesi'), {
+          uid: 'muezzin1',
+          baslangic: '2026-05-18',
+          bitis: '2026-05-19',
+          tip: 'mazeret',
+          durum: 'onay_bekliyor',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'admin').firestore();
+      const ref = doc(db, 'izinler/semaDisiDurumDenemesi');
+
+      await assertFails(updateDoc(ref, { durum: 'gecersizDurum' }));
+    }
+  },
+  {
     // izinGeriAl bir karari geri alirken bildirimGonderildi'yi SILER (deleteField)
     // — aksi halde yeniden karar verildiginde eski true degeri yuzunden yeni
     // bildirim hic gitmezdi (bkz. useAdminIzinlerStore.ts izinGeriAl yorumu).

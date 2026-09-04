@@ -68,9 +68,13 @@ export const unlockAudioContext = async () => {
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
  window.speechSynthesis.getVoices();
  if (window.speechSynthesis.onvoiceschanged !== undefined) {
- window.speechSynthesis.onvoiceschanged = () => {
+ // `addEventListener` — `.onvoiceschanged = ...` bir ATAMAdır, tek bir
+ // dinleyici tutar; aşağıdaki `processSpeechQueue` içindeki koşullu
+ // atama bu ön-ısıtma dinleyicisini koşulsuz olarak EZİYORDU, ilk
+ // anonstan sonra kalıcı olarak kayboluyordu (düşük öncelikli bulgu).
+ window.speechSynthesis.addEventListener('voiceschanged', () => {
  window.speechSynthesis.getVoices();
- };
+ });
  }
 }
 
@@ -105,13 +109,18 @@ const processSpeechQueue = () => {
  if (trVoice) {
  utterance.voice = trVoice;
  } else {
- window.speechSynthesis.onvoiceschanged = () => {
+ // `addEventListener` (kendi kendini kaldıran) — `.onvoiceschanged = ...`
+ // ataması hem yukarıdaki modül-seviyesi ön-ısıtma dinleyicisini hem
+ // önceki anonsların kendi dinleyicisini eziyordu (düşük öncelikli bulgu).
+ const onVoicesChanged = () => {
  voices = window.speechSynthesis.getVoices();
  const asyncTrVoice = findTrVoice();
  if (asyncTrVoice) {
  utterance.voice = asyncTrVoice;
  }
+ window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
  };
+ window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
  }
 
  utterance.onend = () => {

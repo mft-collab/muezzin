@@ -14,6 +14,21 @@ import { getTurkeyNow, getTurkeyDateString } from '../src/lib/dateUtils.ts';
  * bu iş arada geçen boşlukları yakalayan bir güvenlik ağıdır).
  */
 
+/** Bugün için zaten çözülmemiş bir 'apiHatasi' uyarısı varsa yenisini
+ * üretmeyelim — dedup yoktu, çok günlük bir API kesintisinde admin paneli
+ * aynı sorunun kopyalarıyla dolup gerçek uyarıları gizleyebiliyordu (düşük
+ * öncelikli bulgu; bkz. src/services/planServisi.ts `cozulmemisUyariVarMi`
+ * ile AYNI desen — tip+tarih+cozuldu üçlü eşitlik sorgusu). */
+async function bugunIcinApiHatasiUyarisiVarMi(bugun: string): Promise<boolean> {
+  const snap = await db.collection('adminUyarilari')
+    .where('tip', '==', 'apiHatasi')
+    .where('tarih', '==', bugun)
+    .where('cozuldu', '==', false)
+    .limit(1)
+    .get();
+  return !snap.empty;
+}
+
 async function gunVerisiTamMi(ilceId: string, tarih: string): Promise<boolean> {
   const [y, m] = tarih.split('-');
   const docId = `${ilceId}_${y}-${m}`;
@@ -96,12 +111,18 @@ async function main() {
     console.log(`Tazelendi: ${docId} (${Object.keys(grup.gunler).length} gün yazıldı)`);
   }
 
-  await db.collection('adminUyarilari').add({
-    tip: 'apiHatasi',
-    mesaj: `Vakit verisi otomatik tazelendi: "${ilceId}" ilçesi için bugün (${bugun}) veya yarın (${yarin}) verisi eksikti, günlük sağlık kontrolü API'den yeniden çekip doldurdu. Aylık güncelleme cron'unun (aylik-ezan-takvimi.yml) neden zamanında/doğru dokümana yazmadığını kontrol edin.`,
-    cozuldu: false,
-    olusturmaTarihi: Timestamp.now(),
-  });
+  if (await bugunIcinApiHatasiUyarisiVarMi(bugun)) {
+    console.log('Bugün için zaten çözülmemiş bir apiHatasi uyarısı açık — yenisi üretilmedi.');
+  } else {
+    await db.collection('adminUyarilari').add({
+      tip: 'apiHatasi',
+      mesaj: `Vakit verisi otomatik tazelendi: "${ilceId}" ilçesi için bugün (${bugun}) veya yarın (${yarin}) verisi eksikti, günlük sağlık kontrolü API'den yeniden çekip doldurdu. Aylık güncelleme cron'unun (aylik-ezan-takvimi.yml) neden zamanında/doğru dokümana yazmadığını kontrol edin.`,
+      tarih: bugun,
+      vakit: null,
+      cozuldu: false,
+      olusturmaTarihi: Timestamp.now(),
+    });
+  }
 
   const [bugunTamam2, yarinTamam2] = await Promise.all([
     gunVerisiTamMi(ilceId, bugun),

@@ -2,6 +2,7 @@ import { collection, getCountFromServer, getDocs, limit, query, writeBatch } fro
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
+import { zamanAsimiIle } from '../lib/timeoutUtils';
 
 /**
  * Sıfırlanabilir OPERASYONEL koleksiyonlar — "yeni sezona sıfırdan başla"
@@ -63,11 +64,17 @@ const SAYFA_BOYUTU = 450;
 async function koleksiyonuSil(koleksiyonAdi: string, onSayfa?: (toplamSilinen: number) => void): Promise<number> {
   let toplamSilinen = 0;
   for (;;) {
-    const snap = await getDocs(query(collection(db, koleksiyonAdi), limit(SAYFA_BOYUTU)));
+    // `persistentLocalCache` etkinken çevrimdışı başlatılan write/commit
+    // Promise'leri sonsuza dek askıda kalabiliyor (bkz. timeoutUtils.ts) —
+    // bu döngü sarmalanmadan admin "siliniyor..." ekranında süresiz
+    // kilitlenebilirdi (düşük öncelikli bulgu). `zamanAsimiIle` yalnızca
+    // ARAYÜZÜN beklemesini keser; Firestore'un kendi offline yazım kuyruğu
+    // arka planda çalışmaya devam eder.
+    const snap = await zamanAsimiIle(getDocs(query(collection(db, koleksiyonAdi), limit(SAYFA_BOYUTU))));
     if (snap.empty) break;
     const batch = writeBatch(db);
     snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+    await zamanAsimiIle(batch.commit());
     toplamSilinen += snap.size;
     onSayfa?.(toplamSilinen);
     if (snap.size < SAYFA_BOYUTU) break;
@@ -83,7 +90,7 @@ async function koleksiyonuSil(koleksiyonAdi: string, onSayfa?: (toplamSilinen: n
  * değerler gösterirdi — "yeni sezona sıfırdan başla" niyetiyle çelişir.
  */
 async function kadroSayaclariniSifirla(): Promise<number> {
-  const muezzinSnap = await getDocs(collection(db, 'muezzins'));
+  const muezzinSnap = await zamanAsimiIle(getDocs(collection(db, 'muezzins')));
   let guncellenen = 0;
   for (let i = 0; i < muezzinSnap.docs.length; i += SAYFA_BOYUTU) {
     const parca = muezzinSnap.docs.slice(i, i + SAYFA_BOYUTU);
@@ -96,7 +103,7 @@ async function kadroSayaclariniSifirla(): Promise<number> {
         yillikIzinKullanilanGun: 0,
       });
     });
-    await batch.commit();
+    await zamanAsimiIle(batch.commit());
     guncellenen += parca.length;
   }
   return guncellenen;

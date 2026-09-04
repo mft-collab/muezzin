@@ -82,12 +82,19 @@ export const useGpsVakitStore = create<GpsVakitState>()(
       },
 
       refreshGpsVakitler: async () => {
-        const { gpsEnabled, gpsCoords, lastFetchDate } = get();
+        const { gpsEnabled, gpsCoords, lastFetchDate, gpsLoading } = get();
         if (!gpsEnabled || !gpsCoords) return;
 
         const bugunStr = getTurkeyDateString();
         // Skip calling if already updated today to save API requests
         if (lastFetchDate === bugunStr) return;
+        // Uçuş halinde bir istek zaten varsa ikinci bir eşzamanlı istek
+        // başlatma — `lastFetchDate` yalnızca istek TAMAMLANDIĞINDA
+        // yazıldığından, 60sn'lik periyodik tetikleyici (useDashboardLogic.ts)
+        // yavaş bir ağda önceki istek bitmeden tekrar çağrılabiliyordu
+        // (düşük öncelikli bulgu — gereksiz dış API trafiği + gpsLoading
+        // titremesi).
+        if (gpsLoading) return;
 
         set({ gpsLoading: true });
         try {

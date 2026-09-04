@@ -151,6 +151,14 @@
         { "fieldPath": "cozuldu", "order": "ASCENDING" },
         { "fieldPath": "olusturmaTarihi", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "adminUyarilari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cozuldu", "order": "ASCENDING" },
+        { "fieldPath": "tip", "order": "ASCENDING" }
+      ]
     }
   ]
 }

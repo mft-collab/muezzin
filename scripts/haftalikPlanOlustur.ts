@@ -101,23 +101,28 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Onaylanmış İzinleri Çek
-  const izinSnapshot = await db.collection('izinler')
-    .where('durum', '==', 'onaylandi')
-    .get();
-  const onayliIzinler = izinSnapshot.docs.map(doc => doc.data() as OnayliIzin);
-
   // 3. Dinamik Tarih Hesaplama (Türkiye takvim gününe göre — runner UTC'de çalışır)
   const simdi = getTurkeyNow();
-  const bugunDay = simdi.getDay(); 
+  const bugunDay = simdi.getDay();
   // Pazartesiye git (0: Pazar ise -6 gün, 1: Pzt ise 0 gün...)
   const diff = bugunDay === 0 ? -6 : 1 - bugunDay;
-  
+
   const pazartesiTemel = new Date(simdi);
   pazartesiTemel.setDate(simdi.getDate() + diff);
   pazartesiTemel.setHours(0, 0, 0, 0);
 
   const bugunStr = formatDateLocal(simdi);
+
+  // 2. Onaylanmış İzinleri Çek — `bitis >= bugunStr`: bugünden ÖNCE bitmiş
+  // onaylı izinlerin önümüzdeki 3 haftadan hiçbirini etkileme ihtimali yok
+  // (düşük öncelikli bulgu — filtresiz sorgu yıllar içinde birikmiş TÜM
+  // onaylı izin geçmişini her çalıştırmada okuyordu). `durum+bitis` bileşik
+  // index'i zaten mevcut (bkz. src/services/planServisi.ts aynı desen).
+  const izinSnapshot = await db.collection('izinler')
+    .where('durum', '==', 'onaylandi')
+    .where('bitis', '>=', bugunStr)
+    .get();
+  const onayliIzinler = izinSnapshot.docs.map(doc => doc.data() as OnayliIzin);
 
   // Gelecek 3 hafta için plan oluşturmayı dene (Daha güvenli bir aralık)
   for (let weekOffset = 0; weekOffset < 3; weekOffset++) {
@@ -164,7 +169,9 @@ async function main() {
     const oncekiHaftaSonEkibi: string[] = [];
     if (oncekiPlanDoc.exists) {
       const sonVakitAtama = oncekiPlanDoc.data()?.gunler?.[oncekiSonGun]?.yatsi;
-      if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem') {
+      // 'SISTEM' (büyük harf) — eski verilerde kalmış, bkz.
+      // src/services/planServisi.ts'teki AYNI düzeltme (düşük öncelikli bulgu).
+      if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem' && sonVakitAtama.asil !== 'SISTEM') {
         oncekiHaftaSonEkibi.push(sonVakitAtama.asil);
       }
     }

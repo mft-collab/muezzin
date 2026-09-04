@@ -133,6 +133,10 @@ export async function processYatsiSonuIslemleri() {
       tip: 'zincirTukendi',
       mesaj: `Görev devredilen yedekler onay vermedi: ${uyariUids.join(', ')}`,
       tarih: bugün,
+      // AdminUyarisi.vakit zorunlu (string | null) ama bu uyarı belirli bir
+      // vakte değil, gün geneline ait — diğer gün-geneli uyarılarla
+      // (planServisi.ts, haftalikPlanOlustur.ts) tutarlı olarak null yazılır.
+      vakit: null,
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });

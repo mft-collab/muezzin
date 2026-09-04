@@ -227,11 +227,19 @@ export function useFcmToken() {
 
  useEffect(() => {
  let unsubAuth: (() => void) | null = null;
+ // `retrieveToken` asenkron; bileşen bu tamamlanmadan unmount olursa
+ // (StrictMode çift-mount'ta ya da hızlı ekran geçişinde) `unsubAuth`
+ // aşağıdaki cleanup çalıştığı anda hâlâ null olabiliyordu — sonradan
+ // (cleanup'tan SONRA) kurulan dinleyici bir daha asla kaldırılmıyordu
+ // (düşük öncelikli bulgu). Bu bayrak, cleanup'tan sonra gelen geç
+ // kurulumu engeller.
+ let iptalEdildi = false;
 
  const retrieveToken = async () => {
  try {
  if (typeof window === 'undefined' || !('Notification' in window)) return;
  const { token: currentToken, permission } = await registerFcmToken(false);
+ if (iptalEdildi) return;
  setNotificationPermissionStatus(permission);
 
  if (!currentToken) return;
@@ -245,6 +253,10 @@ export function useFcmToken() {
  unsubAuth = null;
  }
  });
+ // Cleanup, `unsubAuth`'ı henüz null iken (yukarıdaki await sırasında)
+ // çalışmış olabilir — burada tekrar kontrol edilip geç kaydedilen
+ // dinleyici hemen kaldırılır.
+ if (iptalEdildi) { unsubAuth?.(); unsubAuth = null; }
  }
  } catch (error) {
  console.warn('FCM token alinamadi:', error);
@@ -254,6 +266,7 @@ export function useFcmToken() {
  const timeoutId = setTimeout(retrieveToken, 300);
 
  return () => {
+ iptalEdildi = true;
  clearTimeout(timeoutId);
  if (unsubAuth) unsubAuth();
  };
