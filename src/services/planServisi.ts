@@ -1,7 +1,7 @@
 import { collection, query, where, limit, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
 import { isFriday, getOncekiHafta, toTurkishUpperCase } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
@@ -108,11 +108,17 @@ function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
  // sanıp, script daha transferi uygulamadan bir admin manuel ataması
  // veya haftalık plan yeniden üretimi kabul edilmiş devri sessizce
  // ezebilirdi — vekaletDevredildi'nin bu geçişteki AYNI rolü.
+ // manuelAtama: true — vakitAtamasiniGuncelle (admin'in elle ataması)
+ // yazar. `durum` bu anda hâlâ 'bekliyor' kaldığından (kişi henüz
+ // onaylamadı/reddetmedi), bu bayrak olmadan taze bir manuel atama hiçbir
+ // KORUNAN_DURUMLAR'a girmiyor ve bir sonraki plan yeniden üretiminde
+ // sessizce eziliyordu (premium hata analizi PL-K2).
  return !!data && (
  KORUNAN_DURUMLAR.includes(data.durum) ||
  data.tip === 'gorev_cagrisi' ||
  data.vekaletDevredildi === true ||
- data.vekaletDevriBekliyor === true
+ data.vekaletDevriBekliyor === true ||
+ data.manuelAtama === true
  );
  });
 }
@@ -169,7 +175,7 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
         transaction.set(asilRef, {
           haftaId, tarih, vakit, uid: asilUid, tip: 'asil',
           durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-          sonGuncelleme: Timestamp.now()
+          sonGuncelleme: Timestamp.now(), manuelAtama: true
         });
       }
 
@@ -177,7 +183,7 @@ export async function vakitAtamasiniGuncelle(params: VakitAtamasiGuncelleParams)
         transaction.set(yedekRef, {
           haftaId, tarih, vakit, uid: yedekUid, tip: 'yedek',
           durum: 'bekliyor', pendingAck: true, retSebebi: null, cumaMi, olusturmaTarihi: Timestamp.now(),
-          sonGuncelleme: Timestamp.now()
+          sonGuncelleme: Timestamp.now(), manuelAtama: true
         });
       }
 
@@ -236,19 +242,26 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // önce plan belgesinin bu okumadan beri değişmediği doğrulanır.
  const okunanSonGuncelleme = mevcutPlanSnap.exists() ? mevcutPlanSnap.data().sonGuncelleme?.toMillis() ?? null : null;
 
- // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
- // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için.
+ // Bir önceki haftanın son vaktinin (Pazar yatsı) ASİLİNİ oku — hafta
+ // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için. SADECE
+ // asil taşınır, yedek değil (bkz. src/lib/planlamaCekirdegi.ts PL-K1
+ // yorumu) — yedek çoğu zaman fiilen görev yapmaz.
  const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
  const oncekiPlanSnap = await getDoc(doc(db, 'haftaPlanlari', oncekiHaftaId));
  const oncekiHaftaSonEkibi: string[] = [];
  if (oncekiPlanSnap.exists()) {
  const sonVakitAtama = (oncekiPlanSnap.data().gunler || {})[oncekiSonGun]?.yatsi;
- if (sonVakitAtama) {
- [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
- if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
- });
+ if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem') {
+ oncekiHaftaSonEkibi.push(sonVakitAtama.asil);
  }
  }
+ // Art arda yedek kilidinin (bkz. tieBreaker.ts ARD_ARDA_YEDEK_ESIGI) hafta
+ // sınırında sıfırlanmasını önlemek için — bkz. src/lib/planlamaCekirdegi.ts
+ // PL-O2 yorumu.
+ const oncekiArdArdaYedekSayilari = oncekiHaftaninArdArdaYedekSayilariniHesapla(
+ oncekiPlanSnap.exists() ? (oncekiPlanSnap.data().gunler as GunPlanMap | undefined) : undefined,
+ muezzinler.map((m) => m.id)
+ );
 
  const eskiBildirimler = await getDocs(query(collection(db, 'bildirimler'), where('haftaId', '==', haftaId)));
  const bildirimlerBySlot = bildirimleriSlotlaraAyir(eskiBildirimler.docs);
@@ -275,7 +288,7 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  asil: asilBildirim?.data()?.uid || mevcutAtama?.asil || 'Sistem',
  yedek: yedekBildirim?.data()?.uid || mevcutAtama?.yedek || 'Sistem'
  };
- }, oncekiHaftaSonEkibi);
+ }, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
 
  // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak.
  const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
@@ -369,23 +382,36 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  gunler: gunPlan
  }, { merge: true });
 
- if (kapsamsizGunler.length > 0 && !(await cozulmemisUyariVarMi('planOlusturulamadi', kapsamsizGunler[0]))) {
+ // Dedup önceden yalnızca listenin İLK gününe bakıyordu — o gün için zaten
+ // çözülmemiş bir uyarı varsa, listeye SONRADAN eklenen farklı bir gün
+ // (ör. önce Pazartesi yedeksiz kaldı, sonra ayrıca Perşembe de yedeksiz
+ // kaldı) için hiç yeni uyarı açılmıyordu (premium hata analizi PL-O7). Her
+ // gün kendi başına, tarihe özgü olarak kontrol edilir.
+ if (kapsamsizGunler.length > 0) {
+ for (const gun of kapsamsizGunler) {
+ if (await cozulmemisUyariVarMi('planOlusturulamadi', gun)) continue;
  sonBatch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'planOlusturulamadi',
- mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
- tarih: kapsamsizGunler[0],
+ mesaj: `${haftaId} haftasında ${gun} için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde). Acilen kadro/izin durumunu kontrol edin.`,
+ tarih: gun,
+ vakit: null,
  cozuldu: false,
  olusturmaTarihi: Timestamp.now()
  });
  }
- if (tekKisiliGunler.length > 0 && !(await cozulmemisUyariVarMi('zincirTukendi', tekKisiliGunler[0]))) {
+ }
+ if (tekKisiliGunler.length > 0) {
+ for (const gun of tekKisiliGunler) {
+ if (await cozulmemisUyariVarMi('zincirTukendi', gun)) continue;
  sonBatch.set(doc(collection(db, 'adminUyarilari')), {
  tip: 'zincirTukendi',
- mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
- tarih: tekKisiliGunler[0],
+ mesaj: `${haftaId} haftasında ${gun} yalnızca tek kişiyle (yedeksiz) planlandı. Kadro müsaitliğini kontrol edin.`,
+ tarih: gun,
+ vakit: null,
  cozuldu: false,
  olusturmaTarihi: Timestamp.now()
  });
+ }
  }
 
  await sonBatch.commit();

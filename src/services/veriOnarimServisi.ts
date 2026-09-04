@@ -90,6 +90,24 @@ export async function veriSagligiTara(): Promise<VeriSagligiTaramaSonucu> {
  totalPlans: plansList.length
  };
 
+ // Üç okumadan biri başarısız olduysa (ağ/permission-denied/offline) çapraz
+ // referans denetimlerini (Kategori B/C) hiç ÇALIŞTIRMA — bunlar
+ // personnelList'in TAM olduğunu varsayıyor. Örneğin muezzins okuması
+ // patlarsa personnelList boş kalır ve her izin "yetim", her plan slotu
+ // "sahipsiz" görünür; "Otomatik Onar" bu durumda TÜM izinler koleksiyonunu
+ // silip TÜM planı 'Sistem'e sıfırlayabilirdi (premium hata analizi HS-K1).
+ // auditError'ı burada da doldurmak, VeriSagligiSekmesi.tsx'teki koruma
+ // ekranını (önceden yalnızca dıştaki catch'te tetiklenen) bu senaryoda da
+ // devreye sokar.
+ const okumaHatasiVarMi = auditErrors.some((e) => e.id.startsWith('error-fetch-'));
+ if (okumaHatasiVarMi) {
+ return {
+ errors: auditErrors,
+ stats,
+ auditError: 'Bir veya daha fazla koleksiyon okunamadı — tarama güvenilir değil, onarım önerisi üretilmedi. Lütfen tekrar deneyin.'
+ };
+ }
+
  // --- Category A: Personnel Audits ---
  personnelList.forEach(p => {
  if (!p.displayName || p.displayName.trim() === '') {
@@ -232,8 +250,18 @@ export async function veriHatalariniOnar(errors: AuditError[], onLog: (message: 
  onLog(`Veritabanı Onarım İşlemi Başlatıldı...`);
  onLog(`Toplam Hata Sayısı: ${errors.length}`);
 
- // Temporary local object to collect schedule edits in memory to batch update documents properly
- const scheduleEdits: Record<string, HaftaPlan['gunler']> = {};
+ // planId -> { 'gunler.<gun>.<vakit>.<field>': value } nokta-yollu alan
+ // güncellemeleri. Önceden tüm `gunler` haritası getDoc ile okunup bellekte
+ // değiştirilip TEK PARÇA geri yazılıyordu — bu, okuma ile yazma arasında
+ // (gece cron'u/manuel atama aynı plana yazarsa) kayıp güncelleme riski
+ // taşıyordu. Nokta-yollu alan güncellemesi hem bu riski ortadan kaldırıyor
+ // hem de getDoc'a hiç ihtiyaç bırakmıyor (premium hata analizi HS-O5).
+ const scheduleEdits: Record<string, Record<string, string>> = {};
+ // Bir plan belgesi artık yoksa (silinmiş/arşivlenmiş) o planı hedefleyen
+ // update'i batch'e HİÇ eklememek gerekir — Firestore batch'lerinde tek bir
+ // "not-found" hatası TÜM batch'i (o 400'lük parçadaki diğer tüm onarımlar
+ // dahil) reddeder (HS-O5).
+ const planVarMi: Record<string, boolean> = {};
  // Tüm yazma/silme işlemleri önce burada toplanır, ardından Firestore'un
  // 500 işlemlik batch sınırını aşmamak için 400'lük parçalar halinde
  // commit edilir (bkz. telemetryService.errorLoglariniTemizle) — tek dev
@@ -259,21 +287,22 @@ export async function veriHatalariniOnar(errors: AuditError[], onLog: (message: 
  }
  else if (data.type === 'schedule_reset') {
  onLog(`DÜZELTİLİYOR: Plan ${data.planId} -> ${data.gun} -> ${data.vakit} -> ${data.field} dizge olarak sıfırlanıyor.`);
- if (!scheduleEdits[data.planId]) {
- // Yalnızca ilgili plan dokümanı çekilir — tüm koleksiyonu indirmek
- // yerine tek bir getDoc yeterli.
+ if (!(data.planId in planVarMi)) {
  const planSnap = await getDoc(doc(db, 'haftaPlanlari', data.planId));
- scheduleEdits[data.planId] = planSnap.exists() ? JSON.parse(JSON.stringify(planSnap.data().gunler || {})) : {};
+ planVarMi[data.planId] = planSnap.exists();
+ if (!planSnap.exists()) {
+ onLog(`ATLANDI: Plan ${data.planId} artık mevcut değil, düzeltme uygulanamadı.`);
  }
- if (scheduleEdits[data.planId][data.gun] && scheduleEdits[data.planId][data.gun][data.vakit]) {
- scheduleEdits[data.planId][data.gun][data.vakit][data.field] = data.value;
  }
+ if (!planVarMi[data.planId]) continue;
+ if (!scheduleEdits[data.planId]) scheduleEdits[data.planId] = {};
+ scheduleEdits[data.planId][`gunler.${data.gun}.${data.vakit}.${data.field}`] = data.value;
  }
  }
 
  // Add accumulated schedule batch updates
  for (const planId of Object.keys(scheduleEdits)) {
- operations.push({ ref: doc(db, 'haftaPlanlari', planId), type: 'update', data: { gunler: scheduleEdits[planId] } });
+ operations.push({ ref: doc(db, 'haftaPlanlari', planId), type: 'update', data: scheduleEdits[planId] });
  }
 
  onLog(`Değişiklikler Firebase Firestore veritabanına işleniyor...`);

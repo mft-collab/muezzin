@@ -81,7 +81,15 @@ async function ezanSaatiniGetir(tarih: string, vakit: string): Promise<Date | nu
   if (typeof saat !== 'string' || !/^\d{2}:\d{2}$/.test(saat)) return null;
   const [sy, sm, sd] = tarih.split('-').map(Number);
   const [hh, mm] = saat.split(':').map(Number);
-  return new Date(sy!, sm! - 1, sd!, hh!, mm!);
+  // `new Date(sy, sm-1, sd, hh, mm)` saati ÇALIŞTIĞI MAKİNENİN yerel saat
+  // diliminde yorumlar — bu script'i tetikleyen GitHub Actions runner'ı UTC
+  // çalışır, Türkiye ise sabit UTC+3'tür. Böyle kurulan bir Date, "13:00"
+  // ezanını "13:00 UTC" (=16:00 TRT) sanıp gerçek ezandan 3 SAAT SONRA
+  // "geçti" sayıyordu — bu pencerede istemci baypasıyla açılan bir talep
+  // devredilebiliyordu (premium hata analizi MV-O1/O2 — buradaki asıl
+  // bulgu). Türkiye DST uygulamadığından (sabit UTC+3), doğru UTC anı
+  // runner'ın yerel saat diliminden BAĞIMSIZ, doğrudan hesaplanabilir.
+  return new Date(Date.UTC(sy!, sm! - 1, sd!, hh! - 3, mm!));
 }
 
 /**
@@ -210,10 +218,19 @@ export async function processVekaletDevirleri(dryRun = false) {
         alici.onayBekliyor !== true;
       const izinGunuCakisiyor = ['asil', 'yedek'].includes(bildirim.tip) &&
         alici?.haftalikIzinGunu === haftaGunuNumarasi(bildirim.tarih);
+      // Cuma kontrolü TAZE `bildirim.tarih`'ten hesaplanır — saklı `cumaMi`
+      // bayrağı DEĞİL. Bu alan eksikse (backfill çalıştırılmamış eski
+      // belgeler, ya da ileride bir yazım yolunun alanı unutması) eski
+      // `bildirim.cumaMi !== true` kontrolü fail-open davranırdı: script
+      // gerçek transferi UYGULARDI. firestore.rules aynı kök nedeni
+      // `isSelfBildirimUpdate`'te `tarih`ten hesaplayarak çözmüştü — bu tek
+      // satır o düzeltmeden nasibini almamıştı (premium hata analizi MV-O1,
+      // bu script'in kendi "istemcinin verisine GÜVENİLMİYOR" ilkesiyle de
+      // tutarsızdı, bkz. yukarıdaki izinGunuCakisiyor'un taze hesaplanması).
       const uygun =
         bildirim.durum === 'bekliyor' &&
         bildirim.uid === talep.gonderenUid &&
-        bildirim.cumaMi !== true &&
+        haftaGunuNumarasi(bildirim.tarih) !== 5 &&
         atanabilir &&
         !izinGunuCakisiyor &&
         !ezanGecmisMi;

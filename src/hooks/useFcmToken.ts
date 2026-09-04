@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { clearIndexedDbPersistence, doc, serverTimestamp, setDoc, terminate, updateDoc, deleteField } from 'firebase/firestore';
+import { clearIndexedDbPersistence, doc, serverTimestamp, setDoc, terminate, updateDoc, deleteField, type DocumentData, type UpdateData } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { app, db, auth } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -17,19 +17,33 @@ import { telemetryService } from '../services/telemetryService';
 // olmasına yol açar.
 const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
 
+// Bu cihazın en son kaydettiği token — rotasyonda ESKİSİNİ fcmTokens
+// haritasından silebilmek için (bkz. saveTokenToFirestore, HS-O3).
+const LAST_TOKEN_KEY = 'muezzin_fcm_last_token';
+
 async function saveTokenToFirestore(uid: string, token: string) {
   const path = `muezzins/${uid}`;
   try {
-    await setDoc(
-      doc(db, 'muezzins', uid),
-      {
-        fcmToken: token,
-        fcmTokens: {
-          [token]: serverTimestamp()
-        }
-      },
-      { merge: true }
-    );
+    let oncekiToken: string | null = null;
+    try { oncekiToken = localStorage.getItem(LAST_TOKEN_KEY); } catch { /* gizli/erisimsiz depolama — yoksay */ }
+
+    const guncellemeler: Record<string, unknown> = {
+      fcmToken: token,
+      [`fcmTokens.${token}`]: serverTimestamp(),
+    };
+    // fcmTokens haritası önceden istemci tarafında HİÇ budanmıyordu —
+    // yalnızca gönderim BAŞARISIZ olduğunda sunucu tarafında temizleniyordu
+    // (bkz. scripts/lib/fcmNotify.ts). Tarayıcı token'ı periyodik olarak
+    // yenilediğinde eski girdi kalıcı olarak birikip firestore.rules'taki
+    // 20 girdi tavanına çarpabiliyordu — kullanıcı bunu asla fark etmeden
+    // (premium hata analizi HS-O3). Bu cihazın BİR ÖNCEKİ token'ı biliniyorsa
+    // (rotasyon) aynı yazımda haritadan silinir.
+    if (oncekiToken && oncekiToken !== token) {
+      guncellemeler[`fcmTokens.${oncekiToken}`] = deleteField();
+    }
+
+    await setDoc(doc(db, 'muezzins', uid), guncellemeler, { merge: true });
+    try { localStorage.setItem(LAST_TOKEN_KEY, token); } catch { /* gizli/erisimsiz depolama — yoksay */ }
   } catch (err) {
     // Push token kaydı arka planda, kullanıcıya görünmeden çalışır — ama
     // sessizce başarısız olursa kişi nöbet hatırlatıcısı almadığını hiç
@@ -122,11 +136,19 @@ export async function unregisterFcmToken(uid: string | undefined): Promise<void>
 
     await deleteToken(messaging).catch(() => {});
 
+    // Tekil `fcmToken` alanı da (fcmTokens haritasından bağımsız olarak)
+    // temizlenir — scripts/lib/fcmNotify.ts, fcmTokens boşaldığında bu
+    // alana FALLBACK yapıyor; önceden yalnızca haritadaki girdi
+    // siliniyordu, tek cihazlı bir kullanıcı çıkış yaptığında bu alan
+    // dokunulmadan kalıp bir sonraki kullanıcının (paylaşılan cihazda)
+    // eskisinin bildirimlerini almaya devam etmesine yol açabiliyordu
+    // (premium hata analizi HS-O4).
+    const guncellemeler: UpdateData<DocumentData> = { fcmToken: deleteField() };
     if (currentToken) {
-      await updateDoc(doc(db, 'muezzins', uid), {
-        [`fcmTokens.${currentToken}`]: deleteField(),
-      }).catch(() => {});
+      guncellemeler[`fcmTokens.${currentToken}`] = deleteField();
     }
+    await updateDoc(doc(db, 'muezzins', uid), guncellemeler).catch(() => {});
+    try { localStorage.removeItem(LAST_TOKEN_KEY); } catch { /* gizli/erisimsiz depolama — yoksay */ }
   } catch {
     // Çıkış akışını asla engellemesin — en iyi çaba (best-effort) temizlik.
   }

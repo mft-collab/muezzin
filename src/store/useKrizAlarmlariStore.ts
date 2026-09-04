@@ -56,7 +56,11 @@ export const useKrizAlarmlariStore = create<KrizAlarmlariState>((set, get) => ({
       // aksi halde "Missing or insufficient permissions" gibi ham İngilizce
       // SDK metni doğrudan admin'e sızabilir (bkz. firestore-errors.ts).
       const friendly = handleFirestoreError(err, OperationType.LIST, 'adminUyarilari');
-      set({ loading: false, initialized: true, error: friendly.message });
+      // `initialized:true` YAZILMAZ (bkz. useAdminIzinlerStore.ts'teki AYNI
+      // düzeltme, premium hata analizi HS-O1) — dinleyici hata sonrası
+      // kalıcı öldüğünden, bunu yazmak store'u oturum boyunca kilitliyordu.
+      set({ loading: false, error: friendly.message });
+      setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
     });
 
     return unsubscribe;

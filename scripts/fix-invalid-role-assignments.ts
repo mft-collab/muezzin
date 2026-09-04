@@ -2,7 +2,7 @@ import { db, Timestamp } from './lib/firebaseAdminInit.ts';
 import { isFriday, getTurkeyDateString } from '../src/lib/dateUtils.ts';
 
 type Role = 'muezzin' | 'admin' | 'gozlemci' | string;
-type MuezzinDoc = { displayName?: string; role?: Role; aktif?: boolean };
+type MuezzinDoc = { displayName?: string; role?: Role; aktif?: boolean; onayBekliyor?: boolean };
 type VakitAtama = { asil?: string; yedek?: string };
 
 const VAKITLER = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] as const;
@@ -36,6 +36,13 @@ function pickMostFrequent(values: string[], excluded = new Set<string>()): strin
 }
 
 async function main() {
+  // Diğer yıkıcı bakım script'leriyle (backfillCumaMi.ts, seedSuperAdminConfig.ts)
+  // AYNI güvenlik ağı deseni — bu script `bildirimler` belgelerini SİLİP
+  // YENİDEN OLUŞTURUYOR ve `haftaPlanlari`'nı yeniden yazıyor, önceden hiçbir
+  // kuru-çalıştırma koruması yoktu (premium hata analizi FR-O9).
+  const apply = process.argv.includes('--apply');
+  console.log(apply ? 'UYGULAMA MODU — belgeler yazılacak.' : 'KURU ÇALIŞTIRMA — hiçbir şey yazılmayacak (--apply ile gerçek çalıştırma yapın).');
+
   const today = getTodayStr();
   console.log(`Tarama başlıyor. Referans tarih (TR): ${today}`);
 
@@ -46,7 +53,11 @@ async function main() {
   muezzinSnap.docs.forEach((d) => {
     const data = d.data() as MuezzinDoc;
     userMap.set(d.id, data);
-    if (data.aktif === true && data.role === 'muezzin') aktifMuezzinler.push(d.id);
+    // onayBekliyor:true olan (admin henüz onaylamamış) bir davetli nöbete
+    // atanmamalı — planlamaCekirdegi.ts `nobeteAtanabilirMi` ile AYNI kural.
+    // Admin SDK firestore.rules'taki isAssignableDutyUidVeri kontrolünü
+    // atladığından bu script kendi kopyasını uygulamak zorunda.
+    if (data.aktif === true && data.role === 'muezzin' && data.onayBekliyor !== true) aktifMuezzinler.push(d.id);
   });
 
   if (aktifMuezzinler.length < 2) {
@@ -82,8 +93,8 @@ async function main() {
 
         const asilRole = asil ? userMap.get(asil)?.role : undefined;
         const yedekRole = yedek ? userMap.get(yedek)?.role : undefined;
-        const asilValid = !asil || asil === 'Sistem' || (userMap.get(asil)?.aktif === true && asilRole === 'muezzin');
-        const yedekValid = !yedek || yedek === 'Sistem' || (userMap.get(yedek)?.aktif === true && yedekRole === 'muezzin');
+        const asilValid = !asil || asil === 'Sistem' || (userMap.get(asil)?.aktif === true && asilRole === 'muezzin' && userMap.get(asil)?.onayBekliyor !== true);
+        const yedekValid = !yedek || yedek === 'Sistem' || (userMap.get(yedek)?.aktif === true && yedekRole === 'muezzin' && userMap.get(yedek)?.onayBekliyor !== true);
         if (!asilValid || !yedekValid) {
           dayHasInvalid = true;
           invalidSlots++;
@@ -97,8 +108,8 @@ async function main() {
         continue;
       }
 
-      const validAsilCandidates = asilVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin');
-      const validYedekCandidates = yedekVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin');
+      const validAsilCandidates = asilVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin' && userMap.get(uid)?.onayBekliyor !== true);
+      const validYedekCandidates = yedekVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin' && userMap.get(uid)?.onayBekliyor !== true);
 
       const asil = pickMostFrequent(validAsilCandidates) || aktifMuezzinler[0];
       let yedek = pickMostFrequent(validYedekCandidates, new Set([asil])) || aktifMuezzinler.find((uid) => uid !== asil) || aktifMuezzinler[1];
@@ -124,6 +135,21 @@ async function main() {
         .where('haftaId', '==', planDoc.id)
         .where('tarih', '==', tarih)
         .get();
+
+      // `tarih === today` iken, o gün için yatsiSonuIslemleri.ts ZATEN
+      // kredilendirmiş olabilir (`puanIslendi:true`). Bu belgeleri silip
+      // FARKLI bir asil/yedek ile yeniden oluşturmak, kimin gerçekten
+      // kredilendiği ile kimin şimdi atandığı arasında geriye dönük olarak
+      // düzeltilemeyen bir tutarsızlık yaratır (ne eski sahibin kredisi geri
+      // alınabilir ne yeni atanana doğru kredi verilebilir) — bu yüzden
+      // güvenli seçenek bu günü hiç DOKUNMADAN atlamaktır (premium hata
+      // analizi FR-O9), tıpkı geçmiş günlerin atlanması gibi.
+      const zatenKredilendirilmis = bildirimSnap.docs.some((d) => d.data().puanIslendi === true);
+      if (zatenKredilendirilmis) {
+        console.warn(`ATLANDI (${tarih}): bugün için zaten kredilendirilmiş bildirimler var, geriye dönük tutarsızlık riski nedeniyle dokunulmadı.`);
+        pastInvalidDays++;
+        continue;
+      }
 
       bildirimSnap.docs.forEach((d) => {
         const tip = d.data().tip as string | undefined;
@@ -164,7 +190,7 @@ async function main() {
       fixedDays++;
     }
 
-    if (hasBatchWork) {
+    if (hasBatchWork && apply) {
       await batch.commit();
     }
   }
@@ -172,8 +198,11 @@ async function main() {
   console.log('--- Özet ---');
   console.log(`Toplam taranan slot: ${scannedSlots}`);
   console.log(`Tespit edilen kural dışı slot: ${invalidSlots}`);
-  console.log(`Bugün/gelecek için düzeltilen gün: ${fixedDays}`);
-  console.log(`Geçmişte (dokunulmadı) kural dışı gün: ${pastInvalidDays}`);
+  console.log(`Bugün/gelecek için düzeltilen gün: ${fixedDays}${apply ? '' : ' (KURU ÇALIŞTIRMA — hiçbiri yazılmadı)'}`);
+  console.log(`Geçmişte veya zaten kredilendirilmiş (dokunulmadı) gün: ${pastInvalidDays}`);
+  if (!apply && fixedDays > 0) {
+    console.log('Gerçekten uygulamak için: npx tsx scripts/fix-invalid-role-assignments.ts --apply');
+  }
 }
 
 main().catch((err) => {

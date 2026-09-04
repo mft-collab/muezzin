@@ -41,7 +41,11 @@ export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => 
  }
  }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'settings/system');
-    set({ loading: false, initialized: true });
+    // `initialized:true` YAZILMAZ (bkz. useAdminIzinlerStore.ts'teki AYNI
+    // düzeltme, premium hata analizi HS-O1) — dinleyici hata sonrası kalıcı
+    // öldüğünden, bunu yazmak store'u oturum boyunca kilitliyordu.
+    set({ loading: false });
+    setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
  });
  
  return unsub;
@@ -49,10 +53,14 @@ export const useSystemSettingsStore = create<SystemSettingsState>((set, get) => 
  updateSettings: async (newSettings) => {
  try {
  const merged = { ...get().settings, ...newSettings };
+ await setDoc(doc(db, 'settings', 'system'), merged, { merge: true });
+ // Global offset YAZIMDAN SONRA güncellenir — önceden yazımdan ÖNCE
+ // mutasyona uğruyordu, yani setDoc reddedilirse (permission-denied)
+ // global hâlâ hiç kaydedilmemiş değerde kalıyordu; sunucudaki gerçek
+ // değerle sessizce ayrışabiliyordu (düşük öncelikli bulgu).
     if (typeof globalThis !== 'undefined' && merged.hicriDuzeltme !== undefined) {
       globalThis.__hicriOffset = merged.hicriDuzeltme;
     }
- await setDoc(doc(db, 'settings', 'system'), merged, { merge: true });
  return true;
  } catch (error) {
  // `init()`'teki onSnapshot hatası zaten handleFirestoreError'dan geçip

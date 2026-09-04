@@ -122,7 +122,12 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       // değil, aksi halde ham SDK metni admin'e sızabilir (bkz.
       // useKrizAlarmlariStore.ts'teki AYNI düzeltme, firestore-errors.ts).
       const friendly = handleFirestoreError(err, OperationType.LIST, path);
-      set({ error: friendly.message, loading: false, initialized: true });
+      // `initialized:true` YAZILMAZ — onSnapshot hata callback'i dinleyiciyi
+      // KALICI olarak sonlandırdığından (SDK otomatik yeniden bağlanmaz),
+      // bunu yazmak init()'in guard'ını süresiz kilitleyip store'u oturum
+      // boyunca ölü bırakıyordu (premium hata analizi HS-O1).
+      set({ error: friendly.message, loading: false });
+      setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
     });
 
     return unsubscribe;

@@ -178,6 +178,12 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  }
  };
 
+ // `persistentLocalCache` etkinken onSnapshot "belge yok" durumunu İKİ KEZ
+ // tetikleyebilir (önce yerel önbellekten, sonra sunucudan) — bu bayrak
+ // olmadan `fetchFallback` (dış API çağrısı + admin oturumundaysa çift
+ // Firestore yazımı) iki kez tetiklenebiliyordu (premium hata analizi
+ // HS-O6, bkz. hemen altındaki eksikGunuTazele ile aynı desen).
+ let dokumanYokIcinFetchDenendi = false;
  const unsubscribeBuAy = onSnapshot(
  doc(db, 'vakitler', buAyDocId),
  (snap) => {
@@ -185,7 +191,8 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  set({ currentMonthData: snap.data() as Vakitler });
  get()._processData();
  eksikGunuTazele();
- } else {
+ } else if (!dokumanYokIcinFetchDenendi) {
+ dokumanYokIcinFetchDenendi = true;
  fetchFallback(tarih.getFullYear(), tarih.getMonth() + 1);
  }
  },
@@ -196,7 +203,15 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  // tümü handleFirestoreError kullanırken bu ikisi tutarsızdı (bkz. kod
  // denetimi).
  handleFirestoreError(err, OperationType.GET, `vakitler/${buAyDocId}`);
- set({ loading: false, initializing: false, initialized: true });
+ // `initialized:true` YAZILMAZ (bkz. useAdminIzinlerStore.ts'teki AYNI
+ // düzeltme, premium hata analizi HS-O1). Spinner yalnızca hiç veri yoksa
+ // kapatılır — zaten başarıyla yüklenmiş bir store'da geçici bir yeniden
+ // bağlantı hatası mevcut veriyi/ekranı bozmamalı.
+ if (!get().initialized) set({ loading: false, initializing: false });
+ // Dış init()'i değil, YALNIZCA bu ilçe için abonelikleri yeniden kuran
+ // startVakitSubscription'ı tekrar çağırır — aksi halde her retry ayrıca
+ // yeni bir settings-aboneliği ve interval de kurup biriktirirdi.
+ setTimeout(() => startVakitSubscription(settings), 15000);
  }
  );
 

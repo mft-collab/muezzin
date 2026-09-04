@@ -22,7 +22,10 @@ export const ARD_ARDA_YEDEK_ESIGI = 2;
 export function tieBreakerSirala(
  muezzinleri: (Muezzin & { id: string })[],
  buHaftakiYukler: Record<string, number>,
- oncekiVakitUidler: string[] = [], // [asilId, yedekId]
+ /** Bir önceki günün ASİL(ler)i — SADECE asil, yedek değil (premium hata
+  * analizi PL-K1: yedek çoğu zaman fiilen görev yapmaz, dolayısıyla SOS'tan
+  * muaftır ve bu listeye girmez; bkz. planlamaCekirdegi.ts çağıran taraf). */
+ oncekiVakitUidler: string[] = [],
  isFriday: boolean = false,
  aylikCumaSayilari: Record<string, number> = {},
  /** Her kişinin kaç gündür ART ARDA yedek kaldığı (bkz. ARD_ARDA_YEDEK_ESIGI
@@ -32,22 +35,30 @@ export function tieBreakerSirala(
 ): (Muezzin & { id: string })[] {
 
  return [...muezzinleri].sort((a, b) => {
- // 1. SOS (Sistemsel Dinlenme): Bir önceki vakitte görevli olanlar en sona
+ // 1. SOS (Sistemsel Dinlenme): Bir önceki günün ASİLİ olanlar en sona.
+ // Yedek dahil edilmez — bkz. yukarıdaki parametre yorumu ve PL-K1.
  const aWasActive = oncekiVakitUidler.includes(a.id);
  const bWasActive = oncekiVakitUidler.includes(b.id);
  if (aWasActive !== bWasActive) return aWasActive ? 1 : -1;
 
- // 1.2 Sürekli Yedek Kilidi Kırıcı: SOS ikisini de eşit "bloklu" saydığı
- // durumda (yani ikisi de bir önceki vaktin ekibindeydi — asil+yedek
- // çiftinin arasındaki asıl yarış tam olarak burada geçer), art arda
- // ARD_ARDA_YEDEK_ESIGI kez yedek kalmış biri bu kez yedek yarışından
- // çıkarılır (rank2/"boşta" konumuna itilir). Küçük kadrolarda tier 2'nin
- // ağırlıklı toplamı bile tam sayısal eşitlik yüzünden bu kişiyi süresiz
- // yedekte kilitleyebiliyordu (bkz. mimari denetim K6) — bu sert sınır,
- // ağırlıklı toplamın sonucundan BAĞIMSIZ olarak rotasyonu garanti eder.
+ // 1.2 Sürekli Yedek Kilidi Kırıcı: SOS artık yalnızca dünkü ASİLİ eler
+ // (premium hata analizi PL-K1), yani SOS'tan muaf olan iki kişi burada
+ // doğrudan ASİL/yedek için yarışıyor — art arda ARD_ARDA_YEDEK_ESIGI kez
+ // yedek kalmış biri bu kez ASİLE TERFİ ETTİRİLİR (öne alınır), tersi değil.
+ // (Eski sürümde SOS dünkü asil+yedeği BİRLİKTE eliyordu ve bu kademe iki
+ // BLOKLU kişi arasında yedek/boşta ayrımı yapıyordu — bloklu olmayan tek
+ // kişi zaten otomatik asil oluyordu. Yeni SOS'ta bu kademe artık İKİ
+ // SOS'TAN-MUAF kişi arasında asil/yedek ayrımını yapıyor; "öne it" yerine
+ // "geri it" bırakılsaydı, 3 kişilik kadroda süresiz yedekte kilitli kalan
+ // kişi ASLA asile terfi edemezdi çünkü geri itilmek, yalnızca 2 aday
+ // varken doğrudan yedek anlamına geliyor — idle/boşta seçeneği yok.) Küçük
+ // kadrolarda tier 2'nin ağırlıklı toplamı bile tam sayısal eşitlik yüzünden
+ // bu kişiyi süresiz yedekte kilitleyebiliyordu (bkz. mimari denetim K6) —
+ // bu sert sınır, ağırlıklı toplamın sonucundan BAĞIMSIZ olarak rotasyonu
+ // garanti eder.
  const esikA = (ardArdaYedekSayilari[a.id] || 0) >= ARD_ARDA_YEDEK_ESIGI;
  const esikB = (ardArdaYedekSayilari[b.id] || 0) >= ARD_ARDA_YEDEK_ESIGI;
- if (esikA !== esikB) return esikA ? 1 : -1;
+ if (esikA !== esikB) return esikA ? -1 : 1;
 
  // 1.5 Cuma Adaleti: haftalık yüke uygulanan 1.5x çarpanı ay ilerledikçe
  // aylikVakitSayisi'nin (kalıcı, büyük) toplamı tarafından bastırılıyordu

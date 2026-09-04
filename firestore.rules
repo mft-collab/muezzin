@@ -561,7 +561,7 @@ service cloud.firestore {
 
     function isValidBildirim(data) {
       return data.keys().hasAll(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'olusturmaTarihi', 'sonGuncelleme']) &&
-             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor', 'puanIslendi']) &&
+             data.keys().hasOnly(['haftaId', 'tarih', 'vakit', 'uid', 'tip', 'durum', 'pendingAck', 'retSebebi', 'olusturmaTarihi', 'sonGuncelleme', 'devirSonucu', 'asilMazeretUid', 'mazeretPlanSenkronEdildi', 'vekaletPlanSenkronEdildi', 'cumaMi', 'vekaletDevredildi', 'vekaletDevriBekliyor', 'puanIslendi', 'manuelAtama']) &&
              data.haftaId is string &&
              data.tarih is string && data.tarih.size() == 10 &&
              data.vakit in ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'] &&
@@ -618,7 +618,13 @@ service cloud.firestore {
              // eklenmezse bu alanı taşıyan HER bildirimde sonraki tüm client
              // güncellemeleri (okudum onayla, mazeret, vekalet bayrağı) kalıcı
              // olarak reddedilirdi (bkz. kod denetimi bulgusu).
-             (!data.keys().hasAny(['puanIslendi']) || data.puanIslendi is bool);
+             (!data.keys().hasAny(['puanIslendi']) || data.puanIslendi is bool) &&
+             // manuelAtama: src/services/planServisi.ts vakitAtamasiniGuncelle
+             // yazar — bir admin'in elle atadığı bir slotu, kişi henüz
+             // onaylamadan/reddetmeden önce (durum hâlâ 'bekliyor') sonraki bir
+             // plan yeniden üretiminin ezmesini önler (premium hata analizi
+             // PL-K2, bkz. vekaletDevredildi/vekaletDevriBekliyor ile aynı desen).
+             (!data.keys().hasAny(['manuelAtama']) || data.manuelAtama is bool);
     }
 
     // ifade tavanı denetimi — TAM ÖZET (3 tur):
@@ -697,8 +703,20 @@ service cloud.firestore {
       // engeller.
       allow create: if isSignedIn() && isValidMazeretDetay(incoming()) && incoming().uid == request.auth.uid &&
         get(/databases/$(database)/documents/bildirimler/$(bildirimId)).data.uid == request.auth.uid;
-      // Sabit kayıt — mazeret bir kez bildirilir, değişmez.
-      allow update, delete: if false;
+      // Sabit kayıt — mazeret bir kez bildirilir, normalde değişmez. TEK
+      // istisna: admin ilgili bildirimi tekrar 'bekliyor'a açtıysa (bkz.
+      // isValidBildirim admin dalı — bu geçişte durum kısıtı yok), aynı
+      // kişi aynı deterministik ID'ye (haftaId_tarih_vakit_tip) tekrar
+      // mazeret bildirmek isteyebilir; bu artık bir `update`tir (belge zaten
+      // var) ve `if false` altında KALICI OLARAK reddedilirdi — kullanıcı o
+      // nöbet için bir daha asla mazeret bildiremezdi (premium hata analizi
+      // FR-O8). Yalnızca bildirim GERÇEKTEN yeniden 'bekliyor' durumundaysa
+      // ve yazan hâlâ aynı (asıl) sahipse izin verilir.
+      allow update: if isSignedIn() && isValidMazeretDetay(incoming()) &&
+        incoming().uid == request.auth.uid && existing().uid == request.auth.uid &&
+        get(/databases/$(database)/documents/bildirimler/$(bildirimId)).data.uid == request.auth.uid &&
+        get(/databases/$(database)/documents/bildirimler/$(bildirimId)).data.durum == 'bekliyor';
+      allow delete: if false;
     }
 
     // ---------------------------------------------------------
@@ -750,6 +768,10 @@ service cloud.firestore {
     // 1 GB depolama sınırını tüketmesini engeller.
     function isValidErrorLog(data) {
       return data.keys().hasAll(['errorMessage', 'errorStack', 'componentStack', 'userId', 'device', 'breadcrumbs', 'stateSnapshot', 'timestamp']) &&
+             // hasOnly eksikti — istemci bilinen alanların yanına keyfi
+             // isimde/sayıda ek alan ekleyebiliyordu (premium hata analizi
+             // FR-O2).
+             data.keys().hasOnly(['errorMessage', 'errorStack', 'componentStack', 'userId', 'device', 'breadcrumbs', 'stateSnapshot', 'timestamp']) &&
              data.userId == request.auth.uid &&
              data.errorMessage is string && data.errorMessage.size() <= 2000 &&
              data.errorStack is string && data.errorStack.size() <= 8000 &&
@@ -781,7 +803,13 @@ service cloud.firestore {
              data.targetName is string && data.targetName.size() > 0 && data.targetName.size() <= 160 &&
              data.details is string && data.details.size() > 0 && data.details.size() <= 500 &&
              data.userId == request.auth.uid &&
-             data.userDisplayName is string && data.userDisplayName.size() > 0 && data.userDisplayName.size() <= 120;
+             data.userDisplayName is string && data.userDisplayName.size() > 0 && data.userDisplayName.size() <= 120 &&
+             // timestamp tipi hiç doğrulanmıyordu — diğer tüm zaman damgası
+             // alanlarının (isValidVakitCache, isValidErrorLog/
+             // isValidTelemetryLog) aksine bu değişmez denetim kaydına
+             // keyfi (string/number) bir değer yazılabiliyordu (premium hata
+             // analizi FR-O1).
+             data.timestamp is timestamp;
     }
 
     match /audit_logs/{docId} {
@@ -792,6 +820,8 @@ service cloud.firestore {
 
     function isValidTelemetryLog(data) {
       return data.keys().hasAll(['eventType', 'eventName', 'userId', 'metadata', 'timestamp']) &&
+             // hasOnly eksikti (bkz. isValidErrorLog, FR-O2 ile aynı gerekçe).
+             data.keys().hasOnly(['eventType', 'eventName', 'userId', 'metadata', 'timestamp']) &&
              data.userId == request.auth.uid &&
              data.eventType in ['page_view', 'click', 'error', 'performance'] &&
              data.eventName is string && data.eventName.size() <= 200 &&

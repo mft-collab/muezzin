@@ -36,7 +36,13 @@ export const useMuezzinStore = create<MuezzinState>((set, get) => ({
  set({ muezzinler, muezzinMap, loading: false, initialized: true });
  }, (error) => {
   handleFirestoreError(error, OperationType.LIST, 'muezzins');
-  set({ loading: false, initialized: true });
+  // onSnapshot hata callback'i dinleyiciyi KALICI olarak sonlandırır (SDK
+  // otomatik yeniden bağlanmaz). `initialized:true` YAZILMAZ — init()'in
+  // en baştaki guard'ı (`if (get().initialized) return`) bir retry'ı
+  // engellemesin diye; önceden bu durumda store oturum boyunca kalıcı
+  // ölü kalıyordu (premium hata analizi HS-O1).
+  set({ loading: false });
+  setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
  });
 
  return unsubscribe;

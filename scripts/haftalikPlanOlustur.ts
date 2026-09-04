@@ -1,5 +1,5 @@
 import { db, Timestamp } from './lib/firebaseAdminInit.ts';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, OnayliIzin, VAKITLER } from '../src/lib/planlamaCekirdegi.ts';
 import { getTurkeyNow, isFriday, getOncekiHafta } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
@@ -38,11 +38,24 @@ function gunPlanProjeksiyonuUygula(
     const gunCumaMi = isFriday(new Date(gY, gM - 1, gD));
     for (const vakit of VAKITLER) {
       const atama = veri[vakit];
-      if (!atama || atama.asil === 'Sistem') continue;
-      const kisi = muezzinler.find((m) => m.id === atama.asil);
-      if (!kisi) continue;
-      kisi.aylikVakitSayisi = (kisi.aylikVakitSayisi || 0) + 1;
-      if (gunCumaMi) kisi.aylikCumaSayisi = (kisi.aylikCumaSayisi || 0) + 1;
+      if (!atama) continue;
+      if (atama.asil !== 'Sistem') {
+        const asilKisi = muezzinler.find((m) => m.id === atama.asil);
+        if (asilKisi) {
+          asilKisi.aylikVakitSayisi = (asilKisi.aylikVakitSayisi || 0) + 1;
+          if (gunCumaMi) asilKisi.aylikCumaSayisi = (asilKisi.aylikCumaSayisi || 0) + 1;
+        }
+      }
+      // Yedek yükü de projekte edilmeli — aksi halde aynı koşuda üretilen
+      // sonraki haftalar "bu hafta kimse yedek olmadı" varsayımıyla adalet
+      // hesabı yapar (premium hata analizi PL-O1). tieBreaker.ts'teki
+      // aylikYedekSayisi ağırlığıyla (YEDEK_YUK_CARPANI) tutarlı olmalı.
+      if (atama.yedek !== 'Sistem') {
+        const yedekKisi = muezzinler.find((m) => m.id === atama.yedek);
+        if (yedekKisi) {
+          yedekKisi.aylikYedekSayisi = (yedekKisi.aylikYedekSayisi || 0) + 1;
+        }
+      }
     }
   }
 }
@@ -81,6 +94,7 @@ async function main() {
       tip: 'zincirTukendi',
       mesaj: 'Aktif personel sayısı planlama için yetersiz (en az 1 gerekli).',
       tarih: formatDateLocal(getTurkeyNow()),
+      vakit: null,
       cozuldu: false,
       olusturmaTarihi: Timestamp.now()
     });
@@ -139,27 +153,33 @@ async function main() {
 
     const batch = db.batch();
 
-    // Bir önceki haftanın son vaktinin (Pazar yatsı) ekibini oku — hafta
+    // Bir önceki haftanın son vaktinin (Pazar yatsı) ASİLİNİ oku — hafta
     // sınırında dinlenme kuralının (SOS) sıfırlanmasını önlemek için (bkz.
-    // algoritma denetimi). Önceki hafta hiç üretilmemişse (soğuk başlangıç)
-    // boş dizi kullanılır, mevcut davranışla aynıdır.
+    // algoritma denetimi). SADECE asil taşınır, yedek değil (premium hata
+    // analizi PL-K1 — yedek çoğu zaman fiilen görev yapmaz, bkz.
+    // src/lib/planlamaCekirdegi.ts). Önceki hafta hiç üretilmemişse (soğuk
+    // başlangıç) boş dizi kullanılır, mevcut davranışla aynıdır.
     const { haftaId: oncekiHaftaId, sonGun: oncekiSonGun } = getOncekiHafta(haftaId);
     const oncekiPlanDoc = await db.collection('haftaPlanlari').doc(oncekiHaftaId).get();
     const oncekiHaftaSonEkibi: string[] = [];
     if (oncekiPlanDoc.exists) {
       const sonVakitAtama = oncekiPlanDoc.data()?.gunler?.[oncekiSonGun]?.yatsi;
-      if (sonVakitAtama) {
-        [sonVakitAtama.asil, sonVakitAtama.yedek].forEach((uid: string) => {
-          if (uid && uid !== 'Sistem') oncekiHaftaSonEkibi.push(uid);
-        });
+      if (sonVakitAtama?.asil && sonVakitAtama.asil !== 'Sistem') {
+        oncekiHaftaSonEkibi.push(sonVakitAtama.asil);
       }
     }
+    // Art arda yedek kilidinin (bkz. tieBreaker.ts ARD_ARDA_YEDEK_ESIGI) hafta
+    // sınırında sıfırlanmasını önlemek için (premium hata analizi PL-O2).
+    const oncekiArdArdaYedekSayilari = oncekiHaftaninArdArdaYedekSayilariniHesapla(
+      oncekiPlanDoc.exists ? (oncekiPlanDoc.data()?.gunler as Record<string, Record<Vakit, VakitAtama>> | undefined) : undefined,
+      muezzinler.map((m) => m.id)
+    );
 
     // Tek, paylaşılan atama çekirdeği (bkz. src/lib/planlamaCekirdegi.ts) —
     // src/services/planServisi.ts'deki istemci "self-healing" akışıyla
     // AYNI kuralları kullanır: onaylı izindeki veya sabit haftalık izin
     // gününde olan personel asla atanmaz.
-    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler, undefined, oncekiHaftaSonEkibi);
+    const gunPlan = haftalikPlanUret(gunler, muezzinler, onayliIzinler, undefined, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
 
     for (const gun of gunler) {
       const [gY, gM, gD] = gun.split('-').map(Number);
@@ -205,13 +225,20 @@ async function main() {
     const kapsamsizGunler = kapsamsizGunleriBul(gunPlan);
     if (kapsamsizGunler.length > 0) {
       console.error(`${haftaId}: HİÇ KİMSENİN müsait olmadığı günler: ${kapsamsizGunler.join(', ')}`);
-      batch.set(db.collection('adminUyarilari').doc(), {
-        tip: 'planOlusturulamadi',
-        mesaj: `${haftaId} haftasında şu günler için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde): ${kapsamsizGunler.join(', ')}. Acilen kadro/izin durumunu kontrol edin.`,
-        tarih: kapsamsizGunler[0],
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
+      // Her gün için ayrı bir uyarı (tek uyarının `tarih` alanı yalnızca
+      // ilk günü taşıyıp diğerlerini yalnızca mesaj metninde bırakması —
+      // dedup'ın diğer günleri hiç görememesine yol açıyordu, bkz.
+      // src/services/planServisi.ts PL-O7 yorumu, aynı sınıf bulgu).
+      for (const gun of kapsamsizGunler) {
+        batch.set(db.collection('adminUyarilari').doc(), {
+          tip: 'planOlusturulamadi',
+          mesaj: `${haftaId} haftasında ${gun} için HİÇ KİMSE müsait değil (herkes izinli/haftalık izin gününde). Acilen kadro/izin durumunu kontrol edin.`,
+          tarih: gun,
+          vakit: null,
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+      }
     }
 
     // Tek kişinin (yedeksiz) kaldığı günler için admin'e görünürlük bırak —
@@ -219,13 +246,16 @@ async function main() {
     const tekKisiliGunler = tekKisiliGunleriBul(gunPlan);
     if (tekKisiliGunler.length > 0) {
       console.warn(`${haftaId}: yedeksiz kalan günler: ${tekKisiliGunler.join(', ')}`);
-      batch.set(db.collection('adminUyarilari').doc(), {
-        tip: 'zincirTukendi',
-        mesaj: `${haftaId} haftasında şu günler yalnızca tek kişiyle (yedeksiz) planlandı: ${tekKisiliGunler.join(', ')}. Kadro müsaitliğini kontrol edin.`,
-        tarih: tekKisiliGunler[0],
-        cozuldu: false,
-        olusturmaTarihi: Timestamp.now()
-      });
+      for (const gun of tekKisiliGunler) {
+        batch.set(db.collection('adminUyarilari').doc(), {
+          tip: 'zincirTukendi',
+          mesaj: `${haftaId} haftasında ${gun} yalnızca tek kişiyle (yedeksiz) planlandı. Kadro müsaitliğini kontrol edin.`,
+          tarih: gun,
+          vakit: null,
+          cozuldu: false,
+          olusturmaTarihi: Timestamp.now()
+        });
+      }
     }
 
     await batch.commit();

@@ -1762,6 +1762,43 @@ const tests: TestCase[] = [
     }
   },
   {
+    // Premium hata analizi FR-O8 regresyonu: admin bir bildirimi tekrar
+    // 'bekliyor'a actiginda, ayni kisi ayni deterministik ID'ye tekrar
+    // mazeret bildirebilmeli. Duzeltmeden once bu bir `update` sayilip
+    // `allow update: if false` altinda KALICI OLARAK reddediliyordu.
+    name: 'mazeret_detaylari, admin bildirimi yeniden bekliyor a acinca tekrar yazilabilir (FR-O8 regresyonu)',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingAsil', 'muezzin1', 'Ilk mazeret', { devirSonucu: 'alarm_bekliyor' }));
+
+      // Admin mudahalesi: bildirimi yeniden 'bekliyor'a acar (kurallar
+      // devre disi, gercek admin dalinin taklidi — bu davranis zaten
+      // isValidBildirim admin dalinda serbest).
+      await env.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'bildirimler/ownPendingAsil'), {
+          haftaId: 'W2026-05-18', tarih: '2026-05-20', vakit: 'ogle', uid: 'muezzin1', tip: 'asil',
+          durum: 'bekliyor', pendingAck: true, retSebebi: null,
+          olusturmaTarihi: Timestamp.now(), sonGuncelleme: Timestamp.now()
+        });
+      });
+
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingAsil', 'muezzin1', 'Ikinci mazeret (yeniden acildi)', { devirSonucu: 'alarm_bekliyor' }));
+
+      const detay = await getDoc(doc(db, 'mazeret_detaylari/ownPendingAsil'));
+      assert.equal(detay.data()?.retSebebi, 'Ikinci mazeret (yeniden acildi)');
+    }
+  },
+  {
+    // Degismezlik korunuyor: bildirim yeniden acilmadan (hala 'reddedildi')
+    // ayni ID'ye ikinci bir yazim hala reddedilmeli.
+    name: 'mazeret_detaylari, bildirim yeniden bekliyor a donmedikce tekrar yazilamaz',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(mazeretRetBatch(db, 'ownPendingYedek', 'muezzin1', 'Ilk mazeret', { devirSonucu: 'alarm_bekliyor' }));
+      await assertFails(mazeretRetBatch(db, 'ownPendingYedek', 'muezzin1', 'Ikinci deneme', { devirSonucu: 'alarm_bekliyor' }));
+    }
+  },
+  {
     // Altinci denetim turu bulgusu (asil guvenlik acigi regresyon kaniti):
     // retSebebi tasindiktan sonra ayri koleksiyon yalnizca ilgili kisi veya
     // admin tarafindan okunabilmeli — herhangi bir baska giris yapmis

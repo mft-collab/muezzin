@@ -141,6 +141,16 @@ export interface Bildirim {
   * GitHub Actions manuel "Re-run") çift kredilendirmeyi önler.
   */
  puanIslendi?: boolean;
+ /**
+  * Bu bildirim bir admin'in `vakitAtamasiniGuncelle` ile elle yaptığı bir
+  * atamanın sonucu mu — `durum` bu anda hâlâ 'bekliyor' (kişi henüz
+  * onaylamadı/reddetmedi) olduğundan, bu bayrak olmadan `korumaliSlotMu`
+  * slotu korumasız sanıp bir sonraki plan yeniden üretiminde (personel
+  * aktiflik değişikliği, "Planları Güncelle") sessizce eziyordu — admin'e
+  * "yapıldı" görünen bir eylem izsiz kayboluyordu (premium hata analizi
+  * PL-K2, bkz. `vekaletDevredildi`/`vekaletDevriBekliyor` ile aynı desen).
+  */
+ manuelAtama?: boolean;
 }
 
 export interface VekaletTalebi {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
 import { Muezzin, Vakit } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): MuezzinAday {
@@ -183,6 +183,70 @@ describe('haftalikPlanUret', () => {
     expect(kesisim.length).toBeLessThan(2);
   });
 
+  it('SOS kuralı SADECE dünkü ASİLİ engeller — dünkü yedek bugün asil olabilir (PL-K1 regresyonu)', () => {
+    // 3 kişilik kadroda dünkü hem asil hem yedek engellenseydi geriye tek
+    // aday kalır ve o kişi Cuma/aylık adalete bakılmaksızın zorunlu asil
+    // olurdu (premium hata analizi PL-K1). Burada 'b' dünkü yedek — bugün
+    // asil olabilmeli (yalnızca dünkü asil 'a' engellenir).
+    const muezzinler = [muezzin('aaa'), muezzin('bbb'), muezzin('ccc')];
+
+    const plan = haftalikPlanUret(['2026-08-03'], muezzinler, [], undefined, ['aaa']);
+
+    expect(plan['2026-08-03'].sabah.asil).not.toBe('aaa');
+    expect(['bbb', 'ccc']).toContain(plan['2026-08-03'].sabah.asil);
+  });
+
+  it('3 kişilik kadroda 4 hafta sonunda Cuma görevleri tek kişide toplanmaz (PL-K1 adalet regresyonu)', () => {
+    // Ölçülen kök hata: eski SOS (dünkü asil+yedek birlikte engellenir) 3
+    // kişilik kadroda geriye her zaman tek aday bırakıyordu, bu da Cuma
+    // adalet kademesinin asil seçimine hiç karışamamasına yol açıyordu —
+    // simülasyonda 4 haftanın 4 Cuma'sı da aynı kişiye çıkmıştı.
+    let muezzinler: MuezzinAday[] = [muezzin('aaa'), muezzin('bbb'), muezzin('ccc')];
+    const haftalar = [
+      ['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09'],
+      ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'],
+      ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'],
+      ['2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29', '2026-08-30'],
+    ];
+    const cumaAsilSayisi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+    let oncekiHaftaSonEkibi: string[] = [];
+    let oncekiGunPlan: Record<string, Record<Vakit, { asil: string; yedek: string }>> | undefined;
+
+    for (const gunler of haftalar) {
+      const oncekiArdArdaYedekSayilari = oncekiHaftaninArdArdaYedekSayilariniHesapla(oncekiGunPlan, muezzinler.map((m) => m.id));
+      const plan = haftalikPlanUret(gunler, muezzinler, [], undefined, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
+
+      const haftaAsilKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      const haftaYedekKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
+      for (const gun of gunler) {
+        for (const vakit of VAKITLER) {
+          const atama = plan[gun][vakit];
+          if (atama.asil !== 'Sistem') haftaAsilKredi[atama.asil]++;
+          if (atama.yedek !== 'Sistem') haftaYedekKredi[atama.yedek]++;
+        }
+      }
+      const cumaGun = gunler[4]; // Perşembe'den sonraki gün = Cuma (2026-08-03 Pazartesi tabanlı)
+      const cumaAtama = plan[cumaGun].ogle;
+      if (cumaAtama.asil !== 'Sistem') cumaAsilSayisi[cumaAtama.asil]++;
+
+      muezzinler = muezzinler.map((m) => ({
+        ...m,
+        aylikVakitSayisi: (m.aylikVakitSayisi || 0) + haftaAsilKredi[m.id],
+        aylikYedekSayisi: (m.aylikYedekSayisi || 0) + haftaYedekKredi[m.id],
+        aylikCumaSayisi: (m.aylikCumaSayisi || 0) + (cumaAtama.asil === m.id ? 1 : 0),
+      }));
+
+      const sonGun = gunler[6];
+      const sonVakitAtama = plan[sonGun].yatsi;
+      oncekiHaftaSonEkibi = [sonVakitAtama.asil].filter((uid) => uid !== 'Sistem');
+      oncekiGunPlan = plan;
+    }
+
+    // Eski hatalı davranış: {aaa:4, bbb:0, ccc:0}. Adaletli davranış: her
+    // kişi en fazla 2 kez Cuma yapmış olmalı (4 hafta / 3 kişi ≈ 1.33/kişi).
+    expect(Object.values(cumaAsilSayisi).every((n) => n <= 2)).toBe(true);
+  });
+
   it('oncekiHaftaSonEkibi verilmezse (varsayılan boş dizi) SOS kısıtlaması uygulanmaz', () => {
     const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c'), muezzin('d')];
 
@@ -294,9 +358,14 @@ describe('haftalikPlanUret', () => {
     ];
     const toplamAsilSayisi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
     let oncekiHaftaSonEkibi: string[] = [];
+    let oncekiGunPlan: Record<string, Record<Vakit, { asil: string; yedek: string }>> | undefined;
 
     for (const gunler of haftalar) {
-      const plan = haftalikPlanUret(gunler, muezzinler, [], undefined, oncekiHaftaSonEkibi);
+      const oncekiArdArdaYedekSayilari = oncekiHaftaninArdArdaYedekSayilariniHesapla(
+        oncekiGunPlan,
+        muezzinler.map((m) => m.id)
+      );
+      const plan = haftalikPlanUret(gunler, muezzinler, [], undefined, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
 
       const haftaAsilKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
       const haftaYedekKredi: Record<string, number> = { aaa: 0, bbb: 0, ccc: 0 };
@@ -321,7 +390,8 @@ describe('haftalikPlanUret', () => {
 
       const sonGun = gunler[6];
       const sonVakitAtama = plan[sonGun].yatsi;
-      oncekiHaftaSonEkibi = [sonVakitAtama.asil, sonVakitAtama.yedek].filter((uid) => uid !== 'Sistem');
+      oncekiHaftaSonEkibi = [sonVakitAtama.asil].filter((uid) => uid !== 'Sistem');
+      oncekiGunPlan = plan;
     }
 
     expect(Object.values(toplamAsilSayisi).every((n) => n > 0)).toBe(true);

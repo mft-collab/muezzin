@@ -58,23 +58,39 @@ export async function fcmGonderVeTemizle(
   }
 
   console.log(`${logEtiketi}: ${messages.length} bildirim gönderiliyor...`);
-  const response = await getMessaging().sendEach(messages);
-  console.log(`${logEtiketi}: gönderim tamamlandı. Başarılı: ${response.successCount}, Başarısız: ${response.failureCount}`);
-
+  // `sendEach` en fazla 500 mesaj kabul eder — bu limitin üzerinde tek bir
+  // çağrı TAMAMEN fırlatır. Bu fonksiyon çağrıldığı script'in yorumundaki
+  // "mesaj sayısı her zaman küçük kalır" varsayımı tam da script'in bir
+  // süre çalışmadığı (o yüzden birikmiş) durumda bozuluyordu — 500'ü aşan
+  // tek bir koşu her seferinde aynı hatayla ölüp hiçbir bildirim bir daha
+  // hiç gönderilemiyordu (premium hata analizi FR-O5). 500'lük parçalar
+  // halinde gönderilir; bir parçanın başarısızlığı diğerlerini engellemez.
+  const SEND_CHUNK_SIZE = 500;
+  let successCount = 0;
+  let failureCount = 0;
   const tokensToRemove: Record<string, string[]> = {};
-  response.responses.forEach((res, index) => {
-    if (!res.success) {
-      const errCode = res.error?.code;
-      if (errCode === 'messaging/registration-token-not-registered' || errCode === 'messaging/invalid-registration-token') {
-        const failedToken = messages[index]!.token;
-        const uid = tokenToUidMap[failedToken];
-        if (uid) {
-          if (!tokensToRemove[uid]) tokensToRemove[uid] = [];
-          tokensToRemove[uid]!.push(failedToken);
+
+  for (let i = 0; i < messages.length; i += SEND_CHUNK_SIZE) {
+    const parca = messages.slice(i, i + SEND_CHUNK_SIZE);
+    const response = await getMessaging().sendEach(parca);
+    successCount += response.successCount;
+    failureCount += response.failureCount;
+
+    response.responses.forEach((res, index) => {
+      if (!res.success) {
+        const errCode = res.error?.code;
+        if (errCode === 'messaging/registration-token-not-registered' || errCode === 'messaging/invalid-registration-token') {
+          const failedToken = parca[index]!.token;
+          const uid = tokenToUidMap[failedToken];
+          if (uid) {
+            if (!tokensToRemove[uid]) tokensToRemove[uid] = [];
+            tokensToRemove[uid]!.push(failedToken);
+          }
         }
       }
-    }
-  });
+    });
+  }
+  console.log(`${logEtiketi}: gönderim tamamlandı. Başarılı: ${successCount}, Başarısız: ${failureCount}`);
 
   const uidsToUpdate = Object.keys(tokensToRemove);
   if (uidsToUpdate.length > 0) {

@@ -123,7 +123,12 @@ export const VeriSagligiSekmesi = React.memo(() => {
  whileHover={{ y: -2 }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setConfirmRepairOpen(true)}
- disabled={errors.length === 0 || repairing || loading}
+ // auditError doluyken errors[] yalnızca bilgilendirici "okunamadı"
+ // girdileri taşır (repairData'sız) — servis bu durumda zaten hiçbir
+ // onarım üretmiyor (premium hata analizi HS-K1), ama düğme yine de
+ // yanıltıcı biçimde etkin görünüp sahte bir "başarı" günlüğü
+ // üretebiliyordu; burada da devre dışı bırakılır (savunma katmanı).
+ disabled={errors.length === 0 || repairing || loading || !!auditError}
  className="px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl text-2xs font-bold uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
  >
  <ShieldCheck size={12} /> OTOMATİK ONAR

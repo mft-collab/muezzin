@@ -56,7 +56,15 @@ const KOTA_DOC = 'diyanetResmiApiKota';
  */
 async function kotaRezerveEt(): Promise<boolean> {
   const ref = db.collection('config').doc(KOTA_DOC);
-  const ay = getTurkeyNow().toISOString().slice(0, 7); // "YYYY-MM"
+  // `getTurkeyNow()` zaten LOKAL getter'ları Türkiye saatini verecek
+  // şekilde kaydırılmış bir Date döner — `.toISOString()` bunu tekrar
+  // UTC'ye çevirdiğinden ÇİFT KAYDIRMAYA yol açıyordu (düşük öncelikli
+  // bulgu). UTC runner'da (localOffset==0) tesadüfen doğru sonuç çıkıyordu,
+  // ama Türkiye'deki bir geliştirici makinesinde ayın 1'i 00:00-03:00
+  // arası önceki ayın kota kovasını kullanabiliyordu. Kod tabanının geri
+  // kalanı bu iş için lokal getter'ları kullanıyor (bkz. getTurkeyDateString).
+  const simdi = getTurkeyNow();
+  const ay = `${simdi.getFullYear()}-${String(simdi.getMonth() + 1).padStart(2, '0')}`; // "YYYY-MM"
 
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -65,7 +73,12 @@ async function kotaRezerveEt(): Promise<boolean> {
 
     if (guncelSayisi >= AYLIK_ISTEK_LIMITI) return false;
 
-    tx.set(ref, { ay, istekSayisi: guncelSayisi + 1 });
+    // `merge:true` olmadan bu yazım `dususNedeniniKaydet`'in (altta) aynı
+    // belgeye yazdığı sonDususNedeni/sonDususMesaji/sonDususTarihi
+    // gözlemlenebilirlik alanlarını her koşuda siliyordu — "zamanla
+    // kalibre etmek için" tutulan bu veri hiç birikemiyordu (düşük
+    // öncelikli bulgu, FR-O6 ile aynı dosya).
+    tx.set(ref, { ay, istekSayisi: guncelSayisi + 1 }, { merge: true });
     return true;
   });
 }

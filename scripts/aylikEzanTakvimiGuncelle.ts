@@ -35,12 +35,26 @@ async function main() {
     const sonrakiAy = { yil: sonrakiAyTarihi.getFullYear(), ay: sonrakiAyTarihi.getMonth() + 1 };
 
     const aylar: Record<string, AylikVakitGrubu> = {};
-    for (const { yil, ay } of [buAy, sonrakiAy]) {
-      const vakitData = await vakitleriCekOncelikli(yil, ay, ilceId, ilceAdi);
-      // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
-      // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama
-      // mantığı, mimari denetim O5).
-      Object.assign(aylar, aylikVakitleriGrupla(vakitData));
+
+    const buAyVakitData = await vakitleriCekOncelikli(buAy.yil, buAy.ay, ilceId, ilceAdi);
+    // Verileri aylara göre grupla (bkz. src/services/ezanVaktiServisi.ts
+    // aylikVakitleriGrupla — istemci senkronuyla paylaşılan tek gruplama
+    // mantığı, mimari denetim O5).
+    Object.assign(aylar, aylikVakitleriGrupla(buAyVakitData));
+
+    // Resmi API başarılıysa yukarıdaki çağrı zaten ~30-32 günlük kayan bir
+    // pencere döndürür — ayın sonlarına doğru çalıştığında bu pencere
+    // DOĞAL OLARAK bir sonraki ayı da kapsar. Bu durumda ikinci bir resmi
+    // API çağrısı yapmak (a) aynı veriyi tekrar ister, (b) aylık kotayı
+    // (AYLIK_ISTEK_LIMITI) gereksiz yere iki katına çıkarır — birkaç manuel
+    // deneme kotayı tüketebiliyordu (premium hata analizi FR-O6). Sadece
+    // ilk çağrının sonucu bir sonraki ayı KAPSAMIYORSA (fallback zincirine
+    // düşüldü — o zincir istenen aya kesin sınırlı — ya da pencere henüz o
+    // kadar ileri gitmiyor) ikinci bir istek yapılır.
+    const sonrakiAyId = `${sonrakiAy.yil}-${String(sonrakiAy.ay).padStart(2, '0')}`;
+    if (!aylar[sonrakiAyId]) {
+      const sonrakiAyVakitData = await vakitleriCekOncelikli(sonrakiAy.yil, sonrakiAy.ay, ilceId, ilceAdi);
+      Object.assign(aylar, aylikVakitleriGrupla(sonrakiAyVakitData));
     }
 
     // Gruplanmış verileri Firestore'a yaz

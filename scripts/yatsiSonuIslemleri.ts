@@ -1,4 +1,4 @@
-import { db, Timestamp } from './lib/firebaseAdminInit.ts';
+import { db, Timestamp, FieldValue } from './lib/firebaseAdminInit.ts';
 import type { DocumentData } from 'firebase-admin/firestore';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
@@ -10,6 +10,16 @@ function formatDateLocal(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/** Bkz. `processYatsiSonuIslemleri` içindeki `hedefGun` yorumu (FR-K1). */
+function hedefGunuBelirle(calismaAni: Date): Date {
+  if (calismaAni.getHours() < 3) {
+    const oncekiGun = new Date(calismaAni);
+    oncekiGun.setDate(oncekiGun.getDate() - 1);
+    return oncekiGun;
+  }
+  return calismaAni;
 }
 
 export async function processYatsiSonuIslemleri() {
@@ -32,7 +42,19 @@ export async function processYatsiSonuIslemleri() {
   // saatiyle çalışır; cron saati kaydırılırsa (ör. DST/mevsimsel ayar) UTC
   // gece yarısı sınırı ile Türkiye takvim günü uyuşmayabilir. getTurkeyNow()
   // her zaman Türkiye (UTC+3) takvim gününü verir.
-  const bugün = formatDateLocal(getTurkeyNow());
+  //
+  // hedefGunuBelirle: cron 23:30 TR'de çalışacak şekilde ayarlı ama GitHub
+  // Actions zamanlanmış işlerin gecikmesi belgelenmiş normal davranıştır
+  // (yoğun saatlerde 10-60+ dk). "Bugün" doğrudan ÇALIŞMA ANINDAN türetilirse,
+  // gece yarısını geçen bir gecikme "bugün"ü BİR SONRAKİ takvim gününe
+  // kaydırır: o günün bildirimleri hiç işlenmez, ertesi günün henüz
+  // yaşanmamış bildirimleri kredilenir ve ertesi gün doğru çalıştığında da
+  // atlanır (premium hata analizi FR-K1). 00:00-02:59 TR arası bir çalışma,
+  // normalde 23:30'da bitmesi gereken bu işin GECİKMİŞ hali sayılır — hedef
+  // gün bir önceki takvim günüdür. "Yarın" da (FCM hatırlatma, aylık/yıllık
+  // sıfırlama) buradan türetilmeli — getTurkeyNow()'dan değil.
+  const hedefGun = hedefGunuBelirle(getTurkeyNow());
+  const bugün = formatDateLocal(hedefGun);
 
   // ADIM 1: "Okudum" kontrolü
   // NOT: pendingAck filtresi KULLANILMIYOR — kendi "Okudum" onayını veren
@@ -84,15 +106,23 @@ export async function processYatsiSonuIslemleri() {
     const muezzinlerDocs = await db.collection('muezzins').get();
     muezzinlerDocs.docs.forEach(mDoc => {
       if (!asilKredi[mDoc.id] && !yedekKredi[mDoc.id]) return;
-      const updates: Record<string, number> = {};
+      // FieldValue.increment() — düz okuma+toplama (mDoc.data().x + delta)
+      // eşzamanlı bir koşuyla (zamanlanmış tetikleme + manuel workflow_dispatch
+      // ya da "Re-run") yarış durumuna açıktı: iki süreç aynı taban değeri
+      // okuyup üzerine yazabiliyordu (premium hata analizi FR-K2). increment()
+      // sunucu tarafında atomik uygulanır, okunan değere bağımlı değildir —
+      // bu sayaçlar tieBreaker.ts adalet algoritmasının doğrudan girdisi
+      // olduğundan bir yarış durumu geriye dönük düzeltilemeden aylarca
+      // yanlış dağıtım üretebilirdi.
+      const updates: Record<string, FirebaseFirestore.FieldValue> = {};
       if (asilKredi[mDoc.id]) {
-        updates.aylikVakitSayisi = (mDoc.data().aylikVakitSayisi || 0) + asilKredi[mDoc.id];
+        updates.aylikVakitSayisi = FieldValue.increment(asilKredi[mDoc.id]);
       }
       if (cumaKredi[mDoc.id]) {
-        updates.aylikCumaSayisi = (mDoc.data().aylikCumaSayisi || 0) + cumaKredi[mDoc.id];
+        updates.aylikCumaSayisi = FieldValue.increment(cumaKredi[mDoc.id]);
       }
       if (yedekKredi[mDoc.id]) {
-        updates.aylikYedekSayisi = (mDoc.data().aylikYedekSayisi || 0) + yedekKredi[mDoc.id];
+        updates.aylikYedekSayisi = FieldValue.increment(yedekKredi[mDoc.id]);
       }
       batch.update(mDoc.ref, updates);
     });
@@ -114,9 +144,23 @@ export async function processYatsiSonuIslemleri() {
 
   // YENİ: Yarınki Görevliler İçin Kişiselleştirilmiş FCM Anlık Bildirimi Tetikle
   try {
-    const yarınTarih = getTurkeyNow();
+    const yarınTarih = new Date(hedefGun);
     yarınTarih.setDate(yarınTarih.getDate() + 1);
     const yarınStr = formatDateLocal(yarınTarih);
+
+    // Tekrar-çalıştırma güvenliği (premium hata analizi FR-O4): bu bloğun,
+    // yukarıdaki batch.commit()'ten farklı olarak hiçbir "zaten gönderildi"
+    // işareti yoktu — script yeniden tetiklenirse (ör. manuel "Re-run")
+    // herkese ikinci kez push giderdi. Gün başına tek bir sentinel belge
+    // (diğer script'lerdeki kayıt-başına `...Uygulandi`/`puanIslendi`
+    // bayraklarıyla aynı desen, ama burada işlenecek tekil bir kayıt
+    // olmadığından gün başına tek belge kullanılıyor).
+    const hatirlatmaRef = db.collection('cronDurumu').doc(`gunlukHatirlatma_${yarınStr}`);
+    const hatirlatmaSnap = await hatirlatmaRef.get();
+    if (hatirlatmaSnap.exists) {
+      console.log(`Yarınki (${yarınStr}) hatırlatma zaten gönderilmiş, atlanıyor.`);
+      return;
+    }
 
     console.log(`Yarınki (${yarınStr}) görevliler taranıyor...`);
 
@@ -129,7 +173,12 @@ export async function processYatsiSonuIslemleri() {
     yarınkiBildirimler.docs.forEach(doc => {
       const data = doc.data();
       const uid = data.uid;
-      
+
+      // Mazeret bildirip görevi devredilmiş (reddedildi) ya da iptal edilmiş
+      // bir bildirim için "yarın göreviniz var" demek yanlış — kişi artık o
+      // görevi yapmayacak (premium hata analizi FR-O4).
+      if (data.durum === 'reddedildi' || data.durum === 'iptal') return;
+
       // Türkçe vakit isimleri eşleştirmesi
       const vakitCeviri: Record<string, string> = {
         sabah: 'Sabah',
@@ -138,10 +187,12 @@ export async function processYatsiSonuIslemleri() {
         aksam: 'Akşam',
         yatsi: 'Yatsı'
       };
-      
+
       const vakitName = vakitCeviri[data.vakit] || data.vakit;
-      const roleType = data.tip === 'asil' ? 'Asil' : 'Yedek';
-      
+      // 'gorev_cagrisi' (acil çağrı) yanlışlıkla 'Yedek' olarak duyuruluyordu
+      // — gunlukKrediHesaplama.ts bu tipi asil ağırlığında sayıyor (FR-O4).
+      const roleType = data.tip === 'asil' ? 'Asil' : data.tip === 'yedek' ? 'Yedek' : 'Acil Çağrı';
+
       if (!userDuties[uid]) {
         userDuties[uid] = [];
       }
@@ -187,12 +238,17 @@ export async function processYatsiSonuIslemleri() {
     } else {
       console.log('Yarın için planlanmış herhangi bir nöbet görevi bulunamadı.');
     }
+
+    // Yalnızca BAŞARIYLA gönderildikten (ya da gönderilecek bir şey
+    // olmadığı doğrulandıktan) sonra işaretle — bir hata catch'e düşerse
+    // sentinel yazılmaz, script bir sonraki koşuda tekrar dener.
+    await hatirlatmaRef.set({ tarih: yarınStr, olusturmaTarihi: Timestamp.now(), gonderilenKisiSayisi: uidList.length });
   } catch (fcmErr) {
     console.error('FCM günlük hatırlatma bildirim gönderimi başarısız oldu:', fcmErr);
   }
 
   // ADIM 4: Aylık skor (örnek)
-  const yarın = getTurkeyNow();
+  const yarın = new Date(hedefGun);
   yarın.setDate(yarın.getDate() + 1);
   if (yarın.getDate() === 1) {
     const muezzins = await db.collection('muezzins').get();

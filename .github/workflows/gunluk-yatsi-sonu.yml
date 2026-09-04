@@ -5,6 +5,14 @@ on:
   schedule:
     - cron: '30 20 * * *'
 
+# Zamanlanmış koşuyla bir workflow_dispatch (ya da "Re-run") çakışırsa aylık
+# adalet sayaçlarının (aylikVakitSayisi vb.) eşzamanlı okuma+yazma yarış
+# durumuna düşmesini önler — increment() ile birlikte iki katmanlı savunma
+# (premium hata analizi FR-K2, bkz. diğer iki cron'daki aynı desen).
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   yatsi:
     runs-on: ubuntu-latest

@@ -397,13 +397,20 @@ class TelemetryService {
   }
 
   private async flushEvents() {
-    if (this.eventQueue.length === 0) return;
-    if (!auth.currentUser) return;
-
+    // Zamanlayıcı handle'ı HER İKİ erken çıkıştan (boş kuyruk, oturum yok)
+    // ÖNCE temizlenir — önceden `!auth.currentUser` dalı bunun ÜSTÜNDEydi:
+    // zamanlayıcı ateşlenip bu dala düşünce `flushTimeout` hâlâ (artık
+    // ateşlenmiş, işe yaramaz) eski handle'ı tutuyordu; `logEvent()`'teki
+    // `!this.flushTimeout` kontrolü bunu "hâlâ zamanlanmış" sanıp yeni bir
+    // zamanlayıcı hiç kurmuyordu — kuyruk BATCH_SIZE'a ulaşmadıkça sayfa
+    // kapanana kadar askıda kalabiliyordu (premium hata analizi HS-O7).
     if (this.flushTimeout) {
       clearTimeout(this.flushTimeout);
       this.flushTimeout = null;
     }
+
+    if (this.eventQueue.length === 0) return;
+    if (!auth.currentUser) return;
 
     const eventsToFlush = [...this.eventQueue];
     this.eventQueue = [];
@@ -487,6 +494,14 @@ class TelemetryService {
       return;
     }
 
+    // Sayaçlar DENEME anında artırılır, yalnızca yazım BAŞARILI olduğunda
+    // değil — aksi halde rate limiter tam da korunması gereken senaryoda
+    // (yazım offline/permission-denied ile reddediliyor) hiç devreye
+    // girmiyordu: her tekrar deneme tam state snapshot'ı ile yeniden
+    // yazım deniyordu (premium hata analizi HS-O2).
+    this.errorSignatureCounts.set(signature, signatureCount + 1);
+    this.errorWriteTimestamps.push(now);
+
     try {
       const [stateSnapshot] = await Promise.all([captureStateSnapshot()]);
       const crumbs = getBreadcrumbs();
@@ -512,8 +527,6 @@ class TelemetryService {
       };
 
       await addDoc(collection(db, 'error_logs'), payload);
-      this.errorSignatureCounts.set(signature, signatureCount + 1);
-      this.errorWriteTimestamps.push(now);
       this.suppressedErrorCount = 0;
     } catch (err) {
       console.warn('Hata günlüğü yazılamadı:', err);

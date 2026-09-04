@@ -1,6 +1,6 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 import assert from 'node:assert/strict';
-import { db } from '../../scripts/lib/firebaseAdminInit.ts';
+import { db, FieldValue } from '../../scripts/lib/firebaseAdminInit.ts';
 import { processVekaletDevirleri } from '../../scripts/vekaletDevirleriniIsle.ts';
 import { getTurkeyDateString, getTurkeyNow } from '../../src/lib/dateUtils.ts';
 
@@ -23,6 +23,22 @@ function haftaGunuNumarasi(tarihStr: string): number {
 
 const TARIH_1 = gunOnce(3);
 const TARIH_2 = gunOnce(2);
+
+// 30 günlük pencere içinde (script'in `tarih >= otuzGunOnce` filtresine
+// takılmayacak şekilde) gerçek bir Cuma tarihi bulur — premium hata analizi
+// MV-O1 sonrası script artık Cuma'yı saklı `cumaMi` bayrağından değil
+// `tarih`ten hesapladığı için, "Cuma" testinin GERÇEKTEN Cuma olan bir
+// tarih kullanması gerekir (önceden TARIH_1 rastgele bir gündü, yalnızca
+// bayrak `true` yazılıyordu — bu, MV-O1'in production'da fark edilmemesinin
+// doğrudan nedeniydi).
+function yakinCuma(): string {
+  for (let n = 1; n <= 10; n++) {
+    const aday = gunOnce(n);
+    if (haftaGunuNumarasi(aday) === 5) return aday;
+  }
+  throw new Error('30 günlük pencerede bir Cuma tarihi bulunamadı.');
+}
+const CUMA_TARIHI = yakinCuma();
 
 type TestCase = {
   name: string;
@@ -52,7 +68,11 @@ async function seedKabulEdilmisTalep(overrides: {
   aliciHaftalikIzinGunu?: number;
   bildirimCumaMi?: boolean;
   bildirimDurum?: string;
+  /** Varsayılan TARIH_1 — Cuma testleri gibi tarihin GERÇEKTEN belirli bir
+   * haftanın gününe denk gelmesi gereken senaryolar için override edilir. */
+  tarih?: string;
 } = {}) {
+  const tarih = overrides.tarih ?? TARIH_1;
   await db.collection('muezzins').doc('muezzin1').set({
     displayName: 'Muezzin One', role: 'muezzin', aktif: true, onayBekliyor: false
   });
@@ -64,10 +84,10 @@ async function seedKabulEdilmisTalep(overrides: {
     ...(overrides.aliciHaftalikIzinGunu !== undefined ? { haftalikIzinGunu: overrides.aliciHaftalikIzinGunu } : {})
   });
 
-  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${TARIH_1}_ogle_asil`);
+  const bildirimRef = db.collection('bildirimler').doc(`W2026-05-18_${tarih}_ogle_asil`);
   await bildirimRef.set({
     haftaId: 'W2026-05-18',
-    tarih: TARIH_1,
+    tarih: tarih,
     vakit: 'ogle',
     uid: 'muezzin1',
     tip: 'asil',
@@ -77,15 +97,15 @@ async function seedKabulEdilmisTalep(overrides: {
     vekaletDevriBekliyor: true
   });
 
-  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${TARIH_1}_ogle_asil_muezzin2`);
+  const talepRef = db.collection('vekalet_talepleri').doc(`W2026-05-18_${tarih}_ogle_asil_muezzin2`);
   await talepRef.set({
-    bildirimId: `W2026-05-18_${TARIH_1}_ogle_asil`,
+    bildirimId: `W2026-05-18_${tarih}_ogle_asil`,
     haftaId: 'W2026-05-18',
     gonderenUid: 'muezzin1',
     gonderenIsim: 'Muezzin One',
     aliciUid: 'muezzin2',
     aliciIsim: 'Muezzin Two',
-    tarih: TARIH_1,
+    tarih: tarih,
     vakit: 'ogle',
     saat: '12:45',
     tip: 'asil',
@@ -229,7 +249,31 @@ const tests: TestCase[] = [
     name: 'Cuma gorevi icin kabul transferi engellenir',
     run: async () => {
       await clearCollections();
-      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimCumaMi: true });
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, bildirimCumaMi: true, tarih: CUMA_TARIHI });
+
+      await processVekaletDevirleri(false);
+
+      const bildirimDoc = await bildirimRef.get();
+      assert.equal(bildirimDoc.data()?.uid, 'muezzin1');
+
+      const talepDoc = await talepRef.get();
+      assert.equal(talepDoc.data()?.bildirimUygulandi, true);
+      assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+    }
+  },
+  {
+    // Premium hata analizi MV-O1 regresyon guardı: `cumaMi` alanı EKSİK
+    // (backfill çalıştırılmamış eski belge simülasyonu) ama `tarih` GERÇEKTEN
+    // Cuma — script artık Cuma'yı `tarih`ten taze hesapladığı için (saklı
+    // bayraktan DEĞİL), bu durumda da transfer engellenmeli. Eski kod
+    // (`bildirim.cumaMi !== true`) burada fail-open davranıp transferi
+    // UYGULARDI.
+    name: 'cumaMi alani eksik ama tarih gercekten Cuma ise kabul transferi yine engellenir (MV-O1 regresyonu)',
+    run: async () => {
+      await clearCollections();
+      const { bildirimRef, talepRef } = await seedKabulEdilmisTalep({ aliciHaftalikIzinGunu: 1, tarih: CUMA_TARIHI });
+      // cumaMi alanını belgeden tamamen kaldır (eski/backfill öncesi belge simülasyonu).
+      await bildirimRef.update({ cumaMi: FieldValue.delete() });
 
       await processVekaletDevirleri(false);
 

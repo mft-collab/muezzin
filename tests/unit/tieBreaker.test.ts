@@ -103,23 +103,27 @@ describe('tieBreakerSirala', () => {
     expect(sirali.map((m) => m.id)).toEqual(['a', 'b']);
   });
 
-  it('art arda yedek eşiğini aşan kişi, ağırlıklı toplamı en düşük olsa bile tekrar yedek seçilmez (K6 sınır testi)', () => {
-    // a: dün asildi, yüklü. b: dün yedekti, en az yüklü AMA art arda yedek
-    // eşiğini zaten aşmış. c: dün boştaydı (SOS'tan muaf, her zaman asil).
-    // Eşik olmasaydı b (en az yüklü) tekrar yedek olurdu — küçük kadrolarda
-    // bu süresiz bir yedek kilidine yol açıyordu (bkz. mimari denetim K6).
+  it('art arda yedek eşiğini aşan kişi ASİLE TERFİ ETTİRİLİR, ağırlıklı toplamı daha yüksek olsa bile (K6 sınır testi)', () => {
+    // a: dün asildi (SOS ile bloklu, her zaman en sona). b: art arda yedek
+    // eşiğini aşmış AMA c'den daha yüklü. c: eşiği aşmamış, daha az yüklü.
+    // Eşik olmasaydı c (daha az yüklü) tier 2'de kazanıp asil olurdu — küçük
+    // kadrolarda bu, b'yi süresiz yedekte kilitliyordu (premium hata analizi
+    // PL-K1 sonrası: SOS artık yalnızca dünkü ASİLİ eliyor, dolayısıyla b ve
+    // c doğrudan asil/yedek için yarışıyor — kilidi kıran kademe artık
+    // streaklenmiş kişiyi ASİLE İTMELİ, "yedekten çıkarmamalı", çünkü burada
+    // "yedekten çıkmak" tam olarak yedekte kalmak anlamına gelirdi).
     const muezzinler = [
       muezzin('a', { aylikVakitSayisi: 100 }),
-      muezzin('b', { aylikVakitSayisi: 0 }),
-      muezzin('c', { aylikVakitSayisi: 50 }),
+      muezzin('b', { aylikVakitSayisi: 50 }),
+      muezzin('c', { aylikVakitSayisi: 10 }),
     ];
     const ardArdaYedekSayilari = { b: ARD_ARDA_YEDEK_ESIGI };
 
-    const sirali = tieBreakerSirala(muezzinler, {}, ['a', 'b'], false, {}, ardArdaYedekSayilari);
+    const sirali = tieBreakerSirala(muezzinler, {}, ['a'], false, {}, ardArdaYedekSayilari);
 
-    expect(sirali[0].id).toBe('c'); // SOS'tan muaf, her zaman asil
-    expect(sirali[1].id).toBe('a'); // b eşiği aştığı için yedek yarışından çıkar, a yedek olur
-    expect(sirali[2].id).toBe('b'); // b o gün tamamen boşta kalır
+    expect(sirali[0].id).toBe('b'); // eşiği aştığı için asile terfi eder
+    expect(sirali[1].id).toBe('c'); // yedek olur
+    expect(sirali[2].id).toBe('a'); // dün asildi, SOS ile bloklu
   });
 
   it('art arda yedek eşiğinin altındaki kişi normal ağırlıklı toplama göre sıralanır', () => {

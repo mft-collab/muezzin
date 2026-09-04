@@ -58,6 +58,13 @@ export const useAktifIzinlerStore = create<AktifIzinlerState>((set, get) => ({
       }, (err) => {
         handleFirestoreError(err, OperationType.LIST, path);
         set({ loading: false });
+        // onSnapshot hata callback'i dinleyiciyi KALICI olarak sonlandırır
+        // (SDK otomatik yeniden bağlanmaz) — bir sonraki gün-değişimi
+        // kontrolüne kadar (60sn periyodik, ama gün değişmediği sürece asla
+        // tetiklenmez) yeniden abone olunmuyordu; geçici bir bağlantı
+        // sorunu store'u oturum boyunca bayat bırakabiliyordu (premium hata
+        // analizi HS-O1). En son bilinen dateKey ile yeniden dener.
+        setTimeout(() => subscribe(get().dateKey), 15000);
       });
     };
 

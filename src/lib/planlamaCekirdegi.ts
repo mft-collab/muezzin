@@ -39,8 +39,49 @@ export type MuezzinAday = Muezzin & { id: string };
  */
 export type KorunmusAtamaResolver = (gun: string, vakit: Vakit) => VakitAtama | null;
 
-function sistemDisiUidler(atama: VakitAtama): string[] {
-  return [atama.asil, atama.yedek].filter((uid) => uid && uid !== 'Sistem' && uid !== 'SISTEM');
+/**
+ * Bir önceki haftanın gün planına bakarak, o haftanın bitişinde her kişinin
+ * ART ARDA kaç gündür (yalnızca) yedek kaldığını hesaplar — `oncekiHaftaSonEkibi`
+ * ile aynı gerekçeyle, ARD_ARDA_YEDEK_ESIGI kilidinin hafta sınırında
+ * sıfırlanmasını önlemek için (premium hata analizi PL-O2; `oncekiHaftaSonEkibi`
+ * SOS için taşınırken bu sayaç unutulmuştu). Son günden geriye doğru tarar,
+ * bir kişi asil olduğu ya da hiç görev almadığı (izin/kadro dışı) bir güne
+ * rastlayınca o kişi için sayım durur. Önceki hafta hiç üretilmemişse
+ * (soğuk başlangıç) boş obje döner.
+ */
+export function oncekiHaftaninArdArdaYedekSayilariniHesapla(
+  oncekiGunPlan: Record<string, Record<Vakit, VakitAtama>> | undefined,
+  muezzinIds: string[]
+): Record<string, number> {
+  const sonuc: Record<string, number> = {};
+  if (!oncekiGunPlan) return sonuc;
+
+  const gunler = Object.keys(oncekiGunPlan).sort().reverse();
+  const durdu = new Set<string>();
+
+  for (const gun of gunler) {
+    const vakitler = oncekiGunPlan[gun];
+    if (!vakitler) continue;
+    const gunAsilUidleri = new Set<string>();
+    const gunYedekUidleri = new Set<string>();
+    for (const vakit of VAKITLER) {
+      const atama = vakitler[vakit];
+      if (!atama) continue;
+      if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM') gunAsilUidleri.add(atama.asil);
+      if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM') gunYedekUidleri.add(atama.yedek);
+    }
+    for (const uid of muezzinIds) {
+      if (durdu.has(uid)) continue;
+      const sadeceYedekKaldi = gunYedekUidleri.has(uid) && !gunAsilUidleri.has(uid);
+      if (sadeceYedekKaldi) {
+        sonuc[uid] = (sonuc[uid] || 0) + 1;
+      } else {
+        durdu.add(uid);
+      }
+    }
+  }
+
+  return sonuc;
 }
 
 /**
@@ -60,10 +101,16 @@ export function haftalikPlanUret(
   muezzinler: MuezzinAday[],
   onayliIzinler: OnayliIzin[],
   korunmusAtama?: KorunmusAtamaResolver,
-  /** Bir önceki haftanın son vaktinin (Pazar yatsı) ekibi — hafta sınırında
+  /** Bir önceki haftanın son vaktinin (Pazar yatsı) ASİLİ — hafta sınırında
    * dinlenme kuralının sıfırlanmasını önlemek için (bkz. algoritma denetimi,
-   * çağıran taraf src/lib/dateUtils.ts `getOncekiHafta` ile hesaplar). */
-  oncekiHaftaSonEkibi: string[] = []
+   * çağıran taraf src/lib/dateUtils.ts `getOncekiHafta` ile hesaplar).
+   * SADECE asil taşınır — bkz. aşağıdaki SOS yorumu (premium hata analizi
+   * PL-K1): dünkü yedek bugün SOS'tan muaf, dolayısıyla bu listeye girmez. */
+  oncekiHaftaSonEkibi: string[] = [],
+  /** `oncekiHaftaninArdArdaYedekSayilariniHesapla`'nın çıktısı — verilmezse
+   * (varsayılan boş obje) art arda yedek sayacı hafta başında 0'dan başlar
+   * (eski, PL-O2 öncesi davranışla geriye dönük uyumlu). */
+  oncekiArdArdaYedekSayilari: Record<string, number> = {}
 ): Record<string, Record<Vakit, VakitAtama>> {
   const buHaftakiYukler: Record<string, number> = {};
   const aylikCumaSayilari: Record<string, number> = {};
@@ -73,7 +120,7 @@ export function haftalikPlanUret(
   muezzinler.forEach((m) => {
     buHaftakiYukler[m.id] = 0;
     aylikCumaSayilari[m.id] = m.aylikCumaSayisi || 0;
-    ardArdaYedekSayilari[m.id] = 0;
+    ardArdaYedekSayilari[m.id] = oncekiArdArdaYedekSayilari[m.id] || 0;
   });
 
   const gunPlan: Record<string, Record<Vakit, VakitAtama>> = {};
@@ -106,7 +153,6 @@ export function haftalikPlanUret(
       gunlukTazeAtama = { asil: musaitMuezzinler[0].id, yedek: 'Sistem' };
     }
 
-    let gununSonEkibi: string[] = [];
     // O gün en az bir vakitte asil/yedek olanların kümesi — normal (taze)
     // üretimde gün boyu tek bir ekip kullanıldığından bu iki küme pratikte
     // ya boş ya da tek bir kişilik olur; yalnızca korunmusAtama bir günün
@@ -115,22 +161,38 @@ export function haftalikPlanUret(
     const gunAsilUidleri = new Set<string>();
     const gunYedekUidleri = new Set<string>();
 
+    // "Cuma vakitleri 1.5x ağırlıklı" (bkz. CLAUDE.md) önceden yalnızca
+    // tieBreaker.ts'in tier 2 karşılaştırmasında (o haftanın TOPLAMINI Cuma
+    // günü GEÇİCİ olarak 1.5 ile çarpan ayrı bir mekanizma) uygulanıyordu;
+    // burada, haftalık yük BİRİKİMİNİN kendisinde hiç uygulanmıyordu — yani
+    // Cuma yapan biri hafta içi kalan günlerdeki karşılaştırmalarda normal
+    // bir gün yapmış gibi görünüyordu (premium hata analizi PL-O3). Bu
+    // çarpan, tier 2'deki geçici çarpandan bağımsız — kalıcı birikime işler.
+    const cumaCarpani = isFriday ? 1.5 : 1;
+
     for (const vakit of VAKITLER) {
       const atama = korunmusAtama?.(gun, vakit) ?? gunlukTazeAtama;
       gunPlan[gun][vakit] = atama;
 
       if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM') {
-        buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + 1;
+        buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + (1 * cumaCarpani);
         gunAsilUidleri.add(atama.asil);
       }
       if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM') {
-        buHaftakiYukler[atama.yedek] = (buHaftakiYukler[atama.yedek] || 0) + YEDEK_YUK_CARPANI;
+        buHaftakiYukler[atama.yedek] = (buHaftakiYukler[atama.yedek] || 0) + (YEDEK_YUK_CARPANI * cumaCarpani);
         gunYedekUidleri.add(atama.yedek);
       }
-      gununSonEkibi = sistemDisiUidler(atama);
     }
 
-    oncekiVakitUidler = gununSonEkibi;
+    // SOS (bir sonraki gün için dinlenme bloğu): SADECE bugünün ASİLİ bloklanır
+    // — yedek çoğu zaman fiilen görev yapmaz, bu yüzden bugün yedek kalan biri
+    // yarın asil olabilir (premium hata analizi PL-K1 düzeltmesi). Önceden
+    // asil+yedek birlikte bloklanıyordu; 3 kişilik kadroda bu, geriye tek
+    // (bloklanmamış) aday bırakıp Cuma/aylık adalet kademelerinin asil
+    // seçimine hiç karışamamasına yol açıyordu — çünkü sirali[0] için tek
+    // aday kalıyordu. Yalnızca asili bloklamak, tek sayılı kadrolarda bile en
+    // az 2 adayı tier 1.5+ için serbest bırakır.
+    oncekiVakitUidler = Array.from(gunAsilUidleri);
 
     // Art arda yedek sayacını güncelle: o gün EN AZ BİR vakitte yedek olup
     // HİÇBİR vakitte asil olmayan kişi için artır, diğerleri (o gün asil
@@ -168,12 +230,27 @@ export function haftalikPlanUret(
  * yatsı dahil) yedeksiz kalırsa hiç uyarı üretilmiyordu (bkz. kod denetimi
  * bulgusu — client self-heal yolunda, planServisi.ts `korunmusAtama`, tam
  * olarak bu şekilde tek bir vakit 'Sistem' yedekle kalabiliyor).
+ *
+ * Ayrıca iki "karışık gün" durumu daha yakalanır (premium hata analizi
+ * PL-O4 — önceden ikisi de sessiz kalıyordu):
+ * - asil 'Sistem' ama yedek dolu (bozuk/tutarsız `korunmusAtama` çıktısı —
+ *   asil bildirimi silinmiş, yedek bildirimi onaylı kalmış olabilir).
+ * - Günün BİR vakti tamamen boş (asil de 'Sistem') iken AYNI günün başka
+ *   bir vakti gerçek kişilerle dolu — `kapsamsizGunleriBul` bunu yakalamaz
+ *   çünkü o yalnızca günün TÜM vakitleri boşsa tetiklenir.
  */
 export function tekKisiliGunleriBul(gunPlan: Record<string, Record<Vakit, VakitAtama>>): string[] {
   return Object.entries(gunPlan)
-    .filter(([, vakitler]) =>
-      VAKITLER.some((v) => vakitler[v].asil !== 'Sistem' && vakitler[v].yedek === 'Sistem')
-    )
+    .filter(([, vakitler]) => {
+      const gunuDoluBirVaktiVarMi = VAKITLER.some((v) => vakitler[v].asil !== 'Sistem');
+      return VAKITLER.some((v) => {
+        const { asil, yedek } = vakitler[v];
+        const eksikYedek = asil !== 'Sistem' && yedek === 'Sistem';
+        const eksikAsil = asil === 'Sistem' && yedek !== 'Sistem';
+        const kismenBosVakit = asil === 'Sistem' && yedek === 'Sistem' && gunuDoluBirVaktiVarMi;
+        return eksikYedek || eksikAsil || kismenBosVakit;
+      });
+    })
     .map(([gun]) => gun)
     .sort();
 }
