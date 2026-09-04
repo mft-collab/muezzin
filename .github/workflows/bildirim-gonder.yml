@@ -36,6 +36,15 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: npm run process:izin-durum-bildirimi
+      # Bu iş daha önce başarısız olup admin paneline "otomasyonHatasi"
+      # uyarısı bırakmışsa, şimdi başarılıysa o uyarıyı otomatik çözer
+      # (bkz. reportWorkflowSuccess.ts — "bilinçli olarak dışarıda
+      # bırakılanlar" listesinden kapatılan bulgu).
+      - name: Başarıyı admin paneline bildir (önceki uyarıyı otomatik çöz)
+        if: success()
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
+        run: npx tsx scripts/lib/reportWorkflowSuccess.ts "Duyuru ve İzin Durumu Bildirimlerini Gönder"
       - name: Başarısızlığı admin paneline bildir
         if: failure()
         env:

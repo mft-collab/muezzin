@@ -73,14 +73,11 @@ async function son24SaatBelgeSayisi(koleksiyon: string, esik: Timestamp): Promis
  * bulgu birbirini besliyordu). Doğrudan `tip` eşitliğiyle sorgulamak
  * (yalnızca eşitlik filtreleri, orderBy yok — composite index gerekmez)
  * bu pencere sınırını tamamen ortadan kaldırır. */
-async function acikKotaUyarisiVarMi(): Promise<boolean> {
-  const snap = await db.collection('adminUyarilari')
+async function acikKotaUyarilariniGetir() {
+  return db.collection('adminUyarilari')
     .where('cozuldu', '==', false)
     .where('tip', '==', UYARI_TIPI)
-    .limit(1)
     .get();
-
-  return !snap.empty;
 }
 
 async function main() {
@@ -100,11 +97,28 @@ async function main() {
   );
 
   if (toplam < ESIK_BELGE_SAYISI) {
-    console.log('Kota kullanımı normal aralıkta, uyarı üretilmedi.');
+    // "Bilinçli olarak dışarıda bırakılanlar" listesinden kapatılan bulgu:
+    // eşik artık aşılmıyorsa, önceden açılmış kotaUyarisi'leri de otomatik
+    // çözülür — bu, "sorun kendiliğinden geçti ama uyarı sonsuza dek açık
+    // kaldı, admin manuel kapatmak zorunda" durumunu önler. Yalnızca BU
+    // script yazdığı/tükettiği tip için (kotaUyarisi) — başka bir uyarı
+    // türünün "koşulu temizlendi mi" sorusuna karışmaz.
+    const acikUyarilar = await acikKotaUyarilariniGetir();
+    if (!acikUyarilar.empty) {
+      const batch = db.batch();
+      // `cozulmeTarihi` — admin panelinin manuel "çöz" düğmesiyle AYNI alan
+      // adı (bkz. useKrizAlarmlariStore.ts alarmCoz).
+      acikUyarilar.docs.forEach((d) => batch.update(d.ref, { cozuldu: true, cozulmeTarihi: Timestamp.now() }));
+      await batch.commit();
+      console.log(`Kota kullanımı normal aralığa döndü — ${acikUyarilar.size} açık kotaUyarisi otomatik çözüldü.`);
+    } else {
+      console.log('Kota kullanımı normal aralıkta, uyarı üretilmedi.');
+    }
     return;
   }
 
-  if (await acikKotaUyarisiVarMi()) {
+  const acikUyarilar = await acikKotaUyarilariniGetir();
+  if (!acikUyarilar.empty) {
     console.log('Eşik aşıldı ancak çözülmemiş bir kota uyarısı zaten açık — yenisi üretilmedi.');
     return;
   }

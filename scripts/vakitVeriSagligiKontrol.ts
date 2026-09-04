@@ -38,6 +38,30 @@ async function gunVerisiTamMi(ilceId: string, tarih: string): Promise<boolean> {
   return !!(gun?.sabah && gun?.ogle && gun?.ikindi && gun?.aksam && gun?.yatsi);
 }
 
+// Bu scriptin kendi ürettiği apiHatasi mesajlarının ayırt edici ön eki —
+// `tip:'apiHatasi'` scripts/aylikEzanTakvimiGuncelle.ts ile PAYLAŞILIYOR
+// (tek bir "alt tip" alanı yok), bu yüzden otomatik çözme yalnızca BU
+// script'in kendi ürettiği kayıtlarla sınırlı tutulmalı — aksi halde
+// diğer script'in hâlâ geçerli olan bir uyarısını yanlışlıkla kapatabilirdi.
+const MESAJ_ON_EKI = 'Vakit verisi otomatik tazelendi:';
+
+/** "Bilinçli olarak dışarıda bırakılanlar" listesinden kapatılan bulgu:
+ * veri artık sağlıklıysa, bu script'in daha önce açtığı (ve hâlâ çözülmemiş
+ * kalmış) apiHatasi uyarılarını otomatik çözer. */
+async function kendiApiHatasiUyarilariniCoz(): Promise<number> {
+  const snap = await db.collection('adminUyarilari')
+    .where('tip', '==', 'apiHatasi')
+    .where('cozuldu', '==', false)
+    .get();
+  const kendiUyarilari = snap.docs.filter((d) => (d.data().mesaj as string | undefined)?.startsWith(MESAJ_ON_EKI));
+  if (kendiUyarilari.length === 0) return 0;
+
+  const batch = db.batch();
+  kendiUyarilari.forEach((d) => batch.update(d.ref, { cozuldu: true, cozulmeTarihi: Timestamp.now() }));
+  await batch.commit();
+  return kendiUyarilari.length;
+}
+
 async function main() {
   const settingsSnap = await db.collection('settings').doc('system').get();
   const settings = settingsSnap.data() as { ilceId?: string; ilceAdi?: string } | undefined;
@@ -56,7 +80,11 @@ async function main() {
   ]);
 
   if (bugunTamam && yarinTamam) {
-    console.log(`Vakit verisi sağlıklı: ${bugun} ve ${yarin} için tam kayıt mevcut (${ilceId}).`);
+    const cozulen = await kendiApiHatasiUyarilariniCoz();
+    console.log(
+      `Vakit verisi sağlıklı: ${bugun} ve ${yarin} için tam kayıt mevcut (${ilceId}).` +
+      (cozulen > 0 ? ` ${cozulen} eski apiHatasi uyarısı otomatik çözüldü.` : '')
+    );
     return;
   }
 

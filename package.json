@@ -21,7 +21,7 @@
     "verify:sw-config": "tsx scripts/verify-sw-config.ts",
     "test:e2e": "playwright test",
     "test:rules": "firebase emulators:exec --only firestore \"tsx scripts/firestore-rules-tests.ts\"",
-    "test:integration": "firebase emulators:exec --only firestore \"tsx tests/integration/mazeretDevirleriniIsle.test.ts && tsx tests/integration/vekaletDevirleriniIsle.test.ts && tsx tests/integration/duyuruBildirimGonder.test.ts && tsx tests/integration/izinDurumBildirimGonder.test.ts\"",
+    "test:integration": "firebase emulators:exec --only firestore \"tsx tests/integration/mazeretDevirleriniIsle.test.ts && tsx tests/integration/vekaletDevirleriniIsle.test.ts && tsx tests/integration/duyuruBildirimGonder.test.ts && tsx tests/integration/izinDurumBildirimGonder.test.ts && tsx tests/integration/reportWorkflowStatus.test.ts\"",
     "test:smoke": "tsx scripts/smoke-tests.ts",
     "test:unit": "vitest run --coverage",
     "test:unit:watch": "vitest",
