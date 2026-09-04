@@ -153,10 +153,14 @@ export default defineConfig(({ mode }) => ({
             return 'vendor-firebase-messaging';
           }
 
-          // 3. Firebase Auth — needed immediately at boot (login gate), kept
-          // separate from Firestore so the login screen doesn't wait on the
-          // larger Firestore bundle to parse.
-          if (id.includes('firebase/auth') || id.includes('@firebase/auth')) {
+          // 3. Firebase Auth (+ App Check, which initializes synchronously
+          // alongside it in src/lib/firebase.ts) — needed immediately at
+          // boot (login gate), kept separate from Firestore so the login
+          // screen doesn't wait on the larger Firestore bundle to parse.
+          if (
+            id.includes('firebase/auth') || id.includes('@firebase/auth') ||
+            id.includes('firebase/app-check') || id.includes('@firebase/app-check')
+          ) {
             return 'vendor-firebase-auth';
           }
 

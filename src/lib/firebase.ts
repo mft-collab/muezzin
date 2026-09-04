@@ -1,27 +1,30 @@
 import { initializeApp } from 'firebase/app';
-// import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'; // bkz. aşağıdaki geri alma notu
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInWithCustomToken } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const app = initializeApp(firebaseConfig);
 
-// App Check GEÇİCİ OLARAK DEVRE DIŞI (P2.7 girişimi geri alındı):
-// initializeAppCheck ilk deploy'dan hemen sonra production'da Google ile
-// girişi kırdı ("Giriş yapılamadı" — muhtemelen reCAPTCHA Enterprise site
-// key'i yalnızca localhost için kayıtlıydı, gerçek domain için değil).
-// try/catch'siz ve modül yüklenirken (React render'dan ÖNCE) çalıştığından
-// zarar yarıçapı tüm uygulamaydı. Kök neden (site key'in domain listesi +
-// App Check'in Authentication API'si için ayrı bir enforcement anahtarı
-// olup olmadığı) doğrulanana kadar kapalı tutuluyor — bkz. premium denetim
-// P2.7, geri alma notu.
-// const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-// if (recaptchaSiteKey && import.meta.env.VITE_USE_EMULATOR !== '1') {
-//   initializeAppCheck(app, {
-//     provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
-//     isTokenAutoRefreshEnabled: true,
-//   });
-// }
+// App Check: istemcinin GERÇEK uygulama olduğunu doğrulayan katman (bkz.
+// premium denetim P2.7). VITE_RECAPTCHA_SITE_KEY tanımsızsa (yerel
+// geliştirme, PR preview vb.) bu blok atlanır — App Check pasif kalır.
+// Emülatör modunda BİLEREK başlatılmaz. try/catch ile sarılı: site key'in
+// yanlış domain için kayıtlı olması gibi bir sorun App Check'i pasif
+// bırakır, üstteki initializeApp/getAuth'u (ve dolayısıyla girişi) BİR
+// DAHA kırmaz — bkz. 2026-09-04 geri alma notu, ilk deploy'da bu blok
+// try/catch'siz olduğu için tüm uygulamayı çökertmişti.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (recaptchaSiteKey && import.meta.env.VITE_USE_EMULATOR !== '1') {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.error('App Check başlatılamadı, pasif modda devam ediliyor:', err);
+  }
+}
 
 // Initialize Firestore with persistent cache for PWA support
 export const db = initializeFirestore(app, {
