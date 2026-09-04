@@ -163,10 +163,31 @@ jobs:
       # anahtarın bir parçasını log'a düşürebilir — bkz. firebaseAdminInit.ts
       # içindeki aynı gerekçe), dosya `mktemp` ile 0600 izniyle açılır ve
       # adım biterken `trap ... EXIT` ile silinir.
+      #
+      # YEREL ÇALIŞTIRMA KORUMASI (bu bloğun İLK satırları, her şeyden önce).
+      # Gerekçe: bu adımın gövdesi düz bir bash script'i olduğu için bir
+      # insan ya da bir ajan "değişikliğimi doğrulayayım" diye onu kopyalayıp
+      # yerel kabukta çalıştırabiliyor. Bir kez gerçekten oldu: `firebase
+      # deploy` satırını stub'lamaya çalışan regex eşleşmedi ve GERÇEK
+      # `firebase deploy --project muezzin-c8485` komutu yerelde, sahte bir
+      # servis hesabı anahtarıyla PRODUCTION projesine karşı çalıştı
+      # (kimlik bilgisi çöp olduğu için proje-erişim ön koşulunda düştü,
+      # hiçbir şey yazılmadı — ama komut gerçekten canlı projeye ulaştı).
+      # `GITHUB_ACTIONS` ve `CI` değişkenlerini kullanıcı/script değil,
+      # Actions platformunun kendisi her adımın ortamına enjekte eder
+      # (GitHub "default environment variables" — hem GitHub-hosted hem
+      # self-hosted runner'da her zaman "true"), dolayısıyla gerçek CI
+      # yolunda bu kontrol tam bir no-op'tur; yalnızca Actions dışında
+      # çalıştırıldığında ateşler. FAIL-CLOSED: değişken tanımsızsa
+      # (`:-` ile boş dizgeye düşer) "true" olmadığı için reddedilir.
       - name: Deploy to Firebase (hosting + firestore rules + indexes)
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
         run: |
+          if [ "${GITHUB_ACTIONS:-}" != "true" ] || [ "${CI:-}" != "true" ]; then
+            echo "::error::Bu script sadece gercek GitHub Actions calistiricisinda calismalidir. Yerel/manuel calistirma REDDEDILDI (guvenlik: production deploy korumasi)."
+            exit 1
+          fi
           if [ -z "$GCP_SA_KEY" ]; then
             echo "::error::FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 secret'i bos veya tanimsiz - deploy edilemez."
             exit 1

@@ -626,12 +626,17 @@ service cloud.firestore {
     // onayBekliyor), üstelik bu fonksiyon `bildirimler` update kuralındaki
     // 4 dalın HER birinden çağrılıyor (bkz. isSelfBildirimUpdate yorumu, aynı
     // dosyada zaten belgeli 1000-ifade tavanı riski). `exists(muezzinDoc)`
-    // hâlâ && ile önce kısa devre yapıyor — CEL koşullu (`?:`) ifadeler yalnız
-    // seçilen dalı değerlendirdiğinden, doküman yoksa `get()` hiç çalışmıyor.
+    // && ile önce kısa devre yapıyor — CEL `&&` yalnız
+    // gerektiğinde sağ tarafı değerlendirdiğinden, doküman yoksa `get()` hiç
+    // çalışmıyor. (Eskiden burada `exists(...) ? get(...).data : null`
+    // ternary'si vardı; derleyici bunun için zararsız ama gürültülü bir
+    // `[W] Invalid type. Received one of [null]. Expected one of [map]`
+    // uyarısı basıyordu — `&&` kısa devresi hem uyarıyı kaldırıyor hem de
+    // değerlendirilen ifade sayısını bir tık azaltıyor. Davranış aynı:
+    // doküman yoksa sonuç yine false.)
     function isAssignableDutyUid(uid) {
       let muezzinDoc = /databases/$(database)/documents/muezzins/$(uid);
-      let muezzinVeri = exists(muezzinDoc) ? get(muezzinDoc).data : null;
-      return isAssignableDutyUidVeri(uid, muezzinVeri);
+      return exists(muezzinDoc) && isAssignableDutyUidVeri(uid, get(muezzinDoc).data);
     }
 
     // isAssignableDutyUid'in get()'siz hali — çağıran taraf muezzins verisini
