@@ -106,6 +106,18 @@ const tests: TestCase[] = [
       assert.equal(yedekDoc.data()?.pendingAck, true);
       assert.equal(yedekDoc.data()?.asilMazeretUid, 'muezzin_asil');
 
+      // Terfi YERİNDE yapılır: mazeret bildirenin `..._asil` belgesi denetim
+      // izi (ve `mazeretPlanSenkronEdildi` idempotans işareti) olarak KALIR,
+      // `tip`i hâlâ 'asil'dir — yani slotta `tip === 'asil'` olan İKİ belge
+      // olur. src/lib/slotKorumasi.ts `guncelSlotBildirimleriniSec` bu
+      // kasıtlı çift kaydı çözer (reddedilmemiş / en güncel olan kazanır);
+      // burada tam olarak o fonksiyonun dayandığı veri şekli sabitleniyor.
+      // Bu iki assertion düşerse (ör. terfi eski belgeyi de silmeye/
+      // etiketlemeye başlarsa) slotKorumasi.ts'in seçim kuralı gözden
+      // geçirilmelidir.
+      assert.equal(mazeretDoc.data()?.tip, 'asil');
+      assert.equal(mazeretDoc.data()?.uid, 'muezzin_asil');
+
       const haftaDoc = await db.collection('haftaPlanlari').doc('W2026-05-18').get();
       assert.equal(haftaDoc.data()?.gunler[TARIH_1].sabah.asil, 'muezzin_yedek');
       assert.equal(haftaDoc.data()?.gunler[TARIH_1].sabah.yedek, 'Sistem');

@@ -3,7 +3,7 @@ import type { DocumentData } from 'firebase-admin/firestore';
 import { getTurkeyNow } from '../src/lib/dateUtils.ts';
 import { handleFirestoreError, OperationType } from './lib/errors.ts';
 import { gunlukKredileriHesapla } from '../src/lib/gunlukKrediHesaplama.ts';
-import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage, type FcmGonderici } from './lib/fcmNotify.ts';
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear();
@@ -12,8 +12,10 @@ function formatDateLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Bkz. `processYatsiSonuIslemleri` içindeki `hedefGun` yorumu (FR-K1). */
-function hedefGunuBelirle(calismaAni: Date): Date {
+/** Bkz. `processYatsiSonuIslemleri` içindeki `hedefGun` yorumu (FR-K1).
+ *  (Entegrasyon testi hangi günün "yarın" sayıldığını AYNI kuralla
+ *  hesaplayabilsin diye dışa aktarılır.) */
+export function hedefGunuBelirle(calismaAni: Date): Date {
   if (calismaAni.getHours() < 3) {
     const oncekiGun = new Date(calismaAni);
     oncekiGun.setDate(oncekiGun.getDate() - 1);
@@ -22,7 +24,8 @@ function hedefGunuBelirle(calismaAni: Date): Date {
   return calismaAni;
 }
 
-export async function processYatsiSonuIslemleri() {
+/** @param gonderici Yalnızca testler için — bkz. `fcmGonderVeTemizle`. */
+export async function processYatsiSonuIslemleri(gonderici?: FcmGonderici) {
   console.log("Günlük yatsı sonrası işlemleri başladı...");
   
   // Debug info — `_databaseId` Admin SDK'nın Firestore tipinde public olarak
@@ -147,6 +150,14 @@ export async function processYatsiSonuIslemleri() {
   await batch.commit();
 
   // YENİ: Yarınki Görevliler İçin Kişiselleştirilmiş FCM Anlık Bildirimi Tetikle
+  //
+  // Hata bu blokta YUTULMAZ, yalnızca ERTELENİR: aşağıdaki ADIM 4/5 (aylık
+  // ve yıllık sayaç sıfırlama) ayın 1'inde çalışmak ZORUNDA olduğundan bir
+  // FCM arızası onları atlatmamalı; ama arıza tamamen sessiz de kalmamalı —
+  // fonksiyonun sonunda yeniden fırlatılır ki script 1 ile çıksın ve
+  // gunluk-yatsi-sonu.yml'in `if: success()` adımı (reportWorkflowSuccess.ts)
+  // önceki gerçek bir arızanın admin uyarısını YANLIŞLIKLA çözmesin.
+  let ertelenmisFcmHatasi: unknown = null;
   try {
     const yarınTarih = new Date(hedefGun);
     yarınTarih.setDate(yarınTarih.getDate() + 1);
@@ -238,7 +249,7 @@ export async function processYatsiSonuIslemleri() {
         }
       }
 
-      await fcmGonderVeTemizle(messages, tokenToUidMap, 'Günlük hatırlatma FCM bildirimi');
+      await fcmGonderVeTemizle(messages, tokenToUidMap, 'Günlük hatırlatma FCM bildirimi', gonderici);
     } else {
       console.log('Yarın için planlanmış herhangi bir nöbet görevi bulunamadı.');
     }
@@ -249,6 +260,7 @@ export async function processYatsiSonuIslemleri() {
     await hatirlatmaRef.set({ tarih: yarınStr, olusturmaTarihi: Timestamp.now(), gonderilenKisiSayisi: uidList.length });
   } catch (fcmErr) {
     console.error('FCM günlük hatırlatma bildirim gönderimi başarısız oldu:', fcmErr);
+    ertelenmisFcmHatasi = fcmErr;
   }
 
   // ADIM 4: Aylık skor (örnek)
@@ -273,6 +285,12 @@ export async function processYatsiSonuIslemleri() {
     muezzins.docs.forEach(doc => yillikResetBatch.update(doc.ref, { yillikIzinKullanilanGun: 0 }));
     await yillikResetBatch.commit();
     console.log("Yıllık izin kotaları sıfırlandı (yeni takvim yılı).");
+  }
+
+  // Kredi/arşiv/sıfırlama adımları bitti; FCM arızası varsa artık
+  // bildirilebilir (bkz. yukarıdaki `ertelenmisFcmHatasi` yorumu).
+  if (ertelenmisFcmHatasi) {
+    throw ertelenmisFcmHatasi;
   }
 
   console.log("İşlemler tamam.");

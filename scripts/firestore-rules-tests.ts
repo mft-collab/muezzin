@@ -1435,6 +1435,87 @@ const tests: TestCase[] = [
     }
   },
   {
+    // O7'nin AYNI SINIFI, cron kaynakli red yolunda:
+    // scripts/vekaletDevirleriniIsle.ts kabul edilmis bir devri uygulama
+    // aninda uygulayamadiginda talebi (Admin SDK ile, kurallari atlayarak)
+    // durum:'reddedildi' + talepSonuc:'reddedildi' + bildirimUygulandi:true
+    // olarak isaretler. `durum` 'kabul_edildi'de BIRAKILSAYDI asagidaki
+    // delete kurali eslesmez, ayni deterministik ID'ye (haftaId_tarih_vakit_
+    // tip_aliciUid) yapilan setDoc ise create degil UPDATE sayilip
+    // isValidVekaletCreate/isRecipientVekaletStatusUpdate'in hicbiriyle
+    // eslesmezdi — gonderen o (gorev, alici) cifti icin bir daha ASLA teklif
+    // gonderemezdi. Kurallar gevsetilmedi; script'in yazdigi durum,
+    // ZATEN VAR OLAN delete kuralinin kapsamina getirildi.
+    name: 'cron tarafindan reddedilen talebi gonderen silip yeniden olusturabilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
+          bildirimId: 'ownPendingAsil',
+          haftaId: 'W2026-05-18',
+          gonderenUid: 'muezzin1',
+          gonderenIsim: 'Muezzin One',
+          aliciUid: 'muezzin2',
+          aliciIsim: 'Muezzin Two',
+          tarih: '2026-05-20',
+          vakit: 'ogle',
+          saat: '12:45',
+          tip: 'asil',
+          durum: 'reddedildi',
+          talepSonuc: 'reddedildi',
+          bildirimUygulandi: true,
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(deleteDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2')));
+      await assertSucceeds(setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
+        bildirimId: 'ownPendingAsil',
+        haftaId: 'W2026-05-18',
+        gonderenUid: 'muezzin1',
+        gonderenIsim: 'Muezzin One',
+        aliciUid: 'muezzin2',
+        aliciIsim: 'Muezzin Two',
+        tarih: '2026-05-20',
+        vakit: 'ogle',
+        saat: '12:45',
+        tip: 'asil',
+        durum: 'beklemede',
+        olusturmaTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // Yukaridaki duzeltmenin kurallari GEVSETMEDIGINI kilitler: hala
+    // uygulanmayi bekleyen (durum 'kabul_edildi') bir talep gonderen
+    // tarafindan silinemez — aksi halde gonderen, alicinin kabulunu
+    // cron uygulamadan once tek tarafli olarak yok edebilirdi.
+    name: 'gonderen kabul edilmis (henuz uygulanmamis) bir talebi silemez',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2'), {
+          bildirimId: 'ownPendingAsil',
+          haftaId: 'W2026-05-18',
+          gonderenUid: 'muezzin1',
+          gonderenIsim: 'Muezzin One',
+          aliciUid: 'muezzin2',
+          aliciIsim: 'Muezzin Two',
+          tarih: '2026-05-20',
+          vakit: 'ogle',
+          saat: '12:45',
+          tip: 'asil',
+          durum: 'kabul_edildi',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(deleteDoc(doc(db, 'vekalet_talepleri/W2026-05-18_2026-05-20_ogle_asil_muezzin2')));
+    }
+  },
+  {
     name: 'vekalet alicisi talebi kabul edip bildirimi devralabilir',
     run: async (env) => {
       await env.withSecurityRulesDisabled(async (context) => {
@@ -1946,6 +2027,31 @@ const tests: TestCase[] = [
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
       await assertSucceeds(getDoc(doc(db, 'mazeret_detaylari/hicOlusturulmamisKayit')));
+    }
+  },
+  {
+    // Varlik orakulu regresyonu: `resource == null` dali eskiden
+    // `isSignedIn()` KAPSAMININ DISINDAYDI, yani giris yapmamis bir cagiran
+    // icin "belge yok" -> get BASARILI, "belge var" -> get REDDEDILDI
+    // seklinde ayirt edilebiliyordu. Doc ID tamamen deterministik
+    // (haftaId_tarih_vakit_tip) oldugundan bu, kimlik dogrulamasi olmadan
+    // "hangi nobet icin mazeret bildirilmis" bilgisinin tek tek denenerek
+    // cikarilmasina izin veriyordu. `izinler` get kuralindaki dogru yapiyla
+    // hizalandi: her iki sonuc da anonim cagiran icin reddedilmeli.
+    name: 'anonim kullanici mazeret_detaylari varligini sizdiramaz (varlik orakulu regresyonu)',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const seedDb = context.firestore();
+        await setDoc(doc(seedDb, 'mazeret_detaylari/ozelMazeretKaydi'), {
+          uid: 'muezzin1',
+          retSebebi: 'Cok ozel bir saglik durumu',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const db = env.unauthenticatedContext().firestore();
+      await assertFails(getDoc(doc(db, 'mazeret_detaylari/ozelMazeretKaydi')));
+      await assertFails(getDoc(doc(db, 'mazeret_detaylari/hicOlusturulmamisKayit')));
     }
   },
   {

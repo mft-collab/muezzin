@@ -35,12 +35,22 @@ function pickMostFrequent(values: string[], excluded = new Set<string>()): strin
   return best;
 }
 
-async function main() {
-  // Diğer yıkıcı bakım script'leriyle (backfillCumaMi.ts, seedSuperAdminConfig.ts)
-  // AYNI güvenlik ağı deseni — bu script `bildirimler` belgelerini SİLİP
-  // YENİDEN OLUŞTURUYOR ve `haftaPlanlari`'nı yeniden yazıyor, önceden hiçbir
-  // kuru-çalıştırma koruması yoktu (premium hata analizi FR-O9).
-  const apply = process.argv.includes('--apply');
+export interface DuzeltmeOzeti {
+  scannedSlots: number;
+  invalidSlots: number;
+  fixedDays: number;
+  pastInvalidDays: number;
+}
+
+/**
+ * @param apply `false` ise KURU ÇALIŞTIRMA — hiçbir belge yazılmaz.
+ *
+ * Diğer yıkıcı bakım script'leriyle (backfillCumaMi.ts, seedSuperAdminConfig.ts)
+ * AYNI güvenlik ağı deseni — bu script `bildirimler` belgelerini SİLİP
+ * YENİDEN OLUŞTURUYOR ve `haftaPlanlari`'nı yeniden yazıyor, önceden hiçbir
+ * kuru-çalıştırma koruması yoktu (premium hata analizi FR-O9).
+ */
+export async function fixInvalidRoleAssignments(apply: boolean): Promise<DuzeltmeOzeti> {
   console.log(apply ? 'UYGULAMA MODU — belgeler yazılacak.' : 'KURU ÇALIŞTIRMA — hiçbir şey yazılmayacak (--apply ile gerçek çalıştırma yapın).');
 
   const today = getTodayStr();
@@ -108,6 +118,47 @@ async function main() {
         continue;
       }
 
+      // Bu günün bildirimleri — hem "dokunulmamalı mı?" kararı hem de
+      // aşağıdaki senkronizasyon için TEK sefer okunur.
+      //
+      // SIRA ÖNEMLİ: bu kontrol önceden aşağıda, `haftaPlanlari` güncellemeleri
+      // ZATEN batch'e eklendikten SONRA yapılıyordu — `continue` yalnızca
+      // bildirim yazımını atlıyor, plan yazımını atlamıyordu. Sonuç: "hiç
+      // dokunmadan atla" sözü tutulmuyor, planda yeni asil/yedek görünürken
+      // bildirimler (ve verilmiş krediler) eski kişide kalıyor, yani düzeltmek
+      // istenen tutarsızlığın aynısı plan↔bildirim arasında üretiliyordu.
+      const bildirimSnap = await db.collection('bildirimler')
+        .where('haftaId', '==', planDoc.id)
+        .where('tarih', '==', tarih)
+        .get();
+
+      // `tarih === today` iken, o gün için yatsiSonuIslemleri.ts ZATEN
+      // kredilendirmiş olabilir (`puanIslendi:true`). Bu belgeleri silip
+      // FARKLI bir asil/yedek ile yeniden oluşturmak, kimin gerçekten
+      // kredilendiği ile kimin şimdi atandığı arasında geriye dönük olarak
+      // düzeltilemeyen bir tutarsızlık yaratır (ne eski sahibin kredisi geri
+      // alınabilir ne yeni atanana doğru kredi verilebilir) — bu yüzden
+      // güvenli seçenek bu günü hiç DOKUNMADAN atlamaktır (premium hata
+      // analizi FR-O9), tıpkı geçmiş günlerin atlanması gibi.
+      //
+      // AYNI gerekçe tamamlanmış/bekleyen bir görev devri için de geçerli:
+      // `vekaletDevredildi` (scripts/vekaletDevirleriniIsle.ts'in uyguladığı
+      // GERÇEK sahiplik transferi) veya `vekaletDevriBekliyor` (kabul edilmiş
+      // ama script henüz uygulamamış devir) taşıyan bir bildirimi silip
+      // yeniden oluşturmak devri sessizce geri alır — src/lib/slotKorumasi.ts
+      // `korumaSaglayanBildirimler` bu iki bayrağı tam da bu yüzden plan
+      // yeniden üretiminden muaf tutuyor; Admin SDK o korumayı atladığından
+      // bu script kendi kopyasını uygulamak zorunda.
+      const dokunulmazBildirim = bildirimSnap.docs.find((d) => {
+        const veri = d.data();
+        return veri.puanIslendi === true || veri.vekaletDevredildi === true || veri.vekaletDevriBekliyor === true;
+      });
+      if (dokunulmazBildirim) {
+        console.warn(`ATLANDI (${tarih}): kredilendirilmiş ya da görev devri uygulanmış bildirim var (${dokunulmazBildirim.id}), geriye dönük tutarsızlık riski nedeniyle dokunulmadı.`);
+        pastInvalidDays++;
+        continue;
+      }
+
       const validAsilCandidates = asilVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin' && userMap.get(uid)?.onayBekliyor !== true);
       const validYedekCandidates = yedekVals.filter((uid) => userMap.get(uid)?.aktif === true && userMap.get(uid)?.role === 'muezzin' && userMap.get(uid)?.onayBekliyor !== true);
 
@@ -131,26 +182,6 @@ async function main() {
       }
 
       // Bildirimleri senkronize et (bugün ve sonrası): sadece asil/yedek kalacak.
-      const bildirimSnap = await db.collection('bildirimler')
-        .where('haftaId', '==', planDoc.id)
-        .where('tarih', '==', tarih)
-        .get();
-
-      // `tarih === today` iken, o gün için yatsiSonuIslemleri.ts ZATEN
-      // kredilendirmiş olabilir (`puanIslendi:true`). Bu belgeleri silip
-      // FARKLI bir asil/yedek ile yeniden oluşturmak, kimin gerçekten
-      // kredilendiği ile kimin şimdi atandığı arasında geriye dönük olarak
-      // düzeltilemeyen bir tutarsızlık yaratır (ne eski sahibin kredisi geri
-      // alınabilir ne yeni atanana doğru kredi verilebilir) — bu yüzden
-      // güvenli seçenek bu günü hiç DOKUNMADAN atlamaktır (premium hata
-      // analizi FR-O9), tıpkı geçmiş günlerin atlanması gibi.
-      const zatenKredilendirilmis = bildirimSnap.docs.some((d) => d.data().puanIslendi === true);
-      if (zatenKredilendirilmis) {
-        console.warn(`ATLANDI (${tarih}): bugün için zaten kredilendirilmiş bildirimler var, geriye dönük tutarsızlık riski nedeniyle dokunulmadı.`);
-        pastInvalidDays++;
-        continue;
-      }
-
       bildirimSnap.docs.forEach((d) => {
         const tip = d.data().tip as string | undefined;
         if (tip === 'asil' || tip === 'yedek' || tip === 'gorev_cagrisi') {
@@ -203,9 +234,20 @@ async function main() {
   if (!apply && fixedDays > 0) {
     console.log('Gerçekten uygulamak için: npx tsx scripts/fix-invalid-role-assignments.ts --apply');
   }
+
+  return { scannedSlots, invalidSlots, fixedDays, pastInvalidDays };
 }
 
-main().catch((err) => {
-  console.error('Düzeltme hatası:', err);
-  process.exit(1);
-});
+// Yalnızca dosya DOĞRUDAN çalıştırıldığında koş (diğer script'lerdeki AYNI
+// desen, bkz. reportWorkflowFailure.ts / duyuruBildirimGonder.ts) — bu blok
+// önceden koşulsuzdu, dolayısıyla dosyayı import eden herhangi bir modül
+// (ör. entegrasyon testi) tüm koleksiyonlar üzerinde bir tarama başlatırdı.
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === __filename) {
+  fixInvalidRoleAssignments(process.argv.includes('--apply')).catch((err) => {
+    console.error('Düzeltme hatası:', err);
+    process.exit(1);
+  });
+}

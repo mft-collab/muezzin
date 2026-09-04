@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, gunIzinliUidler, VAKITLER, MuezzinAday, OnayliIzin } from '../../src/lib/planlamaCekirdegi';
 import { Muezzin, Vakit } from '../../src/types';
 
 function muezzin(id: string, overrides: Partial<Muezzin> = {}): MuezzinAday {
@@ -424,6 +424,27 @@ describe('haftalikPlanUret', () => {
     }
 
     expect(Object.values(toplamAsilSayisi).every((n) => n > 0)).toBe(true);
+  });
+});
+
+describe('gunIzinliUidler', () => {
+  // `haftalikPlanUret`'in izin filtresi ile src/services/planServisi.ts'in
+  // "onaylı izin, korunmuş bir slotu ezer mi" kararı AYNI aralık yorumunu
+  // kullanmak zorunda (bkz. src/lib/slotKorumasi.ts korumaliSlotMu).
+  const izinler: OnayliIzin[] = [
+    { uid: 'a', baslangic: '2026-08-03', bitis: '2026-08-05' },
+    { uid: 'b', baslangic: '2026-08-06', bitis: '2026-08-06' },
+  ];
+
+  it('aralığın her iki ucu DAHİL olacak şekilde o günün izinlilerini döndürür', () => {
+    expect(gunIzinliUidler(izinler, '2026-08-03')).toEqual(['a']);
+    expect(gunIzinliUidler(izinler, '2026-08-05')).toEqual(['a']);
+    expect(gunIzinliUidler(izinler, '2026-08-06')).toEqual(['b']);
+  });
+
+  it('aralık dışındaki günler için boş döner', () => {
+    expect(gunIzinliUidler(izinler, '2026-08-02')).toEqual([]);
+    expect(gunIzinliUidler(izinler, '2026-08-07')).toEqual([]);
   });
 });
 

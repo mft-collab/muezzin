@@ -5,6 +5,7 @@ import { useVakitBildirimleri } from './useVakitBildirimleri';
 import { useAktifIzinlerStore } from '../store/useAktifIzinlerStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { selfHealingTetiklenmeliMi } from '../lib/planSelfHealing';
 import { Bildirim, Vakit } from '../types';
 
 function bildirimZamani(bildirim: Bildirim) {
@@ -38,7 +39,7 @@ export function useBugunPlanDurumu(planDateStr: string, vakitKeyForPlan: Vakit) 
   const haftaBaslangic = useMemo(() => startOfWeek(planDate, { weekStartsOn: 1 }), [planDate]);
   const haftaId = useMemo(() => `W${format(haftaBaslangic, 'yyyy-MM-dd')}`, [haftaBaslangic]);
 
-  const { plan, loading: planLoading } = useHaftaPlan(haftaId);
+  const { plan, loading: planLoading, sunucudanDogrulandi } = useHaftaPlan(haftaId);
   const isAdmin = useAuthStore(state => state.isAdmin);
 
   // Race condition kilidi: bu hook ve HaftalikCizelge aynı anda
@@ -52,7 +53,19 @@ export function useBugunPlanDurumu(planDateStr: string, vakitKeyForPlan: Vakit) 
   const selfHealingFiredHaftaIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!planLoading && !plan && isAdmin && haftaId && selfHealingFiredHaftaIdRef.current !== haftaId) {
+    // Karar HaftalikCizelge.tsx ile ORTAK saf fonksiyondan gelir
+    // (src/lib/planSelfHealing.ts) — iki uygulama noktası ayrışmasın diye.
+    // `sunucudanDogrulandi` şartı, çevrimdışı/bayat önbellekten gelen
+    // yanlış-negatif bir "plan yok" okumasının yayınlanmış çizelgeyi ezmesini
+    // engeller.
+    if (selfHealingTetiklenmeliMi({
+      planVarMi: !!plan,
+      planLoading,
+      sunucudanDogrulandi,
+      isAdmin,
+      haftaId,
+      dahaOnceTetiklenenHaftaId: selfHealingFiredHaftaIdRef.current,
+    })) {
       selfHealingFiredHaftaIdRef.current = haftaId;
       if (import.meta.env.DEV) {
         console.log(`[Self-Healing] Hafta planı bulunamadı (${haftaId}). Yönetici yetkisiyle otomatik oluşturuluyor...`);
@@ -66,7 +79,7 @@ export function useBugunPlanDurumu(planDateStr: string, vakitKeyForPlan: Vakit) 
         });
       });
     }
-  }, [plan, planLoading, isAdmin, haftaId]);
+  }, [plan, planLoading, sunucudanDogrulandi, isAdmin, haftaId]);
 
   const muezzinMap = useMuezzinStore(state => state.muezzinMap);
   const usersLoading = useMuezzinStore(state => state.loading);

@@ -296,7 +296,16 @@ class TelemetryService {
         localStorage.removeItem('muezzin-telemetry-backup');
         const restored = JSON.parse(saved) as BackedUpTelemetryEvent[];
         if (Array.isArray(restored) && restored.length > 0) {
-          const restoredEvents: QueuedTelemetryEvent[] = restored.map((evt) => {
+          // Bu kurtarma, oturum açılmadan (constructor'da) çalıştığından
+          // `auth.currentUser` genelde henüz null'dur; o durumda filtreleme
+          // yapılamaz — asıl koruma `flushEvents`'te, gönderim ANINDA
+          // uygulanır (bkz. oradaki yorum). Kullanıcı zaten belliyse burada
+          // da erken elenir.
+          const aktifUid = auth.currentUser?.uid;
+          const kullanilabilir = aktifUid
+            ? restored.filter((evt) => evt.userId === aktifUid)
+            : restored;
+          const restoredEvents: QueuedTelemetryEvent[] = kullanilabilir.map((evt) => {
             let timestampVal = Timestamp.now();
             if (evt.timestamp) {
               if (typeof evt.timestamp.seconds === 'number' && typeof evt.timestamp.nanoseconds === 'number') {
@@ -412,8 +421,25 @@ class TelemetryService {
     if (this.eventQueue.length === 0) return;
     if (!auth.currentUser) return;
 
-    const eventsToFlush = [...this.eventQueue];
+    // Kuyrukta BAŞKA bir kullanıcıya ait olay kalmış olabilir: paylaşılan bir
+    // cihazda (cami ofisi tableti) kullanıcı A açık çıkış yapmadan sekmeyi
+    // kapatırsa `backupQueueToLocalStorage` A'nın olaylarını localStorage'a
+    // yazar (`clearQueue` yalnızca `performLogout` yolunda çalışır) ve
+    // constructor bunları sonraki oturumda geri yükler. `isValidTelemetryLog`
+    // `data.userId == request.auth.uid` şart koştuğundan, TEK bir yabancı olay
+    // TÜM batch'i (B'nin meşru olayları dahil) reddettirir; catch bloğu kirli
+    // kuyruğu geri koyup ~10sn'de bir sonsuza dek yeniden dener — B'nin hiçbir
+    // telemetri/hata kaydı o oturum boyunca yazılamaz (bkz. kod denetimi ve
+    // `clearQueue`'nun docblock'u). Yabancı olaylar zaten hiçbir koşulda
+    // gönderilemez (sahibi gitti), bu yüzden gönderim anında elenir/atılır.
+    const aktifUid = auth.currentUser.uid;
+    const eventsToFlush = this.eventQueue.filter(evt => evt.userId === aktifUid);
+    const yabanciOlaySayisi = this.eventQueue.length - eventsToFlush.length;
     this.eventQueue = [];
+    if (yabanciOlaySayisi > 0) {
+      console.warn(`Telemetry: başka kullanıcıya ait ${yabanciOlaySayisi} bayat olay atıldı.`);
+    }
+    if (eventsToFlush.length === 0) return;
 
     try {
       const batch = writeBatch(db);

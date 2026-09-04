@@ -1,22 +1,36 @@
 import { collection, query, where, limit, getDocs, getDoc, doc, runTransaction, writeBatch, Timestamp, QueryDocumentSnapshot, DocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Muezzin, Vakit, VakitAtama } from '../types';
-import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
-import { isFriday, getOncekiHafta, toTurkishUpperCase } from '../lib/dateUtils';
+import { haftalikPlanUret, tekKisiliGunleriBul, kapsamsizGunleriBul, nobeteAtanabilirMi, oncekiHaftaninArdArdaYedekSayilariniHesapla, gunIzinliUidler, OnayliIzin, VAKITLER } from '../lib/planlamaCekirdegi';
+import { korumaliSlotMu as korumaliSlotVerisiMi, guncelSlotBildirimleriniSec, SlotBildirimVerisi } from '../lib/slotKorumasi';
+import { isFriday, getOncekiHafta, getTurkeyDateString, getTurkeyNow, toTurkishUpperCase } from '../lib/dateUtils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { telemetryService } from './telemetryService';
-
-// 'okundu_varsayilan': yatsiSonuIslemleri.ts'in gün sonunda dokunulmamış
-// bekleyen bildirimlere verdiği "tamamlandı" durumu — bu listede olmazsa
-// tamamlanmış GEÇMİŞ günler bile bir sonraki plan yeniden üretiminde silinip
-// farklı bir kişiye atanabiliyordu (bkz. mimari denetim K7).
-const KORUNAN_DURUMLAR = ['onaylandi', 'reddedildi', 'okundu_varsayilan'];
 
 // İyimser eşzamanlılık denetiminin (aşağıda) attığı çakışma hatasını genel
 // Firestore hatalarından ayırt etmek için — böylece dışarıdaki tek seferlik
 // otomatik tekrar deneme yalnızca gerçek bir çakışmada devreye girer, başka
 // bir hatayı (izin, ağ vb.) yutmaz (bkz. algoritma denetimi).
 class PlanEszamanlilikCakismasi extends Error {}
+
+/**
+ * Çevrimdışıyken (ya da sunucuya erişilemeyip okumalar yerel önbelleğe
+ * düşerken) tüm haftayı yeniden hesaplayıp yazmayı engelleyen koruma — bkz.
+ * src/lib/planSelfHealing.ts'teki ayrıntılı gerekçe. Firestore yazımları
+ * çevrimdışında iyimserdir: `writeBatch.commit()` yerel önbelleğe hemen
+ * işlenir ve bağlantı gelince sunucudaki GERÇEK (gece cron'unun ürettiği)
+ * çizelgeyi EZER. Bu yüzden hesaplama BAYAT/EKSİK önbellek verisiyle
+ * yapılacaksa hiç başlanmaz. İstemci tarafındaki self-healing tetikleyicileri
+ * bunu zaten `sunucudanDogrulandi` ile önlüyor; bu, aynı kuralın yazma
+ * yolundaki (elle "PLANLARI GÜNCELLE", izin onayı, kadro değişikliği de dahil
+ * TÜM çağıranları kapsayan) ikinci savunma katmanıdır.
+ */
+export class PlanCevrimdisiEngellendi extends Error {
+  constructor() {
+    super('Bağlantı yok (veriler yerel önbellekten okunuyor). Plan üretimi, sunucudaki güncel çizelgeyi bozmamak için iptal edildi. Bağlantı sağlandığında tekrar deneyin.');
+    this.name = 'PlanCevrimdisiEngellendi';
+  }
+}
 
 type BildirimQueryDoc = QueryDocumentSnapshot<DocumentData>;
 type BildirimDoc = BildirimQueryDoc | DocumentSnapshot<DocumentData>;
@@ -93,34 +107,20 @@ async function cozulmemisUyariVarMi(tip: string, tarih: string): Promise<boolean
  return !snap.empty;
 }
 
-function korumaliSlotMu(slotBildirimleri: BildirimDoc[]) {
- return slotBildirimleri.some((bildirimDoc) => {
- const data = bildirimDoc.data();
- // vekaletDevredildi: true — scripts/vekaletDevirleriniIsle.ts GERÇEK
- // transferi uyguladığında yazar. Kabul edilen bir vekalet devri, bildirimin
- // `durum`unu DEĞİŞTİRMEZ (hâlâ 'bekliyor' kalabilir) — bu alan olmadan
- // korumaliSlotMu bu slotu korumasız sanıp plan yeniden üretiminde
- // sessizce eski sahibine geri döndürüyordu (bkz. mimari denetim K5).
- // vekaletDevriBekliyor: true — vekaletServisi.ts'teki vekaletKabulEt
- // bunu YAZAR (istemci artık transferi anlık yapmıyor, bkz. "1000 ifade
- // tavanı" kök neden çözümü). Script çalışana kadar (~10-15 dk) geçen
- // pencerede bu bayrak OLMADAN korumaliSlotMu slotu yine korumasız
- // sanıp, script daha transferi uygulamadan bir admin manuel ataması
- // veya haftalık plan yeniden üretimi kabul edilmiş devri sessizce
- // ezebilirdi — vekaletDevredildi'nin bu geçişteki AYNI rolü.
- // manuelAtama: true — vakitAtamasiniGuncelle (admin'in elle ataması)
- // yazar. `durum` bu anda hâlâ 'bekliyor' kaldığından (kişi henüz
- // onaylamadı/reddetmedi), bu bayrak olmadan taze bir manuel atama hiçbir
- // KORUNAN_DURUMLAR'a girmiyor ve bir sonraki plan yeniden üretiminde
- // sessizce eziliyordu (premium hata analizi PL-K2).
- return !!data && (
- KORUNAN_DURUMLAR.includes(data.durum) ||
- data.tip === 'gorev_cagrisi' ||
- data.vekaletDevredildi === true ||
- data.vekaletDevriBekliyor === true ||
- data.manuelAtama === true
- );
- });
+function slotVerileri(slotBildirimleri: BildirimDoc[]): SlotBildirimVerisi[] {
+ return slotBildirimleri
+   .map((bildirimDoc) => bildirimDoc.data() as SlotBildirimVerisi | undefined)
+   .filter((data): data is SlotBildirimVerisi => !!data);
+}
+
+/**
+ * Koruma kararının saf mantığı src/lib/slotKorumasi.ts'te — burada yalnızca
+ * Firestore snapshot'ları düz veriye çevrilir. `izinliUidler` (o gün onaylı
+ * izinde olanlar) verilirse, "kabul edilmiş/elle atanmış" türü koruma o kişi
+ * için DÜŞER (bkz. slotKorumasi.ts `korumaliSlotMu` yorumu).
+ */
+function korumaliSlotMu(slotBildirimleri: BildirimDoc[], izinliUidler?: ReadonlySet<string>) {
+ return korumaliSlotVerisiMi(slotVerileri(slotBildirimleri), izinliUidler);
 }
 
 export interface VakitAtamasiGuncelleParams {
@@ -246,6 +246,13 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
 
  const planRef = doc(db, 'haftaPlanlari', haftaId);
  const mevcutPlanSnap = await getDoc(planRef);
+ // `getDoc` çevrimiçiyken sunucuya gider; yalnızca sunucuya ULAŞILAMADIĞINDA
+ // yerel önbelleğe düşer. Yani `fromCache === true` burada fiilen "çevrimdışı /
+ // sunucu erişilemez" demektir — bu durumda ne mevcut planın ne de yukarıda
+ // okunan müezzin/izin verisinin güncel olduğu garanti edilebilir.
+ if (mevcutPlanSnap.metadata.fromCache) {
+ throw new PlanCevrimdisiEngellendi();
+ }
  const mevcutGunler = mevcutPlanSnap.exists()
  ? (mevcutPlanSnap.data().gunler || {}) as Partial<GunPlanMap>
  : {};
@@ -283,13 +290,42 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const bildirimlerBySlot = bildirimleriSlotlaraAyir(eskiBildirimler.docs);
  const okunanBildirimlerParmakIzi = bildirimlerParmakIzi(eskiBildirimler.docs);
 
+ // Onaylı izin, "kabul edilmiş" (durum 'onaylandi') ya da elle atanmış bir
+ // slotun korumasını EZER — aksi halde plan yayınlandıktan ve müezzin
+ // "okudum" dedikten SONRA onaylanan bir izin, o kişiyi çizelgeden hiçbir
+ // zaman çıkaramıyordu: koruma, haftalikPlanUret'in izin filtresine slotu
+ // hiç ulaştırmıyordu (admin'in elindeki tek çare Firestore'u elle
+ // düzenlemekti; vakitAtamasiniGuncelle de 'protected' dönüyordu).
+ // useAdminIzinlerStore.izinGuncelle zaten onay sonrası ilgili haftaları bu
+ // fonksiyonla yeniliyor — bu ezme sayesinde onay ANINDA çizelge düzelir.
+ //
+ // GEÇMİŞ günler kapsam dışı (`gun >= bugun`): geriye dönük onaylanan bir
+ // izin, fiilen yapılmış ve kredilendirilmiş bir nöbeti yeniden yazmamalı
+ // (bkz. K7 — tamamlanmış günlerin korunma gerekçesi).
+ const bugunStr = getTurkeyDateString(getTurkeyNow());
+ const izinliUidlerByGun = new Map<string, ReadonlySet<string>>();
+ const gunIzinliSeti = (gun: string): ReadonlySet<string> => {
+ let set = izinliUidlerByGun.get(gun);
+ if (!set) {
+ set = gun >= bugunStr ? new Set(gunIzinliUidler(onayliIzinler, gun)) : new Set<string>();
+ izinliUidlerByGun.set(gun, set);
+ }
+ return set;
+ };
+
+ // Koruma kararı TEK bir yerden türetilir — aşağıdaki `korunmusAtama`
+ // çözücüsü ile bildirim yazım döngüsü AYNI cevabı almak zorundadır, aksi
+ // halde plan belgesi ile bildirim belgeleri birbirinden ayrışır.
+ const slotKorumaliMi = (gun: string, vakit: Vakit) =>
+ korumaliSlotMu(bildirimlerBySlot[`${gun}_${vakit}`] || [], gunIzinliSeti(gun));
+
  // Korunan (zaten onaylanmış/reddedilmiş/görev-çağrılı) slotlar için taze
  // hesaplama atlanır — mevcut atama aynen korunur. Diğer tüm slotlar,
  // scripts/haftalikPlanOlustur.ts (gece cron'u) ile AYNI paylaşılan
  // çekirdekten (src/lib/planlamaCekirdegi.ts) taze hesaplanır.
  const gunPlan: GunPlanMap = haftalikPlanUret(gunler, muezzinler, onayliIzinler, (gun, vakit) => {
  const slotBildirimleri = bildirimlerBySlot[`${gun}_${vakit}`] || [];
- if (!korumaliSlotMu(slotBildirimleri)) return null;
+ if (!slotKorumaliMi(gun, vakit)) return null;
 
  const mevcutAtama = mevcutGunler[gun]?.[vakit];
  // 'SISTEM' (büyük harf) — eski `haftaPlanlari` verilerinde kalmış olabilir
@@ -299,8 +335,14 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // bildirim belgesine `uid: 'SISTEM'` olarak sızabilirdi (düşük öncelikli bulgu).
  const mevcutAsil = mevcutAtama?.asil === 'SISTEM' ? undefined : mevcutAtama?.asil;
  const mevcutYedek = mevcutAtama?.yedek === 'SISTEM' ? undefined : mevcutAtama?.yedek;
- const asilBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'asil');
- const yedekBildirim = slotBildirimleri.find((bildirimDoc) => bildirimDoc.data()?.tip === 'yedek');
+ // Yedek terfisi YERİNDE yapıldığından (`..._yedek` belgesinin `tip`i
+ // 'asil'e çevrilir, mazeret bildirenin `..._asil` belgesi denetim izi
+ // olarak SİLİNMEZ) bir slotta `tip === 'asil'` olan İKİ belge
+ // bulunabilir. Basit bir `find` burada belge-ID sırası nedeniyle her
+ // zaman ESKİ belgeyi seçip terfiyi sessizce geri alıyordu — seçim
+ // kuralı artık src/lib/slotKorumasi.ts'te (bkz. oradaki ayrıntılı
+ // gerekçe).
+ const { asil: asilBildirim, yedek: yedekBildirim } = guncelSlotBildirimleriniSec(slotVerileri(slotBildirimleri));
  // Öncelik `bildirimler`'de (canlı gerçek) — `mevcutAtama` bu fonksiyon
  // başında okunan `haftaPlanlari` ÖNBELLEĞİnden gelir ve bir vekalet/mazeret
  // devri sonrası uzlaştırma cron'u çalışana kadar bayat kalabilir. Önceki
@@ -308,15 +350,15 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // slotu sessizce eski sahibine geri döndürebiliyordu (bkz. mimari denetim
  // O8). `mevcutAtama` yalnızca hiçbir bildirim belgesi yoksa devreye girer.
  return {
- asil: asilBildirim?.data()?.uid || mevcutAsil || 'Sistem',
- yedek: yedekBildirim?.data()?.uid || mevcutYedek || 'Sistem',
+ asil: asilBildirim?.uid || mevcutAsil || 'Sistem',
+ yedek: yedekBildirim?.uid || mevcutYedek || 'Sistem',
  // Mazeret bildirilmiş (reddedildi) bir bildirim — bu kişi bu görevi
  // ARTIK YAPMAYACAK (mazeretDevirleriniIsle.ts bir yedeği terfi
  // ettirecek, ~10-15 dk gecikmeli); `uid` alanı reddedilme anında hâlâ
  // bu kişiyi gösterse de haftalık yük dengesine bu kişi olarak
  // sayılmamalı (premium hata analizi PL-O5).
- asilYukSayilmasin: asilBildirim?.data()?.durum === 'reddedildi',
- yedekYukSayilmasin: yedekBildirim?.data()?.durum === 'reddedildi',
+ asilYukSayilmasin: asilBildirim?.durum === 'reddedildi',
+ yedekYukSayilmasin: yedekBildirim?.durum === 'reddedildi',
  };
  }, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
 
@@ -371,7 +413,11 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  const slotBildirimleri = bildirimlerBySlot[slotKey] || [];
 
  // Korunan slotlara dokunulmaz — atama zaten gunPlan'da korunmuş halde.
- if (korumaliSlotMu(slotBildirimleri)) continue;
+ // `korunmusAtama` çözücüsüyle AYNI `slotKorumaliMi` kullanılır: onaylı
+ // izin ezmesi burada hesaba katılmazsa, izin nedeniyle yeniden hesaplanan
+ // bir slotun bildirim belgeleri eski kişide kalır ve plan ile
+ // bildirimler/push bildirimleri birbirine düşerdi.
+ if (slotKorumaliMi(gun, vakit)) continue;
 
  slotBildirimleri.forEach((bildirimDoc) => {
  gunBatch.delete(bildirimDoc.ref);
@@ -447,6 +493,9 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  await sonBatch.commit();
  } catch (err) {
  if (err instanceof PlanEszamanlilikCakismasi) throw err;
+ // Çevrimdışı engeli gerçek bir Firestore hatası değil — kullanıcıya
+ // gösterilecek mesajı hazır taşıyor ve telemetriye hata olarak düşmemeli.
+ if (err instanceof PlanCevrimdisiEngellendi) throw err;
  throw handleFirestoreError(err, OperationType.WRITE, path);
  }
 }

@@ -121,15 +121,32 @@ async function ezanVaktiGecmisMi(tarih: string, vakit: string): Promise<boolean>
   return Date.now() >= ezanSaati.getTime();
 }
 
-async function alarmVarMi(tarih: string, vakit: string): Promise<boolean> {
-  const alarmSnap = await db.collection('adminUyarilari')
+/**
+ * Aynı tarih/vakit için ÇÖZÜLMEMİŞ bir admin uyarısı var mı — sorgunun
+ * KENDİSİNİ döner (çalıştırmaz) ki çağıran onu bir transaction içinde
+ * (`transaction.get`) okuyabilsin. Alarm yazımı ile talebi "işlendi" olarak
+ * işaretleyen bayrak yazımı AYNI transaction'da yapılmalı: eskiden alarm,
+ * transaction COMMIT EDİLDİKTEN SONRA ayrı bir `add()` ile yazılıyordu ve
+ * süreç (GitHub Actions runner zaman aşımı/iptali) tam bu iki yazım arasında
+ * ölürse, bir sonraki çalıştırmanın `bildirimUygulandi !== true` filtresi bu
+ * talebi artık hiç görmediğinden alarm SONSUZA DEK kaybediliyordu — başarısız
+ * devirden kimsenin haberi olmuyordu (bkz. kod denetimi). Aynı atomiklik
+ * garantisi scripts/mazeretDevirleriniIsle.ts'te `alarmOlustur`'un tek
+ * batch'iyle sağlanıyor.
+ *
+ * NOT: filtre `tip`e göre daraltılmadı — bugün `vakit` alanı NULL OLMAYAN her
+ * admin uyarısı zaten `tip: 'zincirTukendi'` (mazeretDevirleriniIsle.ts,
+ * mazeretServisi.ts, bu dosya); gün-geneli uyarılar (`planOlusturulamadi`,
+ * yatsiSonuIslemleri.ts) `vakit: null` yazdığından bu sorguya hiç
+ * takılmıyor. `tip` eklemek davranışı değiştirmeden yeni bir bileşik indeks
+ * gerektirirdi.
+ */
+function cozulmemisAlarmSorgusu(tarih: string, vakit: string) {
+  return db.collection('adminUyarilari')
     .where('tarih', '==', tarih)
     .where('vakit', '==', vakit)
     .where('cozuldu', '==', false)
-    .limit(1)
-    .get();
-
-  return !alarmSnap.empty;
+    .limit(1);
 }
 
 // haftalikIzinGunu ile AYNI ölçekte (Pazartesi=1 ... Pazar=7) haftanın
@@ -243,12 +260,44 @@ export async function processVekaletDevirleri(dryRun = false) {
         !ezanGecmisMi;
 
       if (!uygun) {
+        // Alarm dedup okuması, bu daldaki İLK yazımdan ÖNCE yapılmalı
+        // (Firestore transaction'larında tüm okumalar yazımlardan önce
+        // gelir) — bu yola gelene kadar hiçbir yazım yapılmamış olur.
+        const alarmSnap = await transaction.get(cozulmemisAlarmSorgusu(talep.tarih, talep.vakit));
+
         // vekaletDevriBekliyor temizlenir — transfer kalıcı olarak
         // başarısız olduğundan bu bayrağın planServisi.ts `korumaliSlotMu`
         // içindeki koruması artık gerekmiyor; önceki sahip normal bir
         // 'bekliyor' slotu olarak kalmaya devam eder.
         transaction.update(bildirimRef, { vekaletDevriBekliyor: false, sonGuncelleme: Timestamp.now() });
-        transaction.update(talepDoc.ref, { bildirimUygulandi: true, talepSonuc: 'reddedildi', sonGuncelleme: Timestamp.now() });
+        // `durum` da 'reddedildi'ye çekilir. Talep ID'si deterministik
+        // (haftaId_tarih_vakit_tip_aliciUid) olduğundan, `durum`
+        // 'kabul_edildi'de bırakılırsa gönderen o (görev, alıcı) çifti için
+        // bir daha ASLA teklif gönderemiyordu: firestore.rules'un delete
+        // kuralı yalnızca 'beklemede'/'reddedildi' durumundaki bir talebin
+        // gönderen tarafından silinmesine izin verdiğinden belge
+        // silinemiyor, aynı ID'ye setDoc ise create değil UPDATE sayılıp
+        // isValidVekaletCreate/isRecipientVekaletStatusUpdate'in hiçbiriyle
+        // eşleşmediği için reddediliyordu — yani talep kalıcı olarak
+        // kilitleniyordu (bkz. mimari denetim O7'nin AYNISI, bu kez cron
+        // kaynaklı red yolunda). Kuralları gevşetmeye gerek yok: mevcut
+        // delete kuralı bu durumu zaten kapsıyor.
+        transaction.update(talepDoc.ref, {
+          bildirimUygulandi: true,
+          talepSonuc: 'reddedildi',
+          durum: 'reddedildi',
+          sonGuncelleme: Timestamp.now()
+        });
+        if (alarmSnap.empty) {
+          transaction.set(db.collection('adminUyarilari').doc(), {
+            tip: 'zincirTukendi',
+            mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi/ezan vakti geçti). Admin müdahalesi gerekir.`,
+            tarih: talep.tarih,
+            vakit: talep.vakit,
+            cozuldu: false,
+            olusturmaTarihi: Timestamp.now()
+          });
+        }
         sonuc = 'reddedildi';
         return;
       }
@@ -282,19 +331,8 @@ export async function processVekaletDevirleri(dryRun = false) {
     } else if (finalSonuc === 'zatenUygulanmis') {
       console.log(`${talep.tarih} ${talep.vakit}: transfer zaten uygulanmış (eski istemci/kural devreye alma penceresi) — yalnızca işaretlendi.`);
     } else if (finalSonuc === 'reddedildi') {
-      console.log(`${talep.tarih} ${talep.vakit}: kabul edilmiş vekalet transferi artık uygulanamıyor (alıcı uygunluğu değişti) — admin uyarısı oluşturuluyor.`);
+      console.log(`${talep.tarih} ${talep.vakit}: kabul edilmiş vekalet transferi artık uygulanamıyor (alıcı uygunluğu değişti) — talep reddedildi ve admin uyarısı AYNI transaction'da yazıldı.`);
       transferReddedildi++;
-      const alarmZatenVar = await alarmVarMi(talep.tarih, talep.vakit);
-      if (!alarmZatenVar) {
-        await db.collection('adminUyarilari').add({
-          tip: 'zincirTukendi',
-          mesaj: `${talep.aliciIsim}, kabul ettiği vekalet devrini uygulanma anında artık devralamıyor (arşivlendi/rolü değişti/izin gününe denk geldi/ezan vakti geçti). Admin müdahalesi gerekir.`,
-          tarih: talep.tarih,
-          vakit: talep.vakit,
-          cozuldu: false,
-          olusturmaTarihi: Timestamp.now()
-        });
-      }
     }
   }
 

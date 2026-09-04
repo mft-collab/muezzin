@@ -74,6 +74,9 @@ export const useGpsVakitStore = create<GpsVakitState>()(
       disableGps: () => {
         set({
           gpsEnabled: false,
+          // Uçuşta bir istek varken GPS kapatılırsa kilit takılı kalmasın
+          // (savunma derinliği — asıl kök neden aşağıdaki `partialize`).
+          gpsLoading: false,
           gpsCoords: null,
           gpsVakitler: null,
           gpsKonumAdi: null,
@@ -114,7 +117,24 @@ export const useGpsVakitStore = create<GpsVakitState>()(
       }
     }),
     {
-      name: 'muezzin-gps-vakit-storage'
+      name: 'muezzin-gps-vakit-storage',
+      // `gpsLoading` UÇUŞTAKİ bir isteği temsil eden geçici bir bayrak —
+      // kalıcılaştırılmamalı. `partialize` yokken tüm state (gpsLoading
+      // dahil) yazılıyordu: sekme/uygulama tam da `refreshGpsVakitler`
+      // sürerken kapatılırsa (ya da PWA öldürülürse) bayrak `true` olarak
+      // saklanıyor, bir sonraki açılışta `true` olarak canlanıyor ve
+      // `refreshGpsVakitler`'in "zaten uçuşta" kilidi (aşağıdaki
+      // `if (gpsLoading) return;`) HER çağrıyı kalıcı olarak erken
+      // döndürüyordu — GPS vakitleri bir daha asla tazelenmiyordu (bkz. kod
+      // denetimi). Yalnızca gerçekten kalıcı olması gereken alanlar yazılır;
+      // `gpsLoading` her açılışta varsayılanına (false) döner.
+      partialize: (state) => ({
+        gpsEnabled: state.gpsEnabled,
+        gpsCoords: state.gpsCoords,
+        gpsVakitler: state.gpsVakitler,
+        gpsKonumAdi: state.gpsKonumAdi,
+        lastFetchDate: state.lastFetchDate,
+      }),
     }
   )
 );

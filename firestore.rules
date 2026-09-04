@@ -686,7 +686,16 @@ service cloud.firestore {
       // (bkz. vekalet_talepleri/izinler get kurallarindaki ayni sinif bug,
       // e2e denetimi — bu koleksiyonda henuz gercek bir non-admin cagiran
       // yok ama desen tutarliligi ve savunma derinligi icin duzeltildi).
-      allow get: if isAdmin() || resource == null || (isSignedIn() && resource.data.uid == request.auth.uid);
+      // `resource == null` dali `isSignedIn()` KAPSAMINDA olmali (bkz.
+      // `izinler` get kuralindaki ayni yapi): disarida kaldiginda GIRIS
+      // YAPMAMIS bir cagiran icin `isAdmin()` false donup dogrudan bu dala
+      // dusuyordu — belge YOKSA get basarili, VARSA reddedilmis oluyordu.
+      // Doc ID tamamen deterministik (haftaId_tarih_vakit_tip, bkz.
+      // yukaridaki yorum ve src/services/mazeretServisi.ts) oldugundan bu,
+      // kimlik dogrulamasi olmadan "hangi nobet icin mazeret bildirilmis"
+      // bilgisini tek tek deneyerek cikarmaya izin veren bir VARLIK ORAKULU
+      // idi (bkz. kod denetimi).
+      allow get: if isAdmin() || (isSignedIn() && (resource == null || resource.data.uid == request.auth.uid));
       allow list: if isAdmin();
       // `incoming().uid == request.auth.uid` tek başına yalnızca YAZANIN
       // kim olduğunu doğruluyordu, HANGİ bildirime yazdığını değil — doc ID

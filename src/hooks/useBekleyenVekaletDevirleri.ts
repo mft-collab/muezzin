@@ -28,10 +28,19 @@ export function useBekleyenVekaletDevirleri(uid: string | undefined) {
   useEffect(() => {
     if (!uid) return;
 
+    // `durum` filtresi 'kabul_edildi' ile SINIRLI DEĞİL: cron bir devri
+    // uygulayamadığında talebi 'reddedildi'ye çekiyor (bkz.
+    // scripts/vekaletDevirleriniIsle.ts — aksi halde gönderen o (görev,
+    // alıcı) çifti için bir daha teklif gönderemiyordu). Yalnızca
+    // 'kabul_edildi' dinlenseydi bu geçiş belgeyi sorgudan ÇIKARIR, aşağıdaki
+    // docChanges'a 'modified' değil 'removed' olarak düşerdi (ve 'removed'
+    // değişimin verisi güncel değildir) — kullanıcıya gösterilen
+    // "Devir Uygulanamadı" bildirimi sessizce kaybolurdu. `in` filtresi
+    // mevcut (aliciUid, durum) bileşik indeksini aynen kullanır.
     const q = query(
       collection(db, 'vekalet_talepleri'),
       where('aliciUid', '==', uid),
-      where('durum', '==', 'kabul_edildi')
+      where('durum', 'in', ['kabul_edildi', 'reddedildi'])
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -56,7 +65,7 @@ export function useBekleyenVekaletDevirleri(uid: string | undefined) {
       });
 
       const tumu = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as VekaletTalebi) }));
-      setBekleyenDevirler(tumu.filter(talep => talep.bildirimUygulandi !== true));
+      setBekleyenDevirler(tumu.filter(talep => talep.durum === 'kabul_edildi' && talep.bildirimUygulandi !== true));
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'vekalet_talepleri');
     });

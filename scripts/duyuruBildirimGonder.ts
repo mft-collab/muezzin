@@ -1,5 +1,5 @@
 import { db } from './lib/firebaseAdminInit.ts';
-import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage, type FcmGonderici } from './lib/fcmNotify.ts';
 
 type DuyuruData = {
   baslik: string;
@@ -29,8 +29,13 @@ const ICERIK_ONIZLEME_UZUNLUGU = 200;
  * taradığı sınıftan bir sorunu baştan taşımaz (bkz. Firebase/GitHub veri
  * akışı optimizasyonu) — işlenen her duyuru anında `true`'ya çevrildiğinden
  * bu küme her zaman küçük/geçici kalır.
+ *
+ * @param gonderici Yalnızca testler için — bkz. `fcmGonderVeTemizle`.
  */
-export async function processDuyuruBildirimleri(dryRun = false): Promise<{ duyuruSayisi: number; mesajSayisi: number }> {
+export async function processDuyuruBildirimleri(
+  dryRun = false,
+  gonderici?: FcmGonderici
+): Promise<{ duyuruSayisi: number; mesajSayisi: number }> {
   console.log(`Duyuru bildirimleri gönderiliyor${dryRun ? ' (dry-run)' : ''}...`);
 
   const duyuruSnap = await db.collection('duyurular')
@@ -85,7 +90,14 @@ export async function processDuyuruBildirimleri(dryRun = false): Promise<{ duyur
     return { duyuruSayisi, mesajSayisi: tumMesajlar.length };
   }
 
-  await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM duyuru bildirimi');
+  // SIRA ÖNEMLİ: gönderim TAMAMEN başarısız olursa fcmGonderVeTemizle
+  // FIRLATIR (bkz. FcmGonderimBasarisizHatasi) ve aşağıdaki commit hiç
+  // çalışmaz — `bildirimGonderildi` false kalır, duyuru bir sonraki koşuda
+  // yeniden denenir. Ayrıca hata bu fonksiyonun çağıranına (CLI sarmalayıcı)
+  // kadar çıkıp process.exit(1) ürettiğinden, workflow'un `if: success()`
+  // adımı (reportWorkflowSuccess.ts) çalışmaz ve önceki arıza uyarısı
+  // yanlışlıkla "çözüldü" işaretlenmez.
+  await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM duyuru bildirimi', gonderici);
   await markBatch.commit();
   console.log(`Tamamlandi. duyuruSayisi=${duyuruSayisi}`);
   return { duyuruSayisi, mesajSayisi: tumMesajlar.length };

@@ -1,5 +1,5 @@
 import { db } from './lib/firebaseAdminInit.ts';
-import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage } from './lib/fcmNotify.ts';
+import { fcmGonderVeTemizle, kullaniciFcmTokenleriniTopla, type FcmMessage, type FcmGonderici } from './lib/fcmNotify.ts';
 
 type IzinData = {
   uid: string;
@@ -36,8 +36,13 @@ const TIP_ETIKETI: Record<IzinData['tip'], string> = {
  * her zaman küçük/geçici kalır (bkz. Firebase/GitHub veri akışı
  * optimizasyonu — mazeretDevirleriniIsle.ts'teki AYNI prensip, kaynağında
  * baştan sınırlı bir bayrakla).
+ *
+ * @param gonderici Yalnızca testler için — bkz. `fcmGonderVeTemizle`.
  */
-export async function processIzinDurumBildirimleri(dryRun = false): Promise<{ kararSayisi: number; mesajSayisi: number }> {
+export async function processIzinDurumBildirimleri(
+  dryRun = false,
+  gonderici?: FcmGonderici
+): Promise<{ kararSayisi: number; mesajSayisi: number }> {
   console.log(`İzin durumu bildirimleri gönderiliyor${dryRun ? ' (dry-run)' : ''}...`);
 
   const izinSnap = await db.collection('izinler')
@@ -102,7 +107,12 @@ export async function processIzinDurumBildirimleri(dryRun = false): Promise<{ ka
     return { kararSayisi, mesajSayisi };
   }
 
-  await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM izin durumu bildirimi');
+  // SIRA ÖNEMLİ — bkz. duyuruBildirimGonder.ts'teki AYNI yorum: tam bir FCM
+  // arızasında fcmGonderVeTemizle firlatir, markBatch commit EDİLMEZ ve
+  // `bildirimGonderildi` false kalır (karar bir sonraki koşuda yeniden
+  // bildirilir); script 1 ile çıktığından workflow'un başarı adımı da
+  // çalışmaz.
+  await fcmGonderVeTemizle(tumMesajlar, tokenToUidMap, 'FCM izin durumu bildirimi', gonderici);
   await markBatch.commit();
   console.log(`Tamamlandi. kararSayisi=${kararSayisi}`);
   return { kararSayisi, mesajSayisi };

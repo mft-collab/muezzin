@@ -17,6 +17,7 @@ import { AlertCircle, Bot, Edit2, ChevronLeft, ChevronRight, RotateCcw, Zap } fr
 import { telemetryService } from '../../../services/telemetryService';
 import { getHaftaIdFromDate, getTurkeyNow, kisiGunIcinMusaitMi, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
+import { selfHealingTetiklenmeliMi } from '../../../lib/planSelfHealing';
 import { useOneShotAnimation } from '../../../hooks/useOneShotAnimation';
 
 const VAKITLER: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
@@ -99,7 +100,7 @@ export default function HaftalikCizelge() {
  // kayabiliyordu (bkz. mantık denetimi, dateUtils.ts getTurkeyNow).
  const [currentDate, setCurrentDate] = useState(getTurkeyNow());
  const haftaId = getHaftaIdFromDate(format(currentDate, 'yyyy-MM-dd'));
- const { plan, loading: planLoading } = useHaftaPlan(haftaId);
+ const { plan, loading: planLoading, sunucudanDogrulandi } = useHaftaPlan(haftaId);
  const muezzinler = useMuezzinStore(s => s.muezzinler);
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  const izinler = useAdminIzinlerStore(s => s.izinler);
@@ -175,7 +176,20 @@ export default function HaftalikCizelge() {
   const selfHealingFiredHaftaIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!plan && !planLoading && isAdmin && haftaId && !generating && selfHealingFiredHaftaIdRef.current !== haftaId) {
+    // Karar useBugunPlanDurumu.ts ile ORTAK saf fonksiyondan gelir
+    // (src/lib/planSelfHealing.ts) — iki uygulama noktası ayrışmasın diye.
+    // `sunucudanDogrulandi` şartı, çevrimdışı/bayat önbellekten gelen
+    // yanlış-negatif bir "plan yok" okumasının yayınlanmış çizelgeyi ezmesini
+    // engeller (elle "PLANLARI GÜNCELLE" düğmesi bundan etkilenmez).
+    if (selfHealingTetiklenmeliMi({
+      planVarMi: !!plan,
+      planLoading,
+      sunucudanDogrulandi,
+      isAdmin,
+      haftaId,
+      dahaOnceTetiklenenHaftaId: selfHealingFiredHaftaIdRef.current,
+      olusturuluyor: generating,
+    })) {
       selfHealingFiredHaftaIdRef.current = haftaId;
       if (import.meta.env.DEV) {
         console.log(`[Self-Healing] Cizelge sayfasında plan bulunamadı (${haftaId}). Otomatik oluşturma tetikleniyor...`);
@@ -189,7 +203,7 @@ export default function HaftalikCizelge() {
         void handlePlanOlustur();
       });
     }
-  }, [plan, planLoading, isAdmin, haftaId, generating, handlePlanOlustur]);
+  }, [plan, planLoading, sunucudanDogrulandi, isAdmin, haftaId, generating, handlePlanOlustur]);
 
   const exportWeeklyPlanCSV = () => {
     if (!plan) return;

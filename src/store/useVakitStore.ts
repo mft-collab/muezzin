@@ -211,7 +211,20 @@ export const useVakitStore = create<VakitState>((set, get) => ({
  // Dış init()'i değil, YALNIZCA bu ilçe için abonelikleri yeniden kuran
  // startVakitSubscription'ı tekrar çağırır — aksi halde her retry ayrıca
  // yeni bir settings-aboneliği ve interval de kurup biriktirirdi.
- setTimeout(() => startVakitSubscription(settings), 15000);
+ //
+ // `settings` bu BAŞARISIZ aboneliğin closure'ından gelir. 15sn içinde
+ // admin ilçeyi değiştirirse (bkz. aşağıdaki useSystemSettingsStore
+ // aboneliği) yeni ilçe için abonelik ZATEN kurulmuş olur; bayat
+ // `settings` ile körlemesine yeniden abone olmak `cleanup()` ile yeni
+ // ilçenin aboneliğini öldürüp ESKİ ilçeye geri döndürüyordu (bkz. kod
+ // denetimi). Zamanlayıcı ateşlendiği ANDA güncel ilçe yeniden okunur;
+ // farklıysa hiç yeniden abone OLUNMAZ — o ilçenin meşru aboneliği zaten
+ // ayakta (ya da normal yoldan kurulacak).
+ setTimeout(() => {
+ const guncelSettings = useSystemSettingsStore.getState().settings;
+ if (guncelSettings.ilceId !== settings.ilceId) return;
+ startVakitSubscription(guncelSettings);
+ }, 15000);
  }
  );
 

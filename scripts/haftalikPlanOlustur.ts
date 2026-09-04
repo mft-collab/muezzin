@@ -63,6 +63,14 @@ function gunPlanProjeksiyonuUygula(
 async function main() {
   console.log("Haftalık plan oluşturma başladı...");
 
+  // Plan/bildirim yazımı ile FCM duyurusu ayrı başarısızlık alanlarıdır: bir
+  // FCM arızası plan üretimini geri almamalı (plan zaten commit edildi), ama
+  // sessizce de geçmemeli — aksi halde script 0 ile çıkar ve
+  // haftalik-plan.yml'in `if: success()` adımı (reportWorkflowSuccess.ts)
+  // önceki gerçek bir arızanın admin uyarısını yanlışlıkla çözer. Bu yüzden
+  // arıza biriktirilip çıkış kodunda bildirilir.
+  let fcmArizasiVar = false;
+
   // 1. Personel Çekme (Adminler ve Müezzinler dahil, Gözlemciler hariç)
   let muezzinSnapshot;
   try {
@@ -302,7 +310,13 @@ async function main() {
       await fcmGonderVeTemizle(messages, tokenToUidMap, 'FCM haftalık plan bildirimi');
     } catch (fcmErr) {
       console.error('FCM haftalık plan bildirim gönderimi başarısız oldu:', fcmErr);
+      fcmArizasiVar = true;
     }
+  }
+
+  if (fcmArizasiVar) {
+    console.error('Plan(lar) oluşturuldu ancak FCM bildirimi gönderilemedi — iş BAŞARISIZ sayılıyor (bkz. main() başındaki yorum).');
+    process.exit(1);
   }
 
   process.exit(0);

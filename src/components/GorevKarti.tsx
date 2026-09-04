@@ -84,6 +84,9 @@ export const GorevKarti = React.memo(({
  const [isMazeretModalOpen, setIsMazeretModalOpen] = useState(false);
  const [mazeretSebebi, setMazeretSebebi] = useState('');
  const [isSubmitting, setIsSubmitting] = useState(false);
+ // "Okudum/onayla" için AYRI bir gönderim kilidi (mazeret modalının
+ // isSubmitting'inden bağımsız) — bkz. handleOkudum'daki çift dokunuş yorumu.
+ const [isOnaylaniyor, setIsOnaylaniyor] = useState(false);
  const [onay, setOnay] = useState(false);
  const [uiMessage, setUiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
  null
@@ -176,18 +179,37 @@ export const GorevKarti = React.memo(({
   }, [bildirim.tarih, saat, isAktif]);
 
  const handleOkudum = useCallback(async () => {
+ // Çift dokunuş koruması: guard yokken hızlı iki dokunuş İKİ eşzamanlı
+ // transaction başlatıyordu; ikincisi kaçınılmaz olarak "zaten
+ // sonuçlandırılmış" hatasıyla dönüp kullanıcıya yanlış bir hata toast'ı
+ // gösteriyordu (bkz. src/pages/MuezzinAnaEkran.tsx'teki AYNI okudumOnayla
+ // çağrısının processingVekaletId/handledNotificationIdRef koruması).
+ if (isOnaylaniyor) return;
  setUiMessage(null);
+ setIsOnaylaniyor(true);
  try {
- await okudumOnayla(bildirim.id as string);
+ // okudumOnayla bir runTransaction kullanır — çevrimdışıyken sonsuza dek
+ // askıda kalabildiğinden zamanAsimiIle ile sarmalanır (bkz.
+ // timeoutUtils.ts yorumu, beşinci denetim turu). MuezzinAnaEkran.tsx'teki
+ // aynı çağrı zaten sarmalıydı, bu yol atlanmıştı: düğme çevrimdışıyken
+ // sonsuza dek "İŞLENİYOR" durumunda kilitli kalıyordu.
+ await zamanAsimiIle(okudumOnayla(bildirim.id as string));
  const text = 'Başarıyla onaylandı.';
  setUiMessage({ type: 'success', text });
  showNotification('İşlem Başarılı', text, 'success');
  } catch (error: unknown) {
+ if (error instanceof IslemZamanAsimi) {
+ setUiMessage({ type: 'error', text: error.message });
+ showNotification('Bağlantı Sorunu', error.message, 'warning');
+ return;
+ }
  const text = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
  setUiMessage({ type: 'error', text });
  showNotification('Hata Oluştu', text, 'error');
+ } finally {
+ setIsOnaylaniyor(false);
  }
- }, [bildirim.id, showNotification]);
+ }, [bildirim.id, showNotification, isOnaylaniyor]);
 
  const submitMazeret = useCallback(async () => {
  // Salt-okuma sert kapısı: modal (autoOpenMazeret gibi bildirim kaynaklı
@@ -384,7 +406,7 @@ export const GorevKarti = React.memo(({
  whileHover={isAktif && !isReadOnly ? { y: -2, scale: 1.02 } : {}}
  whileTap={isAktif && !isReadOnly ? { scale: 0.98 } : {}}
  onClick={isAktif && !isReadOnly ? handleOkudum : undefined}
- disabled={!isAktif || isReadOnly}
+ disabled={!isAktif || isReadOnly || isOnaylaniyor}
  title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
  className={`w-full py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
  isAktif && !isReadOnly
@@ -398,7 +420,7 @@ export const GorevKarti = React.memo(({
  <>
  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
  <span className="flex items-center justify-center gap-3 relative z-10">
- {bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
+ {isOnaylaniyor ? 'İŞLENİYOR...' : bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
  <ChevronRight
  size={16}
  strokeWidth={2}
@@ -577,7 +599,14 @@ export const GorevKarti = React.memo(({
                 if (isSendingVekalet) return;
                 setIsSendingVekalet(true);
                 try {
-                  await vekaletTeklifEt(
+                  // vekaletTeklifEt bir getDoc + setDoc (ve olası deleteDoc)
+                  // zinciri çalıştırır — çevrimdışıyken bu yazımlar sonsuza
+                  // dek askıda kalabildiğinden zamanAsimiIle ile sarmalanır
+                  // (bkz. timeoutUtils.ts yorumu). Kardeş vekalet işlemleri
+                  // (vekaletKabulEt/vekaletReddet, MuezzinAnaEkran.tsx) ve
+                  // mazeretBildir zaten sarmalıyken bu yol atlanmıştı:
+                  // "GÖNDERİLİYOR" durumu sonsuza dek kilitli kalıyordu.
+                  await zamanAsimiIle(vekaletTeklifEt(
                     bildirim.id as string,
                     bildirim.haftaId,
                     bildirim.tarih,
@@ -586,11 +615,15 @@ export const GorevKarti = React.memo(({
                     bildirim.tip,
                     peer.id,
                     peer.displayName
-                  );
+                  ));
                   showNotification('Vekalet Gönderildi', `${peer.displayName} Hocamıza teklif iletildi. Kabul ettiğinde görev devredilecektir.`, 'success');
                   setIsVekaletModalOpen(false);
                 } catch (err) {
-                  showNotification('Hata', err instanceof Error ? err.message : 'Vekalet teklifi gönderilemedi.', 'error');
+                  if (err instanceof IslemZamanAsimi) {
+                    showNotification('Bağlantı Sorunu', err.message, 'warning');
+                  } else {
+                    showNotification('Hata', err instanceof Error ? err.message : 'Vekalet teklifi gönderilemedi.', 'error');
+                  }
                 } finally {
                   setIsSendingVekalet(false);
                 }

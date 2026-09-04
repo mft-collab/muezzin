@@ -133,6 +133,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  }
  }, 6000);
 
+ // Bu snapshot callback'i ASENKRON (aşağıda config/bootstrap ve invites
+ // okumaları için `await` var). `handleAuthStateChange` yeni bir auth
+ // durumunda `unsubscribeDoc?.()` ile dinleyiciyi iptal eder, ama ZATEN
+ // UÇUŞTA olan bir callback'i iptal EDEMEZ. Paylaşılan bir cihazda (cami
+ // ofisi tableti) admin A çıkış yapıp müezzin B girdiğinde, A'nın
+ // `await`te bekleyen callback'i çözülüp `set({role, isAdmin, ...})`
+ // çağırıyordu — store'daki `user` artık B olmasına rağmen B'ye A'nın
+ // rolü/yetkileri gösteriliyordu (bkz. kod denetimi).
+ //
+ // `auth.currentUser` yerine store'un kendi `user`'ı ölçüt alınır: e2e
+ // testlerinin TEST_USER_UID sahte-auth yolunda (aşağıda)
+ // `auth.currentUser` hiç dolmaz, ama `handleAuthStateChange` en başta
+ // `set({ user: currentUser })` yaptığından store her iki yolda da güncel
+ // auth durumunun TEK doğru kaynağıdır.
+ const buCallbackGecerliMi = () => get().user?.uid === currentUser.uid;
+
  unsubscribeDoc = onSnapshot(
  doc(db, 'muezzins', currentUser.uid),
  async (docSnap) => {
@@ -155,6 +171,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  }
  superAdminCheckedForUid = currentUser.uid;
  }
+ // `await` sırasında oturum değiştiyse (kullanıcı çıkış yaptı ya da
+ // başka biri giriş yaptı) bu sonuç artık BAŞKA birine ait — yazma.
+ if (!buCallbackGecerliMi()) return;
  const isSuperAdminResolved = cachedIsSuperAdminSelf;
  const isAdminResolved = data.role === 'admin' || isSuperAdminResolved;
  set({
@@ -202,8 +221,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  }
  }
 
+ // Yukarıdaki getDocFromServer okumaları sırasında oturum değiştiyse
+ // ne profil yazılmalı ne de store güncellenmeli (bkz.
+ // buCallbackGecerliMi tanımındaki gerekçe).
+ if (!buCallbackGecerliMi()) return;
+
  if (!inviteData) {
- set({ 
+ set({
  error: `Dizgede kaydınız bulunamadı. Lütfen yöneticiye e-postanızı (${currentEmail}) bildirin.`,
  loading: false,
  initialized: true
@@ -241,6 +265,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  // hazırlanmış olduğundan handleFirestoreError'ın döndürdüğü mesaj
  // kullanılmıyor, yalnızca yapılandırılmış log + telemetri için çağrılıyor.
  handleFirestoreError(err, OperationType.WRITE, `muezzins/${currentUser.uid}`);
+ if (!buCallbackGecerliMi()) return;
  set({ error: 'Profiliniz oluşturulurken bir hata oluştu.', loading: false, initialized: true });
  }
  }

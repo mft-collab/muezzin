@@ -32,6 +32,20 @@ export function nobeteAtanabilirMi(m: Pick<Muezzin, 'role' | 'onayBekliyor'>): b
 export type MuezzinAday = Muezzin & { id: string };
 
 /**
+ * Belirli bir GÜN için onaylı izinde olan uid'ler. `haftalikPlanUret`'in
+ * kendi izin filtresi de bunu kullanır — böylece "onaylı izindeki personel
+ * asla atanmaz" kuralının tarih aralığı yorumu TEK bir yerde tanımlı kalır.
+ * `src/services/planServisi.ts` bunu ayrıca, koruma altındaki bir slotun
+ * onaylı izin nedeniyle ezilip ezilmeyeceğine karar vermek için çağırır
+ * (bkz. src/lib/slotKorumasi.ts `korumaliSlotMu`).
+ */
+export function gunIzinliUidler(onayliIzinler: OnayliIzin[], gun: string): string[] {
+  return onayliIzinler
+    .filter((izin) => gun >= izin.baslangic && gun <= izin.bitis)
+    .map((izin) => izin.uid);
+}
+
+/**
  * Belirli bir gün+vakit için mevcut/korunmuş bir atama varsa döndürür (ör.
  * zaten onaylanmış/reddedilmiş ya da görev çağrısı yapılmış bir bildirim).
  * Böyle bir atama varsa taze hesaplama YAPILMAZ, doğrudan bu kullanılır —
@@ -150,9 +164,7 @@ export function haftalikPlanUret(
     const gunIndex = (gunTarihi.getDay() + 6) % 7;
     const isFriday = isFridayTarih(gunTarihi);
 
-    const bugunIzinliUidler = onayliIzinler
-      .filter((izin) => gun >= izin.baslangic && gun <= izin.bitis)
-      .map((izin) => izin.uid);
+    const bugunIzinliUidler = gunIzinliUidler(onayliIzinler, gun);
 
     const musaitMuezzinler = muezzinler.filter((m) => {
       const isOnIzin = bugunIzinliUidler.includes(m.id);

@@ -242,7 +242,16 @@ const tests: TestCase[] = [
       const talepDoc = await talepRef.get();
       assert.equal(talepDoc.data()?.bildirimUygulandi, true);
       assert.equal(talepDoc.data()?.talepSonuc, 'reddedildi');
+      // `durum` da 'reddedildi'ye cekilmeli: aksi halde firestore.rules'un
+      // delete kurali (durum in ['beklemede','reddedildi']) eslesmez ve
+      // gonderen bu deterministik ID icin bir daha ASLA teklif gonderemez
+      // (bkz. scripts/firestore-rules-tests.ts'teki eslesen kural testi).
+      assert.equal(talepDoc.data()?.durum, 'reddedildi');
 
+      // Alarm, bayraklarla AYNI transaction'da yazilir — sureç iki yazim
+      // arasinda olse bile talep "islenmis" isaretlenmemis olur ve bir
+      // sonraki calistirma alarmi yeniden dener (bkz. kod denetimi:
+      // eskiden alarm, commit SONRASI ayri bir add() ile yaziliyordu).
       const alarmSnap = await db.collection('adminUyarilari').where('cozuldu', '==', false).get();
       assert.equal(alarmSnap.size, 1);
       assert.equal(alarmSnap.docs[0]!.data().tip, 'zincirTukendi');
