@@ -129,33 +129,63 @@ jobs:
           name: sourcemaps-${{ github.sha }}
           path: dist/**/*.map
           retention-days: 14
-      # SHA'ya sabitlendi (eskiden `@v15.23.0` — DEĞİŞTİRİLEBİLİR bir git
-      # tag'i). Bu adım `GCP_SA_KEY` ile TAM servis hesabı anahtarını
-      # üçüncü taraf bir action'a veriyor; tag upstream'de başka bir
-      # commit'e taşınırsa (ya da bakımcının hesabı ele geçirilirse) bu
-      # kimlik bilgisi sessizce dışarı sızdırılabilirdi. SHA, v15.23.0
-      # etiketinin 2026-09-04'te işaret ettiği commit'tir (annotated tag
-      # 8d318104... → commit 0134e55e...), iki bağımsız API yoluyla
-      # doğrulandı.
+      # ÜÇÜNCÜ TARAF ACTION KALDIRILDI. Eskiden bu adım
+      # `w9jds/firebase-action@0134e55e...` (# v15.23.0) kullanıyordu. Action
+      # git SHA'sına sabitlenmişti, ama bir "docker" action olduğu için asıl
+      # kodu Docker Hub'daki DEĞİŞTİRİLEBİLİR bir imaj tag'inden
+      # (`w9jds/firebase-action:v15.23.0`) çekiyordu — SHA pin'i yalnızca
+      # action.yaml/entrypoint.sh'i sabitliyordu, imajı değil. Bu adım
+      # `GCP_SA_KEY` ile TAM servis hesabı anahtarını o imaja veriyordu; tag
+      # başka bir digest'e taşınsaydı kimlik bilgisi sessizce dışarı
+      # sızdırılabilirdi. Artık üçüncü taraf kod yok: entrypoint.sh'in yaptığı
+      # iş birebir aşağıya taşındı ve `firebase` CLI'ı bu repo'nun ZATEN
+      # devDependency olarak tuttuğu `firebase-tools` kurulumundan
+      # çalıştırılıyor (sürüm package-lock.json ile sabit; yukarıdaki
+      # `npm ci` adımı onu zaten kurmuş oluyor). Böylece deploy yolunda
+      # ikinci, izlenmeyen bir sürüm pin'i kalmıyor.
       #
-      # KALAN RİSK — TAM DEĞİL: bu bir "docker" action ve action.yaml'i
-      # `docker://w9jds/firebase-action:v15.23.0` imajını çalıştırıyor —
-      # yani asıl kod Docker Hub'daki DEĞİŞTİRİLEBİLİR bir imaj tag'inden
-      # geliyor, SHA pin'i yalnızca action.yaml/entrypoint.sh'i sabitler.
-      # 2026-09-04 itibarıyla o tag'in digest'i
-      # sha256:634ae5b502d9c462d6e86012270a569a698a7ecec7729836e8566f4cd23d9c37.
-      # TODO: imajı da sabitlemek ancak action'ı fork'layıp `image:`
-      # satırını digest'e çevirerek ya da bu adımı doğrudan
-      # `npm i -g firebase-tools && firebase deploy` ile değiştirerek
-      # mümkün — ikisi de deploy yolunu değiştirdiğinden ayrı ve
-      # doğrulanabilir bir değişiklik olarak yapılmalı.
+      # Upstream entrypoint.sh (0134e55e) ile davranış eşlemesi:
+      #   - `GCP_SA_KEY` geçerli JSON ise doğrudan, değilse base64 çözülerek
+      #     bir dosyaya yazılırdı. Secret'ın hangi biçimde saklandığı repo'dan
+      #     görünmediği için İKİ BİÇİM DE korundu (aynı ikili biçim desteği
+      #     scripts/lib/firebaseAdminInit.ts içinde de var).
+      #   - `GOOGLE_APPLICATION_CREDENTIALS` o dosyaya işaret ederdi; firebase
+      #     CLI kimliği ADC üzerinden alır — burada da aynısı.
+      #   - `PROJECT_ID` orada `firebase use --add` ile ayarlanıyordu; burada
+      #     `--project` bayrağı kullanılıyor (aynı etki, `.firebaserc`'i
+      #     değiştirmediği için daha temiz — zaten default: muezzin-c8485).
+      #   - entrypoint `set -e` ile başlıyordu; burada Actions'ın `run:` için
+      #     varsayılan `bash -eo pipefail`'i aynı işi görüyor: `firebase
+      #     deploy` sıfırdan farklı dönerse adım ve job BAŞARISIZ olur
+      #     (bu job'da `continue-on-error` YOK).
+      # Anahtar ASLA log'a yazılmaz: `printf` çıktısı hep bir dosyaya/boruya
+      # gider, doğrulama hatasının stderr'i bastırılır (JSON.parse hata mesajı
+      # anahtarın bir parçasını log'a düşürebilir — bkz. firebaseAdminInit.ts
+      # içindeki aynı gerekçe), dosya `mktemp` ile 0600 izniyle açılır ve
+      # adım biterken `trap ... EXIT` ile silinir.
       - name: Deploy to Firebase (hosting + firestore rules + indexes)
-        uses: w9jds/firebase-action@0134e55ecfe4bdbb457d879e7de8e86593457d65 # v15.23.0
-        with:
-          args: deploy --only hosting,firestore:rules,firestore:indexes
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 }}
-          PROJECT_ID: muezzin-c8485
+        run: |
+          if [ -z "$GCP_SA_KEY" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_MUEZZIN_C8485 secret'i bos veya tanimsiz - deploy edilemez."
+            exit 1
+          fi
+          CRED_FILE="$(mktemp "${RUNNER_TEMP}/gcp-sa-key-XXXXXXXXXX.json")"
+          chmod 600 "$CRED_FILE"
+          trap 'rm -f "$CRED_FILE"' EXIT
+          case "$GCP_SA_KEY" in
+            \{*) printf '%s' "$GCP_SA_KEY" > "$CRED_FILE" ;;
+            *)   printf '%s' "$GCP_SA_KEY" | base64 -d > "$CRED_FILE" ;;
+          esac
+          node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$CRED_FILE" 2>/dev/null || {
+            echo "::error::Servis hesabi anahtari gecerli JSON olarak cozulemedi (ayrinti, sir sizintisini onlemek icin bilincli olarak loglanmiyor)."
+            exit 1
+          }
+          export GOOGLE_APPLICATION_CREDENTIALS="$CRED_FILE"
+          ./node_modules/.bin/firebase deploy \
+            --only hosting,firestore:rules,firestore:indexes \
+            --project muezzin-c8485
       # Deploy BAŞARILI olduktan SONRA (bu adımdan önceki adım başarısız
       # olursa buraya hiç gelinmez) — her production deploy'unun hangi
       # commit'e karşılık geldiğini işaretler. Rollback prosedürü
