@@ -286,7 +286,14 @@ async function haftalikPlanOlusturTekSeferlik(haftaId: string): Promise<void> {
  // O8). `mevcutAtama` yalnızca hiçbir bildirim belgesi yoksa devreye girer.
  return {
  asil: asilBildirim?.data()?.uid || mevcutAtama?.asil || 'Sistem',
- yedek: yedekBildirim?.data()?.uid || mevcutAtama?.yedek || 'Sistem'
+ yedek: yedekBildirim?.data()?.uid || mevcutAtama?.yedek || 'Sistem',
+ // Mazeret bildirilmiş (reddedildi) bir bildirim — bu kişi bu görevi
+ // ARTIK YAPMAYACAK (mazeretDevirleriniIsle.ts bir yedeği terfi
+ // ettirecek, ~10-15 dk gecikmeli); `uid` alanı reddedilme anında hâlâ
+ // bu kişiyi gösterse de haftalık yük dengesine bu kişi olarak
+ // sayılmamalı (premium hata analizi PL-O5).
+ asilYukSayilmasin: asilBildirim?.data()?.durum === 'reddedildi',
+ yedekYukSayilmasin: yedekBildirim?.data()?.durum === 'reddedildi',
  };
  }, oncekiHaftaSonEkibi, oncekiArdArdaYedekSayilari);
 

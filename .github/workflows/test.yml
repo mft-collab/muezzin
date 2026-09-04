@@ -108,16 +108,24 @@ jobs:
           # App Check pasif kalır.
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
       # vite.config.ts'te sourcemap:'hidden' — .map dosyaları dist/'te üretilir
-      # ama firebase.json'un hosting.ignore'u nedeniyle deploy'a dahil edilmez
-      # (public'e sızmaz). Prod'daki bir hatanın minified stack trace'ini
-      # ayıklayabilmek için bu artifact'i indirip yerel source-map araçlarıyla
-      # eşlemek gerekir (bkz. premium denetim, bölüm 7).
+      # ama firebase.json'un hosting.ignore'u nedeniyle Firebase Hosting'e
+      # deploy EDİLMEZ. DİKKAT: bu, "public'e hiç sızmaz" anlamına gelmiyordu
+      # — bu repo zaten public olduğundan (bkz. kök CLAUDE.md) GitHub Actions
+      # artifact'ları da repoyu okuyabilen HERKESE açıktır; ama gerçek kaynak
+      # kod da (TypeScript, tüm iş kuralları) zaten aynı public repo'da git
+      # geçmişinden okunabilir olduğundan bu artifact'in ek olarak açığa
+      # çıkardığı tek şey, üretim BUILD'inin minified→orijinal eşlemesidir
+      # (premium hata analizi FR-O7 — ciddiyet, ilk değerlendirmenin
+      # varsaydığından düşük). Yine de saklama süresi gereksiz uzun
+      # tutulmasın diye kısaltıldı — prod'daki bir hatanın stack trace'ini
+      # ayıklamak için bu artifact'i indirip yerel source-map araçlarıyla
+      # eşlemek gerekir.
       - name: Upload source maps (debug artifact, not deployed)
         uses: actions/upload-artifact@v4
         with:
           name: sourcemaps-${{ github.sha }}
           path: dist/**/*.map
-          retention-days: 90
+          retention-days: 14
       - name: Deploy to Firebase (hosting + firestore rules + indexes)
         uses: w9jds/firebase-action@v15.23.0
         with:

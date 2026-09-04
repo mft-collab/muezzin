@@ -104,10 +104,22 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
     const path = 'izinler';
     const q = query(collection(db, path));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+    // `sebep` artık `izinler` belgesinde yok (bkz. types.ts Izin.sebep
+    // yorumu, FR-O3) — admin panelinin görmesi gereken bu alan, ayrı
+    // `izin_detaylari` koleksiyonundan (yalnızca admin listeleyebilir)
+    // gelip burada MERGE edilir. İki bağımsız onSnapshot birbirinden
+    // habersiz güncellenebileceğinden, her ikisinin de en son bilinen
+    // halini kapanışta tutup her tetiklenmede birlikte birleştiriyoruz.
+    let sonIzinlerDocs: { id: string; data: Record<string, unknown> }[] = [];
+    let sonSebepMap: Record<string, string> = {};
+    let izinlerYuklendi = false;
+
+    const birlestirVeYaz = () => {
+      if (!izinlerYuklendi) return;
+      const data = sonIzinlerDocs.map(({ id, data: d }) => ({
+        id,
+        ...d,
+        ...(sonSebepMap[id] !== undefined ? { sebep: sonSebepMap[id] } : {})
       })) as (Izin & { id: string })[];
 
       data.sort((a, b) => {
@@ -117,6 +129,12 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       });
 
       set({ izinler: data, loading: false, initialized: true, error: null });
+    };
+
+    const unsubscribeIzinler = onSnapshot(q, (snapshot) => {
+      sonIzinlerDocs = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+      izinlerYuklendi = true;
+      birlestirVeYaz();
     }, (err) => {
       // handleFirestoreError'ın DÖNÜŞ değeri kullanılır — ham err.message
       // değil, aksi halde ham SDK metni admin'e sızabilir (bkz.
@@ -130,7 +148,24 @@ export const useAdminIzinlerStore = create<AdminIzinlerState>((set, get) => ({
       setTimeout(() => { if (!get().initialized) get().init(); }, 15000);
     });
 
-    return unsubscribe;
+    const unsubscribeDetaylar = onSnapshot(collection(db, 'izin_detaylari'), (snapshot) => {
+      const map: Record<string, string> = {};
+      snapshot.docs.forEach((d) => {
+        const sebepDeger = d.data().sebep;
+        if (typeof sebepDeger === 'string') map[d.id] = sebepDeger;
+      });
+      sonSebepMap = map;
+      birlestirVeYaz();
+    }, (err) => {
+      // Bu ikincil dinleyicinin hatası ana izin listesini engellememeli —
+      // yalnızca telemetriye düşürülür, sebep alanları eksik görünür.
+      handleFirestoreError(err, OperationType.LIST, 'izin_detaylari');
+    });
+
+    return () => {
+      unsubscribeIzinler();
+      unsubscribeDetaylar();
+    };
   },
 
   izinGuncelle: async (id, durum) => {

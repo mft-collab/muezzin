@@ -215,7 +215,16 @@ export interface Izin {
  baslangic: string; // ISO date (YYYY-MM-DD)
  bitis: string; // ISO date (YYYY-MM-DD)
  tip: "haftalik" | "yillik" | "mazeret";
- sebep: string;
+ /**
+  * `izinler` belgesinin KENDİSİNDE artık bulunmuyor — ayrı `izin_detaylari`
+  * koleksiyonuna taşındı (bkz. firestore.rules `isValidIzinDetay`, premium
+  * hata analizi FR-O3: `izinler`in `list` kuralı `durum=='onaylandi'`
+  * belgeleri tüm ekibe açıyordu, bu da izin gerekçesini istemeden herkese
+  * açık ediyordu). Bu alan yalnızca admin tarafında (useAdminIzinlerStore.ts)
+  * izin_detaylari ile MERGE edilerek doldurulur — Firestore'dan doğrudan
+  * gelmez.
+  */
+ sebep?: string;
  durum: "onay_bekliyor" | "onaylandi" | "reddedildi";
  olusturmaTarihi: Timestamp;
  /** Admin reddederken gerekçe girebilir (bkz. firestore.rules izinler update) */

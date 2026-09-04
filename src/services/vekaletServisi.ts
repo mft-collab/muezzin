@@ -98,7 +98,14 @@ export async function vekaletKabulEt(talepId: string): Promise<void> {
   const onKontrolSnap = await getDoc(talepRef);
   if (!onKontrolSnap.exists()) throw new Error('Vekalet talebi bulunamadı.');
   const onKontrolTalep = onKontrolSnap.data() as VekaletTalebi;
-  const mazeretDurumu = await mazeretZamanKontrolYap(onKontrolTalep.tarih, onKontrolTalep.vakit, onKontrolTalep.saat);
+  // `onKontrolTalep.saat` GÖNDERENİN yazdığı serbest metin bir alan —
+  // üçüncü parametre olarak geçirilmez ki `mazeretZamanKontrolYap` gerçek
+  // ezan saatini `vakitler` koleksiyonundan taze okusun (mazeretBildir'in
+  // asil yolundaki gibi). Önceden dürüst bir alıcı, kötü niyetli/hatalı bir
+  // göndericinin yazdığı saate güvenip pencereyi yanlış açık/kapalı
+  // görebiliyordu — bu erken kontrol otoriter olmasa da (bkz. yukarıdaki
+  // yorum) yanlış erken ret/kabul UX'i üretmemeli (premium hata analizi MV-O3).
+  const mazeretDurumu = await mazeretZamanKontrolYap(onKontrolTalep.tarih, onKontrolTalep.vakit);
   if (mazeretDurumu.kapali) {
     throw new Error(mazeretDurumu.sebep ?? 'Bu görev için vekalet kabul penceresi kapandı.');
   }

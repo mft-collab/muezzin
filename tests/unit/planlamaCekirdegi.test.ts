@@ -101,6 +101,35 @@ describe('haftalikPlanUret', () => {
     expect(ogle).toEqual(plan['2026-08-03'].ikindi);
   });
 
+  it('asilYukSayilmasin işaretli korunmuş atama, mazeret bildiren kişiyi haftalık yükten VE SOS bloğundan muaf tutar (PL-O5 regresyonu)', () => {
+    // 'a' Pazartesi mazeret bildirdi (reddedildi) — bildirim belgesi hâlâ
+    // 'a' uid'ini taşıyor (bkz. planServisi.ts korunmusAtama), ama
+    // mazeretDevirleriniIsle.ts bir yedeği terfi ettirene kadar geçen
+    // pencerede 'a' bu görevi YAPMAYACAK. Eski davranışta 'a' bu günü
+    // fiilen yapmış gibi haftalık yüke +1 giriyordu — bu da Salı günü
+    // 'b'nin (gerçekten yedek kalmış, +0.5 yük) daha az yüklü görünüp
+    // asil seçilmesine yol açardı. Düzeltmeyle 'a' hiç yük almadığından
+    // (0 < 0.5) Salı günü yine 'a' en az yüklü kabul edilir.
+    const muezzinler = [muezzin('a'), muezzin('b')];
+    const korunmusAtama = (gun: string) =>
+      gun === '2026-08-03' ? { asil: 'a', yedek: 'b', asilYukSayilmasin: true } : null;
+
+    const plan = haftalikPlanUret(['2026-08-03', '2026-08-04'], muezzinler, [], korunmusAtama);
+
+    expect(plan['2026-08-03'].sabah).toEqual({ asil: 'a', yedek: 'b' });
+    expect(plan['2026-08-04'].sabah.asil).toBe('a');
+  });
+
+  it('yedekYukSayilmasin işaretli korunmuş atama, yedek tarafı için de aynı şekilde çalışır (PL-O5 regresyonu)', () => {
+    const muezzinler = [muezzin('a'), muezzin('b'), muezzin('c'), muezzin('d')];
+    const korunmusAtama = (gun: string) =>
+      gun === '2026-08-03' ? { asil: 'a', yedek: 'b', yedekYukSayilmasin: true } : null;
+
+    const plan = haftalikPlanUret(['2026-08-03'], muezzinler, [], korunmusAtama);
+
+    expect(plan['2026-08-03'].sabah).toEqual({ asil: 'a', yedek: 'b' });
+  });
+
   it('art arda yedek sayacı, korunmuş atama bir günün vakitlerini böldüğünde günün SADECE son vaktine değil tüm güne bakar (mantık denetimi regresyonu)', () => {
     // 2 kişilik kadro: 'a' iki gün üst üste, günün ÇOĞUNDA asil ama SADECE
     // yatsıda yedek kalıyor (korunmusAtama ile zorlanıyor). Eski hatalı kod

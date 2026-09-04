@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, AlertCircle, CheckCircle2, Hourglass, Trash2, Send } from 'lucide-react';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
 import { getTurkeyDateString, isFriday, izinGunSayisi } from '../lib/dateUtils';
@@ -34,7 +34,6 @@ interface IzinTalep {
   baslangic: string;
   bitis: string;
   tip: 'haftalik' | 'yillik' | 'mazeret';
-  sebep: string;
   durum: 'onay_bekliyor' | 'onaylandi' | 'reddedildi';
   olusturmaTarihi: Timestamp;
 }
@@ -63,6 +62,13 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
 
   const [talepler, setTalepler] = useState<IzinTalep[]>([]);
   const [loadingTalepler, setLoadingTalepler] = useState(true);
+  // `sebep` artık `izinler` belgesinde değil, ayrı `izin_detaylari`
+  // koleksiyonunda (bkz. firestore.rules `isValidIzinDetay` — premium hata
+  // analizi FR-O3: `izinler`in `list` kuralı, tüm ekibin "kimin onaylı izni
+  // var" görebilmesi için `durum=='onaylandi'` belgelerini herkese açıyordu,
+  // bu da izin gerekçesini istemeden tüm ekibe açık ediyordu). İzin ID'sine
+  // göre eşleşir.
+  const [sebepMap, setSebepMap] = useState<Record<string, string>>({});
 
   // Kullanıcı değiştiğinde yükleme durumunu render sırasında ayarla —
   // bkz. useBugunkuGorevlerim.ts'teki aynı desen.
@@ -100,6 +106,30 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
     }, (err) => {
       console.error('İzin talepleri dinlenirken hata:', err);
       setLoadingTalepler(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Kendi izin gerekçelerini ayrı koleksiyondan (bkz. yukarıdaki sebepMap
+  // yorumu) dinler — yalnızca sahibi ve admin okuyabildiğinden bu sorgu
+  // güvenle "kendi uid'im" ile sınırlanır.
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'izin_detaylari'),
+      where('uid', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const map: Record<string, string> = {};
+      snapshot.docs.forEach((d) => {
+        const sebepDeger = d.data().sebep;
+        if (typeof sebepDeger === 'string') map[d.id] = sebepDeger;
+      });
+      setSebepMap(map);
+    }, (err) => {
+      console.error('İzin gerekçeleri dinlenirken hata:', err);
     });
 
     return () => unsubscribe();
@@ -171,15 +201,26 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
     setIsSubmitting(true);
 
     try {
-      await addDoc(collection(db, 'izinler'), {
+      // izinler + izin_detaylari (sebep) AYNI batch'te, deterministik olarak
+      // eşleşen ID ile yazılır (bkz. firestore.rules `isValidIzinDetay`
+      // create kuralı — karşılık gelen izinler belgesinin uid'ini doğrular,
+      // FR-O3).
+      const izinRef = doc(collection(db, 'izinler'));
+      const batch = writeBatch(db);
+      batch.set(izinRef, {
         uid: user.uid,
         baslangic,
         bitis,
         tip,
-        sebep: sebep.trim(),
         durum: 'onay_bekliyor',
         olusturmaTarihi: Timestamp.now()
       });
+      batch.set(doc(db, 'izin_detaylari', izinRef.id), {
+        uid: user.uid,
+        sebep: sebep.trim(),
+        olusturmaTarihi: Timestamp.now()
+      });
+      await batch.commit();
 
       setSuccessMessage('İzin talebiniz başarıyla oluşturuldu, yönetici onayına gönderildi.');
       setSebep('');
@@ -205,7 +246,14 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
     }
     setPendingDeleteId(null);
     try {
-      await deleteDoc(doc(db, 'izinler', id));
+      // izin_detaylari da AYNI batch'te silinir — aksi halde artık var
+      // olmayan bir izinler belgesine referans veren, yalnızca sahibi ve
+      // admin tarafından okunabilen (zararsız ama gereksiz) bir yetim kayıt
+      // kalırdı.
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'izinler', id));
+      batch.delete(doc(db, 'izin_detaylari', id));
+      await batch.commit();
     } catch (err) {
       console.error('İzin talebi iptal edilemedi:', err);
     }
@@ -443,7 +491,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                         <span className="text-2xs opacity-40 font-mono">({startFmt} - {endFmt})</span>
                       </div>
                       <p className="text-2xs text-muted leading-relaxed font-light italic">
-                        "{talep.sebep}"
+                        "{talep.id ? (sebepMap[talep.id] ?? '…') : ''}"
                       </p>
                     </div>
                   </div>

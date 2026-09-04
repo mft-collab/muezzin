@@ -740,7 +740,6 @@ const tests: TestCase[] = [
         bitis: '2026-05-19',
         tip: 'mazeret',
         durum: 'onay_bekliyor',
-        sebep: 'Aile',
         olusturmaTarihi: Timestamp.now()
       };
 
@@ -766,7 +765,6 @@ const tests: TestCase[] = [
         bitis: '2026-05-19',
         tip: 'mazeret',
         durum: 'onay_bekliyor',
-        sebep: 'Aile',
         olusturmaTarihi: Timestamp.now()
       };
 
@@ -804,7 +802,6 @@ const tests: TestCase[] = [
         uid: 'muezzin1',
         tip: 'mazeret',
         durum: 'onay_bekliyor',
-        sebep: 'Aile',
         olusturmaTarihi: Timestamp.now()
       };
 
@@ -841,37 +838,117 @@ const tests: TestCase[] = [
     }
   },
   {
-    // Altinci denetim turu, form dogrulama bulgulari: isValidIzin'in `sebep`
-    // alani hasOnly'de listeleniyordu ama hic tip/uzunluk dogrulamasi
-    // yapmiyordu — dosyadaki HER diger serbest metin alaniyla (baslik,
-    // icerik, retSebebi, yazar) tutarsizdi.
-    name: 'izin sebebi 1000 karakteri asarsa veya string degilse reddedilir',
+    // FR-O3 sonrasi: `sebep` artik `izinler`de degil, kendi ID'si karsilik
+    // gelen izinler belgesiyle AYNI olan `izin_detaylari`da. Onceden
+    // isValidIzin'in `sebep` alani hasOnly'de listeleniyordu ama hic tip/
+    // uzunluk dogrulamasi yapmiyordu — burada isValidIzinDetay icin ayni
+    // sinir testleri tekrarlanir.
+    name: 'izin_detaylari sebep 1000 karakteri asarsa veya string degilse reddedilir',
     run: async (env) => {
       const db = testUser(env, 'muezzin1').firestore();
-      const base = {
+      await assertSucceeds(setDoc(doc(db, 'izinler/izinDetaySinirTest'), {
         uid: 'muezzin1',
         baslangic: '2026-05-18',
         bitis: '2026-05-19',
         tip: 'mazeret',
         durum: 'onay_bekliyor',
         olusturmaTarihi: Timestamp.now()
-      };
+      }));
 
-      await assertFails(setDoc(doc(db, 'izinler/sebepCokUzun'), {
+      const base = { uid: 'muezzin1', olusturmaTarihi: Timestamp.now() };
+      await assertFails(setDoc(doc(db, 'izin_detaylari/izinDetaySinirTest'), {
         ...base,
         sebep: 'a'.repeat(1001)
       }));
-      await assertFails(setDoc(doc(db, 'izinler/sebepStringDegil'), {
+      await assertFails(setDoc(doc(db, 'izin_detaylari/izinDetaySinirTest'), {
         ...base,
         sebep: 12345
       }));
-      // Tam sinirda (1000 karakter) ve sebep hic olmadan da gecmeli
-      // (regresyon kontrolu).
-      await assertSucceeds(setDoc(doc(db, 'izinler/sebepTamSinirda'), {
+      // Tam sinirda (1000 karakter) gecmeli (regresyon kontrolu).
+      await assertSucceeds(setDoc(doc(db, 'izin_detaylari/izinDetaySinirTest'), {
         ...base,
         sebep: 'a'.repeat(1000)
       }));
-      await assertSucceeds(setDoc(doc(db, 'izinler/sebepsiz'), base));
+    }
+  },
+  {
+    // izin_detaylari'nin create kurali kendi uid'ini dogrular ama (mazeret_
+    // detaylari'nin aksine, bkz. firestore.rules yorumu) karsilik gelen
+    // izinler belgesinin sahibini CAPRAZ DOGRULAMAZ — ID rastgele/tahmin
+    // edilemez oldugundan bu yeterli. Yine de "baskasinin uid'i ile
+    // olusturamaz" temel kontrolu burada dogrulanir.
+    name: 'izin_detaylari yalnizca kendi uid ile olusturulabilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(setDoc(doc(db, 'izin_detaylari/baskasininUidi'), {
+        uid: 'muezzin2',
+        sebep: 'Baskasi adina yazma denemesi',
+        olusturmaTarihi: Timestamp.now()
+      }));
+      await assertSucceeds(setDoc(doc(db, 'izin_detaylari/kendiUidi'), {
+        uid: 'muezzin1',
+        sebep: 'Gecerli',
+        olusturmaTarihi: Timestamp.now()
+      }));
+    }
+  },
+  {
+    // VacationRequestCard.tsx'in GERCEK yazim deseni: izinler + izin_detaylari
+    // TEK bir atomik batch'te, ayni cagrida olusturulur (izin_detaylari'nin
+    // create kuralindaki get() karsilik gelen izinler belgesini AYNI
+    // batch'teki kardes islemden mi yoksa yalnizca batch-oncesi durumdan mi
+    // goruyor? — bu, bir onceki testteki SIRALI/ayri setDoc cagrilarindan
+    // FARKLI bir senaryo, ayrica dogrulanmasi gerekiyordu).
+    name: 'izinler + izin_detaylari AYNI atomik batch icinde birlikte olusturulabilir (VacationRequestCard deseni)',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'izinler/izinDetayAyniBatch'), {
+        uid: 'muezzin1',
+        baslangic: '2026-05-18',
+        bitis: '2026-05-19',
+        tip: 'mazeret',
+        durum: 'onay_bekliyor',
+        olusturmaTarihi: Timestamp.now()
+      });
+      batch.set(doc(db, 'izin_detaylari/izinDetayAyniBatch'), {
+        uid: 'muezzin1',
+        sebep: 'Ayni batch testi',
+        olusturmaTarihi: Timestamp.now()
+      });
+      await assertSucceeds(batch.commit());
+    }
+  },
+  {
+    name: 'izin_detaylari yalnizca ilgili kisi veya admin tarafindan okunabilir',
+    run: async (env) => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'izin_detaylari/ozelIzinSebebi'), {
+          uid: 'muezzin1',
+          sebep: 'Gizli saglik detayi',
+          olusturmaTarihi: Timestamp.now()
+        });
+      });
+
+      const digerKullanici = testUser(env, 'muezzin2').firestore();
+      await assertFails(getDoc(doc(digerKullanici, 'izin_detaylari/ozelIzinSebebi')));
+
+      const sahibi = testUser(env, 'muezzin1').firestore();
+      await assertSucceeds(getDoc(doc(sahibi, 'izin_detaylari/ozelIzinSebebi')));
+
+      const adminDb = testUser(env, 'admin').firestore();
+      await assertSucceeds(getDoc(doc(adminDb, 'izin_detaylari/ozelIzinSebebi')));
+    }
+  },
+  {
+    name: 'izin_detaylari yalnizca admin tarafindan listelenebilir',
+    run: async (env) => {
+      const db = testUser(env, 'muezzin1').firestore();
+      await assertFails(getDocs(collection(db, 'izin_detaylari')));
+
+      const adminDb = testUser(env, 'admin').firestore();
+      await assertSucceeds(getDocs(collection(adminDb, 'izin_detaylari')));
     }
   },
   {

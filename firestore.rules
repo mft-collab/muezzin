@@ -944,7 +944,18 @@ service cloud.firestore {
              // tur). `redSebebi` opsiyonel (admin red gerekçesi) ama izinler
              // update kuralının self-update dalı isValidIzin'i çağırdığından
              // burada da izinli olmalı.
-             data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'sebep', 'durum', 'olusturmaTarihi', 'redSebebi']) &&
+             //
+             // `sebep` ARTIK BURADA DEĞİL — `izin_detaylari` koleksiyonuna
+             // taşındı (bkz. altta `isValidIzinDetay`). Sebep: `izinler`'in
+             // `list` kuralı, TÜM EKİBİN "kimin onaylı izni var" görebilmesi
+             // için `durum=='onaylandi'` belgelerini herkese açar — bu da
+             // (retSebebi'nin bildirimler'den mazeret_detaylari'na
+             // taşınmasına yol açan bulguyla BİREBİR AYNI sınıf) izin
+             // gerekçesini (sağlık, ailevi durum vb.) istemeden tüm ekibe
+             // açıyordu; Firestore alan bazında değil BELGE bazında güvenlik
+             // sağladığından bu, `izinler` açık kaldığı sürece kapatılamazdı
+             // (premium hata analizi FR-O3).
+             data.keys().hasOnly(['uid', 'baslangic', 'bitis', 'tip', 'durum', 'olusturmaTarihi', 'redSebebi']) &&
              data.uid == request.auth.uid &&
              // İzin (leave) yalnızca nöbete atanabilen 'muezzin' rolü icin
              // anlamlidir — admin ve gozlemci hicbir zaman nobete
@@ -956,16 +967,38 @@ service cloud.firestore {
              get(/databases/$(database)/documents/muezzins/$(request.auth.uid)).data.role == 'muezzin' &&
              data.tip in ['haftalik', 'yillik', 'mazeret'] &&
              data.durum == 'onay_bekliyor' &&
-             isValidIzinTarihAraligi(data.baslangic, data.bitis) &&
-             // `sebep` (VacationRequestCard.tsx'in her zaman gönderdiği izin
-             // gerekçesi) hasOnly'de listeleniyordu ama dosyadaki HER diğer
-             // serbest metin alanının aksine (baslik, icerik, retSebebi,
-             // yazar vb.) hiç tip/uzunluk doğrulaması yoktu — sınırsız
-             // uzunlukta veya string olmayan bir değer sessizce kabul
-             // ediliyordu (bkz. mimari denetim — altıncı tur, form
-             // doğrulama bulguları). Diğer opsiyonel serbest metin
-             // alanlarıyla aynı "yoksa serbest, varsa tipli" kalıbı.
-             (!data.keys().hasAny(['sebep']) || (data.sebep is string && data.sebep.size() <= 1000));
+             isValidIzinTarihAraligi(data.baslangic, data.bitis);
+    }
+
+    // izinler'den taşınan `sebep` alanı için — bkz. yukarıdaki isValidIzin
+    // yorumu ve `mazeret_detaylari` (retSebebi) ile AYNI desen. Doc ID
+    // karşılık geldiği izinler belgesiyle AYNI ID'yi kullanır.
+    function isValidIzinDetay(data) {
+      return data.keys().hasAll(['uid', 'sebep', 'olusturmaTarihi']) &&
+             data.keys().hasOnly(['uid', 'sebep', 'olusturmaTarihi']) &&
+             data.uid is string &&
+             data.sebep is string && data.sebep.size() <= 1000 &&
+             data.olusturmaTarihi is timestamp;
+    }
+
+    match /izin_detaylari/{izinId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      // mazeret_detaylari'nin aksine karşılık gelen `izinler` belgesinin
+      // uid'ini get() ile ÇAPRAZ DOĞRULAMAZ — o kontrol orada
+      // DETERMİNİSTİK (haftaId_tarih_vakit_tip, tahmin edilebilir) ID'lere
+      // karşı "işgal" saldırısını engellemek içindi. Buradaki ID Firestore
+      // otomatik-üretilen (uzun, rastgele) bir ID'dir; ayrıca istemci
+      // (VacationRequestCard.tsx) izinler+izin_detaylari'yi TEK bir atomik
+      // batch'te birlikte oluşturur — get() içindeki bir batch KENDİ
+      // KARDEŞ işlemini göremediğinden (ölçüldü: aynı batch'te önce
+      // izinler create'i yapılsa bile get() burada "yok" görür ve tüm
+      // batch reddedilir) çapraz doğrulama bu akışta kullanılamaz.
+      allow create: if isSignedIn() && isValidIzinDetay(incoming()) && incoming().uid == request.auth.uid;
+      // Sahibi kendi kaydını silebilir (izinler'deki karşılık gelen
+      // belgeyi iptal ederken AYNI batch'te) — admin her zaman silebilir.
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update: if false;
     }
 
     match /izinler/{docId} {

@@ -36,8 +36,23 @@ export type MuezzinAday = Muezzin & { id: string };
  * zaten onaylanmış/reddedilmiş ya da görev çağrısı yapılmış bir bildirim).
  * Böyle bir atama varsa taze hesaplama YAPILMAZ, doğrudan bu kullanılır —
  * ancak haftalık yük dengesine yine de dahil edilir.
+ *
+ * `asilYukSayilmasin`/`yedekYukSayilmasin`: mazeret bildirilmiş (durum
+ * 'reddedildi') bir slot için `true` — bu kişi bu görevi ARTIK YAPMAYACAK
+ * (scripts/mazeretDevirleriniIsle.ts bir yedeği terfi ettirecek, ~10-15 dk
+ * gecikmeli), ama görüntüde slot hâlâ onun uid'ini taşıyor (bkz.
+ * planServisi.ts `korunmusAtama` — bildirim belgesinin `uid` alanı reddedilme
+ * anında DEĞİŞMEZ). Bu bayrak olmadan `gunlukKrediHesaplama.ts` bu kişiye
+ * ASLA kalıcı kredi vermezken (reddedildi = kredi yok), buradaki haftalık
+ * yük dengesi onu bu görevi YAPMIŞ gibi sayıyordu — kişi o hafta haksız
+ * yere "yüklü" görünüp diğer görevlerden muaf tutuluyordu (premium hata
+ * analizi PL-O5). Belirtilmezse (`undefined`) varsayılan `false`'tur —
+ * geriye dönük uyumlu.
  */
-export type KorunmusAtamaResolver = (gun: string, vakit: Vakit) => VakitAtama | null;
+export type KorunmusAtamaResolver = (
+  gun: string,
+  vakit: Vakit
+) => (VakitAtama & { asilYukSayilmasin?: boolean; yedekYukSayilmasin?: boolean }) | null;
 
 /**
  * Bir önceki haftanın gün planına bakarak, o haftanın bitişinde her kişinin
@@ -171,14 +186,25 @@ export function haftalikPlanUret(
     const cumaCarpani = isFriday ? 1.5 : 1;
 
     for (const vakit of VAKITLER) {
-      const atama = korunmusAtama?.(gun, vakit) ?? gunlukTazeAtama;
+      const korunmus = korunmusAtama?.(gun, vakit);
+      // Temiz {asil, yedek} nesnesi kurulur — `korunmus` içindeki
+      // asilYukSayilmasin/yedekYukSayilmasin gibi ek alanlar yalnızca BU
+      // döngü içinde kullanılan bir sinyaldir, gunPlan'a (dolayısıyla
+      // Firestore'a) asla sızmamalı.
+      const atama: VakitAtama = korunmus
+        ? { asil: korunmus.asil, yedek: korunmus.yedek }
+        : gunlukTazeAtama;
       gunPlan[gun][vakit] = atama;
 
-      if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM') {
+      // Mazeret bildirilmiş (reddedildi) bir slot — bu kişi bu görevi
+      // ARTIK YAPMAYACAK, dolayısıyla ne haftalık yüke ne SOS/art-arda-yedek
+      // defterine dahil edilir (bkz. yukarıdaki KorunmusAtamaResolver
+      // yorumu, PL-O5).
+      if (atama.asil && atama.asil !== 'Sistem' && atama.asil !== 'SISTEM' && !korunmus?.asilYukSayilmasin) {
         buHaftakiYukler[atama.asil] = (buHaftakiYukler[atama.asil] || 0) + (1 * cumaCarpani);
         gunAsilUidleri.add(atama.asil);
       }
-      if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM') {
+      if (atama.yedek && atama.yedek !== 'Sistem' && atama.yedek !== 'SISTEM' && !korunmus?.yedekYukSayilmasin) {
         buHaftakiYukler[atama.yedek] = (buHaftakiYukler[atama.yedek] || 0) + (YEDEK_YUK_CARPANI * cumaCarpani);
         gunYedekUidleri.add(atama.yedek);
       }
