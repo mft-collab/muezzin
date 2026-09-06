@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Info, ShieldAlert, RotateCw } from 'lucide-react';
 import { Modal } from './ui/Modal';
@@ -134,7 +134,7 @@ const CompactCompassNeedle = React.memo(({ needleRef, qiblaAngle, isAligned }: C
         <div
           className={`w-6 h-6 rounded-full flex items-center justify-center border shadow-sm relative z-30 -top-[48px] transition-all duration-700 ${
             isAligned
-              ? 'bg-[var(--aura-emerald)] border-[var(--aura-emerald)]/60 text-[var(--text-primary)] shadow-[var(--aura-emerald)]/30'
+              ? 'bg-[var(--aura-emerald)] border-[var(--aura-emerald)]/60 text-[var(--app-bg)] shadow-[var(--aura-emerald)]/30'
               : 'bg-zinc-900 border-[var(--aura-amber)]/40 text-[var(--aura-amber)]/80 shadow-black/50'
           }`}
         >
@@ -336,8 +336,20 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     };
   }, [isOpen, qiblaAngle]);
 
-  // Sensor Event Listeners (Write to Ref only, bypassing React re-renders)
-  const handleOrientation = (e: DeviceOrientationEvent) => {
+  // Sensor Event Listeners (Write to Ref only, bypassing React re-renders).
+  // useCallback ile SABİT referans tutuluyor — önceden bu fonksiyonlar her
+  // render'da yeniden yaratılıyordu, bu da iOS'ta gerçek bir listener sızıntısına
+  // yol açıyordu: mount effect'i "izin önceden verilmiş olabilir" ihtimaline karşı
+  // deviceorientation'a hemen bağlanıyor, kullanıcı butona bastığında
+  // requestPermission() AYNI event'e TEKRAR bağlanıyordu — ama iki çağrı arasında
+  // en az bir render geçtiği için (permission banner'ın kendisi bir render'dır)
+  // farklı fonksiyon referanslarıyla ekleniyorlardı. Modal kapanış cleanup'ı yalnızca
+  // son eklenen referansı kaldırdığından, mount anında eklenen ilk listener SONSUZA
+  // KADAR (sayfa geçişine kadar) window'a bağlı kalıyor, modal kapansa bile sensör
+  // event'lerini işlemeye devam ediyordu (bkz. performans denetimi). Sabit referans
+  // ile addEventListener/removeEventListener aynı handle'ı hedefler, tarayıcı zaten
+  // aynı (fonksiyon, tip, capture) üçlüsünü otomatik olarak tekilleştirir.
+  const handleOrientation = useCallback((e: DeviceOrientationEvent) => {
     // Dynamic self-healing: sensor works, set permission state to true
     setPermissionGranted(true);
 
@@ -355,9 +367,9 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     if (currentHeading !== null) {
       headingRef.current = currentHeading;
     }
-  };
+  }, []);
 
-  const handleOrientationAbsolute = (e: DeviceOrientationEvent) => {
+  const handleOrientationAbsolute = useCallback((e: DeviceOrientationEvent) => {
     setPermissionGranted(true);
 
     let currentHeading: number | null = null;
@@ -372,7 +384,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     if (currentHeading !== null) {
       headingRef.current = currentHeading;
     }
-  };
+  }, []);
 
   // Request Sensors Permission (iOS specific)
   const requestPermission = async () => {
@@ -437,7 +449,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
       headingRef.current = null;
       lastVibeTimeRef.current = 0;
     };
-  }, [isOpen, isIOSDevice]);
+  }, [isOpen, isIOSDevice, handleOrientation, handleOrientationAbsolute]);
 
   const locationText = gpsEnabled && gpsKonumAdi
     ? `${gpsKonumAdi} (GPS)`
@@ -464,7 +476,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
           }}
         />
 
-        <p className="text-2xs text-muted tracking-[0.18em] uppercase font-bold mb-1">
+        <p className="text-2xs label-primary mb-1">
           Hassas Yön Tayini
         </p>
         <div className="flex items-center gap-1.5">
@@ -478,7 +490,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
               disabled={gpsLoading}
               aria-label="Konumu yenile"
               title="Konumu yenile"
-              className="p-1 rounded-full text-muted hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer disabled:opacity-40 border-none bg-transparent"
+              className="relative p-1 rounded-full text-muted hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-wait border-none bg-transparent after:absolute after:-inset-3 after:content-['']"
             >
               <RotateCw size={11} className={gpsLoading ? 'animate-spin' : ''} />
             </button>
@@ -541,7 +553,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={requestPermission}
-              className="px-5 py-3 bg-[var(--aura-amber)] text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-[var(--aura-amber)]/20"
+              className="px-5 py-3.5 bg-[var(--aura-amber)] text-[var(--app-bg)] rounded-xl text-2xs font-extrabold uppercase tracking-widest cursor-pointer border-none shadow-md shadow-[var(--aura-amber)]/20"
             >
               PUSULAYI ETKİNLEŞTİR
             </motion.button>
@@ -549,7 +561,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         )}
 
         {/* ALIGNMENT BADGE / NOTIFICATIONS */}
-        <div className="w-full min-h-[44px] flex items-center justify-center mb-6 z-10 px-4">
+        <div className="w-full min-h-[44px] flex items-center justify-center mb-6 z-10 px-4" aria-live="polite">
           <AnimatePresence mode="wait">
             {isAligned ? (
               <motion.div
@@ -578,7 +590,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-2xs sm:text-2xs text-[var(--aura-amber)]/85 bg-[var(--aura-amber)]/5 border border-[var(--aura-amber)]/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
+                className="text-2xs text-[var(--aura-amber)]/85 bg-[var(--aura-amber)]/5 border border-[var(--aura-amber)]/15 p-4 rounded-2xl flex items-start gap-2.5 text-left leading-normal"
               >
                 <Info size={16} className="text-[var(--aura-amber)] shrink-0 mt-0.5" />
                 <div>
@@ -593,20 +605,20 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
         <div className="grid grid-cols-2 gap-3.5 w-full z-10 relative">
           {/* Qibla Angle Card */}
           <div className="p-4 rounded-card spatial-glass flex flex-col items-center">
-            <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KIBLE DERECESİ</span>
+            <span className="text-2xs label-tertiary mb-1">KIBLE DERECESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {qiblaAngle.toFixed(1)}°
             </span>
-            <span className="text-2xs font-medium opacity-35 mt-0.5">Kuzeyden Doğuya</span>
+            <span className="text-2xs font-medium text-subtle mt-0.5">Kuzeyden Doğuya</span>
           </div>
 
           {/* Kaaba Distance Card */}
           <div className="p-4 rounded-card spatial-glass flex flex-col items-center">
-            <span className="text-2xs tracking-widest font-extrabold opacity-40 uppercase mb-1">KABE MESAFESİ</span>
+            <span className="text-2xs label-tertiary mb-1">KABE MESAFESİ</span>
             <span className="text-lg font-mono font-medium text-[var(--text-primary)]">
               {distance.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} km
             </span>
-            <span className="text-2xs font-medium opacity-35 mt-0.5">Kuş Uçuşu Hat</span>
+            <span className="text-2xs font-medium text-subtle mt-0.5">Kuş Uçuşu Hat</span>
           </div>
         </div>
 
@@ -622,7 +634,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
 
         {/* Live Heading status when sensors active */}
         {headingState !== null && (
-          <span className="text-2xs text-muted uppercase tracking-widest font-mono mt-6">
+          <span className="text-2xs label-tertiary font-mono mt-6">
             Pusula Sapma Açısı: {Math.round(headingState)}° • Kabe Bağıl Açısı: {Math.round(needleRotation)}°
           </span>
         )}
