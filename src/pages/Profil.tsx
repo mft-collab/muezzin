@@ -75,11 +75,10 @@ export default function Profil() {
     // MuezzinAnaEkran.tsx yorumu, mobil yerleşim denetimi) — pb-40 bununla üst
     // üste binip sayfa sonunda gereksiz boşluk bırakıyordu.
     <div className="min-h-screen pb-8 relative overflow-hidden">
-      {/* Background Flair */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-[var(--aura-indigo)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-[var(--aura-ruby)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
-      </div>
+      {/* Sabit (sirkadiyen sisteme katılmayan) bir aura blob katmanı önceden
+          burada AYRICA render ediliyordu — Layout.tsx zaten global, canlı
+          --dynamic-aura'yı okuyan bir 2-blob katman sağlıyor; bu sayfa artık
+          o sirkadiyen sisteme katılıyor (bkz. premium denetim B34, O8). */}
 
       <div className="max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto px-6 pt-12 md:pt-20 relative z-10">
         {loading ? (

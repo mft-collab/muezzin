@@ -68,7 +68,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
           animate={{ opacity: 1, scale: 1 }}
           className="spatial-glass-elevated p-8 max-w-md w-full border-[var(--status-error)]/20"
         >
-          <div className="w-16 h-16 bg-[var(--status-error)]/10 rounded-[24px] flex items-center justify-center mb-6 mx-auto border border-[var(--status-error)]/20 shadow-[var(--spatial-shadow)]">
+          <div className="w-16 h-16 bg-[var(--status-error)]/10 rounded-3xl flex items-center justify-center mb-6 mx-auto border border-[var(--status-error)]/20 shadow-[var(--spatial-shadow)]">
             <span className="text-[var(--status-error)] text-3xl font-light">!</span>
           </div>
           <h3 className="text-xl font-light text-[var(--text-primary)] tracking-tight mb-2 apple-thin">
@@ -83,7 +83,7 @@ export function ChunkErrorFallback({ error, variant, onReset, autoReload = false
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleRestart}
-            className="w-full py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl font-bold text-2xs uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all"
+            className="w-full py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--app-bg)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl font-bold text-2xs uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all"
           >
             {isChunkError ? 'Sürümü Güncelle & Yenile' : 'Sayfayı Yeniden Yükle'}
           </motion.button>

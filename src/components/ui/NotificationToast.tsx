@@ -61,7 +61,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
  animate={{ opacity: 1, y: 0, x: 0 }}
  exit={{ opacity: 0, x: '110%', transition: { duration: 0.28, ease: [0.4, 0, 1, 1] } }}
  transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
- className="pointer-events-auto w-full sm:w-auto sm:min-w-[320px] max-w-full sm:max-w-[400px] spatial-glass !rounded-[24px] shadow-[var(--spatial-shadow)]"
+ className="pointer-events-auto w-full sm:w-auto sm:min-w-[320px] max-w-full sm:max-w-[400px] spatial-glass !rounded-3xl shadow-[var(--spatial-shadow)]"
  style={{
  borderLeftWidth: '3px',
  borderLeftColor: cfg.borderColor,

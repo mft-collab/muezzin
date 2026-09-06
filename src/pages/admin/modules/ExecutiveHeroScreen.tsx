@@ -13,6 +13,7 @@ import { useHaftaBildirimleri } from '../../../hooks/useHaftaBildirimleri';
 import { getHaftaIdFromDate, getTurkeyDateString, izinOnayCumaEngelMesaji, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { type ActiveModule } from '../config/navConfig';
 
 
@@ -28,7 +29,7 @@ interface HeroScreenProps {
 }
 
 function HeroStatSkeleton({ className }: { className: string }) {
- return <div className={`fluid-skeleton ${className}`} />;
+ return <Skeleton className={className} />;
 }
 
 export default function ExecutiveHeroScreen({
@@ -191,7 +192,7 @@ export default function ExecutiveHeroScreen({
   <div className="w-12 h-12 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))]/10 flex items-center justify-center text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-lg">
   <Activity size={24} strokeWidth={1.5} />
   </div>
-  <span className="authority-title !text-2xs opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-700">HİZMET KADROSU</span>
+  <span className="authority-title !text-2xs opacity-40 font-medium tracking-wide group-hover:font-bold transition-all duration-200">HİZMET KADROSU</span>
   </div>
 
   {/* Personnel Count — large number */}
@@ -249,11 +250,11 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.99 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => onOpenDrawer('alarmlar')}
- className={`flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger ${cozulmamisSayisi > 0 ? 'spatial-glass-elevated border-rose-500/30 bg-rose-500/[0.04]' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
+ className={`flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-200 cursor-pointer min-h-[140px] shimmer-trigger ${cozulmamisSayisi > 0 ? 'spatial-glass-elevated border-rose-500/30 bg-rose-500/[0.04]' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between relative z-10">
- <div className={`relative flex flex-col items-center justify-center gap-2.5 w-[60px] h-[60px] rounded-[24px] transition-all duration-700 group z-10 ${cozulmamisSayisi > 0 ? 'bg-rose-500/20 text-rose-500 border border-rose-500/30' : 'bg-[var(--surface-low)] text-[var(--text-secondary)] border border-[var(--glass-border)]'}`}>
+ <div className={`relative flex flex-col items-center justify-center gap-2.5 w-[60px] h-[60px] rounded-3xl transition-all duration-200 group z-10 ${cozulmamisSayisi > 0 ? 'bg-rose-500/20 text-rose-500 border border-rose-500/30' : 'bg-[var(--surface-low)] text-[var(--text-secondary)] border border-[var(--glass-border)]'}`}>
  <ShieldAlert size={20} strokeWidth={1.5} />
  </div>
  <div className="text-right">
@@ -288,7 +289,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => setActiveTab('ekip', 'mazeretler')}
- className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-200 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -316,7 +317,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => setActiveTab('planlama')}
- className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-200 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -352,7 +353,7 @@ export default function ExecutiveHeroScreen({
  whileTap={{ scale: 0.98 }}
  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
  onClick={() => onOpenDrawer('duyurular')}
- className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-700 cursor-pointer min-h-[140px] shimmer-trigger"
+ className="flex-1 spatial-glass !rounded-card p-6 relative overflow-hidden flex flex-col justify-between transition-all duration-200 cursor-pointer min-h-[140px] shimmer-trigger"
  >
  <div className="kinetic-sheen" />
  <div className="flex items-center justify-between">
@@ -381,7 +382,7 @@ export default function ExecutiveHeroScreen({
  >
  <div className="flex items-center justify-between px-4">
  <div className="flex items-center gap-4">
- <div className="w-1 h-3 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full shadow-[0_0_10px_rgb(99,102,241)]" />
+ <div className="w-1 h-3 bg-[var(--dynamic-aura,var(--aura-indigo))] rounded-full shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_80%,transparent)]" />
  <h2 className="text-xl font-light tracking-tight text-[var(--text-primary)] uppercase tracking-wide">Hizmet Akışı</h2>
  </div>
   <button
@@ -429,7 +430,7 @@ export default function ExecutiveHeroScreen({
  className={`spatial-glass !rounded-card p-5 cursor-pointer group transition-all duration-500 relative overflow-hidden ${isExpanded ? 'spatial-glass-elevated border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'hover:bg-[var(--text-primary)]/[0.02]'}`}
  >
  {/* Item Sheen */}
- <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+ <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
 
  <motion.div layout className="flex items-center justify-between relative z-10">
  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8 flex-1 min-w-0">
@@ -463,7 +464,7 @@ export default function ExecutiveHeroScreen({
  record.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgb(245,158,11)]' : 
  'bg-emerald-500 shadow-[0_0_8px_rgb(16,185,129)]'
  }`} />
- <span className={`authority-title !text-2xs relative z-10 transition-all duration-700 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
+ <span className={`authority-title !text-2xs relative z-10 transition-all duration-200 font-bold tracking-wide ${isExpanded ? 'opacity-100 font-black' : 'opacity-30 font-medium group-hover:font-bold'} ${
  record.status === 'active' ? 'text-rose-500' : 
  record.status === 'pending' ? 'text-amber-500' : 
  'text-emerald-500'
@@ -534,7 +535,7 @@ export default function ExecutiveHeroScreen({
  </>
  ) : (
  <motion.button 
- whileHover={{ y: -2, backgroundColor: 'rgba(255,255,255,0.05)' }}
+ whileHover={{ y: -2, backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.98 }}
  onClick={(e) => {
   e.stopPropagation();
@@ -592,7 +593,7 @@ export default function ExecutiveHeroScreen({
  }
  setDecisionConfirm({ open: false, id: null, durum: null, title: '' });
  }}
- title={decisionConfirm.durum === 'onaylandi' ? 'İZNİ ONAYLA' : 'İZNİ REDDET'}
+ title={decisionConfirm.durum === 'onaylandi' ? 'İzni Onayla' : 'İzni Reddet'}
  message={`${decisionConfirm.title}${decisionConfirm.durum === 'onaylandi' ? ' onaylanacak' : ' reddedilecek'}. Bu kararı daha sonra geri alabilirsiniz.`}
  confirmText={decisionConfirm.durum === 'onaylandi' ? 'EVET, ONAYLA' : 'EVET, REDDET'}
  isDanger={decisionConfirm.durum === 'reddedildi'}

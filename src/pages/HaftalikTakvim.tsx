@@ -7,12 +7,9 @@ import { auth } from '../lib/firebase';
 import { ChevronLeft, ChevronRight, Info, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Vakit } from '../types';
-import { useEzanVakitleri } from '../hooks/useEzanVakitleri';
-import { useMevcutVakit } from '../hooks/useMevcutVakit';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { useHaftaBildirimleri } from '../hooks/useHaftaBildirimleri';
 import { getHaftaIdFromDate, getTurkeyNow, toTurkishUpperCase } from '../lib/dateUtils';
-import { getActiveAuraColor, getSecondaryAuraColor } from '../lib/auraTheme';
 import { EmptyState } from '../components/ui/EmptyState';
 
 const VAKIT_LISTESI: Vakit[] = ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi'];
@@ -28,16 +25,6 @@ export default function HaftalikTakvim() {
  const muezzinMap = useMuezzinStore(s => s.muezzinMap);
  const usersLoading = useMuezzinStore(s => s.loading);
  const currentUser = auth.currentUser;
-
- const { bugunVakitler } = useEzanVakitleri();
- const mevcutVakit = useMevcutVakit(bugunVakitler);
-
- // NOT (mimari denetim — bütünsel hata analizi): bu iki eşleme
- // auraTheme.ts, AnaEkranHero.tsx ve useDashboardLogic.ts'te birebir
- // kopyalanmıştı (CLAUDE.md'nin "aynı algoritmayı yeniden yazma" uyarısına
- // aykırı) — paylaşılan kaynağa taşındı.
- const auraColor = useMemo(() => getActiveAuraColor(mevcutVakit), [mevcutVakit]);
- const secondaryAuraColor = useMemo(() => getSecondaryAuraColor(mevcutVakit), [mevcutVakit]);
 
  const loading = planLoading || usersLoading || bildirimLoading;
 
@@ -118,23 +105,10 @@ export default function HaftalikTakvim() {
  return (
  <div className="w-full min-h-screen bg-[var(--app-bg)] relative overflow-hidden transition-colors duration-[3000ms]">
  
- {/* Dynamic Ambient Auras (Sirkadiyen Geçiş) */}
- <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
- <div 
- className="absolute top-[10%] left-[-15%] w-[60%] h-[60%] blur-[200px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${auraColor} 0%, transparent 70%)` 
- }}
- />
- <div 
- className="absolute bottom-[10%] right-[-15%] w-[60%] h-[60%] blur-[200px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${secondaryAuraColor} 0%, transparent 70%)`,
- animationDelay: '-4s'
- }}
- />
- </div>
-
+ {/* Sayfaya özgü ikinci bir aura blob katmanı önceden burada AYRICA render
+     ediliyordu — Layout.tsx zaten global bir 2-blob sirkadiyen katman
+     sağlıyor (aynı --dynamic-aura'yı okuyarak); üst üste 4 blur katmanı
+     doygunluğun katlanmasına yol açıyordu (bkz. premium denetim B34, O8). */}
  <IslamicGeometricBg />
 
  {/* pb-8: Layout.tsx'teki <main> zaten dock temizliği için pb ayırıyor (bkz.
@@ -175,7 +149,7 @@ export default function HaftalikTakvim() {
  whileTap={{ scale: 0.9 }}
  onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
  aria-label="Önceki hafta"
- className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
+ className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
  >
  <ChevronLeft size={18} />
  </motion.button>
@@ -190,7 +164,7 @@ export default function HaftalikTakvim() {
  whileTap={{ scale: 0.9 }}
  onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
  aria-label="Sonraki hafta"
- className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
+ className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.05] rounded-2xl transition-all"
  >
  <ChevronRight size={18} />
  </motion.button>
@@ -341,7 +315,7 @@ export default function HaftalikTakvim() {
  </div>
  );
  }) : (
- <span className="text-xs text-[var(--text-secondary)] opacity-10 font-light italic">Atanmamış</span>
+ <span className="text-xs text-muted font-light italic">Atanmamış</span>
  )}
  </div>
  </div>
@@ -368,14 +342,14 @@ export default function HaftalikTakvim() {
  </div>
  );
  }) : (
- <span className="text-xs text-[var(--text-secondary)] opacity-10 font-light italic">Atanmamış</span>
+ <span className="text-xs text-muted font-light italic">Atanmamış</span>
  )}
  </div>
  </div>
  </div>
  </div>
 
- <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+ <div className="absolute inset-0 bg-gradient-to-br from-[var(--specular-glow)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
  </motion.div>
  );
  })}

@@ -50,7 +50,7 @@ export default function ProfileStats({ userData }: ProfileStatsProps) {
  {/* Performance Card */}
  <div className="p-8 spatial-glass rounded-card flex flex-col sm:flex-row items-center justify-between gap-6 border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]">
  <div className="flex items-center gap-6">
- <div className="w-16 h-16 rounded-[22px] bg-[var(--status-info)]/10 text-[var(--status-info)] flex items-center justify-center border border-[var(--status-info)]/20 shadow-[var(--spatial-shadow)]">
+ <div className="w-16 h-16 rounded-avatar bg-[var(--status-info)]/10 text-[var(--status-info)] flex items-center justify-center border border-[var(--status-info)]/20 shadow-[var(--spatial-shadow)]">
  <Award size={28} strokeWidth={1.5} />
  </div>
  <div className="text-left space-y-1">

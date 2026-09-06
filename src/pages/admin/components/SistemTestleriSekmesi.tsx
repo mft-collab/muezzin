@@ -539,7 +539,7 @@ export const SistemTestleriSekmesi = React.memo(({ setActiveTab }: { setActiveTa
         isOpen={confirmSimulateOpen}
         onClose={() => setConfirmSimulateOpen(false)}
         onConfirm={executeSimulateError}
-        title="TEST HATASI SİMÜLASYONU"
+        title="Test Hatası Simülasyonu"
         message="Uygulamada yapay bir çökme simüle edilecek ve hata günlüklerine yeni bir kayıt yazılacaktır. Devam etmek istiyor musunuz?"
         isDanger={true}
         confirmText="EVET, SİMÜLE ET"

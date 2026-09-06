@@ -73,8 +73,10 @@ export default function MazeretGecmisi() {
  
  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
  <div className="w-full sm:w-64 relative group">
- <select 
- value={selectedMuezzin} 
+ <label htmlFor="mazeret-gecmisi-personel-filtre" className="sr-only">Personel filtrele</label>
+ <select
+ id="mazeret-gecmisi-personel-filtre"
+ value={selectedMuezzin}
  onChange={e => setSelectedMuezzin(e.target.value)}
  className="w-full spatial-glass-elevated py-3.5 px-6 rounded-2xl text-2xs font-bold uppercase tracking-wide text-[var(--text-primary)] outline-none border border-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/[0.05] focus:border-[var(--dynamic-aura,var(--aura-indigo))]/30 transition-all appearance-none cursor-pointer"
  >
@@ -150,13 +152,13 @@ export default function MazeretGecmisi() {
  key={g.id} 
  className="group"
  >
- <td className="px-6 py-5 spatial-glass-elevated !rounded-l-[24px] border-r-0">
+ <td className="px-6 py-5 spatial-glass-elevated !rounded-l-3xl border-r-0">
  <div className="flex flex-col gap-1.5">
  <span className="text-sm font-medium text-[var(--text-primary)] tracking-tight">
  {g.tarih ? format(parseISO(g.tarih), 'dd MMMM yyyy', { locale: tr }) : '-'}
  </span>
  <div className="flex items-center gap-2">
- <div className="w-1 h-1 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+ <div className="w-1 h-1 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_8px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_60%,transparent)]" />
  <span className="authority-title !text-2xs opacity-40 uppercase tracking-wide">
  {g.tarih ? format(parseISO(g.tarih), 'EEEE', { locale: tr }) : ''} • {toTurkishUpperCase(g.vakit)} VAKTİ
  </span>
@@ -171,7 +173,7 @@ export default function MazeretGecmisi() {
  <span className="text-sm font-light text-[var(--text-primary)] tracking-tight">{getMuezzinName(g.uid)}</span>
  </div>
  </td>
- <td className="px-6 py-5 spatial-glass-elevated !rounded-r-[24px] border-l-0">
+ <td className="px-6 py-5 spatial-glass-elevated !rounded-r-3xl border-l-0">
   <div className="flex items-center justify-between gap-4 w-full">
     <div className="bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border border-[var(--dynamic-aura,var(--aura-indigo))]/20 px-5 py-2.5 rounded-xl inline-flex items-center gap-3 shadow-sm group-hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/15 transition-all duration-500">
       <div className="w-1 h-1 rounded-full bg-[var(--dynamic-aura,var(--aura-indigo))]" />
@@ -212,7 +214,7 @@ export default function MazeretGecmisi() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: idx * 0.05 }}
-        className="spatial-glass-elevated p-4 space-y-3 !rounded-[20px] sm:!rounded-[24px] border border-[var(--text-primary)]/5"
+        className="spatial-glass-elevated p-4 space-y-3 !rounded-[20px] sm:!rounded-3xl border border-[var(--text-primary)]/5"
       >
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">
@@ -252,7 +254,7 @@ export default function MazeretGecmisi() {
    isOpen={confirmDelete.open}
    onClose={() => setConfirmDelete({ open: false, id: null })}
    onConfirm={executeDelete}
-   title="MAZERET KAYDINI SİL"
+   title="Mazeret Kaydını Sil"
    message="Seçilen mazeret kaydı arşivden tamamen kaldırılacaktır. Bu işlem geri alınamaz."
    isDanger={true}
    confirmText="EVET, ARŞİVDEN SİL"

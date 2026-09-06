@@ -129,7 +129,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
  // yanıltıcı biçimde etkin görünüp sahte bir "başarı" günlüğü
  // üretebiliyordu; burada da devre dışı bırakılır (savunma katmanı).
  disabled={errors.length === 0 || repairing || loading || !!auditError}
- className="px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl text-2xs font-bold uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
+ className="px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--app-bg)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 rounded-xl text-2xs font-bold uppercase tracking-wide shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
  >
  <ShieldCheck size={12} /> OTOMATİK ONAR
  </motion.button>
@@ -235,7 +235,7 @@ export const VeriSagligiSekmesi = React.memo(() => {
    isOpen={confirmRepairOpen}
    onClose={() => setConfirmRepairOpen(false)}
    onConfirm={executeAutoRepair}
-   title="VERİLERİ OTOMATİK ONAR"
+   title="Verileri Otomatik Onar"
    message={`Toplam ${errors.length} adet veri uyuşmazlığı tespit edildi. Otomatik onarım işlemine devam etmek istiyor musunuz?`}
    isDanger={false}
    confirmText="ONARIMI BAŞLAT"

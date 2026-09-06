@@ -450,7 +450,7 @@ export const KiblePusulasiModal: React.FC<KiblePusulasiModalProps> = ({ isOpen, 
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="KIBLE YÖNÜ PUSULASI"
+      title="Kıble Yönü Pusulası"
     >
       <div className="flex flex-col items-center pt-6 pb-4 relative text-center">
         {/* Compact Circadian Aura Glow */}

@@ -166,10 +166,10 @@ export const DuyuruYonetimi: React.FC = () => {
  </div>
  
  <motion.button
- whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
+ whileHover={{ y: -3, scale: 1.02, boxShadow: '0 15px 30px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)' }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setModalOpen(true)}
- className="flex items-center justify-center gap-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
+ className="flex items-center justify-center gap-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] px-8 py-4 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg group w-full sm:w-auto"
  >
  <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-500" />
  YENİ DUYURU YAYINLA
@@ -379,7 +379,7 @@ export const DuyuruYonetimi: React.FC = () => {
  <button
  type="button"
  onClick={applyTemplate}
- className="flex-1 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-all"
+ className="flex-1 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] rounded-lg text-2xs font-bold uppercase tracking-wide shadow-md hover:opacity-90 transition-all"
  >
  Şablonu Metne Uygula
  </button>
@@ -404,9 +404,9 @@ export const DuyuruYonetimi: React.FC = () => {
  const isSelected = formData.tip === type;
  let activeStyle = '';
  if (isSelected) {
- if (type === 'onemli') activeStyle = 'bg-rose-500 text-[var(--text-primary)] border-rose-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-danger,red)_25%,transparent)]';
- else if (type === 'bilgi') activeStyle = 'bg-sky-500 text-[var(--text-primary)] border-sky-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-info,sky)_25%,transparent)]';
- else activeStyle = 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]';
+ if (type === 'onemli') activeStyle = 'bg-rose-500 text-[var(--app-bg)] border-rose-400 shadow-[0_10px_20px_color-mix(in_srgb,var(--status-danger,red)_25%,transparent)]';
+ else if (type === 'bilgi') activeStyle = 'bg-[var(--status-info)] text-[var(--app-bg)] border-[var(--status-info)] shadow-[0_10px_20px_color-mix(in_srgb,var(--status-info,sky)_25%,transparent)]';
+ else activeStyle = 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]';
  } else {
  activeStyle = 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10';
  }
@@ -431,12 +431,12 @@ export const DuyuruYonetimi: React.FC = () => {
  whileTap={{ scale: 0.98 }}
  type="submit"
  disabled={isSubmitting}
- className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center disabled:opacity-50"
+ className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] border border-[var(--dynamic-aura,var(--aura-indigo))]/60 text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/20 transition-all duration-700 text-center justify-center flex items-center disabled:opacity-50"
  >
  {isSubmitting ? 'YAYINLANIYOR...' : 'DUYURUYU ŞİMDİ YAYINLA'}
  </motion.button>
  <motion.button 
- whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+ whileHover={{ backgroundColor: 'var(--surface-medium)' }}
  type="button" 
  onClick={() => setModalOpen(false)} 
  className="px-10 py-5 text-2xs font-bold uppercase tracking-wide text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all border border-[var(--text-primary)]/5 rounded-2xl text-center justify-center flex items-center"
@@ -451,7 +451,7 @@ export const DuyuruYonetimi: React.FC = () => {
  isOpen={confirmDelete.open}
  onClose={() => setConfirmDelete({ open: false, id: null })}
  onConfirm={executeDelete}
- title="DUYURUYU SİL"
+ title="Duyuruyu Sil"
  message="Bu duyuru panodan ve tüm kullanıcıların ekranından kalıcı olarak kaldırılacaktır. Bu işlem geri alınamaz."
  isDanger={true}
  confirmText="EVET, KALICI OLARAK SİL"

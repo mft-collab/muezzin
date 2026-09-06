@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SegmentedTabs } from '../../../components/ui/SegmentedTabs';
+import { PageSkeleton } from '../../../components/ui/Skeleton';
 import { useUrlTab } from '../../../hooks/admin/useUrlTab';
 
 const EzanOnbellegi = lazy(() => import('./EzanOnbellegi'));
@@ -39,7 +40,7 @@ export default function AyarlarHub() {
         id={`ayarlar-panel-${activeTab}`}
         aria-labelledby={`ayarlar-tab-${activeTab}`}
         tabIndex={0}
-        className={`relative transition-all duration-1000 ease-[0.25, 1, 0.5, 1] ${isPending ? 'opacity-20 blur-xl scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}
+        className={`relative transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] ${isPending ? 'opacity-20 blur-xl scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -49,7 +50,7 @@ export default function AyarlarHub() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
           >
-            <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               {activeTab === 'ayarlar' && <SistemAyarlari />}
               {activeTab === 'onbellek' && <EzanOnbellegi />}
               {activeTab === 'loglar' && <SistemLoglari />}

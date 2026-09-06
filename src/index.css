@@ -34,6 +34,21 @@
      gelecekteki değişikliği 44 dosya yerine tek satıra indiriyor. */
   --radius-card: 15px;
 
+  /* İkincil radius ölçeği — --radius-card'ın "küçük öğeler kendi ölçeğinde
+     kalır" kuralı somut bir basamak olmadan 17 farklı keyfi değere (128
+     kullanım) dağılmıştı (bkz. premium denetim B20, Y3). Değerlerin çoğu
+     zaten adlandırılmış Tailwind sınıflarıyla birebir aynıydı
+     (rounded-[16px]≡rounded-2xl, rounded-[12px]≡rounded-xl,
+     rounded-[24px]≡rounded-3xl, rounded-[8px]≡rounded-lg) — o noktalar
+     yeni token yerine doğrudan mevcut adlandırılmış sınıfa taşındı. Gerçek
+     boşluk, Tailwind ölçeğinde karşılığı olmayan iki sık kullanılan değerdi:
+     avatar/büyük ikon kutusu (22px, 17 kullanım) ve dairesel ikon rozeti
+     (28px, 13 kullanım — EmptyState/ConfirmModal/GpsConsentModal ortak
+     "sonuç ikonu" boyutu). İsimler Tailwind'in yerleşik `--radius-sm/md/lg`
+     namespace'iyle BİLEREK çakışmaz. */
+  --radius-avatar: 22px;
+  --radius-icon: 28px;
+
   --app-bg: #000000;
   --spatial-glass-bg: rgba(255, 255, 255, 0.02);
   --spatial-highlight: rgba(255, 255, 255, 0.15);
@@ -92,6 +107,18 @@
   --text-subtle-opacity: 0.55;
   --text-faint-opacity: 0.75;
 
+  /* label-primary/secondary/tertiary (Y1, bkz. premium denetim B1): authority-title
+     rengi (--text-secondary) tam opaklıkta ışık modunda 6.63:1, ama 0.65'te
+     3.01:1'e düşüyor (bkz. premium-label'in kendi yorumu, aşağıda) — AA
+     (4.5:1) için ~0.85 gerçek minimum. Bu, ışık modunda secondary/tertiary
+     arasında opaklıkla anlamlı bir fark bırakmıyor (fiziksel sınır, tasarım
+     tercihi değil); tek gerçek adım primary (1) ile secondary/tertiary (0.85)
+     arasında kalıyor. Koyu modda --text-secondary zaten açık renkte olduğu
+     için üç gerçek kademe mümkün (0.9/0.6/0.4). */
+  --label-primary-opacity: 1;
+  --label-secondary-opacity: 0.85;
+  --label-tertiary-opacity: 0.85;
+
   /* Sinir çizgileri aydinlik modda netlik için belirginlestirildi */
   --glass-border: hsla(210, 15%, 10%, 0.08);
   --spatial-shadow: 0 4px 12px rgba(0, 0, 0, 0.015), 0 20px 32px -8px rgba(0, 0, 0, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -129,8 +156,12 @@
    * kod tabanında en sık kullanılan (>%90) ailelerin şu anda kullanılan tonları burada
    * aydınlık mod için kontrastı WCAG AA'ya çekecek şekilde yeniden tanımlanıyor. Bu,
    * yüzlerce component çağrı noktasını tek tek değiştirmeden aynı otomatik-remap
-   * davranışını sağlıyor. Uzun kuyruktaki nadir renkler (blue/purple/yellow/teal/slate/
-   * zinc/green, ≤4 kullanım) kapsam dışı bırakıldı. */
+   * davranışını sağlıyor. Uzun kuyruktaki nadir renkler (blue/purple/yellow/slate/
+   * zinc/green, ≤4 kullanım) kapsam dışı bırakıldı. `sky` ailesi tek metin-taşıyan
+   * kullanım noktasında (DuyuruYonetimi "BİLGİ" kategorisi) `--status-info`'ya
+   * bağlanarak tamamen elimine edildi (bkz. premium denetim B4, O12) — `teal`
+   * (13 kullanım) kapsam dışı kalmaya devam ediyor çünkü yalnızca gradyan
+   * bitiş rengi olarak kullanılıyor, gerçek metin rengi olarak değil. */
   /* -400 katmanı (rose/emerald/amber/purple), ölçüldüğünde gerçek app-bg
      (hsl(38,20%,94.5%)) üzerinde WCAG AA'nın (4.5:1) altındaydı — sırasıyla
      rose-400 ~3.5:1 (30 metin çağrısı), emerald-400 ~2.3:1 (47 çağrı,
@@ -194,6 +225,12 @@
   --text-muted-opacity: 0.8;
   --text-subtle-opacity: 0.4;
   --text-faint-opacity: 0.55;
+  /* bkz. [data-theme='light'] bloğundaki label-primary/secondary/tertiary
+     yorumu — koyu modda --text-secondary açık renkte olduğundan üç gerçek
+     kademe mümkün. */
+  --label-primary-opacity: 0.9;
+  --label-secondary-opacity: 0.6;
+  --label-tertiary-opacity: 0.4;
   --glass-border: rgba(255, 255, 255, 0.09);
   --spatial-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(0, 0, 0, 0.2), 0 4px 24px -1px rgba(0, 0, 0, 0.03), 0 20px 40px -12px rgba(0, 0, 0, 0.65);
 
@@ -238,10 +275,17 @@
     font-feature-settings: "ss01", "cv01", "cv03";
   }
 
+  /* outline-offset ÖNCEDEN +3px (dışa doğru) idi — .spatial-glass/.apple-glass
+     gibi neredeyse her kart/buton overflow:hidden taşıdığından (Webkit mask
+     ve noise dokusu için gerekli), dışa taşan halka orada kırpılıyordu; sabit
+     border-radius:8px de rounded-full (193 kullanım) gibi farklı köşe
+     yarıçaplarında kutulaşıyordu (bkz. premium denetim B36, Y6). İçe doğru
+     (-2px) offset kırpılmayı önler; sabit radius kaldırıldığında modern
+     tarayıcılar outline'ı elementin KENDİ border-radius'una göre otomatik
+     yuvarlar. */
   :focus-visible {
-    outline: 2px solid var(--status-info);
-    outline-offset: 3px;
-    border-radius: 8px;
+    outline: 2px solid var(--dynamic-aura, var(--status-info));
+    outline-offset: -2px;
   }
 
   /* Apple Standard Button Physics - Subtle fade, no aggressive scale globally */
@@ -338,7 +382,14 @@
   @apply spatial-glass;
   background: var(--spatial-glass-bg);
   border: 1px solid var(--glass-border);
-  transition: box-shadow 0.6s var(--spring-easing), background 0.6s var(--spring-easing), border-color 0.6s var(--spring-easing), font-weight 0.4s var(--spring-easing), transform 0.5s var(--spring-easing);
+  /* font-weight ÖNCEDEN buradaydı — group-hover:font-normal/font-bold gibi
+     ağırlık değişimlerini 0.4s'de animasyonluyordu. Font-weight geçişleri
+     tarayıcıda gerçek glyph genişliği değişimine yol açar (variable font
+     olsa bile); bu, hover sırasında metin satırının "şişip inmesi" gibi
+     dikkat dağıtıcı bir layout kaymasına neden oluyordu (bkz. premium
+     denetim B11, Y2). Kaldırılması ağırlık değişimini ANİ yapar — kayma
+     hâlâ olur ama uzatılmış bir animasyonla vurgulanmaz. */
+  transition: box-shadow 0.6s var(--spring-easing), background 0.6s var(--spring-easing), border-color 0.6s var(--spring-easing), transform 0.5s var(--spring-easing);
   border-radius: var(--radius-card) !important;
   cursor: pointer;
   will-change: transform;
@@ -352,23 +403,11 @@
   }
 }
 
-@utility apple-card-elevated {
-  @apply apple-card;
-  background: var(--card-elevated-bg);
-  box-shadow: none !important; /* Force shadowless except global tokens */
-}
-
 @utility apple-card-flat {
   @apply spatial-glass;
   box-shadow: none !important;
   background: var(--card-flat-bg);
   border: 1px solid var(--glass-border);
-}
-
-@utility apple-card-flat-active {
-  @apply apple-card-flat;
-  background: var(--surface-medium);
-  border: 1.5px solid var(--status-info);
 }
 
 @utility spatial-glass-elevated {
@@ -395,12 +434,6 @@
      düşüyordu (WCAG AA 4.5:1 eşiğinin altı) — 0.85 her iki modda da ≥4.5:1 sağlıyor. */
   opacity: 0.85;
   font-weight: 600;
-}
-
-@utility premium-muted {
-  color: var(--text-secondary);
-  opacity: 0.4;
-  font-weight: 400;
 }
 
 /* Premium Badges & Notifications */
@@ -440,45 +473,15 @@
   animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* !important gerekli: aynı elementteki .spatial-glass'ın kendi box-shadow'u
+   !important olduğundan bu ikisi hiç render olmuyordu (bkz. premium denetim
+   B16). success/warning/danger varyantları 0 kullanım olduğu için kaldırıldı. */
 @utility spatial-glow-primary {
-  box-shadow: 0 0 30px -5px var(--status-info);
-}
-
-@utility spatial-glow-success {
-  box-shadow: 0 0 30px -5px var(--status-success);
-}
-
-@utility spatial-glow-warning {
-  box-shadow: 0 0 30px -5px var(--status-warning);
-}
-
-@utility spatial-glow-danger {
-  box-shadow: 0 0 30px -5px var(--status-danger);
+  box-shadow: 0 0 30px -5px var(--status-info) !important;
 }
 
 @utility spatial-glow-amber {
-  box-shadow: 0 0 30px -5px var(--status-warning);
-}
-
-@utility btn-premium {
-  padding: 1rem 2rem;
-  border-radius: 1.5rem;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  transition: all 0.5s var(--spring-easing);
-  background: var(--text-primary);
-  color: var(--app-bg);
-  border: 1px solid transparent;
-  &:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: var(--spatial-shadow);
-  }
-  &:active {
-    transform: translateY(0) scale(0.98);
-  }
+  box-shadow: 0 0 30px -5px var(--status-warning) !important;
 }
 
 @layer base {
@@ -517,32 +520,22 @@
   }
 }
 
+/* Diğer dördü, iç içe cam kartlarda (ör. bir spatial-glass modülü içinde
+   başka bir spatial-glass alt-kart) gölgenin katlanmasını önlemek için —
+   yalnızca NESTED durumda gölgeyi kırar. `.spatial-glass-elevated` ÖNCEDEN
+   bu listede TEK BAŞINA (nesting koşulu olmadan) duruyordu — kendi
+   @utility'sinin verdiği gölgeyi HER zaman, iç içe olsun olmasın, sıfıra
+   indiriyordu; 24 kullanım noktasının hiçbiri "yükseltilmiş" görünmüyordu
+   (bkz. premium denetim B14, Y5). Diğer dördüyle aynı nesting kuralına
+   taşındı — artık yalnızca gerçekten iç içe geçtiğinde sıfırlanır. */
 .spatial-glass .spatial-glass,
 .apple-card .apple-card,
 .spatial-glass .apple-card,
 .apple-card .spatial-glass,
-.apple-card-elevated,
-.spatial-glass-elevated {
+.spatial-glass .spatial-glass-elevated,
+.apple-card .spatial-glass-elevated {
   box-shadow: none !important;
 }
-
-/* Exception for Root Hero or main sections if they need a tiny bit of depth */
-.md\:sticky .spatial-glass-elevated {
-  box-shadow: var(--spatial-shadow) !important;
-}
-
-@utility ambient-aura {
-  position: fixed;
-  z-index: -1;
-  inset: -10%;
-  filter: blur(120px);
-  pointer-events: none;
-  opacity: var(--aura-opacity);
-  transition: opacity 1s var(--spring-easing);
-}
-
-.aura-ruby { background: radial-gradient(circle at 30% 70%, var(--aura-ruby) 0%, transparent 60%); }
-.aura-amber { background: radial-gradient(circle at 70% 30%, var(--aura-amber) 0%, transparent 60%); }
 
 @utility kinetic-countdown {
   font-weight: 100;
@@ -558,40 +551,96 @@
   color: var(--text-secondary);
 }
 
+/* Üç seviyeli etiket hiyerarşisi (Y1, bkz. premium denetim B1) — yeni kodda
+   `authority-title opacity-NN` yazma, bu üçünden birini kullan. Değerler
+   [data-theme='light']/[data-theme='dark'] bloklarındaki --label-*-opacity
+   token'larından gelir (bkz. o yorumlar). */
+@utility label-primary {
+  @apply authority-title;
+  opacity: var(--label-primary-opacity);
+}
+
+@utility label-secondary {
+  @apply authority-title;
+  opacity: var(--label-secondary-opacity);
+}
+
+@utility label-tertiary {
+  @apply authority-title;
+  opacity: var(--label-tertiary-opacity);
+}
+
+/* Hem PWA kök yüzeyinde (Layout) hem hata ekranında (ChunkErrorFallback)
+   kullanılıyordu ama hiç tanımlı değildi (bkz. premium denetim B26) —
+   .spatial-glass'ın kendi ::before dokusuyla aynı SVG fractal noise'u tam
+   ekran zemine de uyguluyor. */
+@utility noise-surface {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.015'/%3E%3C/svg%3E");
+  }
+}
+
+/* AdminPanel kök div'i bu sınıfı taşıyordu ama tanımlı değildi (bkz. premium
+   denetim B44) — uygulamanın gerçek gövde fontuna (--font-sans) bağlanır. */
+@utility font-apple {
+  font-family: var(--font-sans);
+}
+
+/* 11 çağrı noktasında (Modal başlığı, LoginScreen, HaftalikTakvim vb.)
+   kullanılıyordu ama tanımlı değildi (bkz. premium denetim B12). */
+@utility apple-thin {
+  font-weight: 200;
+  letter-spacing: -0.02em;
+}
+
+/* 10 kaydırma bölgesinde kullanılıyordu ama Tailwind v4'te böyle bir utility
+   yok (bkz. premium denetim B43) — sticky-hero'daki "scrollbar'ı gizle"
+   reçetesi burada paylaşılan bir yardımcıya çıkarıldı. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Vakti girmiş, onay bekleyen görev kartının tek görsel vurgusuydu ama
+   tanımlı değildi (bkz. premium denetim B17). Aynı kutudaki .spatial-glass
+   box-shadow'u !important olduğundan (ve @keyframes içinde !important
+   tarayıcılar tarafından yok sayıldığından) nabız ayrı bir ::after halkası
+   üzerinde çalışır. */
+@keyframes living-glow-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 28px 6px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 55%, transparent);
+  }
+}
+.animate-living-glow {
+  position: relative;
+}
+.animate-living-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  animation: living-glow-ring 2.4s ease-in-out infinite;
+}
+
 .fluid-transition {
   transition: all var(--fluid-duration) var(--spring-easing);
 }
 
-.hover-lift {
-  transition: transform 0.55s var(--spring-easing), background 0.55s var(--spring-easing), box-shadow 0.55s var(--spring-easing);
-  will-change: transform;
-}
-
-.hover-lift:hover {
-  transform: translateY(-8px) scale(1.015);
-  /* rgba(255,255,255,.04) sabitti — açık temanın açık zemininde görsel olarak
-     no-op'tu (bkz. premium denetim 1). --surface-medium her iki temada da
-     zemine göre ayarlı bir "hafif yükselti" tonu veriyor. */
-  background: var(--surface-medium);
-  box-shadow: 0 28px 56px -14px rgba(0, 0, 0, 0.35);
-}
-
-.hover-lift:active {
-  transform: scale(0.975) translateY(0);
-  transition: transform 0.12s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-@utility perspective-container {
-  perspective: 1000px;
-}
-
-@utility perspective-card {
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
 .phi-padding { padding: var(--phi-space); }
-.phi-gap { gap: var(--phi-space); }
 
 /* Custom Scrollbar macOS Style */
 ::-webkit-scrollbar { width: 14px; height: 14px; }
@@ -637,18 +686,6 @@
 .animate-float {
   animation: float-y 5s ease-in-out infinite;
   transform: translateZ(0);
-}
-
-/* Gradient separator line */
-@utility gradient-separator {
-  height: 1px;
-  border: none;
-  background: linear-gradient(90deg, transparent 0%, var(--glass-border) 25%, var(--glass-border) 75%, transparent 100%);
-}
-
-/* Soft glow for next-vakit text */
-@utility text-glow-info {
-  text-shadow: 0 0 20px color-mix(in srgb, var(--status-info) 50%, transparent);
 }
 
 /* Skeleton shimmer sweep */
@@ -733,32 +770,6 @@
   transform: translateX(120%);
 }
 
-@utility fluid-skeleton {
-  position: relative;
-  overflow: hidden;
-  background: var(--surface-low) !important;
-  border-radius: 16px;
-  border: 1px solid var(--glass-border);
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in srgb, var(--dynamic-aura, var(--text-primary)) 6%, transparent),
-      transparent
-    );
-    animation: fluid-shimmer 2.5s infinite var(--spring-easing);
-  }
-}
-
-@keyframes fluid-shimmer {
-  100% { transform: translateX(100%); }
-}
-
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -816,56 +827,69 @@
   }
 }
 
-@utility snap-scroll-x {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+/* ESKİ DAVRANIŞ (kaldırıldı, bkz. premium denetim B1, Y1): burada
+   `[data-theme='light'] .authority-title/.premium-label { opacity: 1
+   !important }` vardı — DOM'daki opacity-NN değerinden bağımsız olarak ışık
+   modunda HER etiketi tam opaklığa zorluyordu. Bu, 136 çağrı noktasının
+   120'sindeki kasıtlı ikincil-metin hiyerarşisini (opacity-20'den opacity-70'e
+   21 farklı değer) düzleştiriyordu — ör. Modal'ın göz-kaşı etiketi
+   (`opacity-25 dark:opacity-20`, "neredeyse görünmez fısıltı" olarak
+   tasarlanmış) başlıkla eşit güçte basılıyordu. Aşağıdaki kural, DOM'daki
+   opacity-NN değerini SIFIRLAMAK yerine yalnızca AA eşiğinin (text-secondary
+   için ölçülen ~0.85, bkz. .premium-label'in kendi yorumu) ALTINDA kalan
+   değerleri o eşiğe taşır — 90/100 gibi zaten uyumlu değerler dokunulmadan
+   kalır, primary/secondary/tertiary arasındaki (yeni kod için) fark korunur.
+   Seçiciler yalnızca .authority-title/.premium-label İLE BİRLİKTE bu opaklık
+   sınıflarını taşıyan elementleri hedefler — aynı opacity-NN sınıfları
+   disabled buton/animate-ping/skeleton gibi metin-dışı 40+ noktada da
+   kullanılıyor, onları etkilemez (eski global `.opacity-35/.opacity-50`
+   kuralları da bu yüzden kaldırıldı — kapsamları etiket dışı elementlere
+   sızıyordu). */
+[data-theme='light'] .authority-title.opacity-20,
+[data-theme='light'] .authority-title.opacity-25,
+[data-theme='light'] .authority-title.opacity-30,
+[data-theme='light'] .authority-title.opacity-35,
+[data-theme='light'] .authority-title.opacity-40,
+[data-theme='light'] .authority-title.opacity-45,
+[data-theme='light'] .authority-title.opacity-50,
+[data-theme='light'] .authority-title.opacity-55,
+[data-theme='light'] .authority-title.opacity-60,
+[data-theme='light'] .authority-title.opacity-65,
+[data-theme='light'] .authority-title.opacity-70,
+[data-theme='light'] .premium-label.opacity-40,
+[data-theme='light'] .premium-label.opacity-65,
+[data-theme='light'] .premium-label.\!opacity-20,
+[data-theme='light'] .premium-label.\!opacity-30,
+[data-theme='light'] .premium-label.\!opacity-35,
+[data-theme='light'] .premium-label.\!opacity-40,
+[data-theme='light'] .premium-label.\!opacity-50,
+[data-theme='light'] .premium-label.\!opacity-55,
+[data-theme='light'] .premium-label.\!opacity-65,
+[data-theme='light'] .premium-label.\!opacity-70 {
+  opacity: 0.85 !important;
 }
 
-@utility snap-card {
-  scroll-snap-align: start;
-  flex-shrink: 0;
+/* Koyu modda --text-secondary açık renkte olduğundan çoğu düşük opaklık
+   (0.3+) hâlâ okunabilir kalıyor (bkz. text-subtle/-faint dark = 0.4/0.55) —
+   yalnızca kanıtlanmış şekilde okunamayan iki en düşük değer (0.2/0.25,
+   ör. SistemAnalitigi grafik ekseni) bir tabana çekilir. */
+[data-theme='dark'] .authority-title.opacity-20,
+[data-theme='dark'] .authority-title.opacity-25,
+[data-theme='dark'] .premium-label.\!opacity-20 {
+  opacity: 0.5 !important;
 }
 
-/* Aydinlik modda etiketlerin okunabilirligini koruma kurallari — önceki opacity:0.55
-   patch'i .premium-label'i tasarım denetiminde 3.01:1'in altına düşürüyordu (WCAG AA
-   4.5:1 altı); .authority-title'ın kendi rengi tam kontrastlıydı (6.63:1) ama admin
-   KPI kartlarında (ör. ExecutiveHeroScreen.tsx "AKTİF TALEPLER"/"HAFTALIK PLAN"
-   etiketleri) `opacity-30`/`opacity-40` gibi ayrı Tailwind utility'leriyle üst üste
-   binince aynı eşiğin altına düşüyordu (görsel denetim, Rev.2) — bu yüzden
-   .authority-title'ın kendi opaklığı da aydınlık modda tam güce zorlanır.
-   @layer base İÇİNDE: bu blok önceden katmansızdı (unlayered) — ExecutiveHeroScreen.tsx'in
-   authority-title kullanımları bang'siz opacity-XX (kendi !important'ı YOK) taşıdığı için
-   sorun hiç ortaya çıkmıyordu, ama SistemHatalariSekmesi.tsx/SistemDenetimSekmesi.tsx/
-   VeriSagligiSekmesi.tsx'teki premium-label kullanımları BANG'Lİ !opacity-XX (kendi
-   !important'ı VAR) taşıyor. CSS Cascade Layers spesifikasyonuna göre iki !important
-   kural karşılaştığında katmansız (unlayered) taraf, Tailwind'in @layer utilities'i
-   dahil TÜM adlandırılmış katmanlara karşı EN DÜŞÜK önceliğe sahip — bu yüzden
-   önceki (katmansız) hâli manuel doğrulamada gerçekte hiç uygulanmıyordu (bkz.
-   premium standart denetimi, tarayıcıda ölçülen computed opacity hâlâ 0.35 çıktı).
-   @layer base'e taşımak, Tailwind'in kendi katman sırasında (theme, base, components,
-   utilities) base'i utilities'ten ÖNCE koyduğu için — !important karşılaştırmasında
-   öncelik sırası TERSİNE döner, yani base'in !important'ı utilities'inkini yener. */
 @layer base {
+  /* .premium-label @apply authority-title yapıyor ama Tailwind v4'te bu, DOM'a
+     .authority-title sınıfını EKLEMİYOR — yalnızca onun kurallarını bu
+     @utility'nin kendi kural kümesine derliyor. Bang'li !opacity-XX çağrı
+     noktaları (SistemHatalariSekmesi.tsx vb.) kendi !important'ını taşıdığı
+     için katmansız/@layer sırası burada hâlâ önemli — bkz. CSS Cascade
+     Layers: @layer base, Tailwind'in @layer utilities'inden ÖNCE geldiği
+     için bang'li bir utility'nin !important'ını yener. Bu yalnızca
+     font-weight'i etkiler; opacity artık yukarıdaki scoped kurallarda. */
   [data-theme='light'] .premium-label {
     font-weight: 600 !important;
-    /* .premium-label @apply authority-title yapıyor ama Tailwind v4'te bu,
-       DOM'a .authority-title sınıfını EKLEMİYOR — yalnızca onun kurallarını bu
-       @utility'nin kendi kural kümesine derliyor. Bu yüzden aşağıdaki
-       .authority-title kuralı miras alınmıyordu ve Loglar sekmesindeki
-       !opacity-XX çağrı noktaları (SistemHatalariSekmesi.tsx,
-       SistemDenetimSekmesi.tsx vb.) ışık modunda WCAG AA eşiğinin altına
-       düşüyordu (bkz. premium standart denetimi) — aynı zorlama burada da
-       tekrarlanır. */
-    opacity: 1 !important;
-  }
-  [data-theme='light'] .authority-title {
-    opacity: 1 !important;
   }
 }
 
@@ -876,15 +900,13 @@
 /* Specular 1px Top Highlight Details (Apple Glass style) */
 [data-theme='light'] .spatial-glass,
 [data-theme='light'] .apple-card,
-[data-theme='light'] .spatial-glass-elevated,
-[data-theme='light'] .apple-card-elevated {
+[data-theme='light'] .spatial-glass-elevated {
   border-top: 1.5px solid hsla(40, 30%, 100%, 0.75) !important;
 }
 
 [data-theme='dark'] .spatial-glass,
 [data-theme='dark'] .apple-card,
-[data-theme='dark'] .spatial-glass-elevated,
-[data-theme='dark'] .apple-card-elevated {
+[data-theme='dark'] .spatial-glass-elevated {
   border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
 }
 
@@ -936,15 +958,6 @@
 [data-theme='light'] .text-\[var\(--text-primary\)\]\/80 {
   color: var(--text-primary) !important;
   opacity: 0.85 !important;
-}
-
-/* Faded states for cards and text */
-[data-theme='light'] .opacity-35 {
-  opacity: 0.65 !important;
-}
-
-[data-theme='light'] .opacity-50 {
-  opacity: 0.75 !important;
 }
 
 /* Premium Apple-Style Soft Heartbeat / Respiration Avatar Effect */

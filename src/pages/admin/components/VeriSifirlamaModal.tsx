@@ -128,7 +128,7 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
   const onayHazir = isSuperAdmin && onayMetni.trim() === ONAY_METNI && secili.size > 0 && !calisiyor;
 
   return (
-    <Modal isOpen={isOpen} onClose={calisiyor ? () => {} : onClose} title="OPERASYONEL VERİYİ SIFIRLA">
+    <Modal isOpen={isOpen} onClose={calisiyor ? () => {} : onClose} title="Operasyonel Veriyi Sıfırla">
       <div className="space-y-8 py-2">
         <div className="spatial-glass-elevated p-5 rounded-card border border-rose-500/20 bg-rose-500/[0.03] flex items-start gap-4">
           <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={22} strokeWidth={1.5} />
@@ -197,18 +197,26 @@ export function VeriSifirlamaModal({ isOpen, onClose }: Props) {
         )}
 
         <div className="space-y-3">
-          <label className="authority-title !text-2xs opacity-50 tracking-wide block">
+          <label htmlFor="onay-metni" className="authority-title !text-2xs opacity-50 tracking-wide block">
             Onaylamak için aşağıya tam olarak yazın: <span className="text-rose-400">{ONAY_METNI}</span>
           </label>
           <input
+            id="onay-metni"
             type="text"
             value={onayMetni}
             onChange={(e) => setOnayMetni(e.target.value)}
             disabled={calisiyor}
+            aria-invalid={onayMetni.length > 0 && onayMetni.trim() !== ONAY_METNI}
+            aria-describedby={onayMetni.length > 0 && onayMetni.trim() !== ONAY_METNI ? 'onay-metni-error' : undefined}
             className="w-full bg-[var(--surface-medium)] border border-rose-500/20 rounded-[14px] px-4 py-3.5 text-[var(--text-primary)] text-sm font-medium focus:border-rose-500/50 outline-none transition-colors"
             placeholder={ONAY_METNI}
             autoComplete="off"
           />
+          {onayMetni.length > 0 && onayMetni.trim() !== ONAY_METNI && (
+            <p id="onay-metni-error" role="alert" className="text-2xs text-rose-400 font-medium leading-relaxed">
+              Girdiğiniz metin eşleşmiyor.
+            </p>
+          )}
         </div>
 
         {calisiyor && (

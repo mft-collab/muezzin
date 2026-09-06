@@ -106,7 +106,12 @@ export const SplashLoader: React.FC = () => {
                 ? 'rgba(255,255,255,0.04)'
                 : 'rgba(255,255,255,0.72)',
               backdropFilter: 'blur(32px) saturate(180%)',
-              borderRadius: '40px',
+              // --radius-card TAM OLARAK bu 40px'in tekrar tekrar elle
+              // yazılmasını ortadan kaldırmak için eklenmişti (bkz.
+              // index.css @theme yorumu) — token'ın değeri sonradan 15px'e
+              // ayarlandığında bu ekran göçe dahil edilmemişti (bkz. premium
+              // denetim B21, Y3).
+              borderRadius: 'var(--radius-card)',
               border: isDark
                 ? '1px solid rgba(255,255,255,0.07)'
                 : '1px solid rgba(0,0,0,0.06)',
@@ -160,7 +165,7 @@ export const SplashLoader: React.FC = () => {
                 }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                 style={{
-                  fontFamily: "'Instrument Serif', serif",
+                  fontFamily: 'var(--font-serif)',
                   fontStyle: 'italic',
                   fontSize: 'clamp(36px, 8vw, 52px)',
                   fontWeight: 400,

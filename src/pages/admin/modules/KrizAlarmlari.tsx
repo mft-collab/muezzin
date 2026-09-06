@@ -177,17 +177,22 @@ export default function KrizAlarmlari() {
  whileHover={{ scale: 1.02 }}
  whileTap={{ scale: 0.98 }}
  onClick={() => setShowResolved(!showResolved)}
- className={`flex items-center gap-4 px-6 py-3 rounded-2xl border transition-all duration-700 self-start ${
- showResolved 
- ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]' 
+ role="switch"
+ aria-checked={showResolved}
+ className={`flex items-center gap-4 px-6 py-3 min-h-[44px] rounded-2xl border transition-all duration-200 self-start ${
+ showResolved
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/10 border-[var(--dynamic-aura,var(--aura-indigo))]/30 text-[var(--dynamic-aura,var(--aura-indigo))]'
  : 'bg-[var(--text-primary)]/[0.03] border-[var(--text-primary)]/5 text-[var(--text-secondary)]'
  }`}
  >
  <span className="authority-title !text-2xs font-bold tracking-wide uppercase">ARŞİVLENMİŞ UYARILAR</span>
- <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-[var(--text-primary)]/10'}`}>
- <motion.div 
- animate={{ x: showResolved ? 22 : 2 }}
- className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm" 
+ <div className={`w-10 h-5 rounded-full relative transition-all duration-500 ${showResolved ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] shadow-[0_0_10px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_50%,transparent)]' : 'bg-[var(--text-primary)]/10'}`}>
+ <motion.div
+ animate={{
+   x: showResolved ? 22 : 2,
+   backgroundColor: showResolved ? 'var(--app-bg)' : 'var(--text-secondary)',
+ }}
+ className="absolute top-1 w-3 h-3 rounded-full shadow-sm"
  />
  </div>
  </motion.button>
@@ -218,9 +223,9 @@ export default function KrizAlarmlari() {
  animate={{ opacity: 1, x: 0 }}
  exit={{ opacity: 0, scale: 0.95 }}
  transition={{ type: "spring", stiffness: 400, damping: 30, delay: idx * 0.05 }}
- className={`relative overflow-hidden p-6 rounded-card border transition-all duration-700 group ${
+ className={`relative overflow-hidden p-6 rounded-card border transition-all duration-200 group ${
  alarm.cozuldu 
- ? 'spatial-glass opacity-30 border-[var(--text-primary)]/5' 
+ ? 'spatial-glass opacity-60 border-[var(--text-primary)]/5' 
  : `${styles.bg} ${styles.border} shadow-[var(--spatial-shadow)] ${styles.bgHover}`
  }`}
  >
@@ -234,7 +239,7 @@ export default function KrizAlarmlari() {
  
  <div className="relative z-10 flex flex-col lg:flex-row items-stretch lg:items-center gap-8">
  {/* Icon Identity */}
- <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shrink-0 shadow-lg border ${
+ <div className={`w-16 h-16 rounded-avatar flex items-center justify-center shrink-0 shadow-lg border ${
  alarm.cozuldu ? 'bg-[var(--text-primary)]/5 text-[var(--text-secondary)] border-[var(--text-primary)]/5' : `${styles.iconBg} ${styles.iconText} ${styles.iconBorder} ${styles.iconShadow}`
  }`}>
  {getIcon(alarm.tip)}
@@ -288,7 +293,7 @@ export default function KrizAlarmlari() {
  whileTap={{ scale: 0.98 }}
  disabled={isRetrying === alarm.id}
  onClick={() => handleRetry(alarm)}
- className={`${styles.buttonBg} text-[var(--text-primary)] px-8 py-5 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-4 disabled:opacity-50`}
+ className={`${styles.buttonBg} text-[var(--app-bg)] px-8 py-5 rounded-2xl text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-4 disabled:opacity-50`}
  >
  <RefreshCcw size={16} className={isRetrying === alarm.id ? 'animate-spin' : ''} />
  {isRetrying === alarm.id ? 'ONARILIYOR...' : 'DİZGEYİ ONAR'}

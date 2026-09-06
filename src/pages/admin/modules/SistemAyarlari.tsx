@@ -178,7 +178,7 @@ export default function SistemAyarlari() {
       taslak değişiklikleri değil) ayarların özeti — tek karttan sonra sayfanın
       geri kalanı boş kaldığı için eklendi (bkz. görsel tasarım denetimi);
       yeni bir Firestore dinleyicisi açmaz, zaten yüklenmiş `settings`'i okur. */}
-  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 sm:mb-8 px-4 py-3 rounded-[12px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] relative z-10">
+  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 sm:mb-8 px-4 py-3 rounded-xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] relative z-10">
   <span className="authority-title !text-2xs opacity-45 tracking-wide">ŞU AN CANLIDA GEÇERLİ</span>
   <span className="text-xs text-[var(--text-secondary)]">
     <span className="text-[var(--text-primary)] font-medium">{settings.ilceAdi}</span> ({settings.ilceId})
@@ -271,7 +271,7 @@ export default function SistemAyarlari() {
  whileTap={{ scale: 0.98 }}
   type="submit"
   disabled={saving}
-  className="bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
+  className="bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-[14px] font-bold text-2xs uppercase tracking-wide shadow-[var(--spatial-shadow)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer"
   >
   {saving ? (
   <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-[var(--text-primary)] rounded-full animate-spin" />
@@ -343,7 +343,7 @@ export default function SistemAyarlari() {
      setPendingLocationChange(null);
      void performSave(pId, pAdi, pHicri, true);
    }}
-   title="VAKİT BÖLGESİ DEĞİŞTİRİLECEK"
+   title="Vakit Bölgesi Değiştirilecek"
    message={`İlçe kodu "${settings.ilceId}" → "${pendingLocationChange?.ilceId}" olarak değiştirilecek. Bu, TÜM cemaatin ezan vakti kaynağını etkiler ve vakit önbelleği yeniden senkronize edilecektir.`}
    isDanger={false}
    confirmText="EVET, DEĞİŞTİR"

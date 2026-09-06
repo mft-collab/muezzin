@@ -33,7 +33,13 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  const appLinks = APP_LINKS;
 
  return (
- <aside className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)] overflow-y-auto">
+ <aside
+ className="w-[80px] flex-shrink-0 flex flex-col items-center py-10 fixed inset-y-0 hidden lg:flex z-50 rounded-none border-r border-[var(--glass-border)] bg-[var(--spatial-glass-bg)] backdrop-blur-[56px] saturate-[160%] shadow-[var(--spatial-shadow)] overflow-y-auto"
+ style={{
+ paddingTop: 'max(2.5rem, env(safe-area-inset-top, 0px))',
+ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom, 0px))',
+ }}
+ >
  {/* Brand & Authority
      flex-shrink-0 — <aside> fixed inset-y-0 (viewport yüksekliğine sabit) ve
      hiçbir çocuğu flex-shrink-0 taşımıyordu. İçerik viewport'tan sadece
@@ -121,10 +127,10 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  aria-label={`${item.label} sayfasına git`}
  title={item.label}
  onClick={() => onNavigateApp(item.path)}
- className="relative w-full h-10 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/22 hover:text-[var(--text-primary)]/70 hover:bg-[var(--text-primary)]/[0.025] border border-transparent hover:border-[var(--glass-border)] transition-all group"
+ className="relative w-full h-11 rounded-[14px] flex items-center justify-center text-[var(--text-primary)]/45 hover:text-[var(--text-primary)]/70 hover:bg-[var(--text-primary)]/[0.025] border border-transparent hover:border-[var(--glass-border)] transition-all group"
  >
  <item.icon strokeWidth={1.6} size={18} />
- <span className="absolute left-[58px] px-3 py-1.5 rounded-[12px] bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-2xs font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
+ <span className="absolute left-[58px] px-3 py-1.5 rounded-xl bg-[var(--app-bg)] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] text-2xs font-medium tracking-wide opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap transition-all">
  {item.label}
  </span>
  </button>
@@ -137,7 +143,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  onClick={toggleTheme}
  aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
  title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
- className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
+ className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-[var(--dynamic-aura,var(--aura-indigo))] hover:bg-[var(--dynamic-aura,var(--aura-indigo))]/5 transition-all group relative overflow-hidden"
  >
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
  {theme === 'dark' ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
@@ -147,7 +153,7 @@ export const SlimSidebar = React.memo<SlimSidebarProps>(({
  onClick={onLogout}
  aria-label="Oturumu kapat"
  title="Oturumu kapat"
- className="w-11 h-11 flex items-center justify-center rounded-[16px] bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
+ className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[var(--text-primary)]/[0.02] border border-[var(--glass-border)] text-subtle hover:text-rose-500 hover:bg-rose-500/10 transition-all group"
  >
  <LogOut size={20} strokeWidth={1.5} />
  </button>

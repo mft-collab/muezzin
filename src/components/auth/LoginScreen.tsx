@@ -49,8 +49,8 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  style={{ boxShadow: 'var(--spatial-shadow)' }}
  >
  {/* Card shimmer overlay */}
- <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent pointer-events-none" />
- <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+ <div className="absolute inset-0 bg-gradient-to-br from-[var(--specular-glow)] via-transparent to-transparent pointer-events-none" />
+ <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--specular-glow)] to-transparent pointer-events-none" />
 
  {/* Top Indicators */}
  <div className="absolute top-8 inset-x-0 flex justify-center gap-2">
@@ -106,10 +106,10 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  whileTap={{ scale: 0.98 }}
  onClick={login} 
  disabled={isLoginInProgress}
- className={`w-full h-16 flex items-center justify-center gap-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-[28px] font-semibold transition-all duration-700 relative overflow-hidden group/btn ${isLoginInProgress ? 'opacity-60 cursor-not-allowed' : ''}`}
+ className={`w-full h-16 flex items-center justify-center gap-5 bg-[var(--text-primary)] text-[var(--app-bg)] rounded-icon font-semibold transition-all duration-700 relative overflow-hidden group/btn ${isLoginInProgress ? 'opacity-60 cursor-not-allowed' : ''}`}
  >
  {/* Hover Sweep Effect */}
- <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+ <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
  
  {isLoginInProgress ? (
  <div className="flex items-center gap-4">
@@ -119,12 +119,10 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  ) : (
  <>
  <div className="w-8 h-8 rounded-full bg-[var(--text-primary)]/10 flex items-center justify-center group-hover/btn:rotate-[360deg] transition-transform duration-1000">
- <img 
- src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
- className="w-5 h-5 grayscale-0" 
- alt="Google" 
- referrerPolicy="no-referrer"
- onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+ <img
+ src="/google-logo.svg"
+ className="w-5 h-5 grayscale-0"
+ alt="Google"
  />
  </div>
  <span className="text-2xs tracking-wide font-bold uppercase">Google ile Giriş Yap</span>
@@ -145,7 +143,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  >
  <div className="flex items-center justify-center gap-6 mb-4">
  <div className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--glass-border)]" />
- <span className="text-2xs font-bold text-[var(--text-secondary)]/15 uppercase tracking-wide">T.C. DİYANET İŞLERİ BAŞKANLIĞI</span>
+ <span className="text-2xs font-bold text-muted uppercase tracking-wide">T.C. DİYANET İŞLERİ BAŞKANLIĞI</span>
  <div className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--glass-border)]" />
  </div>
  <p className="text-2xs text-muted font-bold uppercase tracking-[0.1em]">
@@ -155,7 +153,7 @@ export function LoginScreen({ login, isLoginInProgress }: LoginScreenProps) {
  </motion.div>
 
  {/* Footer Decoration */}
- <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 opacity-10">
+ <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 opacity-30">
  <span className="text-2xs tracking-wide font-bold uppercase">MÜEZZİN HİZMET TAKİP DİZGESİ v{__APP_VERSION__}</span>
  </div>
  </div>

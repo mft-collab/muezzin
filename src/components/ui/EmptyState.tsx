@@ -47,7 +47,7 @@ export function EmptyState({ icon, title, description, tone = 'neutral', size = 
       animate={{ opacity: 1, scale: 1 }}
       className={`spatial-glass rounded-card text-center flex flex-col items-center max-w-2xl mx-auto border-dashed border-[var(--text-primary)]/10 ${SIZE_CLASSES[size]} ${className}`}
     >
-      <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border ${TONE_CLASSES[tone]}`}>
+      <div className={`w-20 h-20 rounded-icon flex items-center justify-center mb-8 shadow-[var(--spatial-shadow)] border ${TONE_CLASSES[tone]}`}>
         {icon}
       </div>
       <h3 className="text-3xl font-light text-[var(--text-primary)] tracking-tight mb-4">{title}</h3>
@@ -65,7 +65,7 @@ export function EmptyState({ icon, title, description, tone = 'neutral', size = 
           whileTap={{ scale: 0.95 }}
           onClick={action.onClick}
           disabled={action.disabled}
-          className="bg-[var(--text-primary)] text-[var(--app-bg)] px-12 py-6 rounded-[24px] text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] flex items-center gap-6 disabled:opacity-50"
+          className="bg-[var(--text-primary)] text-[var(--app-bg)] px-12 py-6 rounded-3xl text-2xs font-bold uppercase tracking-wide shadow-[var(--spatial-shadow)] flex items-center gap-6 disabled:opacity-50"
         >
           {action.label}
         </motion.button>

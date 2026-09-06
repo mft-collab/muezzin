@@ -10,6 +10,7 @@ import { getTurkeyNow, toTurkishUpperCase } from '../../../lib/dateUtils';
 import { exportCsv } from '../../../lib/csvExport';
 import { telemetryService } from '../../../services/telemetryService';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 const PERIOD_OPTIONS = [
   { days: 7, label: '7 Gün' },
@@ -311,7 +312,7 @@ export default function SistemAnalitigi() {
                   ExecutiveHeroScreen'deki eşdeğer büyük-rakam paterniyle (text-6xl lg:text-8xl)
                   aynı mantıkla duyarlı hale getirildi ve flex-wrap güvenlik ağı eklendi. */}
               {loading ? (
-                <div className="w-40 sm:w-56 h-16 sm:h-24 fluid-skeleton rounded-2xl" />
+                <Skeleton className="w-40 sm:w-56 h-16 sm:h-24" />
               ) : (
                 <div className="flex items-baseline gap-4 sm:gap-6 flex-wrap">
                   <h3 className="text-6xl sm:text-7xl lg:text-9xl font-light tracking-tighter text-[var(--text-primary)] leading-none">
@@ -337,7 +338,7 @@ export default function SistemAnalitigi() {
               yalnızca içerik iskelete döner — bkz. dosya başı yorumu. */}
           {loading ? (
             <div className="flex-1 flex items-center justify-center mb-10 mt-12">
-              <div className="w-full h-64 fluid-skeleton rounded-2xl" />
+              <Skeleton className="w-full h-64" />
             </div>
           ) : periodDays === 7 ? (
             <div className="flex-1 flex items-end justify-between gap-4 sm:gap-10 relative px-6 mb-10 mt-12">
@@ -377,7 +378,7 @@ export default function SistemAnalitigi() {
                         initial={{ height: 0 }}
                         animate={{ height: `${Math.max(data.value, 4)}%` }}
                         transition={{ duration: 1.5, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                        className={`w-full max-w-[56px] rounded-[22px] relative overflow-hidden transition-all duration-700 shadow-[var(--spatial-shadow)] ${
+                        className={`w-full max-w-[56px] rounded-avatar relative overflow-hidden transition-all duration-700 shadow-[var(--spatial-shadow)] ${
                           hoveredIdx === idx ? 'scale-x-110 ' : 'opacity-60 group-hover/col:opacity-100'
                         }`}
                       >
@@ -409,7 +410,7 @@ export default function SistemAnalitigi() {
                     )}
                   </div>
                   <span className={`authority-title !text-2xs transition-all duration-700 font-bold tracking-wide ${
-                    hoveredIdx === idx ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100' : 'opacity-20'
+                    hoveredIdx === idx ? 'text-[var(--dynamic-aura,var(--aura-indigo))] opacity-100' : 'opacity-60'
                   }`}>
                     {GUN_KISALTMA[data.day] ?? toTurkishUpperCase(data.day.substring(0, 3))}
                   </span>
@@ -418,11 +419,15 @@ export default function SistemAnalitigi() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 mb-10 mt-12 text-center">
-              <div className="w-14 h-14 rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
+              <div className="w-14 h-14 rounded-3xl bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
                 <Activity size={22} strokeWidth={1} className="text-[var(--text-secondary)]" />
               </div>
-              <p className="authority-title !text-2xs opacity-30 tracking-wide max-w-xs">
-                GÜNLÜK KIRILIM YALNIZCA 7 GÜNLÜK GÖRÜNÜMDE GÖSTERİLİR — AŞAĞIDAKİ TABLODA {periodDays} GÜNLÜK KİŞİ BAZLI ÖZETİ İNCELEYEBİLİRSİNİZ
+              {/* Çok satırlı bir açıklama metniydi ama authority-title/uppercase
+                  taşıyordu — büyük harf tek satırlık etiketler için bir vurgu
+                  aracıdır, gövde kopyasına uygulandığında okunabilirliği
+                  düşürür (bkz. premium denetim B10, Y2). */}
+              <p className="text-xs text-muted leading-relaxed max-w-xs">
+                Günlük kırılım yalnızca 7 günlük görünümde gösterilir — aşağıdaki tabloda {periodDays} günlük kişi bazlı özeti inceleyebilirsiniz.
               </p>
             </div>
           )}
@@ -445,7 +450,7 @@ export default function SistemAnalitigi() {
           </p>
 
           {kotaLoading ? (
-            <div className="w-full h-24 fluid-skeleton rounded-2xl" />
+            <Skeleton className="w-full h-24" />
           ) : kota === null ? (
             <p className="authority-title !text-2xs opacity-30 tracking-wide">
               KOTA KULLANIMI ÖLÇÜLEMEDİ — GÜNLÜK KOLEKSİYONLARI OKUNAMADI.
@@ -487,11 +492,13 @@ export default function SistemAnalitigi() {
                 </span>
               </div>
 
-              <p className="authority-title !text-2xs opacity-30 tracking-wide leading-relaxed max-w-3xl">
-                TAHMİNİ DEĞERDİR — FIRESTORE'UN GERÇEK GÜNLÜK KULLANIM SAYACI SPARK PLANINDA
-                PROGRAMATİK OLARAK OKUNAMAZ. BURADAKİ SAYIM YALNIZCA HATA VE TELEMETRİ
-                GÜNLÜKLERİNİ KAPSAR; DİĞER KOLEKSİYONLARA YAPILAN YAZIMLAR DAHİL DEĞİLDİR.
-                GERÇEK KOTA İÇİN FIREBASE CONSOLE &gt; KULLANIM EKRANINA BAKIN.
+              {/* Çok satırlı bir açıklama metniydi ama authority-title/uppercase
+                  taşıyordu (bkz. premium denetim B10, Y2 — aynı düzeltme). */}
+              <p className="text-xs text-muted leading-relaxed max-w-3xl">
+                Tahmini değerdir — Firestore'un gerçek günlük kullanım sayacı Spark planında
+                programatik olarak okunamaz. Buradaki sayım yalnızca hata ve telemetri
+                günlüklerini kapsar; diğer koleksiyonlara yapılan yazımlar dahil değildir.
+                Gerçek kota için Firebase Console &gt; Kullanım ekranına bakın.
               </p>
             </div>
           )}
@@ -516,7 +523,7 @@ export default function SistemAnalitigi() {
           </div>
 
           {loading ? (
-            <div className="w-full h-40 fluid-skeleton rounded-2xl" />
+            <Skeleton className="w-full h-40" />
           ) : personnelStats.length === 0 ? (
             <EmptyState
               icon={<Activity size={36} strokeWidth={1.2} />}

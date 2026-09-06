@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Home, Calendar, LayoutDashboard, User, Settings } from 'lucide-react';
@@ -8,6 +8,20 @@ import { useKrizAlarmlariStore } from '../store/useKrizAlarmlariStore';
 import { playClick } from '../lib/sounds';
 import { hapticMedium } from '../lib/haptic';
 import { getAdminNavItems, APP_LINKS, toActiveModule, type ActiveModule } from '../pages/admin/config/navConfig';
+
+// framer-motion'ın FLIP interpolasyonu için `--radius-card`'ın (src/index.css)
+// sabit bir JS sayısı olarak kopyası gerekiyordu (CSS değişkeni doğrudan
+// okunamıyor) — sabit `15` yazmak, token değiştiğinde bu dosyanın sessizce
+// eskide kalmasına yol açan ikinci senkronizasyon noktasıydı (bkz. premium
+// denetim B48). Modül yüklenirken okumak yerine (o an CSS henüz uygulanmamış
+// olabilir, ör. dev sunucusunda) bileşenin İLK render'ında (DOM/CSS kesin
+// hazır) tembel okunuyor; 15 yalnızca gerçek okuma başarısız olursa devreye
+// giren bir güvenlik ağı.
+function readDockRadius(): number {
+  if (typeof document === 'undefined') return 15;
+  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--radius-card'));
+  return Number.isFinite(value) ? value : 15;
+}
 
 const ALL_NAV_ITEMS = [
   { path: '/', label: 'Vakit', icon: Home, adminOnly: false, component: undefined },
@@ -126,6 +140,7 @@ export function FloatingDock() {
   const navigate = useNavigate();
   const isAdmin = useAuthStore(state => state.isAdmin);
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const [dockRadius] = useState(readDockRadius);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const activeAdminTab = toActiveModule(searchParams.get('tab'));
@@ -250,7 +265,7 @@ export function FloatingDock() {
         // `--radius-card`'la (src/index.css) elle senkronize tutulur — bu değer
         // framer-motion'ın FLIP sırasında düzgün interpolasyon yapabilmesi için
         // JS tarafında bir sayı olmalı, CSS değişkenini burada okuyamıyoruz.
-        animate={{ borderRadius: 15 }}
+        animate={{ borderRadius: dockRadius }}
         transition={{ layout: { type: 'spring', bounce: 0.15, duration: 0.5 }, borderRadius: { type: 'spring', bounce: 0.15, duration: 0.5 } }}
         // Dock sabit (fixed) konumda kaldığı için sayfa kaydırılırken altındaki
         // içerik (ör. Vakit Görevlileri kartı) üst kenarında keskin bir şekilde
@@ -297,7 +312,7 @@ export function FloatingDock() {
                   onPointerDown={(event) => handleAdminPointerAction(event, () => setActiveAdminTab(item.id))}
                   onClick={() => { playClick(); setActiveAdminTab(item.id); }}
                   title={item.fullLabel}
-                  className={`relative min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3 rounded-[16px] sm:rounded-[20px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
+                  className={`relative min-w-[44px] min-h-[44px] sm:min-w-[54px] sm:min-h-[54px] p-2 sm:p-3 rounded-2xl sm:rounded-[20px] transition-all duration-150 z-10 flex flex-col items-center justify-center gap-1 group touch-manipulation ${
                     isActive
                       ? 'text-[var(--dynamic-aura,var(--aura-indigo))] scale-110'
                       : 'text-faint hover:text-[var(--text-primary)]/60'

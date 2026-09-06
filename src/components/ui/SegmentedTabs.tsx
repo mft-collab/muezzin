@@ -59,7 +59,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
 
   if (variant === 'segmented') {
     return (
-      <div role="tablist" aria-label={ariaLabel} className="flex items-center gap-1.5 bg-[var(--surface-low)] p-1 rounded-[20px] sm:rounded-[24px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] w-full sm:w-auto">
+      <div role="tablist" aria-label={ariaLabel} className="flex items-center gap-1.5 bg-[var(--surface-low)] p-1 rounded-[20px] sm:rounded-3xl border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] w-full sm:w-auto">
         {items.map(item => {
           const Icon = item.icon;
           const isActive = activeId === item.id;
@@ -74,7 +74,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(item.id)}
               onKeyDown={(e) => handleTabKeyDown(e, item.id)}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-8 py-3 sm:py-4 rounded-[16px] sm:rounded-[20px] transition-all duration-700 relative group overflow-hidden ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 sm:gap-4 px-3 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-[20px] transition-all duration-200 relative group overflow-hidden ${
                 isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]/25 hover:text-[var(--text-primary)]/55'
               }`}
             >
@@ -87,7 +87,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
               )}
               <div className="relative z-10 flex items-center gap-4">
                 {Icon && (
-                  <div className={`relative transition-all duration-700 ${isActive ? 'scale-110' : ''}`}>
+                  <div className={`relative transition-all duration-200 ${isActive ? 'scale-110' : ''}`}>
                     <Icon size={18} strokeWidth={isActive ? 1.5 : 1} className={isActive ? 'text-[var(--dynamic-aura,var(--aura-indigo))]' : ''} />
                     {isActive && (
                       <motion.div
@@ -97,7 +97,7 @@ export function SegmentedTabs({ items, activeId, onChange, ariaLabel, idPrefix, 
                     )}
                   </div>
                 )}
-                <span className={`authority-title !text-2xs font-bold tracking-wide uppercase transition-all duration-700 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+                <span className={`authority-title !text-2xs font-bold tracking-wide uppercase transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
                   {item.label}
                 </span>
               </div>

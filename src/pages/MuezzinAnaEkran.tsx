@@ -9,6 +9,7 @@ import { KisiselGorevAkisi } from '../components/KisiselGorevAkisi';
 import { AnaEkranHero } from '../components/AnaEkranHero';
 import { IslamicGeometricBg } from '../components/ui/IslamicGeometricBg';
 import { Modal } from '../components/ui/Modal';
+import { Skeleton } from '../components/ui/Skeleton';
 import { GpsConsentModal } from '../components/GpsConsentModal';
 import { GpsHelpModal } from '../components/GpsHelpModal';
 
@@ -53,8 +54,7 @@ export default function MuezzinAnaEkran() {
  viewingDuyuru,
  setViewingDuyuru,
  currentUser,
- getMuezzinName,
- secondaryAuraColor
+ getMuezzinName
  } = useDashboardLogic();
 
   const [activeDuyuruIdx, setActiveDuyuruIdx] = useState(0);
@@ -203,23 +203,12 @@ export default function MuezzinAnaEkran() {
    className="w-full min-h-screen bg-[var(--app-bg)] relative overflow-hidden transition-colors duration-[3000ms]"
  >
  
- {/* Dynamic Ambient Auras (Sirkadiyen Geçiş) */}
- <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
- <div 
- className="absolute top-[10%] left-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${auraColor} 0%, transparent 70%)` 
- }}
- />
- <div 
- className="absolute bottom-[10%] right-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${secondaryAuraColor} 0%, transparent 70%)`,
- animationDelay: '-4s'
- }}
- />
- </div>
-
+ {/* Sayfaya özgü ikinci bir aura blob katmanı önceden burada AYRICA render
+     ediliyordu — Layout.tsx zaten global bir 2-blob sirkadiyen katman
+     sağlıyor (aynı --dynamic-aura'yı okuyarak); üst üste 4 blur katmanı
+     doygunluğun katlanmasına yol açıyordu (bkz. premium denetim B34, O8).
+     Yukarıdaki `--dynamic-aura` override'ı KALDIRILMADI — bu sayfadaki
+     düğme/rozet gibi ön-plan öğeleri hâlâ ona bağlı. */}
   <IslamicGeometricBg />
 
   {/* Alt boşluk: Layout.tsx'teki <main> zaten dock/PWA banner'ını temizlemek için
@@ -365,7 +354,7 @@ export default function MuezzinAnaEkran() {
  animate={{ opacity: 1, y: 0 }}
  transition={{ duration: 0.45, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
  >
- <Suspense fallback={<div className="h-40 rounded-card fluid-skeleton" />}>
+ <Suspense fallback={<Skeleton className="h-40" rounded="rounded-card" />}>
  <VacationRequestCard user={currentUser} />
  </Suspense>
  </motion.div>
@@ -395,9 +384,9 @@ export default function MuezzinAnaEkran() {
  setActiveDuyuruIdx(prev => Math.max(0, prev - 1));
  }}
  aria-label="Önceki duyuru"
- className={`p-1 rounded-[8px] hover:bg-[var(--text-primary)]/5 transition-all flex items-center justify-center ${activeDuyuruIdx === 0 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
+ className={`min-w-[32px] min-h-[32px] p-2 rounded-lg hover:bg-[var(--text-primary)]/5 transition-all flex items-center justify-center ${activeDuyuruIdx === 0 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
  >
- <ChevronLeft size={10} strokeWidth={2.5} />
+ <ChevronLeft size={12} strokeWidth={2.5} />
  </button>
  <span className="text-2xs font-bold text-[var(--text-secondary)]/65 px-1.5 tabular-nums">
  {activeDuyuruIdx + 1} / {duyurular.length}
@@ -409,9 +398,9 @@ export default function MuezzinAnaEkran() {
  setActiveDuyuruIdx(prev => Math.min(duyurular.length - 1, prev + 1));
  }}
  aria-label="Sonraki duyuru"
- className={`p-1 rounded-[8px] hover:bg-[var(--text-primary)]/5 transition-all flex items-center justify-center ${activeDuyuruIdx === duyurular.length - 1 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
+ className={`min-w-[32px] min-h-[32px] p-2 rounded-lg hover:bg-[var(--text-primary)]/5 transition-all flex items-center justify-center ${activeDuyuruIdx === duyurular.length - 1 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100'}`}
  >
- <ChevronRight size={10} strokeWidth={2.5} />
+ <ChevronRight size={12} strokeWidth={2.5} />
  </button>
  </div>
  )}
@@ -432,7 +421,7 @@ export default function MuezzinAnaEkran() {
   className="flex items-center gap-4 sm:gap-5 cursor-pointer relative overflow-hidden group/item shimmer-trigger"
   >
   <div className="kinetic-sheen" />
-  <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-[16px] flex items-center justify-center shrink-0 border group-hover/item:scale-105 group-hover/item:shadow-[0_0_15px_color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)] transition-all duration-500 relative ${
+  <div className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shrink-0 border group-hover/item:scale-105 group-hover/item:shadow-[0_0_15px_color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)] transition-all duration-500 relative ${
     isCurrentDuyuruRead 
       ? 'bg-[var(--text-primary)]/[0.01] border-[var(--glass-border)] opacity-60' 
       : 'bg-gradient-to-br from-[var(--status-info)]/15 via-[var(--status-info)]/5 to-transparent border-[var(--status-info)]/25'
@@ -537,7 +526,7 @@ export default function MuezzinAnaEkran() {
                   setProcessingVekaletId(null);
                 }
               }}
-              className="px-4 py-2.5 bg-emerald-500 text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-emerald-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
+              className="px-4 py-2.5 bg-emerald-500 text-[var(--app-bg)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-emerald-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
             >
               {processingVekaletId === talep.id ? 'İŞLENİYOR' : 'KABUL ET'}
             </motion.button>
@@ -565,7 +554,7 @@ export default function MuezzinAnaEkran() {
                     setProcessingVekaletId(null);
                   }
                 }}
-                className="px-4 py-2.5 bg-rose-500 text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-rose-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
+                className="px-4 py-2.5 bg-rose-500 text-[var(--app-bg)] rounded-xl text-2xs font-extrabold uppercase tracking-wide cursor-pointer shadow-md shadow-rose-500/20 border-none disabled:opacity-45 disabled:cursor-wait"
               >
                 {processingVekaletId === talep.id ? 'İŞLENİYOR' : 'EMİN MİSİNİZ?'}
               </motion.button>

@@ -212,6 +212,13 @@ export function GeriSayim({
   const isCumaVakti = isFriday && sonrakiVakit === 'ogle';
 
   // ── Aura color ────────────────────────────────────────────────────────────
+  // Kerahat/cuma/teheccüd örtüşmesi bilinçli olarak auraTheme.ts'teki temel
+  // eşlemeden AYRI tutuluyor (bkz. auraTheme.ts dosya başı yorumu — canlı/
+  // global durum için daha zengin bir katman). Ama temel "hangi vakit" dalı
+  // (sabah) auraTheme.ts'teki `getActiveAuraColor` ile hizalanmalı — önceden
+  // burada amber'e düşüyordu, orada emerald'dı; hero kartının halesi ile bu
+  // geri sayım halkası sabah vakti iki farklı renk konuşuyordu (bkz. premium
+  // denetim B8, O9).
   const auraColor = isKerahat
     ? 'var(--aura-ruby)'
     : isCumaVakti
@@ -220,6 +227,8 @@ export function GeriSayim({
     ? 'var(--aura-indigo)'
     : mevcutVakit === 'aksam' || mevcutVakit === 'yatsi'
     ? 'var(--aura-ruby)'
+    : mevcutVakit === 'sabah'
+    ? 'var(--aura-emerald)'
     : 'var(--aura-amber)';
 
   // ── Ezan is now ───────────────────────────────────────────────────────────

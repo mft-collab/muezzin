@@ -205,7 +205,7 @@ export const AnaEkranHero = React.memo(({
  className="w-full flex-1 flex flex-col justify-between min-h-[520px] sm:min-h-[600px] lg:min-h-0 p-4 sm:p-6 xl:p-8 bg-[var(--spatial-glass-bg)] backdrop-blur-xl rounded-card border border-[var(--glass-border)] relative overflow-hidden shadow-[var(--spatial-shadow)]"
  >
  {/* Top specular highlight */}
- <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none z-0 rounded-card" />
+ <div className="absolute inset-0 bg-gradient-to-b from-[var(--specular-glow)] via-transparent to-transparent pointer-events-none z-0 rounded-card" />
  {/* Single deep sirkadiyen aura — subtle, non-competing */}
  <div
  className="absolute inset-0 rounded-card pointer-events-none transition-all duration-1000"
@@ -242,7 +242,10 @@ export const AnaEkranHero = React.memo(({
  
  {gpsEnabled && gpsCoords && (
  <span className="text-2xs font-extrabold text-[var(--status-success)]/90 tracking-wide uppercase mt-0.5 flex items-center gap-1">
- <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-success)] animate-ping" />
+ <span className="relative w-1.5 h-1.5 shrink-0">
+ <span className="absolute inset-0 rounded-full bg-[var(--status-success)]" />
+ <span className="absolute inset-0 rounded-full bg-[var(--status-success)] animate-ping-slow" />
+ </span>
  GPS AKTİF
  </span>
  )}
@@ -305,10 +308,14 @@ export const AnaEkranHero = React.memo(({
  if (isActive) {
   // Koyu modda: saydam glow gradyan (ince, sinema etkisi)
   // Acık modda: daha düz, hafif opasiteli kart
-  labelColor = isDark ? 'text-[var(--text-primary)] font-bold opacity-90' : 'text-[var(--text-primary)] font-bold';
+  // cardLight her zaman doygun/koyu bir gradyan (bkz. AKTIF_VAKIT_RENKLERI) —
+  // ışık modunda da text-primary (neredeyse siyah) yazılırsa kart okunamaz
+  // hale geliyordu (bkz. premium denetim B3). dotBgLight zaten aynı kartı
+  // "koyu" varsayıyordu (beyaz/açık ton); metin de aynı varsayıma uyar.
+  labelColor = isDark ? 'text-[var(--text-primary)] font-bold opacity-90' : 'text-[var(--app-bg)] font-bold';
   timeColor = isDark
     ? 'text-[var(--text-primary)] font-semibold drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]'
-    : 'text-[var(--text-primary)] font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]';
+    : 'text-[var(--app-bg)] font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]';
 
   const renk = AKTIF_VAKIT_RENKLERI[key as string] ?? AKTIF_VAKIT_VARSAYILAN;
   cardStyle = isDark ? renk.cardDark : renk.cardLight;

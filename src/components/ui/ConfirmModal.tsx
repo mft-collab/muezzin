@@ -28,7 +28,7 @@ export function ConfirmModal({
  return (
  <Modal isOpen={isOpen} onClose={onClose} title={title}>
  <div className="flex flex-col items-center text-center py-6">
-    <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center mb-10 border transition-all duration-700 ${
+    <div className={`w-20 h-20 rounded-icon flex items-center justify-center mb-10 border transition-all duration-700 ${
       isDanger
         ? 'bg-[var(--status-danger)]/10 border-[var(--status-danger)]/20 text-[var(--status-danger)] shadow-[0_0_25px_color-mix(in_srgb,var(--status-danger)_15%,transparent)] animate-float'
         : 'bg-[var(--status-warning)]/10 border-[var(--status-warning)]/20 text-[var(--status-warning)] shadow-[0_0_25px_color-mix(in_srgb,var(--status-warning)_15%,transparent)]'
@@ -36,16 +36,13 @@ export function ConfirmModal({
       <AlertTriangle size={32} strokeWidth={1.2} />
     </div>
     
-    <p className="premium-label !text-2xs leading-relaxed max-w-sm mb-12 opacity-65 dark:opacity-40 tracking-wide px-4">
-      {/* toTurkishUpperCase (bkz. src/lib/dateUtils.ts) — locale'siz
-          `.toUpperCase()` Türkçe metinde "i" harfini yanlış büyütürdü ("İ"
-          yerine "I"). Bu mesaj neredeyse her zaman Türkçe kelimeler VE bir
-          kişinin adını (ör. "Ali", "Bilal") içerir — "aktif" → "AKTIF",
-          "Ali" → "ALI" gibi hatalı sonuçlar üretiyordu (bkz. kod denetimi
-          bulgusu; scripts/smoke-tests.ts'teki "türkçe büyük harf dönüşümü"
-          testi zaten TAM OLARAK bu hatayı yakalayacak şekilde yazılmış ama
-          bu bileşen o yardımcı fonksiyonu hiç kullanmıyordu). */}
-      {toTurkishUpperCase(message)}
+    {/* Önceden premium-label/uppercase (11px BÜYÜK HARF) taşıyordu — bu mesaj
+        genellikle bir kişinin adını içeren, okunması gereken asıl onay
+        cümlesi; büyük harf hem okunabilirliği düşürüyor hem
+        toTurkishUpperCase()'in kendisi doğru çalışsa da "Ali" gibi özel
+        isimleri "ALİ" gibi tuhaf gösteriyordu (bkz. premium denetim B10, Y2). */}
+    <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-sm mb-12 px-4">
+      {message}
     </p>
     
     <div className="flex items-center gap-4 w-full px-4">

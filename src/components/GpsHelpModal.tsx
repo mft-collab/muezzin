@@ -95,7 +95,7 @@ export function GpsHelpModal({ isOpen, onClose, onRetry, hataTuru = 'izin_reddi'
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => { hapticMedium(); onRetry(); }}
-            className="w-full py-5 rounded-[22px] border-none bg-gradient-to-r from-amber-500 to-orange-600 hover:to-orange-500 text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+            className="w-full py-5 rounded-avatar border-none bg-gradient-to-r from-amber-500 to-orange-600 hover:to-orange-500 text-[var(--text-primary)] font-bold tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
           >
             <RefreshCw size={15} />
             <span>{butonMetni}</span>

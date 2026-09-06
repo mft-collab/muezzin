@@ -99,7 +99,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  </span>
 
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--aura-indigo)]/20 via-transparent to-[var(--aura-ruby)]/15" />
- <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+ <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--specular-glow)] to-transparent" />
  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.1),transparent_70%)]" />
  </motion.div>
  {userData?.aktif && (
@@ -118,9 +118,11 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  {editMode ? (
  <div className="flex flex-col items-center gap-4 w-full max-w-sm">
  <div className="relative w-full">
- <input 
- type="text" 
- value={newName} 
+ <label htmlFor="profile-name-input" className="sr-only">Ad Soyad</label>
+ <input
+ id="profile-name-input"
+ type="text"
+ value={newName}
  onChange={e => setNewName(e.target.value)}
  onKeyDown={e => e.key === 'Enter' && handleUpdate()}
  disabled={isUpdating}
@@ -139,7 +141,7 @@ export default function ProfileHeader({ userData, user }: ProfileHeaderProps) {
  whileTap={{ scale: isUpdating ? 1 : 0.95 }}
  onClick={handleUpdate}
  disabled={isUpdating}
- className={`px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-xl text-2xs font-extrabold uppercase tracking-wide shadow-lg flex items-center gap-1.5 ${isUpdating ? 'opacity-70 cursor-wait' : ''}`}
+ className={`px-5 py-2.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] rounded-xl text-2xs font-extrabold uppercase tracking-wide shadow-lg flex items-center gap-1.5 ${isUpdating ? 'opacity-70 cursor-wait' : ''}`}
  >
  {isUpdating ? (
  <div className="w-3 h-3 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />

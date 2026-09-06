@@ -52,7 +52,7 @@ export const HakkindaModal: React.FC<HakkindaModalProps> = ({ isOpen, onClose })
             <button
               onClick={handleClose}
               aria-label="Kapat"
-              className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/10 border border-[var(--text-primary)]/5 transition-colors"
+              className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-[var(--text-primary)]/5 hover:bg-[var(--text-primary)]/10 border border-[var(--text-primary)]/5 transition-colors"
             >
               <X size={16} className="text-[var(--text-primary)]/60 hover:text-[var(--text-primary)]" />
             </button>

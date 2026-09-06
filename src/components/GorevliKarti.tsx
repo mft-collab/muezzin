@@ -18,8 +18,8 @@ const PersonaAvatar = React.memo(({ name, colorClass, isUser }: { name: string; 
  const initials = name === 'Sistem' ? 'SA' : toTurkishUpperCase((name || '').split(' ').filter(Boolean).map(n => n.charAt(0)).join('')).slice(0, 2) || '??';
 
  return (
- <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] sm:rounded-[28px] flex items-center justify-center relative overflow-hidden border border-[var(--glass-border)] shadow-lg transition-all duration-500 ${colorClass} ${isUser ? 'animate-heartbeat' : ''}`}>
- <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-30" />
+ <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-avatar sm:rounded-icon flex items-center justify-center relative overflow-hidden border border-[var(--glass-border)] shadow-lg transition-all duration-500 ${colorClass} ${isUser ? 'animate-heartbeat' : ''}`}>
+ <div className="absolute inset-0 bg-gradient-to-br from-[var(--specular-glow)] to-transparent opacity-30" />
  <span className={`text-lg sm:text-xl font-semibold tracking-tight relative z-10 ${isUser ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]/70'}`}>
  {initials}
  </span>
@@ -82,15 +82,15 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
   const dotColorClass = isUser
     ? isFriday ? 'bg-emerald-400 shadow-[0_0_10px_rgb(52,211,153)]' : isAsil ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]' : 'bg-amber-400'
     : isUnassigned
-    ? 'bg-[var(--dynamic-aura,rgba(255,255,255,0.2))] animate-ping'
+    ? 'bg-[var(--dynamic-aura,rgba(255,255,255,0.4))]'
     : 'bg-[var(--text-primary)]/20';
 
   const avatarColorClass = isUser
     ? isFriday
-      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-[var(--text-primary)] shadow-lg border-emerald-400/30'
-      : isAsil 
-      ? 'bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))] via-[var(--dynamic-aura,var(--aura-indigo))] to-violet-700 text-[var(--text-primary)] shadow-lg border-[var(--dynamic-aura,var(--aura-indigo))]/30' 
-      : 'bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-[var(--text-primary)] shadow-lg border-amber-400/30'
+      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-[var(--app-bg)] shadow-lg border-emerald-400/30'
+      : isAsil
+      ? 'bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))] via-[var(--dynamic-aura,var(--aura-indigo))] to-violet-700 text-[var(--app-bg)] shadow-lg border-[var(--dynamic-aura,var(--aura-indigo))]/30'
+      : 'bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 text-[var(--app-bg)] shadow-lg border-amber-400/30'
     : isUnassigned
     ? 'bg-[var(--text-primary)]/[0.01] text-subtle border-[var(--text-primary)]/[0.03] border-dashed'
     : 'bg-[var(--text-primary)]/[0.03] text-faint border-[var(--text-primary)]/[0.06]';
@@ -109,7 +109,7 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
       style={unassignedBorderStyle}
       className={`relative p-6 sm:p-8 transition-all duration-500 overflow-hidden group !rounded-card border border-[var(--glass-border)] hover:-translate-y-1 ${kartClass} ${hoverGlowClass}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
       <div
         className={`absolute top-0 right-0 w-48 h-48 rounded-full -translate-y-1/2 translate-x-1/2 transition-opacity duration-700 pointer-events-none ${isFriday ? 'opacity-10' : 'opacity-5 group-hover:opacity-8'}`}
         style={{ background: `radial-gradient(circle, ${gradientColor} 0%, transparent 70%)` }}
@@ -121,7 +121,12 @@ export const GorevliKarti = React.memo(({ tip, isim, durum, isUser, izinde, isFr
             <PersonaAvatar name={isim || ''} isUser={!!isUser} colorClass={avatarColorClass} />
             <div>
               <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
-                <div className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
+                <div className="relative w-1.5 h-1.5 shrink-0">
+                  <div className={`absolute inset-0 rounded-full ${dotColorClass}`} />
+                  {isUnassigned && (
+                    <div className="absolute inset-0 rounded-full bg-[var(--dynamic-aura,rgba(255,255,255,0.4))] animate-ping-slow" />
+                  )}
+                </div>
                 <span className={`authority-title !text-2xs tracking-wide font-semibold ${titleColorClass}`}>
                   {titleText}
                 </span>

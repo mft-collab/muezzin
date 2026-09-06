@@ -11,6 +11,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import { useNotificationStore, NOTIFICATION_HISTORY_LIMIT } from '../store/useNotificationStore';
 import { NotificationHistoryPanel } from './NotificationHistoryPanel';
 import { NotificationPrimingModal } from './NotificationPrimingModal';
+import { Switch } from './ui/Switch';
 
 interface NotificationSettingsProps {
   userData: Muezzin | null;
@@ -203,7 +204,7 @@ export default function NotificationSettings({ userData, user }: NotificationSet
           whileTap={{ scale: 0.98 }}
           onClick={handlePrimaryCtaClick}
           disabled={isRequesting}
-          className={`w-full mb-6 py-4 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 ${isRequesting ? 'opacity-70 cursor-wait' : ''}`}
+          className={`w-full mb-6 py-4 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] text-2xs font-bold uppercase tracking-wide shadow-lg flex items-center justify-center gap-3 ${isRequesting ? 'opacity-70 cursor-wait' : ''}`}
         >
           {isRequesting ? (
             <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />
@@ -242,91 +243,33 @@ export default function NotificationSettings({ userData, user }: NotificationSet
           const isChecked = currentSettings[setting.key] !== false;
 
           return (
-            <div key={setting.key} className="flex items-center justify-between gap-6 py-2">
-              <div className="space-y-1">
-                <h5 className="text-xs font-semibold text-[var(--text-primary)]">{setting.title}</h5>
-                <p className="text-2xs text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">{setting.desc}</p>
-              </div>
-              <button
-                onClick={() => handleToggleSetting(setting.key)}
-                role="switch"
-                aria-checked={isChecked}
-                aria-label={setting.title}
-                className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
-                  isChecked ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
-                }`}
-              >
-                <motion.div 
-                  layout
-                  animate={{ 
-                    x: isChecked ? 20 : 0,
-                    backgroundColor: isChecked ? 'var(--status-info)' : 'var(--text-secondary)'
-                  }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className="w-4 h-4 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
-                />
-              </button>
-            </div>
+            <Switch
+              key={setting.key}
+              checked={isChecked}
+              onChange={() => handleToggleSetting(setting.key)}
+              label={setting.title}
+              description={setting.desc}
+            />
           );
         })}
 
         {/* Tema Seçimi Switch */}
-        <div className="flex items-center justify-between gap-6 py-2 border-t border-[var(--glass-border)] pt-5 mt-5">
-          <div className="space-y-1">
-            <h5 className="text-xs font-semibold text-[var(--text-primary)]">Koyu Tema (Karanlık Mod)</h5>
-            <p className="text-2xs text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">
-              Uygulamanın görsel temasını el ile ayarlar. Açık olduğunda Koyu (Dark) modu etkinleştirir.
-            </p>
-          </div>
-          <button
-            onClick={(e) => toggleTheme(e)}
-            role="switch"
-            aria-checked={theme === 'dark'}
-            aria-label="Koyu Tema"
-            className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
-              theme === 'dark' ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
-            }`}
-          >
-            <motion.div 
-              layout
-              animate={{ 
-                x: theme === 'dark' ? 20 : 0,
-                backgroundColor: theme === 'dark' ? 'var(--status-info)' : 'var(--text-secondary)'
-              }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="w-4 h-4 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
-            />
-          </button>
+        <div className="border-t border-[var(--glass-border)] pt-5 mt-5">
+          <Switch
+            checked={theme === 'dark'}
+            onChange={(e) => toggleTheme(e)}
+            label="Koyu Tema (Karanlık Mod)"
+            description="Uygulamanın görsel temasını el ile ayarlar. Açık olduğunda Koyu (Dark) modu etkinleştirir."
+          />
         </div>
 
         {/* Sesli Bildirim Okuma (TTS) Switch */}
-        <div className="flex items-center justify-between gap-6 py-2">
-          <div className="space-y-1">
-            <h5 className="text-xs font-semibold text-[var(--text-primary)]">Sesli Bildirim Okuma</h5>
-            <p className="text-2xs text-[var(--text-secondary)]/75 leading-normal max-w-[280px] font-light">
-              Açıldığında, gelen bildirimler ekran okuyucu sesiyle yüksek sesle okunur. Varsayılan olarak kapalıdır.
-            </p>
-          </div>
-          <button
-            onClick={() => setTtsEnabled(!ttsEnabled)}
-            role="switch"
-            aria-checked={ttsEnabled}
-            aria-label="Sesli Bildirim Okuma"
-            className={`w-12 h-7 shrink-0 rounded-full border border-[var(--glass-border)] flex items-center px-1 transition-all duration-500 cursor-pointer ${
-              ttsEnabled ? 'bg-[var(--dynamic-aura,var(--aura-indigo))]/20 border-[var(--dynamic-aura,var(--aura-indigo))]/30' : 'bg-[var(--text-primary)]/[0.04]'
-            }`}
-          >
-            <motion.div
-              layout
-              animate={{
-                x: ttsEnabled ? 20 : 0,
-                backgroundColor: ttsEnabled ? 'var(--status-info)' : 'var(--text-secondary)'
-              }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className="w-4 h-4 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
-            />
-          </button>
-        </div>
+        <Switch
+          checked={ttsEnabled}
+          onChange={() => setTtsEnabled(!ttsEnabled)}
+          label="Sesli Bildirim Okuma"
+          description="Açıldığında, gelen bildirimler ekran okuyucu sesiyle yüksek sesle okunur. Varsayılan olarak kapalıdır."
+        />
 
         {/* Bildirim Geçmişi */}
         <div className="flex items-center justify-between gap-6 py-2 border-t border-[var(--glass-border)] pt-5 mt-5">

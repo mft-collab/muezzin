@@ -6,6 +6,13 @@
     <!-- Instant Theme Injector to prevent Flash of Unstyled Content (FOUC) -->
     <script>
       (function() {
+        // index.css'teki --app-bg değerlerinin (light: hsl(38,20%,94.5%),
+        // dark: hsl(240,10%,3.5%)) hex karşılıkları — tema, OS tercihinden
+        // BAĞIMSIZ olarak manuel yönetildiğinden (useThemeStore) theme-color
+        // meta'sı da `media` sorgusu yerine burada tema ile birlikte senkron
+        // güncellenir (bkz. premium denetim B41). useThemeStore, CSS
+        // yüklendikten sonra --app-bg'yi doğrudan okuyup bu değeri düzeltir.
+        var THEME_COLORS = { light: '#F4F2EE', dark: '#08080A' };
         try {
           var storage = localStorage.getItem('muezzin-theme-storage');
           var theme = 'dark'; // Varsayılan tema
@@ -19,6 +26,8 @@
             theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
           }
           document.documentElement.setAttribute('data-theme', theme);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.dark);
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -28,13 +37,20 @@
     <!-- user-scalable=no/maximum-scale kasıtlı olarak KULLANILMIYOR: bu,
          WCAG 1.4.4 (Resize Text) ihlalidir ve görme zorluğu yaşayan
          kullanıcıların sayfayı büyütmesini engeller. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content: sanal klavye açıldığında layout
+         viewport'u küçültür (dvh birimleri buna göre yeniden hesaplanır) —
+         önceden klavye modal'ın alt-sheet yüksekliğine hiç yansımıyordu,
+         autoFocus'lu textarea'lar (mazeret/izin formları) klavyenin altında
+         kalabiliyordu (bkz. premium denetim B42, Y7). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     
     <!-- SEO & Identity -->
     <title>Müezzin - Hizmet Dizgesi</title>
     <meta name="description" content="Cami ve Din Görevlileri Hizmet Planlama Sistemi" />
-    <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <!-- content, tema OS tercihinden bağımsız manuel yönetildiği için media
+         sorgusu yerine yukarıdaki inline script + useThemeStore tarafından
+         --app-bg'ye senkron tutulur (bkz. premium denetim B41). -->
+    <meta name="theme-color" content="#08080A" />
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Müezzin Hizmet Dizgesi">

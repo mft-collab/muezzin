@@ -195,7 +195,7 @@ export default function MuezzinYonetimi() {
   {Array.from({ length: 6 }).map((_, i) => (
   <div key={i} className="p-4 sm:p-6 spatial-glass border-[var(--glass-border)] rounded-card opacity-50 flex flex-col gap-6">
   <div className="flex items-center gap-5">
-  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-[var(--text-primary)]/5 animate-pulse" />
+  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-3xl bg-[var(--text-primary)]/5 animate-pulse" />
   <div className="flex flex-col gap-2">
   <div className="w-32 h-4 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
   <div className="w-20 h-2 bg-[var(--text-primary)]/5 rounded-full animate-pulse" />
@@ -229,7 +229,7 @@ export default function MuezzinYonetimi() {
        whileHover={{ y: -3, scale: 1.02 }}
        whileTap={{ scale: 0.98 }}
        onClick={openNew} 
-       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-xl text-2xs font-bold uppercase tracking-wide shadow-[0_12px_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_18%,transparent)] flex items-center justify-center gap-4 group"
+       className="flex-1 sm:flex-initial px-8 py-3 sm:py-4 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] rounded-xl text-2xs font-bold uppercase tracking-wide shadow-[0_12px_24px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_18%,transparent)] flex items-center justify-center gap-4 group"
      >
        <UserPlus size={16} className="group-hover:rotate-12 transition-transform" /> 
        YENİ PERSONEL TANIMLA
@@ -345,7 +345,7 @@ export default function MuezzinYonetimi() {
  <div className="flex flex-col sm:flex-row sm:items-center justify-between items-start gap-4 sm:gap-0 min-w-0">
  <div className="flex items-center gap-5 min-w-0 flex-1">
  <div className="relative shrink-0">
- <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[24px] bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] flex items-center justify-center font-light text-xl sm:text-2xl text-[var(--dynamic-aura,var(--aura-indigo))] shadow-inner group-hover:rotate-3 transition-all duration-700 relative overflow-hidden">
+ <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-3xl bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] flex items-center justify-center font-light text-xl sm:text-2xl text-[var(--dynamic-aura,var(--aura-indigo))] shadow-inner group-hover:rotate-3 transition-all duration-700 relative overflow-hidden">
  <div className="absolute inset-0 bg-gradient-to-br from-[var(--dynamic-aura,var(--aura-indigo))]/10 to-transparent z-0" />
  {m.photoURL ? (
  <img src={m.photoURL} alt={m.displayName} className="w-full h-full object-cover relative z-10" />
@@ -410,7 +410,7 @@ export default function MuezzinYonetimi() {
  </div>
 
  {/* Body: Stats Bento Grid */}
- <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-5 bg-[var(--text-primary)]/[0.02] rounded-[20px] sm:rounded-[28px] border border-[var(--glass-border)]">
+ <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3.5 sm:p-5 bg-[var(--text-primary)]/[0.02] rounded-[20px] sm:rounded-icon border border-[var(--glass-border)]">
  <div className="space-y-1.5">
  <p className="premium-label !text-2xs !opacity-35 uppercase tracking-wide">İZİN GÜNÜ</p>
  <p className="text-xs font-light text-[var(--text-primary)] tracking-wide">
@@ -468,7 +468,7 @@ export default function MuezzinYonetimi() {
       whileTap={{ scale: 0.9 }}
       onClick={() => setConfirmAction({ type: 'restore', data: m })}
       aria-label="Arşivden geri yükle"
-      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-emerald-400 hover:text-emerald-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all shadow-lg cursor-pointer"
+      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-emerald-400 hover:text-emerald-500 rounded-xl sm:rounded-2xl border border-[var(--glass-border)] hover:border-emerald-500/30 transition-all shadow-lg cursor-pointer"
     >
       <RotateCcw className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
     </motion.button>
@@ -479,7 +479,7 @@ export default function MuezzinYonetimi() {
       whileTap={{ scale: 0.9 }}
       onClick={() => openEdit(m)}
       aria-label="Personeli düzenle"
-      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-[var(--text-primary)] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer"
+      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-[var(--text-primary)] rounded-xl sm:rounded-2xl border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer"
       >
       <Edit2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>
@@ -488,7 +488,7 @@ export default function MuezzinYonetimi() {
       whileTap={{ scale: 0.9 }}
       onClick={() => setConfirmAction({ type: 'toggle', data: m })}
       aria-label={m.aktif ? 'Personeli pasife al' : 'Personeli aktife al'}
-      className={`p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer ${
+      className={`p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] rounded-xl sm:rounded-2xl border border-[var(--glass-border)] transition-all shadow-lg cursor-pointer ${
       m.aktif ? 'text-rose-400 hover:border-rose-400/30' : 'text-emerald-400 hover:border-emerald-400/30'
       }`}
       >
@@ -505,7 +505,7 @@ export default function MuezzinYonetimi() {
       // başlığı ("ARŞİVE AL") ve metniyle çelişiyordu (bkz. kod denetimi
       // bulgusu).
       aria-label="Personeli arşive al"
-      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-rose-500 rounded-[12px] sm:rounded-[16px] border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
+      className="p-2.5 sm:p-3 bg-[var(--text-primary)]/[0.03] text-muted hover:text-rose-500 rounded-xl sm:rounded-2xl border border-[var(--glass-border)] hover:border-rose-500/30 transition-all shadow-lg cursor-pointer"
       >
       <Trash2 className="w-[14px] h-[14px] sm:w-4 sm:h-4" strokeWidth={1.5} />
       </motion.button>
@@ -556,7 +556,7 @@ export default function MuezzinYonetimi() {
  isOpen={!!confirmDeleteData}
  onClose={closeConfirmAction}
  onConfirm={runConfirmedAction}
- title="ARŞİVE AL"
+ title="Arşive Al"
  message={`${confirmDeleteData?.displayName} adlı personel pasife alınacak ve aktif panelden arşivlenecektir. Geçmiş plan ve bildirim kayıtları korunur.`}
  isDanger={true}
  confirmText="EVET, ARŞİVE AL"
@@ -566,7 +566,7 @@ export default function MuezzinYonetimi() {
  isOpen={!!confirmToggleData}
  onClose={closeConfirmAction}
  onConfirm={runConfirmedAction}
- title={confirmToggleData?.aktif ? "PASİFE AL" : "AKTİFLEŞTİR"}
+ title={confirmToggleData?.aktif ? "Pasife Al" : "Aktifleştir"}
  message={confirmToggleData?.aktif
  ? `${confirmToggleData?.displayName} adlı personel dondurulacaktır. Mevcut haftanın güvenli plan yenilemesi otomatik çalıştırılır; onay/ret geçmişi korunur.`
  : `${confirmToggleData?.displayName} adlı personel aktif kadroya geri dahil edilecektir. Mevcut hafta planı güvenli şekilde yeniden dengelenir.`
@@ -579,7 +579,7 @@ export default function MuezzinYonetimi() {
   isOpen={!!confirmRestoreData}
   onClose={closeConfirmAction}
   onConfirm={runConfirmedAction}
-  title="PERSONELİ GERİ YÜKLE"
+  title="Personeli Geri Yükle"
   message={`${confirmRestoreData?.displayName} adlı personel arşivden çıkartılacak ve aktif kadroya geri eklenecektir.`}
   isDanger={false}
   confirmText="EVET, GERİ YÜKLE"

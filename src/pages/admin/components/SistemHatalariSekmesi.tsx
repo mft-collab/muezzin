@@ -390,7 +390,7 @@ export const SistemHatalariSekmesi = React.memo(({ formatDate }: { formatDate: (
         isOpen={confirmClearOpen}
         onClose={() => setConfirmClearOpen(false)}
         onConfirm={executeClearErrors}
-        title="HATA GÜNLÜKLERİNİ TEMİZLE"
+        title="Hata Günlüklerini Temizle"
         message="Tüm sistem hata günlükleri kalıcı olarak silinecektir. Bu işlem geri alınamaz."
         isDanger={true}
         confirmText="EVET, TÜMÜNÜ SİL"

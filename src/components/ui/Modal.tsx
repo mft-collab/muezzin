@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
@@ -17,6 +17,22 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
  const dialogRef = useRef<HTMLDivElement>(null);
  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
  const dragControls = useDragControls();
+ // `interactive-widget=resizes-content` (index.html) sanal klavye açıldığında
+ // dvh birimlerini çoğu tarayıcıda otomatik küçültür, ama iOS Safari bu
+ // meta değerini desteklemiyor — orada layout viewport sabit kalır ve
+ // `max-h-[85dvh]` alt-sheet'i klavyenin ARKASINDA bırakır (bkz. premium
+ // denetim B42, Y7). VisualViewport API, klavye açıkken gerçek görünür
+ // yüksekliği veriyor; bunu bir fallback tavan olarak uyguluyoruz.
+ const [viewportMaxHeight, setViewportMaxHeight] = useState<number | null>(null);
+
+ useEffect(() => {
+   const vv = window.visualViewport;
+   if (!vv || !isOpen) return;
+   const updateHeight = () => setViewportMaxHeight(vv.height);
+   updateHeight();
+   vv.addEventListener('resize', updateHeight);
+   return () => vv.removeEventListener('resize', updateHeight);
+ }, [isOpen]);
 
  useEffect(() => {
  if (isOpen) {
@@ -102,7 +118,10 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
       exit={{ opacity: 0, scale: 0.95, y: 150 }}
       transition={{ type: "spring", stiffness: 320, damping: 28, mass: 1 }}
       className={`spatial-glass phi-padding w-full sm:max-w-2xl max-h-[85dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden relative z-10 shadow-[var(--spatial-shadow)] mt-auto sm:mt-0 rounded-t-card rounded-b-none sm:rounded-card outline-none ${contentClassName}`}
-      style={{ paddingBottom: 'max(var(--phi-space), env(safe-area-inset-bottom, 0px))' }}
+      style={{
+        paddingBottom: 'max(var(--phi-space), env(safe-area-inset-bottom, 0px))',
+        ...(viewportMaxHeight ? { maxHeight: Math.round(viewportMaxHeight * 0.92) } : {}),
+      }}
     >
       {/* Drag Handle Indicator for Mobile — only this handle starts the sheet drag
           (dragListener={false} above), so touch-scrolling the content below doesn't
@@ -114,7 +133,6 @@ export function Modal({ isOpen, onClose, title, children, className = '', conten
 
       <div className="flex justify-between items-start mb-6 sm:mb-10 shrink-0">
         <div>
-          <p className="premium-label !text-2xs opacity-25 dark:opacity-20 mb-2 uppercase">DİZGE BİLGİ KATMANI</p>
           <h2 id={titleId} className="text-2xl sm:text-4xl font-light tracking-tight text-[var(--text-primary)] apple-thin">{title}</h2>
         </div>
         <button

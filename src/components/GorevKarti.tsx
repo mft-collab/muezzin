@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from './ui/Modal';
+import { EmptyState } from './ui/EmptyState';
 import { Bildirim, Vakit } from '../types';
 import { okudumOnayla } from '../services/okudumServisi';
 import { mazeretBildir } from '../services/mazeretServisi';
@@ -16,7 +17,7 @@ import {
  parseVakitToDate,
  toTurkishUpperCase,
 } from '../lib/dateUtils';
-import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronRight, Clock, Info, UserX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useMuezzinStore } from '../store/useMuezzinStore';
@@ -271,7 +272,7 @@ export const GorevKarti = React.memo(({
  >
  {/* Status Indicator Pillar (Luminous) */}
  <div 
- className={`absolute left-0 top-0 bottom-0 w-[4px] transition-all duration-700 ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-pulse' : ''}`}
+ className={`absolute left-0 top-0 bottom-0 w-[4px] transition-all duration-300 ${isAktif && bildirim.durum === 'bekliyor' ? 'animate-pulse' : ''}`}
  style={{
  background: bildirim.durum === 'onaylandi'
  ? 'var(--status-success)'
@@ -288,12 +289,12 @@ export const GorevKarti = React.memo(({
  />
 
  {/* Kinetic Refraction Sheen */}
- <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+ <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
 
  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 mb-8 sm:mb-10 relative z-10">
  <div className="flex items-center gap-4 sm:gap-7">
  <div
- className={`w-12 h-12 sm:w-16 sm:h-16 rounded-[22px] flex items-center justify-center transition-all duration-700 group-hover:rotate-3 border shadow-lg ${
+ className={`w-12 h-12 sm:w-16 sm:h-16 rounded-avatar flex items-center justify-center transition-all duration-200 group-hover:rotate-3 border shadow-lg ${
  config.color === 'red'
  ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  : config.color === 'green'
@@ -355,7 +356,7 @@ export const GorevKarti = React.memo(({
  className="mb-8 overflow-hidden"
  >
  <div
- className={`p-6 rounded-[28px] text-sm font-light border leading-relaxed flex items-center gap-5 ${
+ className={`p-6 rounded-icon text-sm font-light border leading-relaxed flex items-center gap-5 ${
  uiMessage.type === 'success'
  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
  : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
@@ -391,9 +392,9 @@ export const GorevKarti = React.memo(({
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full py-6 rounded-[28px] bg-amber-500/[0.03] text-amber-500 font-light text-center text-2xs tracking-wide border border-amber-500/10 flex items-center justify-center gap-4"
+ className="w-full py-6 rounded-icon bg-amber-500/[0.03] text-amber-500 font-light text-center text-2xs tracking-wide border border-amber-500/10 flex items-center justify-center gap-4"
  >
- <div className="w-10 h-10 rounded-2xl bg-amber-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-amber-500/20">
+ <div className="w-10 h-10 rounded-2xl bg-amber-500 text-[var(--app-bg)] flex items-center justify-center shadow-lg shadow-amber-500/20">
  <Clock size={18} strokeWidth={2} />
  </div>
  <span className="authority-title !text-2xs !text-inherit">VEKALET DEVRİ İŞLENİYOR — GÖREV ÜZERİNDE İŞLEM YAPILAMAZ</span>
@@ -408,9 +409,9 @@ export const GorevKarti = React.memo(({
  onClick={isAktif && !isReadOnly ? handleOkudum : undefined}
  disabled={!isAktif || isReadOnly || isOnaylaniyor}
  title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
- className={`w-full py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 relative overflow-hidden group/btn shadow-lg ${
+ className={`w-full py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-200 relative overflow-hidden group/btn shadow-lg ${
  isAktif && !isReadOnly
- ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] '
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] '
  : 'bg-[var(--text-primary)]/[0.03] text-[var(--text-primary)]/35 cursor-not-allowed border border-[var(--glass-border)]'
  }`}
  >
@@ -418,7 +419,7 @@ export const GorevKarti = React.memo(({
  <span className="authority-title !text-2xs !text-inherit">SALT GÖZLEM — İŞLEM YAPILAMAZ</span>
  ) : isAktif ? (
  <>
- <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+ <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
  <span className="flex items-center justify-center gap-3 relative z-10">
  {isOnaylaniyor ? 'İŞLENİYOR...' : bildirim.tip === 'asil' ? 'GÖREV İCRASINI ONAYLA' : 'NÖBETİ DEVRE AL'}
  <ChevronRight
@@ -441,7 +442,7 @@ export const GorevKarti = React.memo(({
       onClick={() => setIsMazeretModalOpen(true)}
       disabled={isReadOnly}
       title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
-      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-200 text-rose-500 bg-rose-500/[0.03] border border-rose-500/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
     >
       {GOREV_LABELS.mazeretBildir}
     </motion.button>
@@ -451,7 +452,7 @@ export const GorevKarti = React.memo(({
       onClick={() => setIsVekaletModalOpen(true)}
       disabled={isReadOnly}
       title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
-      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-700 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
+      className="flex-1 py-5 rounded-[18px] font-bold text-2xs tracking-wide uppercase transition-all duration-200 text-[var(--dynamic-aura,var(--aura-indigo))] bg-[var(--dynamic-aura,var(--aura-indigo))]/[0.03] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 shadow-sm cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
     >
       {GOREV_LABELS.goreviDevret}
     </motion.button>
@@ -468,10 +469,10 @@ export const GorevKarti = React.memo(({
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full py-6 rounded-[28px] bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-2xs tracking-wide border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
+ className="w-full py-6 rounded-icon bg-emerald-500/[0.03] text-emerald-500 font-light text-center text-2xs tracking-wide border border-emerald-500/10 flex flex-col sm:flex-row items-center justify-between px-8 gap-5"
  >
  <div className="flex items-center gap-4">
- <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-emerald-500/20">
+ <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-[var(--app-bg)] flex items-center justify-center shadow-lg shadow-emerald-500/20">
  <CheckCircle2 size={18} strokeWidth={2} />
  </div>
  <span className="authority-title !text-2xs !text-inherit">DİZGE TARAFINDAN TEYİT EDİLDİ</span>
@@ -493,9 +494,9 @@ export const GorevKarti = React.memo(({
  <motion.div
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
- className="w-full py-6 rounded-[28px] bg-rose-500/[0.03] text-rose-500 font-light text-center text-2xs tracking-wide border border-rose-500/10 flex items-center justify-center gap-4"
+ className="w-full py-6 rounded-icon bg-rose-500/[0.03] text-rose-500 font-light text-center text-2xs tracking-wide border border-rose-500/10 flex items-center justify-center gap-4"
  >
- <div className="w-10 h-10 rounded-2xl bg-rose-500 text-[var(--text-primary)] flex items-center justify-center shadow-lg shadow-rose-500/20">
+ <div className="w-10 h-10 rounded-2xl bg-rose-500 text-[var(--app-bg)] flex items-center justify-center shadow-lg shadow-rose-500/20">
  <AlertCircle size={18} strokeWidth={2} />
  </div>
  <span className="authority-title !text-2xs !text-inherit">{GOREV_LABELS.mazeretGovDev}</span>
@@ -506,7 +507,7 @@ export const GorevKarti = React.memo(({
  <Modal 
     isOpen={isMazeretModalOpen} 
     onClose={() => setIsMazeretModalOpen(false)} 
-    title="MAZERET BEYANATI"
+    title="Mazeret Beyanatı"
   >
     <div className="flex flex-col py-2 relative">
       <div className="flex flex-col gap-1.5 mb-6 opacity-60">
@@ -514,10 +515,13 @@ export const GorevKarti = React.memo(({
           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
           <p className="text-2xs font-bold tracking-wide uppercase text-rose-500">{GOREV_LABELS.resmiTebligat}</p>
         </div>
-        <span className="text-2xs opacity-40 font-mono">{GOREV_LABELS.beyanIslenecek}</span>
+        <span id="mazeret-sebebi-hint" className="text-2xs opacity-40 font-mono">{GOREV_LABELS.beyanIslenecek}</span>
       </div>
 
+      <label htmlFor="mazeret-sebebi" className="sr-only">Mazeret gerekçesi</label>
       <textarea
+        id="mazeret-sebebi"
+        aria-describedby="mazeret-sebebi-hint"
         className="w-full bg-[var(--text-primary)]/[0.03] border border-[var(--glass-border)] rounded-2xl p-5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--dynamic-aura,var(--aura-indigo))]/50 transition-all font-light text-sm shadow-inner placeholder:opacity-20 placeholder:font-extralight"
         rows={3}
         maxLength={500}
@@ -553,12 +557,12 @@ export const GorevKarti = React.memo(({
           whileTap={{ scale: 0.98 }}
           onClick={submitMazeret}
           disabled={isSubmitting || !mazeretSebebi.trim() || !onay}
-          className="flex-1 bg-rose-500 text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed border-none cursor-pointer"
+          className="flex-1 bg-rose-500 text-[var(--app-bg)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed border-none cursor-pointer"
         >
           {isSubmitting ? 'İŞLENİYOR...' : 'KAYDI TAMAMLA'}
         </motion.button>
         <motion.button
-          whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+          whileHover={{ backgroundColor: 'var(--surface-medium)' }}
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={() => setIsMazeretModalOpen(false)}
@@ -574,7 +578,7 @@ export const GorevKarti = React.memo(({
   <Modal
     isOpen={isVekaletModalOpen}
     onClose={() => setIsVekaletModalOpen(false)}
-    title="HİZMET VEKALETİ TEKLİF ET"
+    title="Hizmet Vekaleti Teklif Et"
   >
     <div className="flex flex-col py-2 relative">
       <div className="flex flex-col gap-1.5 mb-6 opacity-60">
@@ -586,15 +590,18 @@ export const GorevKarti = React.memo(({
       </div>
 
       {eligiblePeers.length === 0 ? (
-        <div className="py-8 text-center border border-dashed border-[var(--text-primary)]/5 rounded-2xl">
-          <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Müsait görevli çalışma arkadaşı bulunamadı.</p>
-        </div>
+        <EmptyState
+          icon={<UserX size={28} strokeWidth={1.2} />}
+          title="Müsait görevli yok"
+          description="Görevi devredebileceğiniz müsait bir çalışma arkadaşı bulunamadı."
+          size="md"
+        />
       ) : (
         <div className="max-h-[35vh] overflow-y-auto space-y-2 pr-1 no-scrollbar mb-6">
           {eligiblePeers.map(peer => (
             <motion.div
               key={peer.id}
-              whileHover={isSendingVekalet ? {} : { x: 3, backgroundColor: 'rgba(255,255,255,0.02)' }}
+              whileHover={isSendingVekalet ? {} : { x: 3, backgroundColor: 'var(--surface-low)' }}
               onClick={async () => {
                 if (isSendingVekalet) return;
                 setIsSendingVekalet(true);
@@ -639,7 +646,7 @@ export const GorevKarti = React.memo(({
 
       <div className="pt-4 flex items-center justify-end">
         <motion.button
-          whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+          whileHover={{ backgroundColor: 'var(--surface-medium)' }}
           whileTap={{ scale: 0.95 }}
           type="button"
           onClick={() => setIsVekaletModalOpen(false)}

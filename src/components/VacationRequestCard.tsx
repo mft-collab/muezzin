@@ -271,7 +271,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           isReadOnly ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer hover:border-[var(--dynamic-aura,var(--aura-indigo))]/30'
         }`}
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--specular-glow)] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
         <div className="absolute right-[-10%] top-[-10%] w-40 h-40 bg-[var(--dynamic-aura,var(--aura-indigo))]/5 blur-[60px] rounded-full pointer-events-none" />
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
@@ -291,7 +291,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
             type="button"
             disabled={isReadOnly}
             title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
-            className="px-6 py-5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:group-hover:scale-100"
+            className="px-6 py-5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] rounded-2xl text-2xs font-bold uppercase tracking-wider flex items-center gap-3 shadow-lg group-hover:scale-105 transition-all duration-300 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:group-hover:scale-100"
           >
             <Calendar size={13} strokeWidth={2} />
             <span>TALEP OLUŞTUR</span>
@@ -303,7 +303,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="İZİN & MAZERET TALEBİ"
+        title="İzin ve Mazeret Talebi"
       >
         <div className="flex flex-col py-2 relative text-left">
           <div className="flex flex-col gap-1.5 mb-6 opacity-60">
@@ -391,7 +391,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               {errorMessage && (
                 <motion.div 
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="p-5 rounded-[22px] bg-rose-500/10 border border-rose-500/20 text-rose-500 text-2xs leading-relaxed flex items-start gap-3.5"
+                  className="p-5 rounded-avatar bg-rose-500/10 border border-rose-500/20 text-rose-500 text-2xs leading-relaxed flex items-start gap-3.5"
                 >
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
@@ -400,7 +400,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
               {successMessage && (
                 <motion.div 
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="p-5 rounded-[22px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-2xs leading-relaxed flex items-start gap-3.5"
+                  className="p-5 rounded-avatar bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-2xs leading-relaxed flex items-start gap-3.5"
                 >
                   <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
                   <span>{successMessage}</span>
@@ -416,7 +416,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
                 type="submit"
                 disabled={isSubmitting || isReadOnly}
                 title={isReadOnly ? GOZLEMCI_SALT_OKUMA_IPUCU : undefined}
-                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
+                className={`flex-1 py-5 rounded-2xl bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] text-2xs font-bold uppercase tracking-wider shadow-lg flex items-center justify-center gap-3 border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-[var(--text-primary)]/30 border-t-white rounded-full animate-spin" />
@@ -453,7 +453,7 @@ export default function VacationRequestCard({ user }: VacationRequestCardProps) 
           </div>
         ) : talepler.length === 0 ? (
           <div className="p-8 text-center spatial-glass rounded-card border-dashed border-[var(--text-primary)]/5 flex flex-col items-center gap-3">
-            <div className="w-11 h-11 rounded-[16px] bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
+            <div className="w-11 h-11 rounded-2xl bg-[var(--text-primary)]/[0.03] border border-[var(--text-primary)]/[0.06] flex items-center justify-center">
               <Calendar size={18} className="text-subtle" strokeWidth={1.5} />
             </div>
             <p className="text-2xs text-[var(--text-secondary)]/75 font-light">Kayıtlı aktif bir izin talebiniz bulunmamaktadır.</p>

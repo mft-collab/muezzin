@@ -7,11 +7,12 @@ import { HakkindaModal } from '../components/HakkindaModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { playClick } from '../lib/sounds';
 import { performLogout } from '../hooks/useFcmToken';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const NotificationSettings = lazy(() => import('../components/NotificationSettings'));
 
 function SettingsSkeleton() {
-  return <div className="h-72 rounded-card fluid-skeleton" />;
+  return <Skeleton className="h-72" rounded="rounded-card" />;
 }
 
 export default function MuezzinAyarlari() {
@@ -53,10 +54,10 @@ export default function MuezzinAyarlari() {
     // MuezzinAnaEkran.tsx yorumu, mobil yerleşim denetimi) — pb-40 bununla üst
     // üste binip sayfa sonunda gereksiz boşluk bırakıyordu.
     <div className="min-h-screen pb-8 relative overflow-hidden">
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-[var(--aura-indigo)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-[var(--aura-emerald)]/5 blur-[140px] rounded-full opacity-[var(--aura-opacity)]" />
-      </div>
+      {/* Sabit (sirkadiyen sisteme katılmayan) bir aura blob katmanı önceden
+          burada AYRICA render ediliyordu — Layout.tsx zaten global, canlı
+          --dynamic-aura'yı okuyan bir 2-blob katman sağlıyor; bu sayfa artık
+          o sirkadiyen sisteme katılıyor (bkz. premium denetim B34, O8). */}
 
       <div className="max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto px-6 pt-12 md:pt-20 relative z-10 space-y-8">
         <motion.header
@@ -65,7 +66,7 @@ export default function MuezzinAyarlari() {
           className="spatial-glass p-8 rounded-card border-[var(--glass-border)] shadow-[var(--spatial-shadow)]"
         >
           <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-[22px] bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-avatar bg-[var(--dynamic-aura,var(--aura-indigo))]/10 text-[var(--dynamic-aura,var(--aura-indigo))] border border-[var(--dynamic-aura,var(--aura-indigo))]/20 flex items-center justify-center">
               <Settings size={24} strokeWidth={1.5} />
             </div>
             <div>

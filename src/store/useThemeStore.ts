@@ -6,6 +6,20 @@ type Theme = 'light' | 'dark';
 
 export type ThemeToggleEvent = ReactMouseEvent | MouseEvent;
 
+// index.html'deki inline script, ilk boyamada FOUC'u önlemek için theme-color
+// meta'sını sabit hex tahminleriyle ayarlar; burada CSS tamamen yüklendikten
+// sonra --app-bg'nin GERÇEK (hesaplanmış) değeri okunup meta'ya yazılır —
+// token ileride değişirse iki yeri elle senkronize tutmaya gerek kalmaz
+// (bkz. premium denetim B41, H9).
+function syncThemeColorMeta(theme: Theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const appBg = getComputedStyle(document.documentElement).getPropertyValue('--app-bg').trim();
+  if (!appBg) return;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute('content', appBg);
+  });
+}
+
 interface ThemeState {
  theme: Theme;
  setTheme: (theme: Theme) => void;
@@ -18,13 +32,13 @@ export const useThemeStore = create<ThemeState>()(
       theme: 'dark', // Default to dark as requested in aesthetics
       setTheme: (theme) => {
         set({ theme });
-        document.documentElement.setAttribute('data-theme', theme);
+        syncThemeColorMeta(theme);
       },
       toggleTheme: (event?: ThemeToggleEvent) => {
         const toggle = () => {
           set((state) => {
             const newTheme = state.theme === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', newTheme);
+            syncThemeColorMeta(newTheme);
             return { theme: newTheme };
           });
         };
@@ -84,7 +98,7 @@ export const useThemeStore = create<ThemeState>()(
       name: 'muezzin-theme-storage',
       onRehydrateStorage: () => (state) => {
         if (state) {
-          document.documentElement.setAttribute('data-theme', state.theme);
+          syncThemeColorMeta(state.theme);
         }
       },
     }

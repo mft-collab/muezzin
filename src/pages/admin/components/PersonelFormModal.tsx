@@ -107,7 +107,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
   };
 
  return (
- <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "PROFİL GÜNCELLEME" : "YENİ PERSONEL TANIMI"}>
+ <Modal isOpen={isOpen} onClose={onClose} title={editingUser ? "Profil Güncelleme" : "Yeni Personel Tanımı"}>
  <form onSubmit={handleSubmit} className="space-y-8 py-4">
  <FormField
  label="ERİŞİM E-POSTASI"
@@ -178,7 +178,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  onClick={() => setFormData({ ...formData, role: role.value })}
  className={`p-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all border outline-none ${
  formData.role === role.value
- ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_10px_20px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
  : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10 focus:border-[var(--text-primary)]/10'
  }`}
  >
@@ -214,7 +214,7 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
  day.disabled
  ? 'opacity-10 cursor-not-allowed border-transparent bg-transparent'
  : isSelected
- ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_8px_16px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
+ ? 'bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] border-[var(--dynamic-aura,var(--aura-indigo))]/60 shadow-[0_8px_16px_color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_25%,transparent)]'
  : 'bg-[var(--text-primary)]/[0.02] text-[var(--text-secondary)] border-[var(--text-primary)]/5 hover:border-[var(--text-primary)]/10 focus:border-[var(--text-primary)]/10'
  }`}
  >
@@ -228,16 +228,16 @@ export const PersonelFormModal = React.memo(({ isOpen, onClose, editingUser }: P
 
  <div className="pt-10 flex items-center gap-6">
  <motion.button 
- whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px rgba(99,102,241,0.2)' }}
+ whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 30px color-mix(in srgb, var(--dynamic-aura, var(--aura-indigo)) 20%, transparent)' }}
  whileTap={{ scale: 0.98 }}
- type="submit" 
+ type="submit"
  disabled={isSubmitting}
- className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 transition-all disabled:opacity-50"
+ className="flex-1 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] text-2xs font-bold uppercase tracking-wide py-5 rounded-2xl shadow-lg shadow-[var(--dynamic-aura,var(--aura-indigo))]/10 transition-all disabled:opacity-50"
  >
  {isSubmitting ? 'İŞLENİYOR...' : (editingUser ? 'PROFİLİ GÜNCELLE' : 'PERSONELİ DİZGEYE EKLE')}
  </motion.button>
  <motion.button 
- whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+ whileHover={{ backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.95 }}
  type="button" 
  onClick={onClose} 

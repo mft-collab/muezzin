@@ -31,8 +31,24 @@ modal/login/boş-durum kartları) tek bir standarda oturur: **15px**. Bu,
 Değer değişirse tek satır (`--radius-card`) güncellenir, 44+ dosyada
 arama-değiştirme gerekmez. Küçük katman öğeleri (butonlar, ikon daireleri,
 rozetler, toast'lar, nav chrome, tablo hücreleri, iç içe alt kartlar) bu
-standarda dahil değildir — onlar kendi ölçeğinde kalır (`rounded-[14px]`,
-`rounded-[24px]` vb. hâlâ meşru).
+standarda dahil değildir — onlar kendi ölçeğinde kalır. **Ama "kendi
+ölçeği" artık keyfi bir `rounded-[NNpx]` değil** — önceki hâliyle 17 farklı
+keyfi piksel değerine (128 kullanım) dağılmıştı, bazıları adlandırılmış
+Tailwind sınıflarıyla (`rounded-2xl`=16px, `rounded-xl`=12px,
+`rounded-3xl`=24px, `rounded-lg`=8px) birebir çakışıyordu (bkz. premium
+denetim B20). Yeni yazımda:
+
+1. Değer Tailwind'in yerleşik ölçeğinde varsa (`rounded-lg/xl/2xl/3xl`)
+   **onu kullan**, `rounded-[NNpx]` yazma.
+2. Yoksa iki ek token'dan birini kullan — `rounded-avatar` (22px: avatar,
+   büyük ikon kutusu) ve `rounded-icon` (28px: EmptyState/ConfirmModal/
+   GpsConsentModal ortak "sonuç ikonu" dairesi). Bu ikisi `src/index.css`
+   `@theme` bloğunda tanımlı; isimleri BİLEREK Tailwind'in yerleşik
+   `--radius-sm/md/lg/xl` namespace'iyle çakışmaz (o isimleri burada
+   tanımlamak `rounded-lg` gibi zaten kullanımda olan sınıfların piksel
+   değerini sessizce değiştirirdi).
+3. Gerçekten tek seferlik, üçüncü bir bileşenle paylaşılmayan bir değerse
+   `rounded-[NNpx]` hâlâ meşru — ama önce 1 ve 2'yi ele.
 
 ### `.spatial-glass` ailesi
 
@@ -41,6 +57,59 @@ arka plan (`--spatial-glass-bg`, temaya göre değişir), kenarlık, gölge. Üz
 inşa eden varyantlar (`.apple-card*`, `.spatial-glass-elevated/flat`,
 `.tactile-card`) hiçbiri köşe yarıçapını override etmez, hepsi
 `--radius-card`'ı miras alır.
+
+### İkincil metin/etiket hiyerarşisi: `text-muted/subtle/faint` ve `label-primary/secondary/tertiary`
+
+İkincil metin için **`opacity-NN` (raw Tailwind opaklık sınıfı) yazma** —
+`src/index.css`'teki bu altı semantik utility'den birini kullan:
+
+- Düz gövde metni (`text-secondary`/`text-primary` renkli, `uppercase` DEĞİL):
+  `text-muted` (en görünür) → `text-faint` → `text-subtle` (en soluk).
+- `authority-title`/`premium-label` tabanlı (uppercase, tracking'li) etiketler:
+  `label-primary` (en görünür) → `label-secondary` → `label-tertiary` (en soluk).
+
+Her ikisinin de opaklık değerleri `[data-theme='light']`/`[data-theme='dark']`
+bloklarında ayrı ayrı tanımlı token'lardan gelir (`--text-*-opacity`,
+`--label-*-opacity`) — ışık modunda WCAG AA'yı (text-secondary için ölçülen
+gerçek eşik ≥0.85) garanti eder, karanlık modda gerçek bir hiyerarşi bırakır.
+Bu iki üçlünün dışında kalan (eski) `opacity-NN` çağrı noktaları için ışık
+modunda yalnızca `.authority-title`/`.premium-label` İLE BİRLİKTE bu sınıfı
+taşıyan elementleri hedefleyen kapsamlı (scoped) bir taban kuralı var — bkz.
+`src/index.css`'te "ESKİ DAVRANIŞ (kaldırıldı...)" yorumu. **Bu geriye dönük
+uyumluluk için var, yeni kodda kullanma.**
+
+### `authority-title`/`uppercase` yalnızca tek satırlık etiketler için
+
+`text-2xs` (11px) + `uppercase` + `tracking-wide` kombinasyonu bu kod
+tabanında ~390 noktada kullanılıyor — bir noktada bu, İKİ SATIRI AŞAN gövde
+metni (ör. bir açıklama paragrafı, bir onay diyaloğunun mesajı) için de
+kullanılmıştı (bkz. premium denetim B10: `SistemAnalitigi.tsx` 6 satırlık bir
+uyarı metnini, `ConfirmModal.tsx` kullanıcı adı içeren dinamik onay cümlesini
+büyük harfle basıyordu). **Yeni kodda `authority-title`/`uppercase`'i yalnızca
+gerçekten TEK SATIRA sığan bir etikette (eyebrow, rozet, kolon başlığı) kullan
+— iki satırı aşabilecek herhangi bir metin (açıklama, onay mesajı, hata
+metni) cümle düzeninde ve normal (≥13px) bir boyutta kalır.** Büyük harf
+kalıcı bir "vurgu" aracıdır; gövde kopyasına uygulandığında hem okunabilirliği
+düşürür hem Türkçe kelimelerin İngilizceden ortalama daha uzun olması nedeniyle
+taşma riskini artırır.
+
+### Motion fizik token'ları: `src/lib/motion.ts`
+
+Yeni bir `motion/react` geçişi yazarken `stiffness`/`damping`/`duration`/easing
+dizisi için elle sayı yazma — `SPRING`/`EASE`/`DURATION` (bkz. `src/lib/motion.ts`)
+dışında bir değer icat etmeden önce oradaki üç grubun birine bakılır. Mevcut
+çağrı noktaları (14 farklı spring, 3 farklı easing dizisine dağılmış, bkz.
+premium denetim B22) geriye dönük uyumluluk için değiştirilmedi — bu token'lar
+yalnızca YENİ yazılan kod için bağlayıcı.
+
+### Doygun dolgu üzerine metin rengi
+
+Renkli/doygun bir arka plan (`bg-emerald-500`, `bg-[var(--dynamic-aura,...)]`
+vb.) üzerine metin/ikon yazarken **her zaman `text-[var(--app-bg)]`, asla
+`text-[var(--text-primary)]` yazma.** Işık temasında `--text-primary` neredeyse
+siyahtır (`hsl(210,25%,8%)`) — koyu bir dolgu üzerinde ~1,6–3,1:1 kontrasta
+düşer (bkz. premium denetim B2). Doğru desen zaten `ConfirmModal`,
+`EmptyState`, `Layout`, `btn-premium`'da tutarlı kullanılıyor.
 
 ### Aura / circadian renk sistemi
 

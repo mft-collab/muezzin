@@ -88,7 +88,7 @@ export default function IzinYonetimi() {
  <p className="authority-title !text-2xs opacity-40 font-medium tracking-wide">PERSONEL İSTİRAHAT VE GÖREV MUAFİYETLERİ</p>
  </div>
 
- <div className="flex items-center gap-2 bg-[var(--surface-low)] p-1.5 rounded-[22px] border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0">
+ <div className="flex items-center gap-2 bg-[var(--surface-low)] p-1.5 rounded-avatar border border-[var(--glass-border)] shadow-[var(--spatial-shadow)] overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0">
  {(
  [
  { id: 'all', label: 'TÜMÜ' },
@@ -169,7 +169,7 @@ export default function IzinYonetimi() {
 
  {/* Personel Identity */}
  <div className="flex items-center gap-5 min-w-0 lg:min-w-[240px] w-full lg:w-auto">
- <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-[16px] sm:rounded-[22px] flex items-center justify-center shadow-lg border transition-all duration-700 ${
+ <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-2xl sm:rounded-avatar flex items-center justify-center shadow-lg border transition-all duration-700 ${
  izin.durum === 'onay_bekliyor' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
  izin.durum === 'onaylandi' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
  }`}>
@@ -264,7 +264,7 @@ export default function IzinYonetimi() {
  {izin.durum === 'onaylandi' ? 'DİZGE TARAFINDAN ONAYLI' : 'TALEP REDDEDİLDİ'}
  </div>
  <motion.button
- whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.05)' }}
+ whileHover={{ scale: 1.1, backgroundColor: 'var(--surface-medium)' }}
  whileTap={{ scale: 0.9 }}
  disabled={isProcessing}
  onClick={() => setUndoConfirm({ open: true, id: izin.id! })}
@@ -299,7 +299,7 @@ export default function IzinYonetimi() {
  onConfirm={() => {
  if (deleteConfirm.id) handleDelete(deleteConfirm.id);
  }}
- title="KAYDI SİL"
+ title="Kaydı Sil"
  message="Bu izin kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz."
  isDanger={true}
  confirmText="EVET, SİL"
@@ -311,7 +311,7 @@ export default function IzinYonetimi() {
  onConfirm={() => {
  if (undoConfirm.id) handleUndo(undoConfirm.id);
  }}
- title="KARARI GERİ AL"
+ title="Kararı Geri Al"
  message={(() => {
  const hedefIzin = izinler.find(i => i.id === undoConfirm.id);
  const kotaEtkilenecek = hedefIzin?.tip === 'yillik' && hedefIzin.durum === 'onaylandi';

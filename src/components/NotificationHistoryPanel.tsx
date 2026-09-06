@@ -4,6 +4,7 @@ import { Trash2, BellOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Modal } from './ui/Modal';
+import { EmptyState } from './ui/EmptyState';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { TYPE_CONFIG } from './ui/NotificationToast';
 
@@ -17,12 +18,14 @@ export function NotificationHistoryPanel({ isOpen, onClose }: NotificationHistor
   const clearHistory = useNotificationStore((s) => s.clearHistory);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="BİLDİRİM GEÇMİŞİ">
+    <Modal isOpen={isOpen} onClose={onClose} title="Bildirim Geçmişi">
       {history.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <BellOff size={28} className="text-muted" />
-          <p className="text-2xs text-muted uppercase tracking-wide font-bold">Henüz bildirim yok</p>
-        </div>
+        <EmptyState
+          icon={<BellOff size={28} strokeWidth={1.2} />}
+          title="Henüz bildirim yok"
+          description="Yeni bir bildirim geldiğinde burada listelenecek."
+          size="md"
+        />
       ) : (
         <div className="space-y-6">
           <div className="flex justify-end">

@@ -123,7 +123,7 @@ export default function EzanOnbellegi() {
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      className={`p-4 rounded-[16px] flex items-center gap-3 border ${
+      className={`p-4 rounded-2xl flex items-center gap-3 border ${
        uiMessage.type === 'success'
         ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
         : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
@@ -158,7 +158,7 @@ export default function EzanOnbellegi() {
       whileTap={{ scale: 0.98 }}
       onClick={handleSenkronizeEt}
       disabled={syncing}
-      className="w-full sm:w-auto px-6 py-3.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--text-primary)] rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
+      className="w-full sm:w-auto px-6 py-3.5 bg-[var(--dynamic-aura,var(--aura-indigo))] text-[var(--app-bg)] rounded-[14px] uppercase tracking-wide text-2xs flex items-center justify-center gap-3 transition-all font-bold shadow-[var(--spatial-shadow)] cursor-pointer disabled:opacity-60"
      >
       <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
       <span>{syncing ? 'Senkronize ediliyor' : 'Verileri senkronize et'}</span>
@@ -237,7 +237,7 @@ export default function EzanOnbellegi() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: idx * 0.03 }}
-        className="bg-[var(--surface-medium)] p-4 rounded-[16px] space-y-3 border border-[var(--glass-border)]"
+        className="bg-[var(--surface-medium)] p-4 rounded-2xl space-y-3 border border-[var(--glass-border)]"
        >
         <div className="flex justify-between items-center gap-3">
          <h4 className="text-sm font-semibold text-[var(--text-primary)] tracking-tight">{o.id.toUpperCase()}</h4>
@@ -259,8 +259,8 @@ export default function EzanOnbellegi() {
     </div>
    </section>
 
-   <div className="p-4 sm:p-5 bg-[var(--surface-low)] rounded-[16px] border border-[var(--glass-border)] flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
-    <div className="w-10 h-10 rounded-[13px] bg-[var(--surface-medium)] flex items-center justify-center text-[var(--text-secondary)] shrink-0">
+   <div className="p-4 sm:p-5 bg-[var(--surface-low)] rounded-2xl border border-[var(--glass-border)] flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
+    <div className="w-10 h-10 rounded-xl bg-[var(--surface-medium)] flex items-center justify-center text-[var(--text-secondary)] shrink-0">
      <Info className="w-5 h-5" strokeWidth={1.7} />
     </div>
     <div className="flex flex-col gap-1">

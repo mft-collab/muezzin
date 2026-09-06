@@ -14,7 +14,7 @@ import { useNotificationStore } from '../../store/useNotificationStore';
 
 import { useEzanVakitleri } from '../../hooks/useEzanVakitleri';
 import { useMevcutVakit } from '../../hooks/useMevcutVakit';
-import { getActiveAuraColor, getSecondaryAuraColor } from '../../lib/auraTheme';
+import { getActiveAuraColor } from '../../lib/auraTheme';
 import { IslamicGeometricBg } from '../../components/ui/IslamicGeometricBg';
 import { playClick } from '../../lib/sounds';
 import { ChunkErrorFallback } from '../../components/ChunkErrorFallback';
@@ -23,6 +23,7 @@ import { toError } from '../../lib/errorUtils';
 import { SlimSidebar } from './components/SlimSidebar';
 import ExecutiveHeroScreen from './modules/ExecutiveHeroScreen';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { PageSkeleton, Skeleton } from '../../components/ui/Skeleton';
 import { toActiveModule, type ActiveModule } from './config/navConfig';
 
 const HaftalikCizelge = lazy(() => import('./modules/HaftalikCizelge'));
@@ -129,10 +130,10 @@ export default function AdminPanel() {
  });
  };
 
- // Aktif vakte göre ana aura rengi (bkz. src/lib/auraTheme.ts)
+ // Aktif vakte göre ana aura rengi (bkz. src/lib/auraTheme.ts) — bu sayfanın
+ // alt ağacındaki düğme/rozet gibi ön-plan öğeleri için --dynamic-aura'yı
+ // yerel olarak override eder.
  const activeAuraColor = useMemo(() => getActiveAuraColor(mevcutVakit), [mevcutVakit]);
- // Sekonder tamamlayıcı aura rengi (kontrast için)
- const secondaryAuraColor = useMemo(() => getSecondaryAuraColor(mevcutVakit), [mevcutVakit]);
 
 
  useEffect(() => {
@@ -163,7 +164,7 @@ export default function AdminPanel() {
      tablosu) 280px'ten çok daha uzun — kısa fallback, kod-bölünmüş modül
      ilk kez indirilirken belirgin bir layout shift yaratıyordu (bkz. kod
      denetimi bulgusu). */}
- <Suspense fallback={<div className="min-h-[600px] w-full fluid-skeleton" />}>
+ <Suspense fallback={<Skeleton className="min-h-[600px] w-full" rounded="rounded-card" />}>
     <SistemAnalitigi />
   </Suspense>
  </motion.div>
@@ -227,23 +228,10 @@ export default function AdminPanel() {
    className="min-h-screen flex lg:flex-row bg-[var(--app-bg)] font-apple pb-24 lg:pb-0 overflow-hidden selection:bg-[var(--dynamic-aura,var(--aura-indigo))]/20 fluid-transition"
  >
  
- {/* Dynamic Ambient Auras (Sirkadiyen Geçiş) */}
- <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
- <div 
- className="absolute top-[10%] left-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${activeAuraColor} 0%, transparent 70%)` 
- }}
- />
- <div 
- className="absolute bottom-[10%] right-[-15%] w-[52%] h-[52%] blur-[140px] rounded-full animate-aura transition-all duration-[3000ms]" 
- style={{ 
- background: `radial-gradient(circle, ${secondaryAuraColor} 0%, transparent 70%)`,
- animationDelay: '-4s'
- }}
- />
- </div>
-
+ {/* Sayfaya özgü ikinci bir aura blob katmanı önceden burada AYRICA render
+     ediliyordu — Layout.tsx zaten global bir 2-blob sirkadiyen katman
+     sağlıyor (aynı --dynamic-aura'yı okuyarak); üst üste 4 blur katmanı
+     doygunluğun katlanmasına yol açıyordu (bkz. premium denetim B34, O8). */}
  {/* Spiritüel Doku Bütünlüğü */}
  <IslamicGeometricBg />
 
@@ -282,7 +270,7 @@ export default function AdminPanel() {
   <button
   type="button"
   onClick={toggleTheme}
-  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/55 hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-all"
+  className="lg:hidden flex items-center justify-center w-11 h-11 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-[var(--text-secondary)]/55 hover:text-[var(--dynamic-aura,var(--aura-indigo))] transition-all"
   aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
   title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
   >
@@ -291,7 +279,7 @@ export default function AdminPanel() {
   <button
   type="button"
   onClick={requestLogout}
-  className="lg:hidden flex items-center justify-center w-10 h-10 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+  className="lg:hidden flex items-center justify-center w-11 h-11 rounded-[14px] border border-[var(--glass-border)] bg-[var(--text-primary)]/[0.025] text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
   aria-label="Oturumu kapat"
   title="Oturumu kapat"
   >
@@ -307,7 +295,7 @@ export default function AdminPanel() {
  )}
  onReset={() => setSearchParams(prev => prev)}
  >
-  <Suspense fallback={<div className="h-[60vh] flex flex-col gap-6 w-full opacity-50"><div className="w-48 h-8 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+  <Suspense fallback={<PageSkeleton />}>
  {renderContent}
  </Suspense>
  </ErrorBoundary>
@@ -350,7 +338,11 @@ export default function AdminPanel() {
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 220 }}
             className="relative w-full md:w-[700px] lg:w-[900px] bg-[var(--app-bg)] shadow-[var(--spatial-shadow)] flex flex-col h-[100dvh] border-l border-[var(--glass-border)]"
-            style={{ transformStyle: 'preserve-3d' }}
+            style={{
+              transformStyle: 'preserve-3d',
+              paddingTop: 'env(safe-area-inset-top, 0px)',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            }}
           >
             {/* Grab Handle for swipe dismissal */}
             <div className="absolute left-1 top-1/2 -translate-y-1/2 w-[4px] h-16 bg-[var(--text-primary)]/10 rounded-full hidden md:block pointer-events-none" />
@@ -370,7 +362,7 @@ export default function AdminPanel() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto phi-padding no-scrollbar relative z-10">
-              <Suspense fallback={<div className="h-full flex flex-col gap-6 w-full opacity-50 pt-4"><div className="w-32 h-6 bg-[var(--text-primary)]/5 rounded-full animate-pulse" /><div className="flex-1 w-full bg-[var(--text-primary)]/[0.02] rounded-card border border-[var(--glass-border)] animate-pulse spatial-glass" /></div>}>
+              <Suspense fallback={<PageSkeleton height="h-full" className="pt-4" />}>
                 {drawerContent === 'alarmlar' && <KrizAlarmlari />}
                 {drawerContent === 'duyurular' && <DuyuruYonetimi />}
               </Suspense>

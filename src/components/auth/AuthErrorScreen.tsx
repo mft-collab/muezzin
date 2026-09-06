@@ -34,7 +34,7 @@ export function AuthErrorScreen({ error, setError, setLoading, logout }: AuthErr
  {setError && (
  <button
  onClick={() => { setError(null); setLoading(false); }}
- className="w-full h-14 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--text-primary)] rounded-2xl font-medium shadow-lg shadow-[color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all "
+ className="w-full h-14 bg-[var(--dynamic-aura,var(--aura-indigo))] hover:opacity-90 text-[var(--app-bg)] rounded-2xl font-medium shadow-lg shadow-[color-mix(in_srgb,var(--dynamic-aura,var(--aura-indigo))_20%,transparent)] transition-all "
  >
  TEKRAR DENE
  </button>

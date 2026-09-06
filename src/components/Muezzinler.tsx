@@ -53,7 +53,7 @@ export const Muezzinler = React.memo(({
  {/* ── Başlık ── */}
  <div className="flex items-center gap-4 sm:gap-8 mb-8 sm:mb-12">
  <div
- className={`w-14 h-14 sm:w-20 sm:h-20 rounded-[28px] bg-[var(--text-primary)]/[0.03] flex items-center justify-center border border-[var(--text-primary)]/5 shadow-[var(--spatial-shadow)] relative group ${
+ className={`w-14 h-14 sm:w-20 sm:h-20 rounded-icon bg-[var(--text-primary)]/[0.03] flex items-center justify-center border border-[var(--text-primary)]/5 shadow-[var(--spatial-shadow)] relative group ${
  isFriday ? 'text-emerald-400' : 'text-[var(--dynamic-aura,var(--aura-indigo))]'
  }`}
  >
@@ -95,7 +95,7 @@ export const Muezzinler = React.memo(({
  key={i}
  className="skeleton-shimmer h-[9.5rem] flex items-center px-8 gap-6 !rounded-card border border-[var(--text-primary)]/[0.04]"
  >
- <div className="w-16 h-16 rounded-[24px] bg-[var(--text-primary)]/5 shrink-0" />
+ <div className="w-16 h-16 rounded-3xl bg-[var(--text-primary)]/5 shrink-0" />
  <div className="flex-1 space-y-4">
  <div className="w-1/3 h-2 bg-[var(--text-primary)]/5 rounded-full" />
  <div className="w-2/3 h-5 bg-[var(--text-primary)]/5 rounded-full" />
